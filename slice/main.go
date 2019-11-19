@@ -22,4 +22,7 @@ func main() {
 
 	fmt.Println(slice)
 
+	s1 := []int{0, 1, 2, 3, 8: 100}
+	fmt.Println(s1, len(s1), cap(s1))
+
 }
