@@ -17,4 +17,9 @@ func main() {
 			oldCap = newCap
 		}
 	}
+
+	slice := *new([]int)
+
+	fmt.Println(slice)
+
 }
