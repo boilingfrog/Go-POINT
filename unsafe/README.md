@@ -140,12 +140,21 @@ Go 语言类型系统是为了安全和效率设计的，有时，安全会导�
 
 ## unsafe实现原理
 
+我们来看源码：
 
+````
+type ArbitraryType int
+type Pointer *ArbitraryType
+````
 
+从命名来看， Arbitrary 是任意的意思，也就是说 Pointer 可以指向任意类型，实际上它类似于 C 语言里的 void*。
 
-
-
-
+unsafe包还有其他三个函数：
+````
+func Sizeof(x ArbitraryType) uintptr
+func Offsetof(x ArbitraryType) uintptr
+func Alignof(x ArbitraryType) uintptr
+````
 
 
 
