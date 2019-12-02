@@ -4,6 +4,7 @@ import "fmt"
 
 func change(sl []int64) {
 	sl[0] = 2
+
 }
 
 func changeNo(sl []int64) {
