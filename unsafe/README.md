@@ -168,7 +168,12 @@ Alignof 返回 m，m 是指当类型进行内存对齐时，它分配到的内�
 
 综上，unsafe包提供了2点重要的能力：
 
-
+````
+1、任何类型的指针和unsafe.Point可以相互转换。
+2、uintptr类型和unsafe.Point可以相互转换
+````
+pointer不能直接进行数学运算，但可以把它转换成uintptr,对uintptr类型进行数学运算，在转换成pointer
+类型。
 
 
 
