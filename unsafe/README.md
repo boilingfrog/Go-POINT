@@ -156,11 +156,35 @@ func Offsetof(x ArbitraryType) uintptr
 func Alignof(x ArbitraryType) uintptr
 ````
 
+## unsafe.Pointer && uintptr类型
+
+### unsafe.Pointer
+
+这个类型比较重要，它是实现定位欲读写的内存的基础。官方文档对该类型有四个重要描述：
+
+````
+（1）任何类型的指针都可以被转化为Pointer
+（2）Pointer可以被转化为任何类型的指针
+（3）uintptr可以被转化为Pointer
+（4）Pointer可以被转化为uintptr
+````
+大多数指针类型都会写成T，表示是“一个指向T类型变量的指针”。unsafe.Pointer是特别定义的一种指
+针类型，它可以包含任何类型变量的地址。当然，我们不可以直接通过*p来获取unsafe.Pointer指针指
+向的真是变量的值，因为我们并不知道变量的具体类型。和人普通指针一样，unsafe.Pointer指针是可以
+比较的，并且支持和nil常量比较判断是否为空指针。
+
+****
+一个普通的的T类型指针可以被转换成unsafe.Pointer类型指针，并且一个unsafe.Pointer类型指针也可以
+被转换成普通类型的指针，被转换回普通的指针类型并不需要和原始的T类型相同。
+****
+
+
+
 
 
 ### 参考
 - 【深度解密Go语言之Slice】 https://mp.weixin.qq.com/s/MTZ0C9zYsNrb8wyIm2D8BA    
-
+- 【Go之unsafe.Pointer && uintptr类型】 https://my.oschina.net/xinxingegeya/blog/729673
 
 
 
