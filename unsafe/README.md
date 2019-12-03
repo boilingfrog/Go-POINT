@@ -178,6 +178,143 @@ func Alignof(x ArbitraryType) uintptr
 被转换成普通类型的指针，被转换回普通的指针类型并不需要和原始的T类型相同。
 ****
 
+通过将float64类型指针转化为uint64类型指针，我们可以查看一个浮点数变量的位模式。
+
+````
+func Float64bits(f float64) uint64 {
+	fmt.Println(reflect.TypeOf(unsafe.Pointer(&f)))            //unsafe.Pointer
+	fmt.Println(reflect.TypeOf((*uint64)(unsafe.Pointer(&f)))) //*uint64
+	return *(*uint64)(unsafe.Pointer(&f))
+}
+
+func main() {
+	fmt.Printf("%#016x\n", Float64bits(1.0)) // "0x3ff0000000000000"
+}
+````
+再看一个例子
+````
+
+
+func main() {
+``	v1 := uint(12)
+	v2 := int(12)
+
+	fmt.Println(reflect.TypeOf(v1)) //uint
+	fmt.Println(reflect.TypeOf(v2)) //int
+
+	fmt.Println(reflect.TypeOf(&v1)) //*uint
+	fmt.Println(reflect.TypeOf(&v2)) //*int
+
+	p := &v1
+
+	//两个变量的类型不同,不能赋值
+	//p = &v2 //cannot use &v2 (type *int) as type *uint in assignment
+
+	fmt.Println(reflect.TypeOf(p)) // *unit
+}
+````
+````
+当再次把 v2 的指针赋值给p时，会发生错误cannot use &v2 (type *int) as type *uint in assignment，也就是说类型不同，一个是*int，一个是*uint。
+````
+可以使用unsafe.Pointer进行转换，如下，
+````
+func main() {
+
+	v1 := uint(12)
+	v2 := int(13)
+
+	fmt.Println(reflect.TypeOf(v1)) //uint
+	fmt.Println(reflect.TypeOf(v2)) //int
+
+	fmt.Println(reflect.TypeOf(&v1)) //*uint
+	fmt.Println(reflect.TypeOf(&v2)) //*int
+
+	p := &v1
+
+	p = (*uint)(unsafe.Pointer(&v2)) //使用unsafe.Pointer进行类型的转换
+
+	fmt.Println(reflect.TypeOf(p)) // *unit
+	fmt.Println(*p)                //13
+}
+````
+
+### uintptr
+
+````
+// uintptr is an integer type that is large enough to hold the bit pattern of
+// any pointer.
+type uintptr uintptr
+````
+uintptr是golang的内置类型，是能存储指针的整型，在64位平台上底层的数据类型是，
+
+````
+typedef unsigned long long int  uint64;
+typedef uint64          uintptr;
+````
+一个unsafe.Pointer指针也可以被转化成uintptr类型，然后保存到指针类型数值变量中（注：这只是和
+当前指针相同的一个数字值，并不是一个指针），然后用以做必要的指针数值运算。（uintptr是一个无符号
+的整型数，足以保存一个地址）这种转换虽然是可逆的，但是将uintptr转为unsafe.Pointer指针可能破坏
+类型系统，因为并不是所有的数字都是有效的内存地址。
+
+许多将unsafe.Pointer指针转化成原生数字，然后再转换成unsafe.Pointer类型指针的操作也是不安全的
+。比如下面的例子需要将变量x的地址加上b字段地址偏移量转化为*int16类型指针，然后通过该指针更新x.b：
+
+````
+func main() {
+
+	var x struct {
+		a bool
+		b int16
+		c []int
+	}
+
+	/**
+	unsafe.Offsetof 函数的参数必须是一个字段 x.f, 然后返回 f 字段相对于 x 起始地址的偏移量, 包括可能的空洞.
+	*/
+
+	/**
+	uintptr(unsafe.Pointer(&x)) + unsafe.Offsetof(x.b)
+	指针的运算
+	*/
+	// 和 pb := &x.b 等价
+	pb := (*int16)(unsafe.Pointer(uintptr(unsafe.Pointer(&x)) + unsafe.Offsetof(x.b)))
+	*pb = 42
+	fmt.Println(x.b) // "42"
+}
+````
+上面的写法尽管很繁琐，但在这里并不是一件坏事，因为这些功能应该很谨慎地使用。不要试图引入一个uintptr类型的临时变
+量，因为它可能会破坏代码的安全性（注：这是真正可以体会unsafe包为何不安全的例子）。
+
+#### 下面的这段代码是错误的
+````
+// NOTE: subtly incorrect!
+tmp := uintptr(unsafe.Pointer(&x)) + unsafe.Offsetof(x.b)
+pb := (*int16)(unsafe.Pointer(tmp))
+*pb = 42
+````
+产生错误的原因很微妙。有时候垃圾回收器会移动一些变量以降低内存碎片等问题。这类垃圾回收
+器被称为移动GC。当一个变量被移动，所有的保存改变量旧地址的指针必须同时被更新为变量移动
+后的地址。从垃圾收集器的角度看，一个unsafe.Pointer是一个指向变量的指针，因此当变量被
+移动是对应的指针也必须被更新；但是uintptr类型的临时变量只是一个普通的数字，所以其值
+不应该被改变。上面错误的代码因引入一个非指针的临时变量temp，导致垃圾收集器无法正确识别
+这个是一个指向变量x的指针。当第二个语句执行是，变量X可能被转移，这时候临时变量tmp也就是
+不再是现在&x.b地址。第三个指向之前无效地址空间的赋值将摧毁整个系统。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
