@@ -155,6 +155,31 @@ func Sizeof(x ArbitraryType) uintptr
 func Offsetof(x ArbitraryType) uintptr
 func Alignof(x ArbitraryType) uintptr
 ````
+size返回类型x所占的字节数，单不包含x所指向的内容的大小。例如，对于一个指针，函数返回
+的大小为8字节（64位机器上），一个slice的大小则为slice header的大小。
+
+offsetof返回结构体在内存中的位置离结构体起始处的字节数，所传参数必须是结构体的成员。
+
+Alignof 返回 m，m 是指当类型进行内存对齐时，它分配到的内存地址能整除 m。
+
+上面三个函数的返回结果都是uintptr类型，这和 unsafe.Pointer 可以相互转换。三个函数都是在编译期间执
+行，它们的结果可以直接赋给 const型变量。另外，因为三个函数执行的结果和操作系统、编译器相关，所以是不可
+可移值的。
+
+综上，unsafe包提供了2点重要的能力：
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ## unsafe.Pointer && uintptr类型
 
