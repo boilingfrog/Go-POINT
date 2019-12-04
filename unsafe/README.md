@@ -172,10 +172,16 @@ Alignof 返回 m，m 是指当类型进行内存对齐时，它分配到的内�
 1、任何类型的指针和unsafe.Point可以相互转换。
 2、uintptr类型和unsafe.Point可以相互转换
 ````
+![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/unsafe_1.png?raw=true)
+
+
 pointer不能直接进行数学运算，但可以把它转换成uintptr,对uintptr类型进行数学运算，在转换成pointer
 类型。
 
-
+````
+// uintptr 是一个整数类型，它足够大，可以存储
+type uintptr uintptr
+````
 
 
 
