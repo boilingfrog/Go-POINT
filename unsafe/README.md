@@ -183,14 +183,8 @@ pointer不能直接进行数学运算，但可以把它转换成uintptr,对uintp
 type uintptr uintptr
 ````
 
-
-
-
-
-
-
-
-
+还有一点需要注意的是，uintptr并没有指针的含义，意思是uintptr所指向的对象会被gc给回收掉。
+而unsafe.Pointer 有指针语义，可以保护它所指向的对象在“有用”的时候不会被垃圾回收。
 
 ## unsafe.Pointer && uintptr类型
 
