@@ -1,5 +1,19 @@
 # unsafe
 
+最近关注了一个大佬的文章，文章写的非常好，大家可以去关注下。
+微信公众号【码农桃花源】
+
+- [指针类型](#%e6%8c%87%e9%92%88%e7%b1%bb%e5%9e%8b)
+   - [我们知道slice 和 map 包含指向底层数据的指针](#%e6%88%91%e4%bb%ac%e7%9f%a5%e9%81%93slice+%e5%92%8c+map+%e5%8c%85%e5%90%ab%e6%8c%87%e5%90%91%e5%ba%95%e5%b1%82%e6%95%b0%e6%8d%ae%e7%9a%84%e6%8c%87%e9%92%88)
+- [什么是 unsafe](#%e4%bb%80%e4%b9%88%e6%98%af+unsafe)
+- [为什么会有unsafe](#%e4%b8%ba%e4%bb%80%e4%b9%88%e4%bc%9a%e6%9c%89unsafe)
+- [unsafe.Pointer && uintptr类型](#unsafe.Pointer+%26%26+uintptr%e7%b1%bb%e5%9e%8b)
+   - [unsafe.Pointer](#unsafe.Pointer)
+   - [uintptr](#uintptr)
+- [总结](#%e6%80%bb%e7%bb%93)
+
+
+
 
 ## 指针类型
 首先我们先来了解下，GO里面的指针类型。
@@ -59,7 +73,7 @@ x=nil
 其实也是很好理解的，因为我们知道go里面的函数中使用的都是值传递
 x=nil，只是对&a的一个拷贝。
 
-### 我们知道slice 和 map 包含指向底层数据的指针。
+### 我们知道slice 和 map 包含指向底层数据的指针
 我们对它们的操作是会影响到，原参数的值。
 
 ````
@@ -330,27 +344,28 @@ pb := (*int16)(unsafe.Pointer(tmp))
 这个是一个指向变量x的指针。当第二个语句执行是，变量X可能被转移，这时候临时变量tmp也就是
 不再是现在&x.b地址。第三个指向之前无效地址空间的赋值将摧毁整个系统。
 
+## 总结
+
+unsafe包绕过了GO的类型系统，达到直接操作内存的目的，使用它是有一定风险的。但是在某些场景
+下，使用unsafe包函数会提升代码的效率，GO源码中也是大量使用unsafe包。
+
+unsafe 包定义了 Pointer 和三个函数：
 
 
+````
+func Sizeof(x ArbitraryType) uintptr
+func Offsetof(x ArbitraryType) uintptr
+func Alignof(x ArbitraryType) uintptr
+````
+通过三个函数可以获取变量的大小，偏移，对齐等信息。
 
+uintptr可以和unsafe.Pointer进行相互的转换，uintptr可以进行数学运算。这样，通过
+uintptr 和 unsafe.Pointer 的结合就解决了 Go 指针不能进行数学运算的限制。
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+通过 unsafe 相关函数，可以获取结构体私有成员的地址，进而对其做进一步的读写操作，突破 Go 的类型安全限制。
 
 ### 参考
-- 【深度解密Go语言之Slice】 https://mp.weixin.qq.com/s/MTZ0C9zYsNrb8wyIm2D8BA    
+- 【深度解密Go语言之unsafe】 https://mp.weixin.qq.com/s/OO-kwB4Fp_FnCaNXwGJoEw    
 - 【Go之unsafe.Pointer && uintptr类型】 https://my.oschina.net/xinxingegeya/blog/729673
 
 
