@@ -1,6 +1,9 @@
 package main
 
-import "sync"
+import (
+	"fmt"
+	"sync"
+)
 
 // 全局变量
 var counter int
@@ -8,13 +11,12 @@ var counter int
 func main() {
 	var wg sync.WaitGroup
 
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 10; i++ {
 		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			counter++
-		}()
+		go func(n int) {
+			wg.Done()
+			fmt.Println(n)
+		}(i)
 	}
 	wg.Wait()
-	println(counter)
 }
