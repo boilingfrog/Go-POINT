@@ -35,6 +35,61 @@ wg.Add(-1)
 该值才会去唤醒因此等待而阻塞的所有goroutine，同时清零等待计数。
 
 
+现在我们有一个案例：
+假设程序启用了4个goroutine，分别是g1,g2,g3,g4。其中g2,g3,g4是由代码g1
+启用的，g1启用之后并且要等待这些特殊任务的完成。
+
+使用通道来进行阻塞
+
+````
+    sign := make(chan int, 3)
+	go func() {
+		sign <- 2
+		fmt.Println(2)
+	}()
+	go func() {
+		sign <- 3
+		fmt.Println(3)
+	}()
+
+	go func() {
+		sign <- 4
+		fmt.Println(4)
+	}()
+
+	for i := 0; i < 3; i++ {
+		fmt.Println("执行", <-sign)
+	}
+````
+
+使用waitGroup
+
+````
+	var wg sync.WaitGroup
+
+	wg.Add(3)
+	go func() {
+		wg.Done()
+		fmt.Println(2)
+	}()
+	go func() {
+		wg.Done()
+		fmt.Println(3)
+	}()
+	go func() {
+		wg.Done()
+		fmt.Println(4)
+	}()
+
+	wg.Wait()
+	fmt.Println("1 2 3 4 end")
+````
+
+
+
+
+
+
 
 
 
