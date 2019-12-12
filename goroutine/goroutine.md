@@ -132,3 +132,19 @@ func case4() {
 	name = "小李"
 }
 ````
+我们发现a打印的结果变成了小白。
+因为在改变变量之前，就给那个go函数执行的机会了。
+
+接着看，当我们处理多个值的时候。
+
+````
+func case5() {
+	names := []string{"小白", "小明", "小红", "小张"}
+	for _, name := range names {
+		go func() {
+			fmt.Println("名字", name)
+		}()
+	}
+	time.Sleep(time.Millisecond)
+}
+````

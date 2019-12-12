@@ -7,7 +7,17 @@ import (
 
 func main() {
 	// case1()
-	case4()
+	case5()
+}
+
+func case5() {
+	names := []string{"小白", "小明", "小红", "小张"}
+	for _, name := range names {
+		go func() {
+			fmt.Println("名字", name)
+		}()
+	}
+	time.Sleep(time.Millisecond)
 }
 
 func case4() {
