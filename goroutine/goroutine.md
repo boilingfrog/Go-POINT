@@ -44,4 +44,58 @@ func case2() {
 	}()
 }
 ````
-这个函数，我们使用go函数启动了3个goroutine。它们的执行是并发的。
+这个函数，我们使用go函数启动了3个goroutine。它们的执行是并发的。也就是说，这三个函数
+的执行，我们是无法判断它们执行的先后顺序的。
+````
+GOROOT=/usr/local/go #gosetup
+GOPATH=/home/liz/go #gosetup
+/usr/local/go/bin/go build -o /tmp/___go_build_Go_POINT_goroutine Go-POINT/goroutine #gosetup
+/tmp/___go_build_Go_POINT_goroutine #gosetup
+
+Process finished with exit code 0
+````
+我们看到结果什么也没有打印，正常应该是 有 1 2 3,虽然它们的顺序我们没有办法确定，但是
+至少应该出现在打印的结果里面。
+
+是这样的，main函数也是一个goroutine，当我们main函数调用case2启动后面的3个go函数的
+时候，这时候是用4个go函数在并发的执行，所以如果main函数在调度器中先被执行了，马上就
+会结束掉，就看不到后面启动的这个3个go函数的打印了。
+
+验证下，可以把main函数阻塞一下
+````
+func main() {
+	// case1()
+	case2()
+	time.Sleep(time.Millisecond)
+}
+
+func case2() {
+	go func() {
+		fmt.Println("goroutine", 1)
+	}()
+	go func() {
+		fmt.Println("goroutine", 2)
+	}()
+	go func() {
+		fmt.Println("goroutine", 3)
+	}()
+}
+````
+输出的信息
+````
+GOROOT=/usr/local/go #gosetup
+GOPATH=/home/liz/go #gosetup
+/usr/local/go/bin/go build -o /tmp/___go_build_Go_POINT_goroutine Go-POINT/goroutine #gosetup
+/tmp/___go_build_Go_POINT_goroutine #gosetup
+goroutine 1
+goroutine 2
+goroutine 3
+
+Process finished with exit code 0
+
+````
+我们看到1 2 3已经可以看到打印的信息了。，当我们多次执行，可以看到执行的顺序是不确定的
+这也验证了上面说的，go函数并发执行，但谁先谁后不确定。
+
+
+
