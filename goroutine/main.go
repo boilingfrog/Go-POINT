@@ -7,8 +7,19 @@ import (
 
 func main() {
 	// case1()
-	case2()
+	case3()
+}
+
+func case3() {
+
+	name := "小白"
+
+	go func() {
+		fmt.Println(name)
+	}()
 	time.Sleep(time.Millisecond)
+
+	name = "小李"
 }
 
 func case2() {
