@@ -98,6 +98,37 @@ Process finished with exit code 0
 这也验证了上面说的，go函数并发执行，但谁先谁后不确定。
 
 再看一个例子：
+````
+func case3() {
+	name := "小白"
+	go func() {
+		fmt.Println(name)
+	}()
+	name = "小李"
+	time.Sleep(time.Millisecond)
+}
+````
+上面的输出什么呢，是小李还是小白呢
+我们来试下
+````
+/usr/local/go/bin/go build -o /tmp/___go_build_Go_POINT_goroutine Go-POINT/goroutine #gosetup
+/tmp/___go_build_Go_POINT_goroutine #gosetup
+小白
 
+Process finished with exit code 0
+````
+为什么呢？
+因为最后的sleep，在把小白赋值给name之后，才sleep。当go函数去执行的发现
+name已经变成了小白，然后就打印出了小白。
 
-
+我们换下位置，如下
+````
+func case4() {
+	name := "小白"
+	go func() {
+		fmt.Println(name)
+	}()
+	time.Sleep(time.Millisecond)
+	name = "小李"
+}
+````

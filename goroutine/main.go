@@ -7,19 +7,26 @@ import (
 
 func main() {
 	// case1()
-	case3()
+	case4()
 }
 
-func case3() {
-
+func case4() {
 	name := "小白"
-
 	go func() {
 		fmt.Println(name)
 	}()
 	time.Sleep(time.Millisecond)
-
 	name = "小李"
+}
+
+func case3() {
+	name := "小白"
+	go func() {
+		fmt.Println(name)
+	}()
+	name = "小李"
+	time.Sleep(time.Millisecond)
+
 }
 
 func case2() {
