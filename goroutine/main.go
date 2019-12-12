@@ -6,7 +6,8 @@ import (
 )
 
 func main() {
-	case1()
+	// case1()
+	case2()
 }
 
 func case1() {
@@ -17,4 +18,16 @@ func case1() {
 		}()
 		time.Sleep(time.Second)
 	}
+}
+
+func case2() {
+	go func() {
+		fmt.Println("goroutine", 1)
+	}()
+	go func() {
+		fmt.Println("goroutine", 2)
+	}()
+	go func() {
+		fmt.Println("goroutine", 3)
+	}()
 }
