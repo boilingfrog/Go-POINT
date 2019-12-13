@@ -168,3 +168,18 @@ func case5() {
 我们可以使用可重入函数
 函数中使用的name不受外部变量变化的影响，就既可以保证go函数的独立执行，又不用担心它们
 的正确性收到破坏。
+
+潜在原因是，name变量的类型是string是一个非引用的类型，在把值作为参数传递的时候，该
+值会被复制。go语言的函数操作都是值传递。
+
+````
+func case6() {
+	names := []string{"小白", "小明", "小红", "小张"}
+	for _, name := range names {
+		go func(who string) {
+			fmt.Println("名字", who)
+		}(name)
+	}
+	time.Sleep(time.Millisecond)
+}
+````
