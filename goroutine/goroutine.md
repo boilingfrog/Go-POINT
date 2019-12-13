@@ -183,3 +183,5 @@ func case6() {
 	time.Sleep(time.Millisecond)
 }
 ````
+我们把name的值作为参数传递给了go函数。在传入的过程中，该值会被复制，并且在go函数中以后就用
+who指代。name值的改变与go函数再无关系。因此，运行此代码就总会得到正确的结果。
