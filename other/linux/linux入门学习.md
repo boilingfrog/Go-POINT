@@ -11,3 +11,18 @@
 2、内部命令
 3、hash表（外部命令）
 4、$path（外部命令）
+
+### 命令的别名
+
+编辑配置给的新配置不会立马生效
+bash进程重新读取配置文件
+````
+source /path/to/config_file
+. /path/to/config_file
+````
+如果别名同原命令同名，如果要执行原命令，可使用
+````
+\echo
+'echo'
+command echo
+````
