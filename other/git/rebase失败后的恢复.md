@@ -14,3 +14,10 @@
 
 ### rebase使用的意义
 1、使用git log时，可以看到一个更加整洁commit历史树；
+
+
+
+ 
+
+### 参考
+- 【Git Rebase原理以及黄金准则详解】 https://segmentfault.com/a/1190000005937408  
