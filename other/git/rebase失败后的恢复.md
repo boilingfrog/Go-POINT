@@ -12,6 +12,8 @@
 
 - [rebase的使用流程](#rebase%e4%bd%bf%e7%94%a8%e7%9a%84%e6%84%8f%e4%b9%89)
 - [rebase使用的意义](#rebase%e4%bd%bf%e7%94%a8%e7%9a%84%e6%84%8f%e4%b9%89)
+- [rebase工作的原理](#rebase%e4%bd%bf%e7%94%a8%e7%9a%84%e6%84%8f%e4%b9%89)
+   - [git工作的原理](#rebase%e4%bd%bf%e7%94%a8%e7%9a%84%e6%84%8f%e4%b9%89)
 
 ### rebase的使用流程
 
@@ -39,8 +41,25 @@ git push -f origin XXXXX
 
 ### rebase使用的意义
 
-使用rebase能得到一个干净的，没有merge commit的线性历史树。
+使用rebase的提交历史
 ![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/rebase_2.png?raw=true)
+对比merge
+![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/rebase_3.png?raw=true)
+
+使用rebase会得到一个干净的，线性的提交历史，没有不必要的合并。
+使用merge能够保存项目完整的历史，并且避免公共分之上的commit。
+
+
+### rebase工作的原理
+
+为了弄清楚rebase的原理，首先需要弄清楚git的工作原理。
+
+#### git工作原理
+
+首先我们先来了解下git的模型。
+首先我们可以看到在每个项目的下面都有一个.git的隐藏目录
+![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/rebase_4.png?raw=true)
+
 
 
 
