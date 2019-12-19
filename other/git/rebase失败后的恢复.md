@@ -40,7 +40,7 @@ git push -f origin XXXXX
 ### rebase使用的意义
 
 使用rebase能得到一个干净的，没有merge commit的线性历史树。
-![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/rebase_1.png?raw=true)
+![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/rebase_2.png?raw=true)
 
 
 
@@ -48,3 +48,4 @@ git push -f origin XXXXX
 
 ### 参考
 - 【Git Rebase原理以及黄金准则详解】 https://segmentfault.com/a/1190000005937408  
+- 【图片引用】https://blog.csdn.net/chenansic/article/details/44122107
