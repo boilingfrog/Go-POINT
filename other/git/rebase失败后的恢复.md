@@ -38,7 +38,9 @@ git push -f origin XXXXX
 ``````
 
 ### rebase使用的意义
-1、使用git log时，可以看到一个更加整洁commit历史树；
+
+使用rebase能得到一个干净的，没有merge commit的线性历史树。
+![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/rebase_1.png?raw=true)
 
 
 
