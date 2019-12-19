@@ -59,6 +59,16 @@ git push -f origin XXXXX
 首先我们先来了解下git的模型。
 首先我们可以看到在每个项目的下面都有一个.git的隐藏目录
 ![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/rebase_4.png?raw=true)
+关于git的一切都存储在这个目录里面（全局配置除外）。这里面有一些子目录和文件，
+记录到了git所有的信息。
+![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/rebase_5.png?raw=true)
+文件里面存储的都是一些配置文件，我们主要关注下这几个子目录：
+
+1、 info：这个目录不重要，里面有一个 exclude 文件和 .gitignore 文件的作用相似，区别是这个文件不会被纳入版本控制，所以可以做一些个人配置。
+2、 hooks：这个目录很容易理解， 主要用来放一些 git 钩子，在指定任务触发前后做一些自定义的配置，这是另外一个单独的话题，本文不会具体介绍。
+3、 objects：用于存放所有 git 中的对象，下面单独介绍。
+4、 logs：用于记录各个分支的移动情况，下面单独介绍。
+5、 refs：用于记录所有的引用，下面单独介绍。
 
 
 
