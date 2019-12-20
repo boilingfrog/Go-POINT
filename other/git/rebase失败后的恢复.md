@@ -117,7 +117,64 @@ aaaaa
 包括文件名等其他信息。然后将这些信息经过SHA1哈希算法得到对应的哈希值
 ccc3e7b48da0932cc0f7c4ce7b4fd834c7032fe1 ，作为object在git中的唯一身份证。
 
+然后我们进行一次commit
 
+````
+ git commit -am '[+] init'
+[master（根提交） d290482] [+] init
+ 2 files changed, 2 insertions(+)
+ create mode 100644 a.txt
+ create mode 100644 b.txt
+````
+ 再次查看object
+ 
+ ````
+$ tree .git/objects
+.git/objects
+├── 3b
+│   └── e060dffd163e01ca6f44dfc6746dda5ae19d5d
+├── cc
+│   └── c3e7b48da0932cc0f7c4ce7b4fd834c7032fe1
+├── d2
+│   └── 904827c81ba3c05072d66d1dd466e01bcdee69
+├── db
+│   └── 754dbd326f1b7c530672afbbfef8d9223033b7
+├── info
+└── pack
+ ````
+里面变成了四个对象了
+
+把我们‘瑞士军刀’剖析下
+````
+$ git cat-file -t 3be0
+tree
+
+git cat-file -p 3be0
+100644 blob ccc3e7b48da0932cc0f7c4ce7b4fd834c7032fe1	a.txt
+100644 blob db754dbd326f1b7c530672afbbfef8d9223033b7	b.txt
+````
+
+我们发现这里出现了另一种object类型-tree。它将当前的提交目录打了一个快照，存储了当前提交的目录结构。
+
+再看下两一个object里面的信息
+````
+$ git cat-file -p d2904
+tree 3be060dffd163e01ca6f44dfc6746dda5ae19d5d
+author liz <rick.lizhan@gmail.com> 1576828975 +0800
+committer liz <rick.lizhan@gmail.com> 1576828975 +0800
+````
+里面存储的是提交者的信息
+
+那么有一个问题，一次commit生成的快照是全局的还是提交部分的呢？
+我们再来看。
+修改a.txt,然后提交，看看新的提交
+ 
+ 
+ 
+ 
+ 
+ 
+ 
  
 
 ### 参考
