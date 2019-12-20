@@ -81,12 +81,41 @@ git push -f origin XXXXX
 
 git是面向对象的!
 
+举个栗子
 
+假如我们init了一个新的仓库，然后提交了两个文件，那么会有那些对象呢?
 
+````
+$ git init
+$ echo 'aaaaa'>a.txt
+$ echo 'bbbbb'>b.txt
+$ git add *.txt
+````
+上面提交了两个文件到了暂存区，我们了解到对象都存储在object文件夹中，那我们去到里面看下。
+````
+$ tree .git/objects
+.git/objects
+├── cc
+│   └── c3e7b48da0932cc0f7c4ce7b4fd834c7032fe1
+├── db
+│   └── 754dbd326f1b7c530672afbbfef8d9223033b7
+├── info
+└── pack
 
+````
+git cat-file [-t] [-p] 号称git里面的瑞士军刀，我们来剖析下，t可以查看object的类型，-p可
+以查看object储存的具体内容。
+````
+$ git cat-file -t ccc3e
+blob
+$ git cat-file -p ccc3e
+aaaaa
+````
+可以发现object是一个blob类型的节点，内容是aaa,这就是object存储的内容
 
-
-
+这里我们遇到了第一种Git object，blob类型，它只储存的是一个文件的内容，不
+包括文件名等其他信息。然后将这些信息经过SHA1哈希算法得到对应的哈希值
+ccc3e7b48da0932cc0f7c4ce7b4fd834c7032fe1 ，作为object在git中的唯一身份证。
 
 
  
