@@ -16,7 +16,7 @@
 - [rebase工作的原理](#rebase%e5%b7%a5%e4%bd%9c%e7%9a%84%e5%8e%9f%e7%90%86)
    - [git工作的原理](#git%e5%b7%a5%e4%bd%9c%e7%9a%84%e5%8e%9f%e7%90%86)
    - [git对象](#git%e5%af%b9%e8%b1%a1)
-   - [git引用](#git%e5%bc%95%e7%94%a8)
+   - [git引用](#git%e5%bc%95%e7%94%a8/home/liz/Desktop/rebase_7)
 
 ### rebase的使用流程
 
@@ -275,7 +275,7 @@ $ tree .git/objects
 最后则是提交对象，每个提交对象都有一个树对象，用来表示某一次提交所涉及的文件。除此
 以外，每一个提交还有自己的父提交，指向上一次提交的对象。
 
-![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/rebase_6.png?raw=true)
+![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/rebase_7.jpeg?raw=true)
 
 ### git引用
 
