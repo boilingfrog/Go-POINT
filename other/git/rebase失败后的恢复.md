@@ -144,7 +144,7 @@ $ tree .git/objects
  ````
 里面变成了四个对象了
 
-把我们‘瑞士军刀’剖析下
+让我们‘瑞士军刀’剖析下
 ````
 $ git cat-file -t 3be0
 tree
@@ -168,6 +168,51 @@ committer liz <rick.lizhan@gmail.com> 1576828975 +0800
 那么有一个问题，一次commit生成的快照是全局的还是提交部分的呢？
 我们再来看。
 修改a.txt,然后提交，看看新的提交
+````
+修改a.txt文件里面的内容为
+aaaaa
+aaaaa
+````
+提交commit
+
+````
+$ git commit -am '[+] init'
+[master f5af32c] [+] init
+ 1 file changed, 1 insertion(+)
+````
+
+我们再次打印树结构
+````
+$ tree .git/objects
+.git/objects
+├── 1c
+│   └── 30d6ba3439ec5e8e68aed15a79371db2f9be8d
+├── 3b
+│   └── e060dffd163e01ca6f44dfc6746dda5ae19d5d
+├── 51
+│   └── 200a14c72d35c97979bea3b46bee414e86185b
+├── cc
+│   └── c3e7b48da0932cc0f7c4ce7b4fd834c7032fe1
+├── da
+│   └── 8ebda5480840ecde47656e10317c55b965ad3b
+├── db
+│   └── 754dbd326f1b7c530672afbbfef8d9223033b7
+├── f5
+│   └── af32c14e49bb408de53e4ed22f1b8dd95c2353
+├── info
+└── pack
+
+````
+对象数量变成了8个也就是之前的2倍，所以可以看出存储的是当前全新的文件快照，而不
+是仅仅提交部分的快照。
+那么问题来了，这样有什么好处呢，每次
+
+
+
+
+
+
+
  
  
  
