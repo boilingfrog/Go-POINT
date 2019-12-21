@@ -11,6 +11,7 @@
 
 
 - [rebase的使用流程](#rebase%e4%bd%bf%e7%94%a8%e7%9a%84%e6%84%8f%e4%b9%89)
+- [rebase失败如何恢复](#rebase%e4%bd%bf%e7%94%a8%e7%9a%84%e6%84%8f%e4%b9%89)
 - [rebase使用的意义](#rebase%e4%bd%bf%e7%94%a8%e7%9a%84%e6%84%8f%e4%b9%89)
 - [rebase工作的原理](#rebase%e4%bd%bf%e7%94%a8%e7%9a%84%e6%84%8f%e4%b9%89)
    - [git工作的原理](#rebase%e4%bd%bf%e7%94%a8%e7%9a%84%e6%84%8f%e4%b9%89)
@@ -39,6 +40,56 @@ git add .
 git rebase --continue
 git push -f origin XXXXX
 ``````
+### rebase失败如何恢复
+
+使用reflog撤销变基
+````
+$ git reflog
+8c79a588 HEAD@{0}: checkout: moving from JM-5995 to JM-5997
+e7b1f794 HEAD@{1}: checkout: moving from JM-5876 to JM-5995
+97c945d8 HEAD@{2}: commit: fix response
+81888803 HEAD@{3}: commit: sql的整理
+427423c2 HEAD@{4}: checkout: moving from master to JM-5876
+438a1d75 HEAD@{5}: rebase finished: returning to refs/heads/master
+438a1d75 HEAD@{6}: pull remote master --rebase: checkout 438a1d75c4faf8056216980d6538de1fe11e0e4e
+753e6308 HEAD@{7}: checkout: moving from JM-5876 to master
+427423c2 HEAD@{8}: rebase finished: returning to refs/heads/JM-5876
+427423c2 HEAD@{9}: rebase: 外甚整改计划修改文档的命名
+87627087 HEAD@{10}: rebase: 外审整改计划导入的细节部分修改，增加条款信息的查询
+c8b18fc1 HEAD@{11}: pull remote master --rebase: 为甚整改计划修改文档的命名
+9e1450c4 HEAD@{12}: pull remote master --rebase: 外审整改计划增加条款项的查询
+c25f7ab4 HEAD@{13}: pull remote master --rebase: 修改参数的大小写问题
+b16eb983 HEAD@{14}: pull remote master --rebase: 外审整改计划添加详情添加外审计划的信息
+c5519548 HEAD@{15}: pull remote master --rebase: 外审整改计划添加是否关联不符合项的查询条件
+29819e65 HEAD@{16}: pull remote master --rebase: 外审整改计划修改修改测试文件
+4e3a6084 HEAD@{17}: pull remote master --rebase: 外审整改计划修改添加文件上传的功能
+2e516dfa HEAD@{18}: pull remote master --rebase: 外审整改计划修改count的查询方式
+8e970d7c HEAD@{19}: pull remote master --rebase: 外审整改计划初步提交
+1e0fa8b3 HEAD@{20}: pull remote master --rebase: sql
+9c384393 HEAD@{21}: pull remote master --rebase: checkout 9c384393b1913f67c4eef633ecdeaa23cc4ce397
+8b9129ed HEAD@{22}: checkout: moving from JM-5997 to JM-5876
+8c79a588 HEAD@{23}: commit: 修复外审计划错误的查询
+9a08a751 HEAD@{24}: commit: fix test response
+43969771 HEAD@{25}: commit: code review修改导出的状态码
+6b5e693f HEAD@{26}: commit: code review调整错误的返回的位置
+010c7c8e HEAD@{27}: commit: code review代码细节修改
+deca577b HEAD@{28}: commit: code review代码细节修改
+874fed06 HEAD@{29}: commit: 修改导入的模板的路径
+9607489f HEAD@{30}: rebase finished: returning to refs/heads/JM-5997
+9607489f HEAD@{31}: rebase: 包资源的替换
+a4f5fb85 HEAD@{32}: rebase: 包资源的替换
+````
+上面是所有的日志
+我们可以逐条分析，找到我们rebase的节点
+只要输入下面的命令就好了
+````
+git reset --hard HEAD@{3}
+````
+或者
+````
+git reset --hard 81888803
+
+````
 
 ### rebase使用的意义
 
