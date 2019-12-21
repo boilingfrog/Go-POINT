@@ -10,12 +10,13 @@
 的原理了。
 
 
-- [rebase的使用流程](#rebase%e4%bd%bf%e7%94%a8%e7%9a%84%e6%84%8f%e4%b9%89)
-- [rebase失败如何恢复](#rebase%e4%bd%bf%e7%94%a8%e7%9a%84%e6%84%8f%e4%b9%89)
+- [rebase的使用流程](#rebase%e7%9a%84%e4%bd%bf%e7%94%a8%e6%b5%81%e7%a8%8b)
+- [rebase失败如何恢复](#rebase%e5%a4%b1%e8%b4%a5%e5%a6%82%e4%bd%95%e6%81%a2%e5%a4%8d)
 - [rebase使用的意义](#rebase%e4%bd%bf%e7%94%a8%e7%9a%84%e6%84%8f%e4%b9%89)
-- [rebase工作的原理](#rebase%e4%bd%bf%e7%94%a8%e7%9a%84%e6%84%8f%e4%b9%89)
-   - [git工作的原理](#rebase%e4%bd%bf%e7%94%a8%e7%9a%84%e6%84%8f%e4%b9%89)
-   - [git对象](#rebase%e4%bd%bf%e7%94%a8%e7%9a%84%e6%84%8f%e4%b9%89)
+- [rebase工作的原理](#rebase%e5%b7%a5%e4%bd%9c%e7%9a%84%e5%8e%9f%e7%90%86)
+   - [git工作的原理](#git%e5%b7%a5%e4%bd%9c%e7%9a%84%e5%8e%9f%e7%90%86)
+   - [git对象](#git%e5%af%b9%e8%b1%a1)
+   - [git引用](#git%e5%bc%95%e7%94%a8)
 
 ### rebase的使用流程
 
@@ -276,20 +277,20 @@ $ tree .git/objects
 
 ![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/rebase_6.png?raw=true)
 
+### git引用
 
+git是面向对象的，里面的标签和分支都是指向提交对象的指针。
 
+### git日志
 
+在 .git/logs 目录中，有一个文件夹和一个 HEAD 文件，每当 HEAD 引用改变了指向的位置，就会在 .git/logs/HEAD 中
+添加了一个记录。而 .git/logs/refs/heads 这个目录中则有多个文件，每个文件对应一个分支，记录了这个分支 的指向位置
+发生改变的情况。
+当我们执行 git reflog 的时候，其实就是读取了 .git/logs/HEAD 这个文件。
 
-
- 
- 
- 
- 
- 
- 
- 
- 
 
 ### 参考
 - 【Git Rebase原理以及黄金准则详解】 https://segmentfault.com/a/1190000005937408  
 - 【图片引用】https://blog.csdn.net/chenansic/article/details/44122107
+- 【从撤销 rebase 谈谈 git 原理】https://juejin.im/post/5a65ac67f265da3e330473f7
+- 【这才是真正的Git——Git内部原理】https://juejin.im/post/5df1fc42518825127a036b03
