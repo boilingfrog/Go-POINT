@@ -24,5 +24,6 @@ source /path/to/config_file
 ````
 \echo
 'echo'
+"echo"
 command echo
 ````
