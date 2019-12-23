@@ -27,3 +27,9 @@ source /path/to/config_file
 "echo"
 command echo
 ````
+
+修改文本文件
+
+````
+nano f.txt
+````
