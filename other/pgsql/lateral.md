@@ -1,8 +1,11 @@
 ## pgsql中的lateral
 
-我们先来看官方对lateral的定义
+我们先来看官方对lateral的定义：
 
-：   ASASA
+
 ````
 可以
 ````
+> 2121212112
+> ASASASASASASASAQWQWQWQWWQWQWQQQQWQWQWQWQWQWQWQWQWQWQ
+> WQWQQQQQQQQQQQQQQQ
