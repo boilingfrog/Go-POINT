@@ -11,3 +11,34 @@
 > 如果一个FROM项包含LATERAL交叉引用，计算过程中：对于提供交叉引用列的FROM项的每一行，或者
 > 多个提供这些列的多个FROM项进行集合，LATERAL项将被使用该行或者行集中的列值进行计算。得到结
 > 果行将和它们被计算出来的行进行正常的连接。对于来自这些列的源表的每一行或行集，该过程将重复。
+
+手册上提到：
+````
+SELECT * FROM foo, LATERAL (SELECT * FROM bar WHERE bar.id = foo.bar_id) ss;    
+  
+在 LATERAL (这里可以关联(引用)lateral左边的表或子句)  
+  
+所以允许:   
+  
+LATERAL (SELECT * FROM bar WHERE bar.id = foo.bar_id)  
+````
+
+### 带有LATERAL的SQL的计算步骤
+
+1、逐行提取被lateral子句关联（引用）的FROM或JOIN的ITEM（也叫source table）的记录（s）
+中的column(s)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
