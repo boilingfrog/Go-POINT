@@ -36,7 +36,19 @@ The resulting row(s) are joined as usual with the rows they were computed from.
 4、从1到3开始循环，直到所有的source table的行取尽。  
 This is repeated for each row or set of rows from the column source table(s).
 
-
+### LATERAL在OUTER JOIN中的使用限制（或定义限制）
+由于lateral的计算步骤是从source table逐条展开的，所以OUTER JOIN时只能使用source table
+作为whole端，LATERAL内的ITEM不能作为WHOLE端。  
+因此lateral只能在left join的右边。或者right join的左边。因此不能是WHOLE端。
+````
+The column source table(s) must be INNER or LEFT joined to the LATERAL item,   
+  
+else there would not be a well-defined set of rows from which to compute each set of rows for the LATERAL item.   
+  
+Thus, although a construct such as X RIGHT JOIN LATERAL Y is syntactically valid,   
+  
+it is not actually allowed for Y to reference X.  
+````
 
 
 
