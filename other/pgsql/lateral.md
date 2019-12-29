@@ -27,11 +27,17 @@ LATERAL (SELECT * FROM bar WHERE bar.id = foo.bar_id)
 
 1、逐行提取被lateral子句关联（引用）的FROM或JOIN的ITEM（也叫source table）的记录（s）
 中的column(s)  
-for each row of the FROM item providing the cross-referenced column(s),
+for each row of the FROM item providing the cross-referenced column(s),  
 or set of rows of multiple FROM items providing the columns,  
 2、使用以上提取的columns(s),关联计算lateral子句中的ITEM  
 the LATERAL item is evaluated using that row or row set'us values of the columns.  
 3、lateral的计算结果row(s),与所有from,join ITEM(S)正常的进行join计算
+The resulting row(s) are joined as usual with the rows they were computed from.  
+4、从1到3开始循环，直到所有的source table的行取尽。  
+This is repeated for each row or set of rows from the column source table(s).
+
+
+
 
 
 
