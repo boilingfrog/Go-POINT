@@ -61,7 +61,8 @@ it is not actually allowed for Y to reference X.
 
 ### LATERAL的几个简单的例子
 
-1、A trivial example of LATERAL is
+1、  
+A trivial example of LATERAL is
 ````
 SELECT * FROM foo, LATERAL (SELECT * FROM bar WHERE bar.id = foo.bar_id) ss;
 ````
@@ -69,8 +70,8 @@ This is not especially useful since it has exactly the same result as the more c
 ````
 SELECT * FROM foo, bar WHERE bar.id = foo.bar_id;
 ````
-
- 2、
+一个LATERAL项可以出现在FROM列表项层  
+ 2、  
 **LATERAL** is primarily useful when the cross-referenced column is necessary 
 for computing the row(s) to be joined. A common application is providing an 
 argument value for a set-returning function. For example, supposing that 
@@ -91,10 +92,12 @@ FROM polygons p1 CROSS JOIN LATERAL vertices(p1.poly) v1,
      polygons p2 CROSS JOIN LATERAL vertices(p2.poly) v2
 WHERE (v1 <-> v2) < 10 AND p1.id != p2.id;
 ````
-or in several other equivalent formulations. (As already mentioned, the 
+函数调用，支持应用函数左边的ITEM（S）。所以可以看消除LATERAL，语义是一样的。  
+(As already mentioned, the 
 LATERAL key word is unnecessary in this example, but we use it for clarity.)
 
-3、It is often particularly handy to LEFT JOIN to a LATERAL subquery, so that 
+3、  
+It is often particularly handy to LEFT JOIN to a LATERAL subquery, so that 
 source rows will appear in the result even if the LATERAL subquery produces 
 no rows for them. For example, if get_product_names() returns the names of 
 products made by a manufacturer, but some manufacturers in our table currently
@@ -104,11 +107,20 @@ SELECT m.name
 FROM manufacturers m LEFT JOIN LATERAL get_product_names(m.id) pname ON true
 WHERE pname IS NULL;
 ````
+lateral的查询结果也是可以作为整个语句的查询条件的
 
 ### 总结
-
-
-
+1、lateral 可以出现在FROM的列表项层，也可以出现在JOIN数树中，如果出现在JOIN的右部分，那么
+可以引用在JOIN左部分的任何项。
+2、由于lateral的计算步骤是从source table逐条展开的，所以OUTER JOIN时只能使用source table 
+作为whole端，LATERAL内的ITEM不能作为WHOLE端。
+3、LATERAL 关键词可以在前缀一个 SELECT FROM 子项. 这能让 SELECT 子项在FROM项出现之前就引
+用到FROM项中的列. (没有 LATERAL 的话, 每一个 SELECT 子项彼此都是独立的，因此不能够对其
+它的 FROM 项进行交叉引用.)
+4、当一个 FROM 项包含 LATERAL 交叉引用的时候，查询的计算过程如下: 对于FROM项提供给交叉引
+用列的每一行，或者多个FROM像提供给引用列的行的集合, LATERAL 项都会使用行或者行的集合的列
+值来进行计算. 计算出来的结果集像往常一样被加入到联合查询之中. 这一过程会在列的来源表的行或
+者行的集合上重复进行.
 
 
 
