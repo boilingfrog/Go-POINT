@@ -7,6 +7,34 @@
 - [LATERAL的几个简单的例子](#LATERAL%e7%9a%84%e5%87%a0%e4%b8%aa%e7%ae%80%e5%8d%95%e7%9a%84%e4%be%8b%e5%ad%90)
 - [总结](#%e6%80%bb%e7%bb%93)
 
+### 举几个我经常使用的栗子
+首先说下场景：  
+有个一个商品表goods，还有一个表一个评价表evaluations。商品表和评价表是一对多的。  
+在一个后台，我想查询商品的信息，同时查询这个商品的评价的数量。  
+我们可以通过这样来实现
+````
+SELECT 
+    g.*,
+    e.num
+FROM goods as g
+LEFT JOIN evaluation as e on e.goods_id=g.id
+WHERE 1=1  GROUP BY g.id
+````
+通过左连接，加上分组就能实现了  
+那么也可以使用lateral来实现  
+````
+SELECT 
+    g.*,
+    e.num
+FROM goods as g
+LEFT JOIN LATERAL(
+    SELECT COUNT(ev.id) as num FROM  evaluation AS ev 
+    WHERE   ev.goods_id=g.id
+) AS e ON TRUE
+WHERE 1=1 
+````
+就这样好像lateral的优势不是那么明显。
+
 ### 什么是LATERAL
 
 我们先来看官方对lateral的定义
