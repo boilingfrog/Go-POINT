@@ -1,5 +1,14 @@
 ## pgsql中的lateral
 
+
+- [什么是LATERAL](#%e4%bb%80%e4%b9%88%e6%98%afLATERAL)
+- [带有LATERAL的SQL的计算步骤](#%e5%b8%a6%e6%9c%89LATERAL%e7%9a%84SQL%e7%9a%84%e8%ae%a1%e7%ae%97%e6%ad%a5%e9%aa%a4)
+- [LATERAL在OUTER JOIN中的使用限制（或定义限制）](#LATERAL%e5%9c%a8OUTER+JOIN%e4%b8%ad%e7%9a%84%e4%bd%bf%e7%94%a8%e9%99%90%e5%88%b6%ef%bc%88%e6%88%96%e5%ae%9a%e4%b9%89%e9%99%90%e5%88%b6%ef%bc%89)
+- [LATERAL的几个简单的例子](#LATERAL%e7%9a%84%e5%87%a0%e4%b8%aa%e7%ae%80%e5%8d%95%e7%9a%84%e4%be%8b%e5%ad%90)
+- [总结](#%e6%80%bb%e7%bb%93)
+
+### 什么是LATERAL
+
 我们先来看官方对lateral的定义
 
 > 可以在出现于FROM中的子查询前放置关键词LATERAL。这允许它们引用前面的FROM项提供的列（如果没有
@@ -50,7 +59,7 @@ Thus, although a construct such as X RIGHT JOIN LATERAL Y is syntactically valid
 it is not actually allowed for Y to reference X.  
 ````
 
-### lateral的几个简单的例子
+### LATERAL的几个简单的例子
 
 1、A trivial example of LATERAL is
 ````
@@ -96,7 +105,7 @@ FROM manufacturers m LEFT JOIN LATERAL get_product_names(m.id) pname ON true
 WHERE pname IS NULL;
 ````
 
-
+### 总结
 
 
 
