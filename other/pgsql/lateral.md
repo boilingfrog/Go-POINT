@@ -123,8 +123,8 @@ lateral的查询结果也是可以作为整个语句的查询条件的
 者行的集合上重复进行.
 
 ### 参考
-【PostgreSQL 9.3 add LATERAL support - LATERAL的语法和用法介绍】https://github.com/digoal/blog/blob/master/201210/20121008_01.md?spm=a2c4e.10696291.0.0.408619a4cXorB6&file=20121008_01.md
-【LATERAL】https://www.postgresql.org/docs/devel/queries-table-expressions.html#QUERIES-LATERAL
+【PostgreSQL 9.3 add LATERAL support - LATERAL的语法和用法介绍】https://github.com/digoal/blog/blob/master/201210/20121008_01.md?spm=a2c4e.10696291.0.0.408619a4cXorB6&file=20121008_01.md  
+【LATERAL】https://www.postgresql.org/docs/devel/queries-table-expressions.html#QUERIES-LATERAL  
 
 
 
