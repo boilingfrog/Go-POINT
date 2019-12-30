@@ -50,8 +50,51 @@ Thus, although a construct such as X RIGHT JOIN LATERAL Y is syntactically valid
 it is not actually allowed for Y to reference X.  
 ````
 
+### lateral的几个简单的例子
 
+1、A trivial example of LATERAL is
+````
+SELECT * FROM foo, LATERAL (SELECT * FROM bar WHERE bar.id = foo.bar_id) ss;
+````
+This is not especially useful since it has exactly the same result as the more conventional
+````
+SELECT * FROM foo, bar WHERE bar.id = foo.bar_id;
+````
 
+ 2、
+**LATERAL** is primarily useful when the cross-referenced column is necessary 
+for computing the row(s) to be joined. A common application is providing an 
+argument value for a set-returning function. For example, supposing that 
+vertices(polygon) returns the set of vertices of a polygon, we could identify 
+close-together vertices of polygons stored in a table with:
+
+````
+SELECT p1.id, p2.id, v1, v2
+FROM polygons p1, polygons p2,
+     LATERAL vertices(p1.poly) v1,
+     LATERAL vertices(p2.poly) v2
+WHERE (v1 <-> v2) < 10 AND p1.id != p2.id;
+````
+This query could also be written
+````
+SELECT p1.id, p2.id, v1, v2
+FROM polygons p1 CROSS JOIN LATERAL vertices(p1.poly) v1,
+     polygons p2 CROSS JOIN LATERAL vertices(p2.poly) v2
+WHERE (v1 <-> v2) < 10 AND p1.id != p2.id;
+````
+or in several other equivalent formulations. (As already mentioned, the 
+LATERAL key word is unnecessary in this example, but we use it for clarity.)
+
+3、It is often particularly handy to LEFT JOIN to a LATERAL subquery, so that 
+source rows will appear in the result even if the LATERAL subquery produces 
+no rows for them. For example, if get_product_names() returns the names of 
+products made by a manufacturer, but some manufacturers in our table currently
+produce no products, we could find out which ones those are like this:
+````
+SELECT m.name
+FROM manufacturers m LEFT JOIN LATERAL get_product_names(m.id) pname ON true
+WHERE pname IS NULL;
+````
 
 
 
