@@ -111,12 +111,12 @@ lateral的查询结果也是可以作为整个语句的查询条件的
 
 ### 总结
 1、lateral 可以出现在FROM的列表项层，也可以出现在JOIN数树中，如果出现在JOIN的右部分，那么
-可以引用在JOIN左部分的任何项。
+可以引用在JOIN左部分的任何项。  
 2、由于lateral的计算步骤是从source table逐条展开的，所以OUTER JOIN时只能使用source table 
-作为whole端，LATERAL内的ITEM不能作为WHOLE端。
+作为whole端，LATERAL内的ITEM不能作为WHOLE端。  
 3、LATERAL 关键词可以在前缀一个 SELECT FROM 子项. 这能让 SELECT 子项在FROM项出现之前就引
 用到FROM项中的列. (没有 LATERAL 的话, 每一个 SELECT 子项彼此都是独立的，因此不能够对其
-它的 FROM 项进行交叉引用.)
+它的 FROM 项进行交叉引用.)  
 4、当一个 FROM 项包含 LATERAL 交叉引用的时候，查询的计算过程如下: 对于FROM项提供给交叉引
 用列的每一行，或者多个FROM像提供给引用列的行的集合, LATERAL 项都会使用行或者行的集合的列
 值来进行计算. 计算出来的结果集像往常一样被加入到联合查询之中. 这一过程会在列的来源表的行或
