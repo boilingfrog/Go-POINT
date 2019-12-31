@@ -10,12 +10,12 @@
 ### 举几个我经常使用的栗子
 首先说下场景：  
 有个一个商品表goods，还有一个表一个评价表evaluations。商品表和评价表是一对多的。  
-在一个后台，我想查询商品的信息，同时查询这个商品的评价的数量。  
+1、在一个后台，我想查询商品的信息，同时查询这个商品的评价的数量。  
 我们可以通过这样来实现
 ````
 SELECT 
     g.*,
-    e.num
+    COUNT(e.*) as num
 FROM goods as g
 LEFT JOIN evaluation as e on e.goods_id=g.id
 WHERE 1=1  GROUP BY g.id
@@ -33,7 +33,44 @@ LEFT JOIN LATERAL(
 ) AS e ON TRUE
 WHERE 1=1 
 ````
-就这样好像lateral的优势不是那么明显。
+就这样好像lateral的优势不是那么明显。  
+2、我们查询评论数目大于3的商品的信息
+````
+   SELECT
+	    a.*,
+		count(s.id)
+	FROM public.supervise_thematic_activities a
+	LEFT JOIN public.supervise_job_contents s on a.id=s.thematic_activity_id
+	HAVING count(s.id)>3   GROUP BY a.id
+````
+这样就不行了，查询不到了。  
+这时候就需要使用LATERAL  
+````
+SELECT 
+    g.*,
+    e.num
+FROM goods as g
+LEFT JOIN LATERAL(
+    SELECT COUNT(ev.id) as num FROM  evaluation AS ev 
+    WHERE   ev.goods_id=g.id
+) AS e ON TRUE
+WHERE 1=1 AND num>3
+````
+3、然后我们再次查询这些商品的信息，希望找到**黄金会员**评论的商品信息  
+这时候LATERAL的优势就更加明显了  
+````
+SELECT 
+    g.*,
+    e.num
+FROM goods as g
+LEFT JOIN LATERAL(
+     SELECT COUNT(ev.id) as num
+     FROM  evaluation AS ev 
+     LEFT JOIN  users U  on u.id=ev.user_id
+     WHERE   ev.goods_id=g.id AND u.grade=9
+) AS e ON TRUE
+WHERE 1=1 AND num>0
+````
 
 ### 什么是LATERAL
 
