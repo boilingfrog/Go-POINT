@@ -36,12 +36,12 @@ WHERE 1=1
 就这样好像lateral的优势不是那么明显。  
 2、我们查询评论数目大于3的商品的信息
 ````
-   SELECT
-	    a.*,
-		count(s.id)
-	FROM public.supervise_thematic_activities a
-	LEFT JOIN public.supervise_job_contents s on a.id=s.thematic_activity_id
-	HAVING count(s.id)>3   GROUP BY a.id
+SELECT 
+    g.*,
+    COUNT(e.*) as num
+FROM goods as g
+LEFT JOIN evaluation as e on e.goods_id=g.id
+HAVING COUNT(e.*)>3   GROUP BY g.id 
 ````
 这样就不行了，查询不到了。  
 这时候就需要使用LATERAL  
@@ -66,7 +66,7 @@ FROM goods as g
 LEFT JOIN LATERAL(
      SELECT COUNT(ev.id) as num
      FROM  evaluation AS ev 
-     LEFT JOIN  users U  on u.id=ev.user_id
+     LEFT JOIN  users u  on u.id=ev.user_id
      WHERE   ev.goods_id=g.id AND u.grade=9
 ) AS e ON TRUE
 WHERE 1=1 AND num>0
