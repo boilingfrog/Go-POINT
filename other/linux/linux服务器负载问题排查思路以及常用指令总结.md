@@ -62,31 +62,26 @@ KiB Swap:  4194300 total,  4194300 free,        0 used.  9227048 avail Mem
 | sleeping                       |休眠状态进程数                         |
 | stopped                        |停止进程数                            |
 | ----                           |----                                 |
-| %us                            |用户进程消耗的CPU时间百分比             |
-| %sy                            |系统进程消耗的CPU时间百分比             |
-| %ni	                         |运行正常进程消耗的CPU时间百分比          |
-| %id                            |CPU空闲状态的时间百分比                 |
+| %us                            |用户进程消耗的CPU时间百分比               |
+| %sy                            |系统进程消耗的CPU时间百分比               |
+| %ni	                         |运行正常进程消耗的CPU时间百分比            |
+| %id                            |CPU空闲状态的时间百分比                  |
 | %wa                            |I/O 等待所占 CPU 时间百分比              |
-| bbbbbb                         |                               |
-| bbbbbb                         |                               |
-| bbbbbb                         |                               |
-| bbbbbb                         |                               |
-| bbbbbb                         |                               |
-| bbbbbb                         |                               |
-| bbbbbb                         |                               |
-| bbbbbb                         |                               |
-| bbbbbb                         |                               |
-| bbbbbb                         |                               |
-| bbbbbb                         |                               |
-| bbbbbb                         |                               |
+| %hi	                         |硬中断（Hardware IRQ）占用CPU的百分比     |
+| %si	                         |软中断（Software Interrupts）占用CPU的百分比|
+| %st	                         |在内存紧张环境下，pagein 强制对不同的页面进行的 steal 操作|
+| ----                           |----                                 |
+| Mem total                      |物理内存总量                            |
+| Mem used                       |使用中的内存总量                         |
+| Mem free                       |空闲内存总量                            |
+| Mem buffers                    |缓存的内存量                            |
+| ----                           |----                                 |
+| PID                            |进程id                                |
+| USER                           |进程所有者                             |
+| PR                             |进程优先级                             |
+| NI                             |nice值。负值表示高优先级，正值表示低优先级   |
+| VIRT                           |进程使用的虚拟内存总量，单位kb。VIRT=SWAP+RES|
 
-
-
-
- -  17:24:42        系统运行的时间
- -  up  9:10        系统运行的时间
- -  user            系统当前登录的用户数
- -  load average: 1.50, 1.50, 1.56 
 
 
 
