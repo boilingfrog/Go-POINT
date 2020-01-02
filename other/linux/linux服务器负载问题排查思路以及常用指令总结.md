@@ -47,9 +47,44 @@ KiB Swap:  4194300 total,  4194300 free,        0 used.  9227048 avail Mem
    12 root      20   0       0      0      0 S   0.0  0.0   0:00.00 cpuhp/0                                         
 ````
 那么我们来一一分析里面每个值的含义  
+
+
+|           参数                  |                含义                |
+| :----------------------------: | :--------------------------------: |
+| 17:24:42                       |系统运行的时间                        |
+| bbbbbb                         |                               |
+| bbbbbb                         |                               |
+| bbbbbb                         |                               |
+| bbbbbb                         |                               |
+| bbbbbb                         |                               |
+| bbbbbb                         |                               |
+| bbbbbb                         |                               |
+| bbbbbb                         |                               |
+| bbbbbb                         |                               |
+| bbbbbb                         |                               |
+| bbbbbb                         |                               |
+| bbbbbb                         |                               |
+| bbbbbb                         |                               |
+| bbbbbb                         |                               |
+| bbbbbb                         |                               |
+| bbbbbb                         |                               |
+| bbbbbb                         |                               |
+| bbbbbb                         |                               |
+| bbbbbb                         |                               |
+| bbbbbb                         |                               |
+| bbbbbb                         |                               |
+| bbbbbb                         |                               |
+| bbbbbb                         |                               |
+| bbbbbb                         |                               |
+| bbbbbb                         |                               |
+
+
+
+
  -  17:24:42        系统运行的时间
-
-
+ -  up  9:10        系统运行的时间
+ -  user            系统当前登录的用户数
+ -  load average: 1.50, 1.50, 1.56 
 
 
 
