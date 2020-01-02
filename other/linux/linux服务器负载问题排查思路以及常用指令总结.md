@@ -64,9 +64,9 @@ KiB Swap:  4194300 total,  4194300 free,        0 used.  9227048 avail Mem
 | ----                           |----                                 |
 | %us                            |用户进程消耗的CPU时间百分比             |
 | %sy                            |系统进程消耗的CPU时间百分比             |
-| bbbbbb                         |                               |
-| bbbbbb                         |                               |
-| bbbbbb                         |                               |
+| %ni	                         |运行正常进程消耗的CPU时间百分比          |
+| %id                            |CPU空闲状态的时间百分比                 |
+| %wa                            |I/O 等待所占 CPU 时间百分比              |
 | bbbbbb                         |                               |
 | bbbbbb                         |                               |
 | bbbbbb                         |                               |
