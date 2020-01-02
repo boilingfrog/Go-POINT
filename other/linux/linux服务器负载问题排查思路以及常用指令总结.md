@@ -51,17 +51,19 @@ KiB Swap:  4194300 total,  4194300 free,        0 used.  9227048 avail Mem
 
 |           参数                  |                含义                |
 | :----------------------------: | :--------------------------------: |
-| 17:24:42                       |系统运行的时间                        |
-| bbbbbb                         |                               |
-| bbbbbb                         |                               |
-| bbbbbb                         |                               |
-| bbbbbb                         |                               |
-| bbbbbb                         |                               |
-| bbbbbb                         |                               |
-| bbbbbb                         |                               |
-| bbbbbb                         |                               |
-| bbbbbb                         |                               |
-| bbbbbb                         |                               |
+| 17:24:42                       |系统时间                             |
+| up  9:10                       |系统运行的时间                        |
+| user                           |系统当前登录的用户数                   |
+| load average: 1.50, 1.50, 1.56 |过去一分钟五分钟十五分钟系统负载         |
+| ----                           |----                                |
+| Tasks                          |任务进程数                            |
+| total                          |总进程数                              |
+| running                        |正在运行的进程数                       |
+| sleeping                       |休眠状态进程数                         |
+| stopped                        |停止进程数                            |
+| ----                           |----                                 |
+| %us                            |用户进程消耗的CPU时间百分比             |
+| %sy                            |系统进程消耗的CPU时间百分比             |
 | bbbbbb                         |                               |
 | bbbbbb                         |                               |
 | bbbbbb                         |                               |
