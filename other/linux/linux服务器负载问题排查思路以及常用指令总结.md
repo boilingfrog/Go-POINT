@@ -89,6 +89,25 @@ KiB Swap:  4194300 total,  4194300 free,        0 used.  9227048 avail Mem
 | TIME+                          |进程使用的CPU时间总计，单位1/100秒       |
 | COMMAND                        |进程名称（命令名/命令行）               |
 
+下面是几个常用的交互操作：
+
+- 展开CPU
+在top交互界面直接按键盘的数字1。  
+这里还是要强调一下，%cpu的值是跟内核数成正比的，如8核cpu的%cpu最大可以800%。    
+- 显示线程    
+在top交互界面按ctrl+h显示线程，再按一次关闭显示。  
+- 增加或删除显示列  
+在top交互界面按h进入，输入想显示的列的首字母如n，退出直接回车。  
+- 排序  
+Cpu ： 在top交互界面按shift+p。  
+Mem ：在top交互界面按shift+m。  
+Time ：在top交互界面按shift+t。  
+- 显示程序名
+在top交互界面按c。  
+- 监控线程下的进程
+在命令行输入top -H -p pid，其中pid为进程id，进入界面后显示的PID为线程ID；或者使用命
+令top -H -p pid进入界面之后在按shift+h来显示线程。  
+
 
 
 
