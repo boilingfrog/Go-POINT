@@ -229,8 +229,55 @@ masquerade 连接，多播成员 (Multicast Memberships) 等等。
 下面是netstat的命令详解
 https://www.cnblogs.com/ricklz/p/11796319.html  
 
+### nload命令
+
+**在Debian上面安装nload**  
+````
+sudo apt-get install nload
+````
+用于监控整体的带宽，即时监看网路状态和各IP所使用的频宽。  
+**nload默认分为上下两块：**  
+上半部分是：Incoming也就是进入网卡的流量，  
+下半部分是：Outgoing，也就是从这块网卡出去的流量，  
+每部分都有当前流量（Curr），  
+
+平均流量（Avg），  
+
+最小流量（Min），  
+
+最大流量（Max），  
+
+总和流量（Ttl）这几个部分，看起来还是蛮直观的。  
+
+nload默认的是eth0网卡，如果你想监测eth1网卡的流量  
+
+#nload eth1  
+
+
+
+-a：这个好像是全部数据的刷新时间周期，单位是秒，默认是300.  
+
+-i：进入网卡的流量图的显示比例最大值设置，默认10240 kBit/s.  
+
+-m：不显示流量图，只显示统计数据。  
+
+-o：出去网卡的流量图的显示比例最大值设置，默认10240 kBit/s.  
+
+-t：显示数据的刷新时间间隔，单位是毫秒，默认500。  
+
+-u：设置右边Curr、Avg、Min、Max的数据单位，默认是自动变的.注意大小写单位不同！  
+
+h|b|k|m|g h: auto, b: Bit/s, k: kBit/s, m: MBit/s etc.  
+
+H|B|K|M|G H: auto, B: Byte/s, K: kByte/s, M: MByte/s etc.  
+
+-U：设置右边Ttl的数据单位，默认是自动变的.注意大小写单位不同（与-u相同）！  
+Devices：自定义监控的网卡，默认是全部监控的，使用左右键切换。  
+如只监控eth0命令：# nload eth0  
+使用 $ nload eth0 ，可以查看第一网卡的流量情况，显示的是实时的流量图， $ nload -m 可以同时查看多个网卡的流量情况。  
 
 
 ## 参考  
 【引用】https://cloud.tencent.com/developer/article/1378739  
+【Linux中的nload命令】https://www.jianshu.com/p/08b60e90a909
 
