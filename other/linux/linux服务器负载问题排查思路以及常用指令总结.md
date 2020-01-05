@@ -1,9 +1,22 @@
 ## linux服务器负载问题排查思路以及常用指令总结
 
 服务器的性能主要看四大件：cpu、内存、磁盘、网络。下面是常用的排查思路。
+- [CPU和内存问题](#CPU%e5%92%8c%e5%86%85%e5%ad%98%e9%97%ae%e9%a2%98)
+   - [top命令](#top%e5%91%bd%e4%bb%a4)
+   - [vmstat命令](#vmstat%e5%91%bd%e4%bb%a4)
+   - [free命令](#free%e5%91%bd%e4%bb%a4)
+- [磁盘问题](#%e7%a3%81%e7%9b%98%e9%97%ae%e9%a2%98)
+   - [iostat命令](#iostat%e5%91%bd%e4%bb%a4)
+   - [iotop命令](#iotop%e5%91%bd%e4%bb%a4)
+   - [du和df命令](#du%e5%92%8cdf%e5%91%bd%e4%bb%a4)
+- [网络问题](#%e7%bd%91%e7%bb%9c%e9%97%ae%e9%a2%98)
+   - [netstat命令](#netstat%e5%91%bd%e4%bb%a4)
+   - [nload命令](#nload%e5%91%bd%e4%bb%a4)
+   - [nethogs命令](#nethogs%e5%91%bd%e4%bb%a4)
+   - [tcpdump命令](#tcpdump%e5%91%bd%e4%bb%a4)
 
-## CPU和内存问题
-
+## CPU和内存问题  
+  
 ### top命令
 top命令能够实时监控系统的运行状态，并且按照CPU、内存和执行时间进行排序，
 同时top命令还可以通过交互式命令进行设定显示，通过top命令可以查看即时活
@@ -280,7 +293,7 @@ Devices：自定义监控的网卡，默认是全部监控的，使用左右键�
 
 用于监控进程的带宽使用情况  
 
-### tcpdump 
+### tcpdump命令
 
 ## 参考  
 【引用】https://cloud.tencent.com/developer/article/1378739  
