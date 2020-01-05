@@ -217,37 +217,17 @@ Swap:          4095           0        4095
 mysql负载大时，很多时候磁盘先到了瓶颈，大量个请求超时，cpu负载却不高，如果mysql服务器异常，建
 议重点看下磁盘。
 
+### 网络问题  
 
+在线上服务器，大部分服务器都市只能内网访问，放在公网的的服务器也就那几台nginx和ftp的，另外公网
+的那些服务器都有流量监控，所以网络问题一般并不大。
 
+### netstat命令  
+netstat命令用于显示本机网络连接、运行端口、路由表信息，接口状态 (Interface Statistics)，
+masquerade 连接，多播成员 (Multicast Memberships) 等等。
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+下面是netstat的命令详解
+https://www.cnblogs.com/ricklz/p/11796319.html  
 
 
 
