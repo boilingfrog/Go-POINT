@@ -20,27 +20,27 @@
 ````
 ### 输出布尔值
 ````
-    fmt.Printf("%t\n", true)
+    fmt.Printf("%t\n", true) // true
 ````
 ### 输出整数
 ````
-    fmt.Printf("%d\n", 123)
+    fmt.Printf("%d\n", 123) // 123
 ````
 ### 输出二进制表示形式
 ````
-    fmt.Printf("%b\n", 14)
+    fmt.Printf("%b\n", 14) // 1110
 ````
 ### 输出给定整数的对应字符
 ````
-    fmt.Printf("%c\n", 33)
+    fmt.Printf("%c\n", 33) // !
 ````
 ### 输出十六进制编码
 ````
-    fmt.Printf("%x\n", 456)
+    fmt.Printf("%x\n", 456) // 1c8
 ````
 ### 输出浮点型的十进制
 ````
-    fmt.Printf("%f\n", 78.9)
+    fmt.Printf("%f\n", 78.9) // 78.900000
 ````
 ### 输出浮点型的科学技术法表示
 ````
