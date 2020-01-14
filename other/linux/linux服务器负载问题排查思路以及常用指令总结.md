@@ -246,6 +246,68 @@ io请求的平均时间（毫秒），分别是读写，读和写三个平均值
 
 ### iotop命令
 
+主要是用于直观的看那些进程占用io较高，是否有异常的进程。
+````
+Total DISK READ :       0.00 B/s | Total DISK WRITE :       0.00 B/s
+Actual DISK READ:       0.00 B/s | Actual DISK WRITE:       0.00 B/s
+TID  PRIO  USER     DISK READ  DISK WRITE  SWAPIN     IO>    COMMAND                                                                                                                                                    
+1 be/4 root        0.00 B/s    0.00 B/s  0.00 %  0.00 % init auto noprompt
+2 be/4 root        0.00 B/s    0.00 B/s  0.00 %  0.00 % [kthreadd]
+4 be/0 root        0.00 B/s    0.00 B/s  0.00 %  0.00 % [kworker/0:0H]
+6 be/0 root        0.00 B/s    0.00 B/s  0.00 %  0.00 % [mm_percpu_wq]
+7 be/4 root        0.00 B/s    0.00 B/s  0.00 %  0.00 % [ksoftirqd/0]
+8 be/4 root        0.00 B/s    0.00 B/s  0.00 %  0.00 % [rcu_sched]
+9 be/4 root        0.00 B/s    0.00 B/s  0.00 %  0.00 % [rcu_bh]
+````
+iotop具有与top相似的UI，其中包括PID、用户、I/O、进程等相关信息。如果你想知道每个进程是如何使用IO
+的就比较麻烦，使用iotop命令可以很方便的查看。  
+
+####　输出的参数的意义： 
+
+第一行：Read和Write速率总计  
+
+第二：实际的Read和Write速率  
+
+第三行：参数如下：  
+
+线程ID（按p切换为进程ID）  
+- 优先级
+- 用户
+- 磁盘读速率
+- 磁盘写速率
+- swap交换百分比
+- IO等待所占的百分比
+- 线程/进程命令
+
+#### 常用的参数
+````
+-o, --only只显示正在产生I/O的进程或线程。除了传参，可以在运行过程中按o生效。
+-b, --batch非交互模式，一般用来记录日志。
+-n NUM, --iter=NUM设置监测的次数，默认无限。在非交互模式下很有用。
+-d SEC, --delay=SEC设置每次监测的间隔，默认1秒，接受非整形数据例如1.1。
+-p PID, --pid=PID指定监测的进程/线程。
+-u USER, --user=USER指定监测某个用户产生的I/O。
+-P, --processes仅显示进程，默认iotop显示所有线程。
+-a, --accumulated显示累积的I/O，而不是带宽。
+-k, --kilobytes使用kB单位，而不是对人友好的单位。在非交互模式下，脚本编程有用。
+-t, --time 加上时间戳，非交互非模式。
+-q, --quiet 禁止头几行，非交互模式。有三种指定方式。
+-q 只在第一次监测时显示列名
+-qq 永远不显示列名。
+-qqq 永远不显示I/O汇总。
+````
+
+#### 交互按钮　　
+和top命令类似，iotop也支持以下几个交互按键。　　
+````
+left和right方向键：改变排序。
+r：反向排序。
+o：切换至选项–only。
+p：切换至–processes选项。
+a：切换至–accumulated选项。
+q：退出。
+i：改变线程的优先级。
+````
 ### du和df命令
 
 主要通过这两个命令看系统的磁盘占用率和文件夹大小，有时候日志文件不清理会导致磁盘用满等情况。  
