@@ -209,9 +209,42 @@ Swap:          4095           0        4095
 磁盘问题在mysql服务器中非常常见，很多时候mysql服务器的CPU不高但是却出现慢查询日志飙升，就是因为
 磁盘出现了瓶颈。还有mysql的备份策略，如果没有监控磁盘空间，可能出现磁盘满了服务不可用的现象。  
 
-### iostat命令   TODO
+### iostat命令
+deepin上面的安装
+````
+apt-get install sysstat
+````
+常用参数： -k 用kb为单位 -d 监控磁盘 -x显示详情 num count 每个几秒刷新 显示次数  
 
-### iotop命令   TODO
+使用iostat -kdx 2 10 跑一下
+````
+$ iostat -kdx 2 10
+Linux 4.15.0-30deepin-generic (liz-PC) 	2020年01月14日 	_x86_64_	(4 CPU)
+
+Device:         rrqm/s   wrqm/s     r/s     w/s    rkB/s    wkB/s avgrq-sz avgqu-sz   await r_await w_await  svctm  %util
+nvme0n1           0.00    10.62   45.76    8.17   702.73   348.46    38.99     0.10    2.04    2.08    1.82   0.04   0.23
+
+Device:         rrqm/s   wrqm/s     r/s     w/s    rkB/s    wkB/s avgrq-sz avgqu-sz   await r_await w_await  svctm  %util
+nvme0n1           0.00     0.00    0.00    4.00     0.00   332.00   166.00     0.00    0.00    0.00    0.00   0.00   0.00
+
+````
+
+- rkB/s和wkB/s  
+分别对应读写速度
+
+- avgqu-sz  
+读写队列的平均请求长度，可以类比top命令的load average
+
+- await r_await w_await  
+io请求的平均时间（毫秒），分别是读写，读和写三个平均值。这个时间都包括在队列中等待的时间和实际
+处理读写请求的时间，还有svctm这个参数，他说的是实际处理读写请求的时间，照理来讲wawait肯定是
+大于svctm的，但是我在线上看到有wawait小于svctm的情况，不知道是什么原因。我看iostat的man手动
+中说svctm已经废弃，所以一般我看的是这三个。
+
+- %util  
+这个参数直观的看磁盘的负载情况，我首先看的就是这个参数。和top的wa命令有关联。
+
+### iotop命令
 
 ### du和df命令
 
