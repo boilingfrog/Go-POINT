@@ -61,7 +61,7 @@ flannel是CoreOs团队针对k8s设计的一个网络规划规则，简单的说�
 
 etcd 之flannel提供说明：  
 - 存储管理flannel可分配的ip地址段资源  
-- 监控etcd中每个pod的实际地址，并在内存中建立维护pod节点路由表  
+- 监控etcd中每个pod的实际地址，并在内存中建立维护pod节点路由表 
  
 
 
