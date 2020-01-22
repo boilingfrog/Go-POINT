@@ -50,6 +50,18 @@ computer engine)里面是现成的网络模型，k8s假定这个网络已经存�
 之间的互相访问先打通，然后运行k8s
 
 同一个pod内的多个容器之间：lo
+各pod之间的通讯：overlay network 
+pod 和　service 之间的通讯：各节点的iptables规则
+
+flannel是CoreOs团队针对k8s设计的一个网络规划规则，简单的说，它的功能就是让集群中的不同
+节点主机创建的docker容器都具有全集唯一的虚拟ip地址。而且它还能在这些ip地址之间建立一个覆
+盖网络(Overlay Network)，通过这个覆盖网络，将数据包原封不动的传递到目标容器内。
+
+![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/k8s_1.png?raw=true)
+
+etcd 之flannel提供说明：  
+- 存储管理flannel可分配的ip地址段资源  
+- 监控etcd中每个pod的实际地址，并在内存中建立维护pod节点路由表  
  
 
 
