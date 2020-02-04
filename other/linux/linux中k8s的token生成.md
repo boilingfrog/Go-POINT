@@ -21,5 +21,20 @@ kk0ee6.nhvz5p85avmzyof3   23h       2020-02-05T11:02:44+08:00   authentication,s
 ````
 把节点加入到集群中  
 ````
-kubeadm join --token kk0ee6.nhvz5p85avmzyof3 --discovery-token-ca-cert-hash sha256:9db128fe4c68b0e65c19bb49226fc717e64e790d23816c5615ad6e21fbe92020  172.16.6.79:6443 --skip-preflight-checks
+[root@k8s-node1 ~]# kubeadm join --token kk0ee6.nhvz5p85avmzyof3 --discovery-token-ca-cert-hash sha256:9db128fe4c68b0e65c19bb49226fc717e64e790d23816c5615ad6e21fbe92020  192.168.31.35:6443
+[preflight] Running pre-flight checks
+[preflight] Reading configuration from the cluster...
+[preflight] FYI: You can look at this config file with 'kubectl -n kube-system get cm kubeadm-config -oyaml'
+[kubelet-start] Downloading configuration for the kubelet from the "kubelet-config-1.15" ConfigMap in the kube-system namespace
+[kubelet-start] Writing kubelet configuration to file "/var/lib/kubelet/config.yaml"
+[kubelet-start] Writing kubelet environment file with flags to file "/var/lib/kubelet/kubeadm-flags.env"
+[kubelet-start] Activating the kubelet service
+[kubelet-start] Waiting for the kubelet to perform the TLS Bootstrap...
+
+This node has joined the cluster:
+* Certificate signing request was sent to apiserver and a response was received.
+* The Kubelet was informed of the new secure connection details.
+
+Run 'kubectl get nodes' on the control-plane to see this node join the cluster.
+
 ````
