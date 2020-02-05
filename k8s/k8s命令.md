@@ -1,12 +1,12 @@
 ## k8s用到的命令  
 
-查看pod的状态  
+### 查看pod的状态  
 ````
 [root@k8s-master ~]# kubectl get pod
 NAME                     READY   STATUS              RESTARTS   AGE
 nginx-554b9c67f9-dc68t   0/1     ContainerCreating   0          65s
 ````
-查看pod的详情
+### 查看pod的详情
 ````
 [root@k8s-master ~]# kubectl describe pod nginx
 Name:           nginx-554b9c67f9-5jrsw
@@ -55,8 +55,28 @@ Events:
   Normal  Scheduled  2m53s  default-scheduler   Successfully assigned default/nginx-554b9c67f9-5jrsw to k8s-node1
   Normal  Pulling    2m52s  kubelet, k8s-node1  Pulling image "nginx"
 ````
-修改host名字
+### 修改host名字
 ````
 hostname XXXXX
 ````
 修改之后退出重新进入就可以了
+
+### 重启pod
+#### 使用yaml文件
+在有 yaml 文件的情况下可以直接使用kubectl replace --force -f xxxx.yaml 来强制替
+换Pod 的 API 对象，从而达到重启的目的。  
+````
+# kubectl replace --force -f kubernetes-dashboard.yaml 
+secret "kubernetes-dashboard-certs" deleted
+serviceaccount "kubernetes-dashboard" deleted
+role.rbac.authorization.k8s.io "kubernetes-dashboard-minimal" deleted
+rolebinding.rbac.authorization.k8s.io "kubernetes-dashboard-minimal" deleted
+deployment.apps "kubernetes-dashboard" deleted
+service "kubernetes-dashboard" deleted
+secret/kubernetes-dashboard-certs replaced
+serviceaccount/kubernetes-dashboard replaced
+role.rbac.authorization.k8s.io/kubernetes-dashboard-minimal replaced
+rolebinding.rbac.authorization.k8s.io/kubernetes-dashboard-minimal replaced
+deployment.apps/kubernetes-dashboard replaced
+^[[Aservice/kubernetes-dashboard replaced
+````
