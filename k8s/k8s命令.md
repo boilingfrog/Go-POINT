@@ -55,3 +55,8 @@ Events:
   Normal  Scheduled  2m53s  default-scheduler   Successfully assigned default/nginx-554b9c67f9-5jrsw to k8s-node1
   Normal  Pulling    2m52s  kubelet, k8s-node1  Pulling image "nginx"
 ````
+修改host名字
+````
+hostname XXXXX
+````
+修改之后退出重新进入就可以了
