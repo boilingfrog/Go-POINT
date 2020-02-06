@@ -5,7 +5,11 @@
 - [修改host名字](#%e4%bf%ae%e6%94%b9host%e5%90%8d%e5%ad%97)
 - [重启pod](#%e9%87%8d%e5%90%afpod)
   - [使用yaml文件](#%e4%bd%bf%e7%94%a8yaml%e6%96%87%e4%bb%b6)
-- [重启pod](#%e5%a4%8d%e5%88%b6Slice%e5%92%8cMap%e6%b3%a8%e6%84%8f%e4%ba%8b%e9%a1%b9)
+- [本地文件上传到linux服务器上](#%e6%9c%ac%e5%9c%b0%e6%96%87%e4%bb%b6%e4%b8%8a%e4%bc%a0%e5%88%b0linux%e6%9c%8d%e5%8a%a1%e5%99%a8%e4%b8%8a)
+   - [从服务器上下载文件](#%e4%bb%8e%e6%9c%8d%e5%8a%a1%e5%99%a8%e4%b8%8a%e4%b8%8b%e8%bd%bd%e6%96%87%e4%bb%b6)
+   - [上传本地文件到服务器](#%e4%b8%8a%e4%bc%a0%e6%9c%ac%e5%9c%b0%e6%96%87%e4%bb%b6%e5%88%b0%e6%9c%8d%e5%8a%a1%e5%99%a8)
+   - [从服务器下载整个目录](#%e4%bb%8e%e6%9c%8d%e5%8a%a1%e5%99%a8%e4%b8%8b%e8%bd%bd%e6%95%b4%e4%b8%aa%e7%9b%ae%e5%bd%95)
+   - [上传目录到服务器](#%e4%b8%8a%e4%bc%a0%e7%9b%ae%e5%bd%95%e5%88%b0%e6%9c%8d%e5%8a%a1%e5%99%a8)
 
 ### 查看pod的状态  
 ````
@@ -87,4 +91,28 @@ rolebinding.rbac.authorization.k8s.io/kubernetes-dashboard-minimal replaced
 deployment.apps/kubernetes-dashboard replaced
 ^[[Aservice/kubernetes-dashboard replaced
 ````
-### 上传文件到
+### 本地文件上传到linux服务器上
+scp -P 端口 c://xxxx.txt user@ip:/home/root
+注意：  
+-P 大写  
+-i 公钥  
+#### 从服务器上下载文件
+````
+scp username@servername:/path/filename /var/www/local_dir（本地目录）  
+例如scp root@192.168.0.101:/var/www/test.txt  把192.168.0.101上的/var/www/test.txt 的文件下载到/var/www/local_dir（本地目录）  
+````
+#### 上传本地文件到服务器
+````
+scp /path/filename username@servername:/path   
+
+例如scp /var/www/test.php  root@192.168.0.101:/var/www/  把本机/var/www/目录下的test.php文件上传到192.168.0.101这台服务器上的/var/www/目录中
+````
+#### 从服务器下载整个目录
+````
+scp -r username@servername:/var/www/remote_dir/（远程目录） /var/www/local_dir（本地目录）
+````
+#### 上传目录到服务器
+````
+scp  -r local_dir username@servername:remote_dir
+例如：scp -r test  root@192.168.0.101:/var/www/   把当前目录下的test目录上传到服务器的/var/www/ 目录
+````
