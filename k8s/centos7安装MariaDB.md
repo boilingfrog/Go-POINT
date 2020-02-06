@@ -1,7 +1,7 @@
 ## centos7下yum安装MariaDB
 
 CentOS 7下mysql下替换成MariaDB了。  
-mariadb简介MariaDB数据库管理系统是MySQL的一个分支，主要由开源社区在维护，采用GPL授权
+MariaDB数据库管理系统是MySQL的一个分支，主要由开源社区在维护，采用GPL授权
 许可 MariaDB的目的是完全兼容MySQL，包括API和命令行，使之能轻松成为MySQL的代替品。
 
 ### 使用yum快速安装  
