@@ -1,5 +1,12 @@
 ## k8s用到的命令  
 
+- [查看pod的状态](#%e6%9f%a5%e7%9c%8bpod%e7%9a%84%e7%8a%b6%e6%80%81)
+- [查看pod的详情](#%e6%9f%a5%e7%9c%8bpod%e7%9a%84%e8%af%a6%e6%83%85)
+- [修改host名字](#%e4%bf%ae%e6%94%b9host%e5%90%8d%e5%ad%97)
+- [重启pod](#%e9%87%8d%e5%90%afpod)
+  - [使用yaml文件](#%e4%bd%bf%e7%94%a8yaml%e6%96%87%e4%bb%b6)
+- [重启pod](#%e5%a4%8d%e5%88%b6Slice%e5%92%8cMap%e6%b3%a8%e6%84%8f%e4%ba%8b%e9%a1%b9)
+
 ### 查看pod的状态  
 ````
 [root@k8s-master ~]# kubectl get pod
@@ -80,3 +87,4 @@ rolebinding.rbac.authorization.k8s.io/kubernetes-dashboard-minimal replaced
 deployment.apps/kubernetes-dashboard replaced
 ^[[Aservice/kubernetes-dashboard replaced
 ````
+### 上传文件到
