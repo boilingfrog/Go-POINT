@@ -46,76 +46,6 @@ Loading mirror speeds from cached hostfile
 ---> 软件包 perl-Compress-Raw-Bzip2.x86_64.0.2.061-3.el7 将被 安装
 ---> 软件包 perl-Compress-Raw-Zlib.x86_64.1.2.061-4.el7 将被 安装
 --> 解决依赖关系完成
-
-依赖关系解决
-
-=============================================================================================================
- Package                             架构               版本                          源                大小
-=============================================================================================================
-正在安装:
- mariadb-server                      x86_64             1:5.5.64-1.el7                base              11 M
-为依赖而安装:
- mariadb                             x86_64             1:5.5.64-1.el7                base             8.7 M
- mariadb-libs                        x86_64             1:5.5.64-1.el7                base             759 k
- perl-Compress-Raw-Bzip2             x86_64             2.061-3.el7                   base              32 k
- perl-Compress-Raw-Zlib              x86_64             1:2.061-4.el7                 base              57 k
- perl-DBD-MySQL                      x86_64             4.023-6.el7                   base             140 k
- perl-DBI                            x86_64             1.627-4.el7                   base             802 k
- perl-Data-Dumper                    x86_64             2.145-3.el7                   base              47 k
- perl-IO-Compress                    noarch             2.061-2.el7                   base             260 k
- perl-Net-Daemon                     noarch             0.48-5.el7                    base              51 k
- perl-PlRPC                          noarch             0.2020-14.el7                 base              36 k
-
-事务概要
-=============================================================================================================
-安装  1 软件包 (+10 依赖软件包)
-
-总下载量：22 M
-安装大小：115 M
-Downloading packages:
-(1/11): perl-Compress-Raw-Bzip2-2.061-3.el7.x86_64.rpm                                |  32 kB  00:00:00     
-(2/11): perl-Compress-Raw-Zlib-2.061-4.el7.x86_64.rpm                                 |  57 kB  00:00:00     
-(3/11): perl-DBD-MySQL-4.023-6.el7.x86_64.rpm                                         | 140 kB  00:00:00     
-(4/11): mariadb-libs-5.5.64-1.el7.x86_64.rpm                                          | 759 kB  00:00:01     
-(5/11): perl-Data-Dumper-2.145-3.el7.x86_64.rpm                                       |  47 kB  00:00:00     
-(6/11): perl-IO-Compress-2.061-2.el7.noarch.rpm                                       | 260 kB  00:00:00     
-(7/11): perl-Net-Daemon-0.48-5.el7.noarch.rpm                                         |  51 kB  00:00:00     
-(8/11): perl-PlRPC-0.2020-14.el7.noarch.rpm                                           |  36 kB  00:00:00     
-(9/11): mariadb-5.5.64-1.el7.x86_64.rpm                                               | 8.7 MB  00:00:02     
-(10/11): perl-DBI-1.627-4.el7.x86_64.rpm                                              | 802 kB  00:00:01     
-(11/11): mariadb-server-5.5.64-1.el7.x86_64.rpm                                       |  11 MB  00:00:15     
--------------------------------------------------------------------------------------------------------------
-总计                                                                         1.5 MB/s |  22 MB  00:00:15     
-Running transaction check
-Running transaction test
-Transaction test succeeded
-Running transaction
-  正在安装    : 1:mariadb-libs-5.5.64-1.el7.x86_64                                                      1/11 
-  正在安装    : perl-Data-Dumper-2.145-3.el7.x86_64                                                     2/11 
-  正在安装    : 1:mariadb-5.5.64-1.el7.x86_64                                                           3/11 
-  正在安装    : perl-Compress-Raw-Bzip2-2.061-3.el7.x86_64                                              4/11 
-  正在安装    : 1:perl-Compress-Raw-Zlib-2.061-4.el7.x86_64                                             5/11 
-  正在安装    : perl-IO-Compress-2.061-2.el7.noarch                                                     6/11 
-  正在安装    : perl-Net-Daemon-0.48-5.el7.noarch                                                       7/11 
-  正在安装    : perl-PlRPC-0.2020-14.el7.noarch                                                         8/11 
-  正在安装    : perl-DBI-1.627-4.el7.x86_64                                                             9/11 
-  正在安装    : perl-DBD-MySQL-4.023-6.el7.x86_64                                                      10/11 
-  正在安装    : 1:mariadb-server-5.5.64-1.el7.x86_64                                                   11/11 
-  验证中      : 1:mariadb-libs-5.5.64-1.el7.x86_64                                                      1/11 
-  验证中      : perl-Net-Daemon-0.48-5.el7.noarch                                                       2/11 
-  验证中      : perl-Data-Dumper-2.145-3.el7.x86_64                                                     3/11 
-  验证中      : 1:mariadb-5.5.64-1.el7.x86_64                                                           4/11 
-  验证中      : perl-DBD-MySQL-4.023-6.el7.x86_64                                                       5/11 
-  验证中      : perl-IO-Compress-2.061-2.el7.noarch                                                     6/11 
-  验证中      : 1:perl-Compress-Raw-Zlib-2.061-4.el7.x86_64                                             7/11 
-  验证中      : 1:mariadb-server-5.5.64-1.el7.x86_64                                                    8/11 
-  验证中      : perl-DBI-1.627-4.el7.x86_64                                                             9/11 
-  验证中      : perl-Compress-Raw-Bzip2-2.061-3.el7.x86_64                                             10/11 
-  验证中      : perl-PlRPC-0.2020-14.el7.noarch                                                        11/11 
-
-已安装:
-  mariadb-server.x86_64 1:5.5.64-1.el7                                                                       
-
 作为依赖被安装:
   mariadb.x86_64 1:5.5.64-1.el7                         mariadb-libs.x86_64 1:5.5.64-1.el7                  
   perl-Compress-Raw-Bzip2.x86_64 0:2.061-3.el7          perl-Compress-Raw-Zlib.x86_64 1:2.061-4.el7         
@@ -136,14 +66,29 @@ systemctl restart mariadb #重启MariaDB
 mysql_secure_installation #设置root密码等相关
 mysql -uroot -p           #测试登录   
 ````
+#### 修改root的密码
+````
+update mysql.user set password=PASSWORD('yhb123456') where user='root';
+// 更新权限
+flush privileges; 
+````
+#### 新建用户
+````
+// create user  '用户名'@'主机' identified by '密码'   如果只允许本机访问 @'localhost'  , 或者指定一个ip  @'192.xx.xx.xx' 或者使用通配: @'%'
+create user 'read_visa'@'%' identified by '123456';
+````
+#### 给用户分配权限
+````
+// grant 操作类型 on 数据库.表 to 用户@'主机'   数据库,表,主机都支持通配符 grant select, insert on *.* to  'read_visa'@'%'
+// grant all on visa.* to 'read_visa'@'%'; // all 表示所有权限
+grant select on visa.* to 'read_visa'@'%';
+````
 
-当我启动mariadb的时候出现了如下的错误  
+## 当我启动mariadb的时候出现了如下的错误  
 ````
 Failed to start mariadb.service: Unit not found.
 ````
 出现这个的原因是机器上之前安装了mysql，删除掉就可以了。 
-
-
 
 #### 1、查看mysql安装了哪些东西
 ````
@@ -190,8 +135,7 @@ yum remove mysql-community-server-5.7.29-1.el7.x86_64
 ````
 # rm -rf /var/log/mysqld.log
 ````
-
-
-
+  
 ### 参考
-【Centos7 完全卸载mysql】https://www.jianshu.com/p/ef58fb333cd6 
+【Centos7 完全卸载mysql】https://www.jianshu.com/p/ef58fb333cd6   
+【centos7 mariadb安装 MySql】https://www.jianshu.com/p/f55a31ae0cea 
