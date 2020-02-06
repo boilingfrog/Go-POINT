@@ -1,6 +1,6 @@
-## centos7下面操作mysql添加，授权，删除用户
+# centos7下面操作mysql添加，授权，删除用户
 
-### 添加用户
+## 添加用户
 以root用户登录数据库，运行以下命令：
 ````
 create user test identified by '123456789';
@@ -43,7 +43,7 @@ show grants for 'test';
 2 rows in set (0.00 sec)
 ````
 
-#### privilegesCode表示授予的权限类型，常用的有以下几种类型[1]：
+##### privilegesCode表示授予的权限类型，常用的有以下几种类型[1]：
 - all privileges：所有权限。
 - select：读取权限。
 - delete：删除权限。
@@ -51,7 +51,7 @@ show grants for 'test';
 - create：创建权限。
 - drop：删除数据库、数据表权限。
 
-### dbName.tableName表示授予权限的具体库或表，常用的有以下几种选项：
+##### dbName.tableName表示授予权限的具体库或表，常用的有以下几种选项：
 - .：授予该数据库服务器所有数据库的权限。
 - dbName.*：授予dbName数据库所有表的权限。
 - dbName.dbTable：授予数据库dbName中dbTable表的权限。
@@ -60,9 +60,9 @@ show grants for 'test';
 - %：允许在除本机之外的任何一台机器远程登录。
 - 192.168.52.32：具体的IP表示只允许该用户从特定IP登录。
 
-### password指定该用户登录时的面。
+##### password指定该用户登录时的面。
 
-### flush privileges表示刷新权限变更。
+##### flush privileges表示刷新权限变更。
 
 ### 修改密码
 ````
