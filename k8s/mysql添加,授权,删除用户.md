@@ -96,6 +96,7 @@ grant privilegesCode on dbName.tableName to username@host identified by "passwor
 Enter password: 
 ERROR 2003 (HY000): Can't connect to MySQL server on '192.168.31.106' (113)
 ````
+### 错误排查
 - 1、确定远程机器的防火墙关闭，或在防火墙允许3306端口号
 
 - 2、确定数据库允许远程访问，通过语句grant privilegesCode on dbName.tableName to username@host identified by "password";授权对应的host就可以了。
