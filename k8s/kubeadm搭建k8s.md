@@ -156,4 +156,11 @@ $ kubectl create clusterrolebinding dashboard-admin --clusterrole=cluster-admin 
 $ kubectl describe secrets -n kube-system $(kubectl -n kube-system get secret | awk '/dashboard-admin/{print $1}')
 ````
 使用输出的token登录Dashboard。  
-直播视频地址：https://ke.qq.com/course/266656
+
+### 简单部署一个java的项目
+
+迁移的流程：  
+1 制作镜像-> 2 控制器管理Pod-> 3 暴露应用-> 4 对外发布应用-> 5 日志/监控
+
+  
+
