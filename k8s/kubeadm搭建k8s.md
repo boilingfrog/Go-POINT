@@ -160,7 +160,7 @@ $ kubectl describe secrets -n kube-system $(kubectl -n kube-system get secret | 
 ### 简单部署一个java的项目
 
 迁移的流程：  
-1 制作镜像-> 2 控制器管理Pod-> 3 暴露应用-> 4 对外发布应用-> 5 日志/监控
+![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/k8s_2.png?raw=true)
 
   
 
