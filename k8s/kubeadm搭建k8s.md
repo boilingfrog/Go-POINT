@@ -161,6 +161,9 @@ $ kubectl describe secrets -n kube-system $(kubectl -n kube-system get secret | 
 
 迁移的流程：  
 ![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/k8s_2.png?raw=true)
-
-  
+#### 1制作镜像
+一般包括三个：
+- 基础镜像  例如centos 
+- 运行镜像  例如 jdk,go
+- 项目镜像  代码部署在运行镜像里面
 
