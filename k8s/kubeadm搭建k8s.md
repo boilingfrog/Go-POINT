@@ -13,7 +13,7 @@ $ kubeadm init
 $ kubeadm join <Master节点的IP和端口 >
 ````
 #### 1. 安装要求
-在开始之前，部署Kubernetes集群机器需要满足以下几个条件： 
+在开始之前，部署Kubernetes集群机器需要满足以下几个条件：   
 一台或多台机器，操作系统 CentOS7.x-86_x64    
 硬件配置：  
 2GB或更多RAM，2个CPU或更多CPU，硬盘30GB或更多集群中所有机器之间网络互通可以访问外网，需要拉取镜像禁止swap分区
