@@ -167,3 +167,24 @@ $ kubectl describe secrets -n kube-system $(kubectl -n kube-system get secret | 
 - 运行镜像  例如 jdk,go
 - 项目镜像  代码部署在运行镜像里面
 
+一些基础的名词  
+
+##### Pod
+• 最小部署单元  
+• 一组容器的集合  
+• 一个Pod中的容器共享网络命名空间  
+• Pod是短暂的  
+##### Controllers  
+• Deployment ： 无状态应用部署  
+• StatefulSet ： 有状态应用部署  
+• DaemonSet ： 确保所有Node运行同一个Pod  
+• Job ： 一次性任务  
+• Cronjob ： 定时任务  
+更高级层次对象，部署和管理Pod  
+##### Service  
+• 防止Pod失联  
+• 定义一组Pod的访问策略  
+##### Label ： 标签，附加到某个资源上，用于关联对象、查询和筛选  
+##### Namespaces ： 命名空间，将对象逻辑上隔离  
+
+
