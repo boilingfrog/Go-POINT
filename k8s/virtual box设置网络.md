@@ -54,3 +54,14 @@ centos7
 
 ![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/virtualbox_6.png?raw=true)
 
+修改enp0s8的配置信息，添加静态ip  
+首先到``/etc/sysconfig/network-scripts/``下面查看enp0s8的配置文件是否存在，没有的
+话，cp文件enp0s3的到enp0s8，并修改里面的信息。
+````
+cp enp0s3 enp0s8
+````
+##### 重要修改：
+BOOTPROTO=static  
+IPADDR=192.168.56.xxxx  注意该网段必须和上面设置的Host-only里面的网络在一个网段，也
+就是前面必须是192.168.56开头
+![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/virtualbox_7.png?raw=true)
