@@ -34,3 +34,8 @@ centos7
 
 选择管理->全局设定->网络->添加Nat网络
 ![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/virtualbox_2.png?raw=true)
+
+#### 添加主机网络管理器
+
+管理->主机网络管理器->新建主机网络
+![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/virtualbox_3.png?raw=true)
