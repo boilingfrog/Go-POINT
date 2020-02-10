@@ -39,3 +39,13 @@ centos7
 
 管理->主机网络管理器->新建主机网络
 ![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/virtualbox_3.png?raw=true)
+注意：DHCP服务不要勾选，我们去添加静态的ip，这样ip就是固定的
+
+#### 设置虚拟机的网络
+
+对应的虚拟机->设置->网络->网卡１设置(选择nat网络)->网卡
+2(选择Host Only网络)  
+网卡1
+![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/virtualbox_4.png?raw=true)
+网卡2  
+![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/virtualbox_5.png?raw=true)
