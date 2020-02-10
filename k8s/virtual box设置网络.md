@@ -49,3 +49,8 @@ centos7
 ![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/virtualbox_4.png?raw=true)
 网卡2  
 ![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/virtualbox_5.png?raw=true)
+
+#### 进去虚拟机修改设置Host-only静态IP
+
+![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/virtualbox_6.png?raw=true)
+
