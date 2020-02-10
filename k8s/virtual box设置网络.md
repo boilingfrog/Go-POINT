@@ -69,3 +69,33 @@ NETMASK=255.255.255.0
 
 
 保存修改，重启
+
+#### 完成
+
+测试下
+````
+$ ping 192.168.56.102
+PING 192.168.56.102 (192.168.56.102) 56(84) bytes of data.
+64 bytes from 192.168.56.102: icmp_seq=1 ttl=64 time=0.274 ms
+64 bytes from 192.168.56.102: icmp_seq=2 ttl=64 time=0.255 ms
+64 bytes from 192.168.56.102: icmp_seq=3 ttl=64 time=0.269 ms
+64 bytes from 192.168.56.102: icmp_seq=4 ttl=64 time=0.268 ms
+64 bytes from 192.168.56.102: icmp_seq=5 ttl=64 time=0.293 ms
+64 bytes from 192.168.56.102: icmp_seq=6 ttl=64 time=0.331 ms
+^C
+--- 192.168.56.102 ping statistics ---
+6 packets transmitted, 6 received, 0% packet loss, time 5112ms
+rtt min/avg/max/mdev = 0.255/0.281/0.331/0.031 ms
+````
+
+ssh 连接
+````
+$ ssh root@192.168.56.102
+The authenticity of host '192.168.56.102 (192.168.56.102)' can't be established.
+ECDSA key fingerprint is SHA256:sy7VFZmG4wTCBxC2x6wnS+c5kjwd4B7VoIxge/Lxwj0.
+Are you sure you want to continue connecting (yes/no)? yes
+Warning: Permanently added '192.168.56.102' (ECDSA) to the list of known hosts.
+root@192.168.56.102's password: 
+Last login: Mon Feb 10 18:42:21 2020
+
+````
