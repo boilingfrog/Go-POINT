@@ -187,4 +187,7 @@ $ kubectl describe secrets -n kube-system $(kubectl -n kube-system get secret | 
 ##### Label ： 标签，附加到某个资源上，用于关联对象、查询和筛选  
 ##### Namespaces ： 命名空间，将对象逻辑上隔离  
 
+比如java项目的编译需要jdk maven先进行安装  
+通过maven编译项目 
+
 
