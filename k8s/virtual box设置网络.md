@@ -63,5 +63,9 @@ cp enp0s3 enp0s8
 ##### 重要修改：
 BOOTPROTO=static  
 IPADDR=192.168.56.xxxx  注意该网段必须和上面设置的Host-only里面的网络在一个网段，也
-就是前面必须是192.168.56开头
+就是前面必须是192.168.56开头  
 ![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/virtualbox_7.png?raw=true)
+NETMASK=255.255.255.0  
+
+
+保存修改，重启
