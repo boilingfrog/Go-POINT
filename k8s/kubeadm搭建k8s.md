@@ -188,6 +188,18 @@ $ kubectl describe secrets -n kube-system $(kubectl -n kube-system get secret | 
 ##### Namespaces ： 命名空间，将对象逻辑上隔离  
 
 比如java项目的编译需要jdk maven先进行安装  
+````
+# yum install java-1.8.0-openjdk maven -y
+````
 通过maven编译项目 
+````
+# mvn clean package -Dmaven.test.skip=true
+[INFO] Scanning for projects...
+[INFO]                                                                         
+[INFO] ------------------------------------------------------------------------
+[INFO] Building ly-simple-tomcat 0.0.1-SNAPSHOT
+[INFO] ------------------------------------------------------------------------s
+````
+
 
 
