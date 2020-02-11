@@ -66,6 +66,7 @@ IPADDR=192.168.56.xxxx  注意该网段必须和上面设置的Host-only里面�
 就是前面必须是192.168.56开头  
 ![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/virtualbox_7.png?raw=true)
 NETMASK=255.255.255.0  
+同时注意修改名字为enp0s8,修改uuid的唯一
 
 
 保存修改，重启
