@@ -62,7 +62,7 @@ export GOBIN=$GOPATH/bin
 上面的代码中，我们都是使用export命令设置环境变量的，这样设置只能在当前shell中有效，如果想一直
 有效，如在Linux中，则应该将环境变量添加到/etc/profile等文件当中。
 
-### PATCH
+### PATH
 
 这个是环境变量的路径，上面介绍的我们要将GOROOT下面的bin目录，加入到PATH中，同时我们也要注意把
 GOPATH下面的bin也放进去，当然GOBIN加进去也行，毕竟GOBIN也是指向这个目录的，不然我们生成的可执
@@ -133,16 +133,6 @@ $ GOOS=linux GOARCH=amd64 go build main.go
 ````
 $ GOOS=android GOARCH=arm GOARM=7 go build main.go
 ````
-
-### 编译应用
-
-1、只要进入对应的应用包目录，然后执行go install，就可以安装了  
-
-2、在任意的目录执行如下代码go install ×××也可以安装
-
-安装完成之后会在pkg下面生成一个.a的编译文件，同时bin目录下面会有一个可执行文件，我们直接输入命令
-就可以执行了
-
 
 ### go build 
 这个命令主要用于编译代码。在包的编译过程中，若有必要，会同时编译与之相关联的包。  
