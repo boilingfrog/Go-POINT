@@ -189,3 +189,26 @@ go build默认执行是包里面全部的文件
 ### go test
 
 执行这个命令，会自动读取源码目录下面名为*_test.go的文件，生成并运行测试用的可执行文件
+
+### go clean
+
+这个命令是用来移除当前源码包和关联源码包里面编译生成的文件。这些文件包括  
+````
+_obj/            旧的object目录，由Makefiles遗留
+_test/           旧的test目录，由Makefiles遗留
+_testmain.go     旧的gotest文件，由Makefiles遗留
+test.out         旧的test记录，由Makefiles遗留
+build.out        旧的test记录，由Makefiles遗留
+*.[568ao]        object文件，由Makefiles遗留
+
+DIR(.exe)        由go build产生
+DIR.test(.exe)   由go test -c产生
+MAINFILE(.exe)   由go build MAINFILE.go产生
+*.so             由 SWIG 产生
+````
+参数介绍
+
+- -i 清除关联的安装的包和可运行文件，也就是通过go install安装的文件
+- -n 把需要执行的清除命令打印出来，但是不执行，这样就可以很容易的知道底层是如何运行的
+- -r 循环的清除在import中引入的包
+- -x 打印出来执行的详细命令，其实就是-n打印的执行版本
