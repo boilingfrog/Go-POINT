@@ -24,7 +24,7 @@ export PATH=$PATH:$GOROOT/bin
 
 go的工作目录  
 
-需要注意的是，我们一边设置GOPATH的路径一遍和GOROOT的路径不一样。  
+需要注意的是，我们一般设置GOPATH的路径和GOROOT的路径不一样。  
 
 环境变量GOPATH用于指定我们的开发工作区(workspace),是存放源代码、测试文件、库静态文件、可执行文
 件的工作。
@@ -61,6 +61,12 @@ export GOBIN=$GOPATH/bin
 ````
 上面的代码中，我们都是使用export命令设置环境变量的，这样设置只能在当前shell中有效，如果想一直
 有效，如在Linux中，则应该将环境变量添加到/etc/profile等文件当中。
+
+### PATCH
+
+这个是环境变量的路径，上面介绍的我们要将GOROOT下面的bin目录，加入到PATH中，同时我们也要注意把
+GOPATH下面的bin也放进去，当然GOBIN加进去也行，毕竟GOBIN也是指向这个目录的，不然我们生成的可执
+行文件文件就不能全局的被执行。
 
 ### 交叉编译
 
@@ -127,4 +133,5 @@ $ GOOS=linux GOARCH=amd64 go build main.go
 ````
 $ GOOS=android GOARCH=arm GOARM=7 go build main.go
 ````
+
 
