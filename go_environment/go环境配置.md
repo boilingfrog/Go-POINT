@@ -134,4 +134,54 @@ $ GOOS=linux GOARCH=amd64 go build main.go
 $ GOOS=android GOARCH=arm GOARM=7 go build main.go
 ````
 
+### 编译应用
 
+1、只要进入对应的应用包目录，然后执行go install，就可以安装了  
+
+2、在任意的目录执行如下代码go install ×××也可以安装
+
+安装完成之后会在pkg下面生成一个.a的编译文件，同时bin目录下面会有一个可执行文件，我们直接输入命令
+就可以执行了
+
+### 获取远程包
+
+go语言有一个获取远程包的工具就是go get，目前go get支持多数开源社区(例如：GitHub、googlecode、bitbucket、Launchpad)
+````
+go get github.com/astaxie/beedb
+````
+go get -u 参数可以自动更新包，而且当go get的时候会自动获取该包依赖的其他第三方包     
+
+通过这个命令可以获取相应的源码，对应的开源平台采用不同的源码控制工具，例如GitHub采用
+git、googlecode采用hg，所以要想获取这些源码，必须先安装相应的源码控制工具  
+
+go get本质上可以理解为首先第一步是通过源码工具clone代码到src下面，然后执行go install
+
+
+### go build 
+这个命令主要用于编译代码。在包的编译过程中，若有必要，会同时编译与之相关联的包。  
+- 普通的包：go build之后不会产生任何的文件，如果想要得到可执行的文件，就需要使用go install
+- main包：go build之后会在本目录生成可执行的文件。如果想要放到$GOPATH/bin中，则需要执行
+go install或go build -o 路径/a.exe
+- 项目里面有多个文件，我们只想执行其中的一个文件，就在go build后面加上文件的名，go build XX.go
+go build默认执行是包里面全部的文件
+- go build会忽略目录下以“_”或“.”开头的go文件。
+
+参数介绍  
+参数的介绍
+
+- -o 指定输出的文件名，可以带上路径，例如 go build -o a/b/c
+- -i 安装相应的包，编译+go install
+- -a 更新全部已经是最新的包的，但是对标准包不适用
+- -n 把需要执行的编译命令打印出来，但是不执行，这样就可以很容易的知道底层是如何运行的
+- -p n 指定可以并行可运行的编译数目，默认是CPU数目
+- -race 开启编译的时候自动检测数据竞争的情况，目前只支持64位的机器
+- -v 打印出来我们正在编译的包名
+- -work 打印出来编译时候的临时文件夹名称，并且如果已经存在的话就不要删除
+- -x 打印出来执行的命令，其实就是和-n的结果类似，只是这个会执行
+- -ccflags 'arg list' 传递参数给5c, 6c, 8c 调用
+- -compiler name 指定相应的编译器，gccgo还是gc
+- -gccgoflags 'arg list' 传递参数给gccgo编译连接调用
+- -gcflags 'arg list' 传递参数给5g, 6g, 8g 调用
+- -installsuffix suffix 为了和默认的安装包区别开来，采用这个前缀来重新安装那些依赖的包，-race的时候默认已经是-installsuffix race,大家可以通过-n命令来验证
+- -ldflags 'flag list' 传递参数给5l, 6l, 8l 调用
+- -tags 'tag list' 设置在编译的时候可以适配的那些tag，详细的tag限制参考里面的 Build Constraints
