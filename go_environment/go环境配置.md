@@ -143,19 +143,6 @@ $ GOOS=android GOARCH=arm GOARM=7 go build main.go
 安装完成之后会在pkg下面生成一个.a的编译文件，同时bin目录下面会有一个可执行文件，我们直接输入命令
 就可以执行了
 
-### 获取远程包
-
-go语言有一个获取远程包的工具就是go get，目前go get支持多数开源社区(例如：GitHub、googlecode、bitbucket、Launchpad)
-````
-go get github.com/astaxie/beedb
-````
-go get -u 参数可以自动更新包，而且当go get的时候会自动获取该包依赖的其他第三方包     
-
-通过这个命令可以获取相应的源码，对应的开源平台采用不同的源码控制工具，例如GitHub采用
-git、googlecode采用hg，所以要想获取这些源码，必须先安装相应的源码控制工具  
-
-go get本质上可以理解为首先第一步是通过源码工具clone代码到src下面，然后执行go install
-
 
 ### go build 
 这个命令主要用于编译代码。在包的编译过程中，若有必要，会同时编译与之相关联的包。  
@@ -167,7 +154,6 @@ go build默认执行是包里面全部的文件
 - go build会忽略目录下以“_”或“.”开头的go文件。
 
 参数介绍  
-参数的介绍
 
 - -o 指定输出的文件名，可以带上路径，例如 go build -o a/b/c
 - -i 安装相应的包，编译+go install
@@ -185,3 +171,31 @@ go build默认执行是包里面全部的文件
 - -installsuffix suffix 为了和默认的安装包区别开来，采用这个前缀来重新安装那些依赖的包，-race的时候默认已经是-installsuffix race,大家可以通过-n命令来验证
 - -ldflags 'flag list' 传递参数给5l, 6l, 8l 调用
 - -tags 'tag list' 设置在编译的时候可以适配的那些tag，详细的tag限制参考里面的 Build Constraints
+
+### go get
+这个命令是用来动态获取远程代码包的，目前支持的有BitBucket、GitHub、Google Code和Launchpad。这个命令在内部
+实际上分成了两步操作：第一步是下载源码包，第二步是执行go install。  
+
+参数介绍：
+
+- -d 只下载不安装
+- -f 只有在你包含了-u参数的时候才有效，不让-u去验证import中的每一个都已经获取了，这对于本地fork的包特别有用
+- -fix 在获取源码之后先运行fix，然后再去做其他的事情
+- -t 同时也下载需要为运行测试所需要的包
+- -u 强制使用网络去更新包和它的依赖包
+- -v 显示执行的命令
+
+### go install 
+
+这个命令在内部实际上分成了两步操作：第一步是生成结果文件(可执行文件或者.a包)，第二步会把编译好
+的结果移到$GOPATH/pkg或者$GOPATH/bin。
+
+参数支持go build的编译参数。
+
+### go run
+
+编译并运行Go程序
+
+### go test
+
+执行这个命令，会自动读取源码目录下面名为*_test.go的文件，生成并运行测试用的可执行文件
