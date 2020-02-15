@@ -178,7 +178,7 @@ go build默认执行是包里面全部的文件
 ### go install 
 
 这个命令在内部实际上分成了两步操作：第一步是生成结果文件(可执行文件或者.a包)，第二步会把编译好
-的结果移到$GOPATH/pkg或者$GOPATH/bin。其中bin下面放的是执行文件。
+的结果移到$GOPATH/pkg或者$GOPATH/bin。其中bin下面放的是可执行文件。
 
 参数支持go build的编译参数。
 
