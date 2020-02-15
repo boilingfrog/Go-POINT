@@ -212,3 +212,47 @@ MAINFILE(.exe)   由go build MAINFILE.go产生
 - -n 把需要执行的清除命令打印出来，但是不执行，这样就可以很容易的知道底层是如何运行的
 - -r 循环的清除在import中引入的包
 - -x 打印出来执行的详细命令，其实就是-n打印的执行版本
+
+### go generate
+
+go generate命令是go 1.4版本里面新添加的一个命令，当运行go generate时，它将
+扫描与当前包相关的源代码文件，找出所有包含"//go:generate"的特殊注释，提取并执
+行该特殊注释后面的命令，命令为可执行程序。有一点我们需要注意，这些命令是明确的，
+没有任何的依赖在里面。
+
+需要注意的点：
+- 该特殊注释必须在.go源码文件中。
+- 每个源码文件可以包含多个generate特殊注释时。
+- 显示运行go generate命令时，才会执行特殊注释后面的命令。
+- 命令串行执行的，如果出错，就终止后面的执行。
+- 特殊注释必须以"//go:generate"开头，双斜线后面没有空格。
+
+命令  
+````
+go generate [-run regexp] [-n] [-v] [-x] [build flags] [file.go... | packages]
+````
+- -run 正则表达式匹配命令行，仅执行匹配的命令
+- -v 输出被处理的包名和源文件名
+- -n 显示不执行命令
+- -x 显示并执行命令
+
+比如：
+````
+package main
+
+import "fmt"
+
+//go:generate echo hello
+//go:generate go run main.go
+//go:generate  echo file=$GOFILE pkg=$GOPACKAGE
+func main() {
+    fmt.Println("main func")
+}
+````
+输出
+````
+$ go generate 
+hello
+main func
+file=main.go pkg=main
+````
