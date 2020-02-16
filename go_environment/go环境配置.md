@@ -36,7 +36,14 @@ wget https://dl.google.com/go/go1.10.3.linux-amd64.tar.gz
 tar -C /usr/local -zxvf go1.10.3.linux-amd64.tar.gz
 ````
 4、设置GOROOT,GOPATH,PATH  
-见下文
+
+````
+vim /etc/profile
+export GOROOT=/usr/local/go  #设置为go安装的路径，有些安装包会自动设置默认的goroot
+export GOPATH=$HOME/go   #默认安装包的路径
+export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
+source /etc/profile
+````
 
 ### 环境中一些基本的配置项
 
