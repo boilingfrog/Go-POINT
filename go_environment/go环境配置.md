@@ -35,7 +35,7 @@ wget https://dl.google.com/go/go1.10.3.linux-amd64.tar.gz
 ````
 tar -C /usr/local -zxvf go1.10.3.linux-amd64.tar.gz
 ````
-4、设置GOROOT,GOPATH,PATH
+4、设置GOROOT,GOPATH,PATH  
 见下文
 
 ### 环境中一些基本的配置项
