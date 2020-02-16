@@ -16,4 +16,17 @@ v1.12 的 Go 版本中 gomod 是不能直接使用的。可以通过 go env 命�
 来判断是否已经开启了 gomod，如果没有开启，可以通过设置环境变量 export GO111MODULE=on 开启。  
 
 哈哈，是时候开始使用go module了  
+
+### 开启go mod
+
+GO111MODULE 有三个值：
+- on    打开
+- off   关闭
+- auto  默认值
+
+linux:  
+````  
+export GO111MODULE=on // 开启
+export GO111MODULE=of // 关闭
+````
  
