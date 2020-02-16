@@ -3,6 +3,41 @@
 ### 前言
 最近在工作中需要新配置go环境，每次都要去网上查找教程，浪费时间，那么就自己总结下。
 
+### 下载安装
+linux  
+Golang官网下载地址：https://golang.org/dl/  
+1、选择你要安装的版本
+````
+
+File name	Kind	OS	Arch	Size	SHA256 Checksum
+go1.13.8.src.tar.gz	Source			21MB	b13bf04633d4d8cf53226ebeaace8d4d2fd07ae6fa676d0844a688339debec34
+go1.13.8.darwin-amd64.tar.gz	Archive	macOS	x86-64	116MB	e7bad54950e1d18c716ac9202b5406e7d4aca9aa4ca9e334a9742f75c2167a9c
+go1.13.8.darwin-amd64.pkg	Installer	macOS	x86-64	116MB	358bf3bcae8eb6030b0d8551b9330ded4d98b56e80e8b7e85e1eb3672f63da99
+go1.13.8.linux-386.tar.gz	Archive	Linux	x86	97MB	2305c1c46b3eaf574c7b03cfa6b167c199a2b52da85872317438c90074fdb46e
+go1.13.8.linux-amd64.tar.gz	Archive	Linux	x86-64	115MB	0567734d558aef19112f2b2873caa0c600f1b4a5827930eb5a7f35235219e9d8
+go1.13.8.linux-armv6l.tar.gz	Archive	Linux	ARMv6	94MB	75f590d8e048a97cbf8b09837b15b3e6b44e1374718a96a5c3a994843ef44a4d
+go1.13.8.windows-386.zip	Archive	Windows	x86	109MB	00c765048392c78fd3681ea5279c408e21fc94f033a504a1158fc6279fb068e3
+go1.13.8.windows-386.msi	Installer	Windows	x86	96MB	6dd6078c7e0e950a8ab4e4efd02072f83ae165f5a98319988ec3ef75ab9cab85
+go1.13.8.windows-amd64.zip	Archive	Windows	x86-64	128MB	aaf0888907144ca7070c8dad03fcf1308f77a42d2f6e4d2a609e64e9ae73cf4f
+go1.13.8.windows-amd64.msi	Installer	Windows	x86-64	112MB	e31ee61f7df18e45b1ab304536c96f9bd98298891bc09c8a1316dc6747bf7adc
+Other Ports
+go1.13.8.freebsd-386.tar.gz	Archive	FreeBSD	x86	97MB	5e02b9d3a3b5d7c61d43eea80b27875a9350472ffcb80c08fad857076d670d8b
+go1.13.8.freebsd-amd64.tar.gz	Archive	FreeBSD	x86-64	115MB	d8ea8fa5f93ba66f1f011fe40706635a95d754704da68ec7c406ba52ed4ec93a
+go1.13.8.linux-arm64.tar.gz	Archive	Linux	ARMv8	93MB	b46c0235054d0eb69a295a2634aec8a11c7ae19b3dc53556a626b89dc1f8cdb0
+go1.13.8.linux-ppc64le.tar.gz	Archive	Linux	ppc64le	92MB	4c987b3969d33a93880a218064d2330d7f55c9b58698e78db6b56012058e91a9
+go1.13.8.linux-s390x.tar.gz	Archive	Linux	s390x	97MB	994f961df0d7bdbfa6f7eed604539acf9159444dabdff3ce8e938d095d85f756
+````
+2、下载安装包到本地
+````
+wget https://dl.google.com/go/go1.10.3.linux-amd64.tar.gz
+````
+3、执行tar解压到/usr/loacl目录下，得到go文件夹
+````
+tar -C /usr/local -zxvf go1.10.3.linux-amd64.tar.gz
+````
+4、设置GOROOT,GOPATH,PATH
+见下文
+
 ### 环境中一些基本的配置项
 
 ##### GOROOT
