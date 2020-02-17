@@ -66,7 +66,7 @@ package hello
 import "testing"
 
 func TestHello(t *testing.T) {
-	want := "Hello, world."
+	want := "你好，世界。"
 	if got := Hello(); got != want {
 		t.Errorf("Hello() = %q, want %q", got, want)
 	}
@@ -158,4 +158,96 @@ rsc.io/sampler v1.3.1
 ````
 哈哈，已经变成了v1.3.1，降级成功了。
 
-#### 3、清除不需要的依赖包
+
+### 3、更改使用的pkg
+让我们完成使用rsc的转换。rsc.io/quote 只使用rsc.io/quote/v3。首先我们看下 rsc.io/quote/v3支持的api，因为相比于rsc.io/quote，
+rsc.io/quote/v3所支持的api可能已经发生了改变。
+````
+$ go doc rsc.io/quote/v3
+package quote // import "rsc.io/quote"
+
+Package quote collects pithy sayings.
+
+func Concurrency() string
+func GlassV3() string
+func GoV3() string
+func HelloV3() string
+func OptV3() string
+````
+我们来更新我们的代码 hello.go
+````
+package hello
+
+import "rsc.io/quote/v3"
+
+func Hello() string {
+	return quote.HelloV3()
+}
+````
+然后执行go test
+````
+$ go test
+go: downloading rsc.io/quote/v3 v3.1.0
+go: extracting rsc.io/quote/v3 v3.1.0
+PASS
+ok      hello   0.003s
+````
+发现下载了rsc.io/quote/v3，并且成功运行
+
+#### 4、清除不需要的依赖包
+上面我们把rsc.io/quote换成了rsc.io/quote/v3，那么rsc.io/quote就已经不在需要了，这时候我们可以选择清除掉这些不需要的包
+````
+$ go list -m all
+hello
+golang.org/x/text v0.0.0-20170915032832-14c0d48ead0c
+rsc.io/quote v1.5.2
+rsc.io/quote/v3 v3.1.0
+rsc.io/sampler v1.3.1
+$ cat go.mod
+module hello
+
+go 1.13
+
+require (
+        rsc.io/quote v1.5.2
+        rsc.io/quote/v3 v3.1.0
+        rsc.io/sampler v1.3.1 // indirect
+)
+````
+我们知道go build(test)只会在运行的时候检查少了那些包，然后进行加载。但是不能确定何时可以安全地删除某些东西。 仅在检查模块中的所有软
+件包以及这些软件包的所有可能的构建标记组合之后，才能删除依赖项。普通的build命令不会加载此信息，因此它不能安全地删除依赖项。  
+可以使用go mod tidy清除不需要的包  
+````
+$ go mod tidy
+$ go list -m all
+hello
+golang.org/x/text v0.0.0-20170915032832-14c0d48ead0c
+rsc.io/quote/v3 v3.1.0
+rsc.io/sampler v1.3.1
+$ cat go.mod
+module hello
+
+go 1.13
+
+require (
+        rsc.io/quote/v3 v3.1.0
+        rsc.io/sampler v1.3.1 // indirect
+)
+$ go test
+PASS
+ok      hello   0.003s
+````
+### GoProxy
+proxy 顾名思义，代理服务器。对于国内的网络环境，有些包是下载不下来的，当然有的人会用梯子去解决。go官方也意识到了这一点，提供了GOPROXY
+的方法让我们下载包。要使用 GoProxy 只需要设置环境变量 GOPROXY 即可。目前公开的 GOPROXY 有：
+  
+- goproxy.io
+- goproxy.cn: 由七牛云提供，这是一个应届生发起的项目，好强
+
+当然你也可以实现自己的 GoProxy 服务，比如项目中的依赖包含外部依赖和内部依赖的时候，那么只需要实现 module proxy protocal 协议即可。
+
+值得注意的是，在最新 release 的 Go 1.13 版本中默认将 GOPROXY 设置为 https://proxy.golang.org，这个对于国内的开发者是无法直接
+使用的。所以如果升级了 Go 1.13 版本一定要把 GOPROXY 手动改掉。
+````
+export GOPROXY=https://goproxy.io
+````
