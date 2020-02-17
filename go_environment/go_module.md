@@ -122,12 +122,40 @@ go list -m -versions package
 $  go list -m -versions rsc.io/sampler
 rsc.io/sampler v1.0.0 v1.2.0 v1.2.1 v1.3.0 v1.3.1 v1.99.99
 ````
-版本升级（降级）：
+查看当前的版本：
+````
+$ go list -m all
+hello
+golang.org/x/text v0.0.0-20170915032832-14c0d48ead0c
+rsc.io/quote v1.5.2
+rsc.io/sampler v1.3.1
+````
+可以发现　rsc.io/sampler　现在的版本是v1.3.1，那么他最高支持的是v1.99.99  
+版本升级：
+````
+$ go get rsc.io/sampler
+go: finding rsc.io/sampler v1.99.99
+go: downloading rsc.io/sampler v1.99.99
+go: extracting rsc.io/sampler v1.99.99
+````
+当我们没有选择升级的版本，默认的版本就是最高的  
+升级完成之后我们再来查看当前的版本
+````
+$ go list -m all
+hello
+golang.org/x/text v0.0.0-20170915032832-14c0d48ead0c
+rsc.io/quote v1.5.2
+rsc.io/sampler v1.99.99
+````
+rsc.io/sampler的版本已经变成了v1.99.99，同样我们也可以对它的版本进行降级，方法和升级的方法一样  
 ````
 $ go get rsc.io/sampler@v1.3.1
-go: finding rsc.io/sampler v1.3.1
-go: downloading rsc.io/sampler v1.3.1
-go: extracting rsc.io/sampler v1.3.1
+$ go list -m all
+hello
+golang.org/x/text v0.0.0-20170915032832-14c0d48ead0c
+rsc.io/quote v1.5.2
+rsc.io/sampler v1.3.1
 ````
+哈哈，已经变成了v1.3.1，降级成功了。
 
 #### 3、清除不需要的依赖包
