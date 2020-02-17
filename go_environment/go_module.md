@@ -31,6 +31,9 @@ export GO111MODULE=of // 关闭
 ````
  
 ### 简单使用  
+
+#### 1、初始化
+
 需要注意的是：我们使用go mod不要在GOPATH目录下面
 
 我们在GOPATH以为的目录建立一个项目hello，然后在根目录下面执行
@@ -95,5 +98,36 @@ FAIL    hello   0.003s
 这时候有些包是不能下载的，比如golang.org/x下的包，这时候可以使用代理的方式解决，go也提供了GoProxy
 来帮助我们做这些事情，具体看下文GoProxy。
 
+#### 2、依赖升级（降级）
 
+可以使用如下命令来查看当前项目依赖的所有的包。
+````
+$ go list -m all
+hello
+golang.org/x/text v0.0.0-20170915032832-14c0d48ead0c
+rsc.io/quote v1.5.2
+rsc.io/sampler v1.3.0
+````
+如果我们想要升级（降级）某个package则只需要go get就可以了，比如：
+````
+go get package@version
+````
+同时我们可以可以查看这个包所支持的版本，选择合适的进行升级
+````
+go list -m -versions package
+````
+栗子：  
+版本查看：
+````
+$  go list -m -versions rsc.io/sampler
+rsc.io/sampler v1.0.0 v1.2.0 v1.2.1 v1.3.0 v1.3.1 v1.99.99
+````
+版本升级（降级）：
+````
+$ go get rsc.io/sampler@v1.3.1
+go: finding rsc.io/sampler v1.3.1
+go: downloading rsc.io/sampler v1.3.1
+go: extracting rsc.io/sampler v1.3.1
+````
 
+#### 3、清除不需要的依赖包
