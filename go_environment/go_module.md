@@ -20,9 +20,9 @@ v1.12 的 Go 版本中 gomod 是不能直接使用的。可以通过 go env 命�
 ### 开启go mod
 
 GO111MODULE 有三个值：
-- on    打开
+- on    打开，不会去 GOPATH 下面查找依赖包。
 - off   关闭
-- auto  默认值
+- auto  Golang 自己检测是不是使用 modules 功能。
 
 linux:  
 ````  
@@ -251,3 +251,14 @@ proxy 顾名思义，代理服务器。对于国内的网络环境，有些包�
 ````
 export GOPROXY=https://goproxy.io
 ````
+
+### 总结
+ Go 1.11之后的版本都支持go module了， modules 在 Go 1.13 的版本下是默认开启的。国内使用需要修改GoProxy的代理。  
+ 下面是经常使用到的命令：
+ ````
+go mod init 创建初始化go module  
+go build, go test 运行的时候就会加载所需要的依赖项
+go list -m all 打印档当前模块所有的依赖
+go get 更改模块依赖的版本
+go mod tidy 删除不适用的依赖
+`````
