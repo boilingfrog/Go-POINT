@@ -262,3 +262,7 @@ go list -m all 打印档当前模块所有的依赖
 go get 更改模块依赖的版本
 go mod tidy 删除不适用的依赖
 `````
+
+### 参考
+【Using Go Modules】https://blog.golang.org/using-go-modules  
+【Go Modules 不完全教程】https://mp.weixin.qq.com/s/v-NdYEJBgKbiKsdoQaRsQg
