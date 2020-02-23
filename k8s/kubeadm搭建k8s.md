@@ -201,5 +201,51 @@ $ kubectl describe secrets -n kube-system $(kubectl -n kube-system get secret | 
 [INFO] ------------------------------------------------------------------------s
 ````
 
+### 构建项目镜像
+基于运行镜像，加上编译好的软件，构建成项目镜像  
+然后将项目镜像推送到镜像仓库中  
+````
+# docker build -t liz2019/java-demo -f Dockerfile  .
+Sending build context to Docker daemon  44.08MB
+Step 1/4 : FROM lizhenliang/tomcat
+ ---> 143035d83fdc
+Step 2/4 : LABEL maintainer www.ctnrs.com
+ ---> Using cache
+ ---> 2b390f13c2ba
+Step 3/4 : RUN rm -rf /usr/local/tomcat/webapps/*
+ ---> Using cache
+ ---> 890c458f351f
+Step 4/4 : ADD target/*.war /usr/local/tomcat/webapps/ROOT.war
+ ---> 0b468bd508d3
+Successfully built 0b468bd508d3
+Successfully tagged liz2019/java-demo:latest
+````
+上面将生成的war包拷贝到了镜像里面了
+````
+# docker images
+REPOSITORY                                                        TAG                 IMAGE ID            CREATED              SIZE
+liz2019/java-demo                                                 latest              0b468bd508d3  
+````
+然后推到远程的镜像仓库
+
+````
+# docker login
+# docker push liz2019/java-demo
+The push refers to repository [docker.io/liz2019/java-demo]
+3ad7a6d76327: Pushed 
+66314d412c5e: Layer already exists 
+ceead5ca823f: Layer already exists 
+2353c173a26a: Layer already exists 
+071d8bd76517: Layer already exists 
+latest: digest: sha256:3dc7429b1458a50406e82ec833934e0e5995f5cf514bcaaf41cd40219c6d0a89 size: 1371
+````
+### 控制器管理pod
+
+部署镜像到k8s,生成yaml
+````
+# kubectl create deployment java-demo --image=liz2019/java-demo --dry-run -o yaml >deploy.yaml
+# kubectl apply -f deploy.yaml 
+deployment.apps/java-demo created
+````
 
 
