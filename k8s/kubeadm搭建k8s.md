@@ -248,4 +248,11 @@ latest: digest: sha256:3dc7429b1458a50406e82ec833934e0e5995f5cf514bcaaf41cd40219
 deployment.apps/java-demo created
 ````
 
+### 暴露应用
+````
+# kubectl expose deployment java-demo --port=80 --target-port=8080 --type=NodePort -o yaml --dry-run > svc.yaml
+# kubectl apply -f svc.yaml 
+service/java-demo created
+````
+
 
