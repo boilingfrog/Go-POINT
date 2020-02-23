@@ -201,7 +201,7 @@ $ kubectl describe secrets -n kube-system $(kubectl -n kube-system get secret | 
 [INFO] ------------------------------------------------------------------------s
 ````
 
-### 构建项目镜像
+#### 构建项目镜像
 基于运行镜像，加上编译好的软件，构建成项目镜像  
 然后将项目镜像推送到镜像仓库中  
 ````
@@ -239,7 +239,7 @@ ceead5ca823f: Layer already exists
 071d8bd76517: Layer already exists 
 latest: digest: sha256:3dc7429b1458a50406e82ec833934e0e5995f5cf514bcaaf41cd40219c6d0a89 size: 1371
 ````
-### 控制器管理pod
+### 2、控制器管理pod
 
 部署镜像到k8s,生成yaml
 ````
@@ -248,7 +248,7 @@ latest: digest: sha256:3dc7429b1458a50406e82ec833934e0e5995f5cf514bcaaf41cd40219
 deployment.apps/java-demo created
 ````
 
-### 暴露应用
+### 3、暴露应用
 ````
 # kubectl expose deployment java-demo --port=80 --target-port=8080 --type=NodePort -o yaml --dry-run > svc.yaml
 # kubectl apply -f svc.yaml 
