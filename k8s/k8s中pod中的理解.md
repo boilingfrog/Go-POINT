@@ -35,7 +35,9 @@ Pod 是 Kubernetes 集群中能够被创建和管理的最小部署单元,它是
 为什么要共享存储呢?  
 pod的生命周期短暂的，随时可能被删除和重启，当一个pod　　
 
+![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/pod_1.png?raw=true)
 
+ 
 ##### 共享网络
 
 
