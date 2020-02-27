@@ -39,7 +39,12 @@ pod的生命周期短暂的，随时可能被删除和重启，当一个pod被�
 
 ##### 共享网络
 同一个pod的多个容器，会被共同分配到同一个Host上共享网络栈。所以pod里面的容器通过localhost就可以通信了。当然这也从侧面
-说明了，为什么pod是为了亲密性的应用而生的。 
+说明了，为什么pod是为了亲密性的应用而生的。   
+docker的4中网络模式，其中有一种模式是container模式，它能够让很多容器共享一个网络名称空间， 具体的原理是先使用briage模式启动第一个容器， 之后
+启动的其他容器纷纷使用container模式将网络环境绑定到这第一个容器上。这样这些容器的网络就连接到了一起，他们互相可以使用
+localhost这种方式进行网络通信。  
+![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/pod_2.png?raw=true) 
+
 ````
 // RunPodSandbox creates and starts a pod-level sandbox. Runtimes should ensure
 // the sandbox is in ready state.
