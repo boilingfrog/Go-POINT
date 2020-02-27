@@ -45,6 +45,12 @@ docker的4中网络模式，其中有一种模式是container模式，它能够�
 localhost这种方式进行网络通信。  
 ![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/pod_2.png?raw=true) 
 
+如上图所示，这个 Pod 里有两个用户容器 A 和 B，还有一个infra container， 它也叫做pause容器，也被称为sandbox， 意思是沙箱，这个沙箱为其他
+容器提供共享的网络和文件挂载资源。 pod在启动的时候Infrastructure Container是第一个启动的容器，也叫做pause容器，也被称为sandbox。之后才启动
+InitContainers初始化容器和Containers业务容器。而当这个容器被创建出来并hold住Network Namespace之后，其他由用户自己定义的容器就可以通过
+container模式加入到这个容器的Network Namespace中。这也就意味着，对于在一个POD中的容器A和容器B来说，他们拥有相同的IP地址，可以通过
+localhost进行互相通信。   
+
 ````
 // RunPodSandbox creates and starts a pod-level sandbox. Runtimes should ensure
 // the sandbox is in ready state.
