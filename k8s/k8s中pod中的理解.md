@@ -105,8 +105,10 @@ func (vm *volumeManager) WaitForAttachAndMount(pod *v1.Pod) error {
 	return nil
 }
 ````
+ <img src="https://github.com/zhan-liz/Go-POINT/blob/master/img/pod_1.png" width = "300" height = "200" alt="图片名称" align=center />
 
 
+ <img src="../img/pod_1.png" width = "300" height = "200" alt="图片名称" align=center />
 
 
 ![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/pod_1.png?raw=100x100)
