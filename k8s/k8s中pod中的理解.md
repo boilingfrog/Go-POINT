@@ -109,7 +109,7 @@ func (vm *volumeManager) WaitForAttachAndMount(pod *v1.Pod) error {
 
 
 
-![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/pod_1.png?raw=true)
+![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/pod_1.png?raw=100x100)
 
 ##### 共享网络
 同一个pod的多个容器，会被共同分配到同一个Host上共享网络栈。所以pod里面的容器通过localhost就可以通信了。当然这也从侧面
