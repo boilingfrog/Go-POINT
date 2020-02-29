@@ -78,28 +78,6 @@ func (ds *dockerService) RunPodSandbox(ctx context.Context, r *runtimeapi.RunPod
 	if r.GetRuntimeHandler() != "" && r.GetRuntimeHandler() != runtimeName {
 		return nil, fmt.Errorf("RuntimeHandler %q not supported", r.GetRuntimeHandler())
 	}
-	createConfig, err := ds.makeSandboxDockerConfig(config, image)
-	if err != nil {
-		return nil, fmt.Errorf("failed to make sandbox docker config for pod %q: %v", config.Metadata.Name, err)
-	}
-	createResp, err := ds.client.CreateContainer(*createConfig)
-	if err != nil {
-		createResp, err = recoverFromCreationConflictIfNeeded(ds.client, *createConfig, err)
-	}
-
-	if err != nil || createResp == nil {
-		return nil, fmt.Errorf("failed to create a sandbox for pod %q: %v", config.Metadata.Name, err)
-	}
-	resp := &runtimeapi.RunPodSandboxResponse{PodSandboxId: createResp.ID}
-
-	ds.setNetworkReady(createResp.ID, false)
-	defer func(e *error) {
-		// Set networking ready depending on the error return of
-		// the parent function
-		if *e == nil {
-			ds.setNetworkReady(createResp.ID, true)
-		}
-	}(&err)
 
 	// Step 3: Create Sandbox Checkpoint.
 	if err = ds.checkpointManager.CreateCheckpoint(createResp.ID, constructPodSandboxCheckpoint(config)); err != nil {
@@ -130,12 +108,6 @@ func (ds *dockerService) RunPodSandbox(ctx context.Context, r *runtimeapi.RunPod
 			return nil, fmt.Errorf("rewrite resolv.conf failed for pod %q: %v", config.Metadata.Name, err)
 		}
 	}
-
-	// Do not invoke network plugins if in hostNetwork mode.
-	if config.GetLinux().GetSecurityContext().GetNamespaceOptions().GetNetwork() == runtimeapi.NamespaceMode_NODE {
-		return resp, nil
-	}
-
 	// Step 5: Setup networking for the sandbox.
 	// All pod networking is setup by a CNI plugin discovered at startup time.
 	// This plugin assigns the pod ip, sets up routes inside the sandbox,
@@ -152,24 +124,6 @@ func (ds *dockerService) RunPodSandbox(ctx context.Context, r *runtimeapi.RunPod
 			return nil, fmt.Errorf("failed to marshal dns config for pod %q: %v", config.Metadata.Name, err)
 		}
 		networkOptions["dns"] = string(dnsOption)
-	}
-	err = ds.network.SetUpPod(config.GetMetadata().Namespace, config.GetMetadata().Name, cID, config.Annotations, networkOptions)
-	if err != nil {
-		errList := []error{fmt.Errorf("failed to set up sandbox container %q network for pod %q: %v", createResp.ID, config.Metadata.Name, err)}
-
-		// Ensure network resources are cleaned up even if the plugin
-		// succeeded but an error happened between that success and here.
-		err = ds.network.TearDownPod(config.GetMetadata().Namespace, config.GetMetadata().Name, cID)
-		if err != nil {
-			errList = append(errList, fmt.Errorf("failed to clean up sandbox container %q network for pod %q: %v", createResp.ID, config.Metadata.Name, err))
-		}
-
-		err = ds.client.StopContainer(createResp.ID, defaultSandboxGracePeriod)
-		if err != nil {
-			errList = append(errList, fmt.Errorf("failed to stop sandbox container %q for pod %q: %v", createResp.ID, config.Metadata.Name, err))
-		}
-
-		return resp, utilerrors.NewAggregate(errList)
 	}
 
 	return resp, nil
