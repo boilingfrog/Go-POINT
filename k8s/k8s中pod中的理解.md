@@ -127,9 +127,25 @@ func (ds *dockerService) RunPodSandbox(ctx context.Context, r *runtimeapi.RunPod
 pod在运行的过程中会被定义为各种状态，了解一些状态能帮助我们了解pod的调度策略。  
 当 Pod 被创建之后，就会进入健康检查状态，当 Kubernetes 确定当前 Pod 已经能够接受外部的请求时，才会将流量打到
 新的 Pod 上并继续对外提供服务，在这期间如果发生了错误就可能会触发重启机制。  
-pod的重启侧罗包括  
+pod的重启策略包括  
 - Always 只要失败，就会治重启
 - OnFile 当容器终止运行，且退出吗不是0，就会重启
 - Never  从来不会重启
 
 重启的时间，是以2n来算。比如1,2,4,8.....最长延迟５分钟，并且在成功重启后的10分钟重置这个时间。
+
+管理pod的重启策略是靠控制器来完成的  
+- ReplicationController
+ReplicationController用来确保容器应用副本数始终保持在用户定义的副本数，即如果有容器异常退出，会自动创建新的pod
+来代替；而如果异常多出来的容器也会自动回收。在新版本的k8s中建议使用ReplicaSet来取代ReplicationController。  
+- ReplicaSet
+ReplicaSet和ReplicationController没有本质区别，只是名字名字不一样，并且ReplicaSet支持集合式的selector  
+
+虽然ReplicaSet可以独立使用，单一般还是建议使用Deployment来自动管理ReplicaSet。这样就无需担心跟其他机制不兼容
+的问题（比如ReplicaSet不支持roling-update但ReplicaSet支持）
+
+### pod的健康检查
+对于pod的健康检查一般有两种探针来进行操作  
+- LivenessProbe探针：用于判断容器是否存活（Running状态），LivenessProbe如果检测到容器不健康，那么就会杀掉该容器
+，然后根据重启策略进行相应的操作。
+
