@@ -105,11 +105,7 @@ func (vm *volumeManager) WaitForAttachAndMount(pod *v1.Pod) error {
 	return nil
 }
 ````
-
- <img src="../img/pod_1.png" width = "500" height = "300" alt="图片名称" align=center />
- 
-
-![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/pod_1.png?raw=100x100)
+<img src="../img/pod_1.png" width = "500" height = "300" alt="图片名称" align=center />
 
 ##### 共享网络
 同一个pod的多个容器，会被共同分配到同一个Host上共享网络栈。所以pod里面的容器通过localhost就可以通信了。当然这也从侧面
@@ -117,7 +113,8 @@ func (vm *volumeManager) WaitForAttachAndMount(pod *v1.Pod) error {
 docker的4中网络模式，其中有一种模式是container模式，它能够让很多容器共享一个网络名称空间， 具体的原理是先使用briage模式启动第一个容器， 之后
 启动的其他容器纷纷使用container模式将网络环境绑定到这第一个容器上。这样这些容器的网络就连接到了一起，他们互相可以使用
 localhost这种方式进行网络通信。  
-![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/pod_2.png?raw=true) 
+  
+<img src="../img/pod_2.png" width = "500" height = "300" alt="图片名称" align=center />
 
 如上图所示，这个 Pod 里有两个用户容器 A 和 B，还有一个infra container， 它也叫做pause容器，也被称为sandbox， 意思是沙箱，这个沙箱为其他
 容器提供共享的网络和文件挂载资源。 pod在启动的时候Infrastructure Container是第一个启动的容器，也叫做pause容器，也被称为sandbox。之后才启动
