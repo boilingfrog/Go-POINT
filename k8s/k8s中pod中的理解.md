@@ -58,7 +58,7 @@ Pod 是 Kubernetes 集群中能够被创建和管理的最小部署单元,它是
 为什么要共享存储呢?  
 pod的生命周期短暂的，随时可能被删除和重启，当一个pod被删除了，又启动一个pod，共享公共的存储卷，以至于信息不会丢失。
 
-<img src="../img/pod_1.png" width = "500" height = "300" alt="图片名称" align=center />
+<img src="../img/pod_1.png" width = "100%" height = "300" alt="图片名称" align=center />
 
 ##### 共享网络
 同一个pod的多个容器，会被共同分配到同一个Host上共享网络栈。所以pod里面的容器通过localhost就可以通信了。当然这也从侧面
