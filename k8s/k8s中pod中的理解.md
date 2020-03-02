@@ -145,7 +145,8 @@ ReplicaSet和ReplicationController没有本质区别，只是名字名字不一�
 的问题（比如ReplicaSet不支持roling-update但Deployment支持）
 
 ### pod的健康检查
-对于pod的健康检查一般有两种探针来进行操作  
+对于pod的健康检查一般有两种探针来进行操作,果我们配置了合适的健康检查方法和规则，那么就不会出现服务未启动就被打入流量
+或者长时间未响应依然没有重启等问题。
 - LivenessProbe探针：用于判断容器是否存活（Running状态），LivenessProbe如果检测到容器不健康，那么就会杀掉该容器
 ，然后根据重启策略进行相应的操作。如果一个容器中不含有探针，那么会Kubelet会认为该容器的LivenessProbe探针的值返回
 永远是“success”。
