@@ -147,5 +147,15 @@ ReplicaSet和ReplicationController没有本质区别，只是名字名字不一�
 ### pod的健康检查
 对于pod的健康检查一般有两种探针来进行操作  
 - LivenessProbe探针：用于判断容器是否存活（Running状态），LivenessProbe如果检测到容器不健康，那么就会杀掉该容器
-，然后根据重启策略进行相应的操作。
+，然后根据重启策略进行相应的操作。如果一个容器中不含有探针，那么会Kubelet会认为该容器的LivenessProbe探针的值返回
+永远是“success”。
+- ReadinessProbe:用于判断是否启动完成（ready状态），可以接收请求。
+
+Kubelet定期执行LivenessProbe来检查容器的状态，一般有三种的实现方式:
+
+- ExecAction:在容器内部执行一个命令，如果该命令的返回码为0，则表示健康。
+- TcpSocketAction:通过容器的IP地址和端口号执行TCP检查。如果能建立ＴＣＰ连接，就表示健康。
+- HTTPGetAction:通过容器的IP地址、端口及路径调用HTTP Get方法，如果相应的状态码大于等于200且小于等于400，则认为】
+容器是健康状态。 
+
 
