@@ -142,7 +142,7 @@ ReplicationController用来确保容器应用副本数始终保持在用户定�
 ReplicaSet和ReplicationController没有本质区别，只是名字名字不一样，并且ReplicaSet支持集合式的selector  
 
 虽然ReplicaSet可以独立使用，单一般还是建议使用Deployment来自动管理ReplicaSet。这样就无需担心跟其他机制不兼容
-的问题（比如ReplicaSet不支持roling-update但ReplicaSet支持）
+的问题（比如ReplicaSet不支持roling-update但Deployment支持）
 
 ### pod的健康检查
 对于pod的健康检查一般有两种探针来进行操作  
@@ -155,7 +155,7 @@ Kubelet定期执行LivenessProbe来检查容器的状态，一般有三种的实
 
 - ExecAction:在容器内部执行一个命令，如果该命令的返回码为0，则表示健康。
 - TcpSocketAction:通过容器的IP地址和端口号执行TCP检查。如果能建立ＴＣＰ连接，就表示健康。
-- HTTPGetAction:通过容器的IP地址、端口及路径调用HTTP Get方法，如果相应的状态码大于等于200且小于等于400，则认为】
+- HTTPGetAction:通过容器的IP地址、端口及路径调用HTTP Get方法，如果相应的状态码大于等于200且小于等于400，则认为
 容器是健康状态。 
 
 
