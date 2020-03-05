@@ -45,6 +45,7 @@ https://api.example.com/v1/employees
 对于资源的具体操作类型，由HTTP动词表示。  
 
 常用的HTTP动词有下面五个（括号里是对应的SQL命令）。   
+
 ````
 GET（SELECT）：从服务器取出资源（一项或多项）。
 POST（CREATE）：在服务器新建一个资源。
