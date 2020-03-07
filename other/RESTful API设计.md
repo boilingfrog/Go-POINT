@@ -132,5 +132,18 @@ RFC 3986将URI定义为区分大小写，但scheme 和 host components除外。
 
 如果删除操作成功，Web 服务器应以 HTTP 状态代码 204 做出响应，指示已成功处理该过程，但响应正文不包含其他信息。 如果资源不存在，Web 服务器可以返回 HTTP 404（未找到）。
 
+### 幂等性
+
+Method  | Description                                                                                                                | Is Idempotent
+------- | -------------------------------------------------------------------------------------------------------------------------- | -------------
+GET     | Return the current value of an object                                                                                      | True
+PUT     | Replace an object, or create a named object, when applicable                                                               | True
+DELETE  | Delete an object                                                                                                           | True
+POST    | Create a new object based on the data provided, or submit a command                                                        | False
+HEAD    | Return metadata of an object for a GET response. Resources that support the GET method MAY support the HEAD method as well | True
+PATCH   | Apply a partial update to an object                                                                                        | False
+OPTIONS | Get information about a request; see below for details.                                                                    | True
+
+
 ### 参考  
 【微软AZURE Web API 设计】https://docs.microsoft.com/zh-cn/azure/architecture/best-practices/api-design  
