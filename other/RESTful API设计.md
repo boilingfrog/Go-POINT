@@ -105,6 +105,11 @@ DELETE /zoos/ID/animals/ID：删除某个指定动物园的指定动物
 在Restful架构中，每个网址代表的是一种资源，所以网址中不能有动词，只能有名词，动词由HTTP的 get、post、put、delete
  四种方法来表示。
 
+### 避免层级过深的URI
+
+过深的导航容易导致url膨胀，不易维护，如`` GET /zoos/1/areas/3/animals/4``，尽量使用查询参数代替路径中的实体
+导航，如``GET /animals?zoo=1&area=3``
+
 ### URL路径中首选小写字母
 
 RFC 3986将URI定义为区分大小写，但scheme 和 host components除外。
@@ -132,6 +137,10 @@ RFC 3986将URI定义为区分大小写，但scheme 和 host components除外。
 
 如果删除操作成功，Web 服务器应以 HTTP 状态代码 204 做出响应，指示已成功处理该过程，但响应正文不包含其他信息。 如果资源不存在，Web 服务器可以返回 HTTP 404（未找到）。
 
+### PATCH 方法
+
+PATCH方法是新引入的，是对PUT方法的补充，用来对已知资源进行局部更新
+
 ### 幂等性
 
 #### 什么是幂等性
@@ -144,7 +153,10 @@ GET     | TRUE                                     | True
 PUT     | FALSE                                    | True
 DELETE  | FALSE                                    | True
 POST    | FALSE                                    | False
+PATCH   | FALSE                                    | False
 
 
 ### 参考  
-【微软AZURE Web API 设计】https://docs.microsoft.com/zh-cn/azure/architecture/best-practices/api-design  
+【Microsoft Web API 设计】https://github.com/Microsoft/api-guidelines/blob/master/Guidelines.md#71-url-structure  
+【RESTful API 设计指南】http://www.ruanyifeng.com/blog/2014/05/restful_api.html  
+【Restful API 的设计规范】https://novoland.github.io/%E8%AE%BE%E8%AE%A1/2015/08/17/Restful%20API%20%E7%9A%84%E8%AE%BE%E8%AE%A1%E8%A7%84%E8%8C%83.html  
