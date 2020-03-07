@@ -138,7 +138,7 @@ RFC 3986将URI定义为区分大小写，但scheme 和 host components除外。
 幂等性是指一次和多次请求某一个资源应该具有同样的效果。  
 
 
-Method  | Description                                                                                                                | Is Idempotent
+方法　   | 描述                                                                                                                        | 是否幂等性
 ------- | -------------------------------------------------------------------------------------------------------------------------- | -------------
 GET     | Return the current value of an object                                                                                      | True
 PUT     | Replace an object, or create a named object, when applicable                                                               | True
