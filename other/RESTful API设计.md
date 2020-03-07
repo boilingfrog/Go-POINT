@@ -138,15 +138,12 @@ RFC 3986将URI定义为区分大小写，但scheme 和 host components除外。
 幂等性是指一次和多次请求某一个资源应该具有同样的效果。  
 
 
-方法　   | 描述                                                                                                                        | 是否幂等性
-------- | -------------------------------------------------------------------------------------------------------------------------- | -------------
-GET     | Return the current value of an object                                                                                      | True
-PUT     | Replace an object, or create a named object, when applicable                                                               | True
-DELETE  | Delete an object                                                                                                           | True
-POST    | Create a new object based on the data provided, or submit a command                                                        | False
-HEAD    | Return metadata of an object for a GET response. Resources that support the GET method MAY support the HEAD method as well | True
-PATCH   | Apply a partial update to an object                                                                                        | False
-OPTIONS | Get information about a request; see below for details.                                                                    | True
+方法　   | 是否安全                                  | 是否幂等性
+------- | ---------------------------------------- | -------------
+GET     | TRUE                                     | True
+PUT     | FALSE                                    | True
+DELETE  | FALSE                                    | True
+POST    | FALSE                                    | False
 
 
 ### 参考  
