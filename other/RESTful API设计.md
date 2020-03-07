@@ -155,6 +155,11 @@ DELETE  | FALSE                                    | True
 POST    | FALSE                                    | False
 PATCH   | FALSE                                    | False
 
+### 总结
+
+api的设计还是一门很深的学问，是我们代码设计的一种体现。对于其中的重要几点，使用名词的复数，命名的简洁，api设计的
+直观性。经过认真的思考，我们都可以设计出优雅的api。
+
 
 ### 参考  
 【Microsoft Web API 设计】https://github.com/Microsoft/api-guidelines/blob/master/Guidelines.md#71-url-structure  
