@@ -1,6 +1,6 @@
 - [defer](#defer)
-  * [前言](#--)
-  * [defer的定义](#defer---)
+  * [前言](#前言)
+  * [defer的定义](#defer)
 
 <small><i><a href='http://ecotrust-canada.github.io/markdown-toc/'>Table of contents generated with markdown-toc</a></i></small>
 
