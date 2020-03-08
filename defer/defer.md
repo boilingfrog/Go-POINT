@@ -20,5 +20,73 @@ defer用于延迟指定的函数，只能出现在函数的内部，由defer关�
 - 当执行外围函数的return语句时，只有其中所有的延迟函数都执行完毕后，该外围函数才会真正的返回。
 - 当外围函数中的代码引起运行恐慌时，只有当其中所有的延迟函数u调用到都执行完毕后，该运行恐慌才会真正被扩散至调用函数。
 
+### 为什么需要defer
+
+程序员在编程的时候，经常需要打开一些资源，比如数据库连接、文件、锁等，这些资源需要在用完之后释放掉，否则会造成内存泄漏。  
+
+但是程序员都是人，是人就会犯错。因此经常有程序员忘记关闭这些资源。Golang直接在语言层面提供defer关键字，在打开资源语句的
+下一行，就可以直接用defer语句来注册函数结束后执行关闭资源的操作。因为这样一颗“小小”的语法糖，程序员忘写关闭资源语句的情
+况就大大地减少了。  
+
+展示下我的错误的代码：  
+
+````go
+	wg.Add(len(hostMap))
+	for _, item := range hostMap {
+		go func(host string, port int64) {
+			cli, err := h.NewSyntecAuthCli(host, port)
+			if err != nil {
+                wg.Done()
+				errFlag = true
+				h.Log.Warn(err)
+				res = apierror.HandleError(err)
+				return
+			}
+
+			result, err := cli.GetMachineListAll(h.Ctx, &params)
+			if err != nil {
+                wg.Done()
+				errFlag = true
+				h.Log.Warn(err)
+				res = apierror.HandleError(err)
+				return
+			}
+            wg.Done()
+			output.Result = append(output.Result, result.Result...)
+		}(item.Host, item.Port)
+	}
+	wg.Wait()
+
+````
+如果不使用defer那么就要在每个err里面加上 `wg.Done()`，当然这也是很容易忘记的。有defer
+的存在就不一样了。我们只用在函数里面加上defer就好了。
+
+````go
+	wg.Add(len(hostMap))
+	for _, item := range hostMap {
+		go func(host string, port int64) {
+            defer  wg.Done()
+			cli, err := h.NewSyntecAuthCli(host, port)
+			if err != nil {
+				errFlag = true
+				h.Log.Warn(err)
+				res = apierror.HandleError(err)
+				return
+			}
+
+			result, err := cli.GetMachineListAll(h.Ctx, &params)
+			if err != nil {
+				errFlag = true
+				h.Log.Warn(err)
+				res = apierror.HandleError(err)
+				return
+			}
+			output.Result = append(output.Result, result.Result...)
+		}(item.Host, item.Port)
+	}
+	wg.Wait()
+
+````
+
 ### 参考
 【go语言并发编程实战】 
