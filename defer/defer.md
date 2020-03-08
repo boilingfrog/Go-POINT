@@ -34,9 +34,10 @@ defer用于延迟指定的函数，只能出现在函数的内部，由defer关�
 	wg.Add(len(hostMap))
 	for _, item := range hostMap {
 		go func(host string, port int64) {
+			wg.Done()
 			cli, err := h.NewSyntecAuthCli(host, port)
 			if err != nil {
-                wg.Done()
+				wg.Done()
 				errFlag = true
 				h.Log.Warn(err)
 				res = apierror.HandleError(err)
@@ -45,18 +46,17 @@ defer用于延迟指定的函数，只能出现在函数的内部，由defer关�
 
 			result, err := cli.GetMachineListAll(h.Ctx, &params)
 			if err != nil {
-                wg.Done()
+				wg.Done()
 				errFlag = true
 				h.Log.Warn(err)
 				res = apierror.HandleError(err)
 				return
 			}
-            wg.Done()
+			wg.Done()
 			output.Result = append(output.Result, result.Result...)
 		}(item.Host, item.Port)
 	}
 	wg.Wait()
-
 ````
 如果不使用defer那么就要在每个err里面加上 `wg.Done()`，当然这也是很容易忘记的。有defer
 的存在就不一样了。我们只用在函数里面加上defer就好了。
@@ -65,7 +65,7 @@ defer用于延迟指定的函数，只能出现在函数的内部，由defer关�
 	wg.Add(len(hostMap))
 	for _, item := range hostMap {
 		go func(host string, port int64) {
-            defer  wg.Done()
+			defer wg.Done()
 			cli, err := h.NewSyntecAuthCli(host, port)
 			if err != nil {
 				errFlag = true
@@ -85,7 +85,6 @@ defer用于延迟指定的函数，只能出现在函数的内部，由defer关�
 		}(item.Host, item.Port)
 	}
 	wg.Wait()
-
 ````
 
 ### 参考
