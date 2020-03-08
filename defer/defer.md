@@ -86,6 +86,26 @@ defer用于延迟指定的函数，只能出现在函数的内部，由defer关�
 	}
 	wg.Wait()
 ````
+但是，defer并不是非常完美的，defer会有小小地延迟，对时间要求特别特别特别高的程序，可以避免使用它，其他一般忽略它带来的延迟。
+
+当然defer也是不能滥用的，比如下面的  
+````go
+	i := 0
+	rw.Lock()
+	i = 2
+	defer rw.Unlock()
+
+	rw.Lock()
+	i = 6
+	defer rw.Unlock()
+
+	fmt.Println(i)
+````
+defer是在函数退出的时执行的，所以第二个锁，去获取锁的时候，第一个锁还没有释放，所以就报错了。  
+当然这是滥用造成的，我们应该去掉defer
+
+
 
 ### 参考
-【go语言并发编程实战】 
+【go语言并发编程实战】   
+【Golang之轻松化解defer的温柔陷阱】https://www.cnblogs.com/qcrao-2018/p/10367346.html#%E4%BB%80%E4%B9%88%E6%98%AFdefer  e
