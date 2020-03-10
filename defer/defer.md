@@ -149,7 +149,7 @@ defer后面跟函数参数，这样的输出就是正常了
 
 ### defer命令执行的时机
 
-在分析defer的执行时机之前，我们先看几段代码
+在分析defer的执行时机之前，我们先看几段代码  
 example1
 ````go
 func f() (result int) { 
