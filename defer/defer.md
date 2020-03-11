@@ -78,7 +78,7 @@ type _defer struct {
 - _panic：指向 _panic 链表
 - link：指向 _defer 链表
 
-<img src="../img/defer_1.png" width = "500" height = "300" alt="defer" align=center />
+<img src="../img/defer_1.png" width = "700" height = "400" alt="defer" align=center />
 
 
 runtime._defer 结构体是延迟调用链表上的一个元素，所有的结构体都会通过 link 字段串联成链表。  
