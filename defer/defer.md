@@ -1,6 +1,16 @@
+[TOC]
 - [defer](#defer)
-  * [前言](#前言)
-  * [defer的定义](#defer)
+  * [前言](#--)
+  * [defer的定义](#defer---)
+  * [defer执行的规则](#defer-----)
+  * [为什么需要defer](#-----defer)
+  * [defer进阶](#defer--)
+    + [作为匿名函数](#------)
+    + [作为函数参数](#------)
+  * [defer命令执行的时机](#defer-------)
+  * [defer配合recover](#defer--recover)
+  * [总结](#--)
+  * [参考](#--)
 
 ## defer
 
@@ -244,6 +254,11 @@ func f() (r int) {
 所以我们看到defer的执行总是在return之前，并且总是先赋值，然后执行defer语句的。
 
 
+
+### defer配合recover
+
+
+### 总结
 
 
 ### 参考
