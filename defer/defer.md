@@ -183,9 +183,47 @@ func f() (r int) {
 ````
 我们先想想这个代码的输出，当然如果已经很清楚这个代码的输出，那么我想已经很明白defer的输出机制了。
 
+我们来逐个分析逐个代码的输出  
+example1 的代码执行的过程是这样的
+````go
+func f() (result int) {
+	result = 0 //return语句不是一条原子调用，return xxx其实是赋值＋RET指令
+	func() { //defer被插入到return之前执行，也就是赋返回值和RET指令之间
+		result++
+	}()
+	return
+}
+````
+所以上面的输出结果是1  
+
+再来分析example2,他可以被拆解为
+````go
+func f() (r int) {
+	t := 5
+	r = t    //赋值指令
+	func() { //defer被插入到赋值与返回之间执行，这个例子中返回值r没被修改过
+		t = t + 5
+	}()
+	return //空的return指令
+}
+````
+所以他的输出是5
+
+接下来分析example3,它的命令可以被拆解为  
+````go
+func f() (r int) {
+	r = 1         //给返回值赋值
+	func(r int) { //这里改的r是传值传进去的r，不会改变要返回的那个r值
+		r = r + 5
+	}(r)
+	return //空的return
+}
+````
+因为匿名函数r作为参数传进去了，go中函数之前参数的传递都是值传递，所以匿名函数里面的r是被重新复制了一份，指针的指向是新的
+地址空间。所以这个的输出是1。  
 
 
-defer是在return之前执行的,我们来拆解下defer的执行
+那么我们可以来总结下defer的执行过程
 ````
 1、返回值 = xxx
 
@@ -193,6 +231,7 @@ defer是在return之前执行的,我们来拆解下defer的执行
 
 3、空的return
 ````
+所以我们看到defer的执行总是在return之前，并且总是先赋值，然后执行defer语句的。
 
 
 
