@@ -264,7 +264,7 @@ func f() (r int) {
 
 ``Panic``是一个内置函数，可停止常规控制流并开始恐慌。 当函数F调用恐慌时，F的执行停止，F中任何延迟的函数都将正常执行，然后F返回其调用方。 对于呼叫者，F然后表现得像是发生了恐慌。 该过程将继续执行堆栈，直到返回当前goroutine中的所有函数为止，此时程序崩溃。 紧急事件可以通过直接调用紧急事件来启动。 它们也可能是由运行时错误引起的，例如越界数组访问。
 
-``恢复``是一个内置函数，可以重新获得对紧急恐慌例程的控制。 恢复仅在延迟函数内部有用。 在正常执行期间，恢复调用将返回nil并且没有其他效果。 如果当前goroutine处于恐慌状态，则调用restore会捕获提供给panic的值并恢复正常执行。
+``恢复``是一个内置函数，可以重新获得对紧急恐慌例程的控制。 恢复仅在延迟函数内部有用。 在正常执行期间，恢复调用将返回nil并且没有其他效果。 如果当前goroutine处于恐慌状态，则调用recover会捕获提供给panic的值并恢复正常执行。
 
 ````go
 func main() {
@@ -293,16 +293,39 @@ func g(i int) {
     g(i + 1)
 }
 ````
+打印下输出
+````
+Calling g.
+Printing in g 0
+Printing in g 1
+Printing in g 2
+Printing in g 3
+Panicking!
+Defer in g 3
+Defer in g 2
+Defer in g 1
+Defer in g 0
+Recovered in f 4
+Returned normally from f.
+````
+我们发现，上面的函数有一个递归，知道函数在4的时候发生panic，这是通过defer挂起的recover就起作用了，它会帮助我们，从
+恐慌中恢复，从后往前恢复当前goroutine中所有的函数。  
 
+上面的demo，充分说明了defer配合recover的作用。能够帮助我们从异常中恢复。  
 
-
+不过在处理defer相关的时候，我们越早处理越好。因为panic在发生的时候，是从当前截止，向上去寻找defer定义的函数，然后一个个
+执行。但是如果,defer定义到了panic那么后面的将不会执行了。
 
 ### 总结
 
+处理defer的时候我们越早越好，defer的执行是从下往上执行的，defer的执行总是在return之前，并且总是先赋值，然后执行defer语句的。
+对于defer调用匿名函数，我们需要变量的引用，避免发生闭包，出现莫名的错误。同时defer是存在性能问题的，对于性能要求高的我们还是要
+考虑放弃使用defer。
 
 ### 参考
 【go语言并发编程实战】   
 【Golang之轻松化解defer的温柔陷阱】https://www.cnblogs.com/qcrao-2018/p/10367346.html#%E4%BB%80%E4%B9%88%E6%98%AFdefer  
 【golang的defer精析】https://my.oschina.net/yuwenc/blog/300592  
 【深入理解 Go defer】https://segmentfault.com/a/1190000019303572  
-【go defer,panic,recover详解 go 的异常处理】https://www.jianshu.com/p/63e3d57f285f
+【go defer,panic,recover详解 go 的异常处理】https://www.jianshu.com/p/63e3d57f285f  
+【go defer,panic,recover-需要梯子】https://blog.golang.org/defer-panic-and-recover  
