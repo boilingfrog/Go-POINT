@@ -317,7 +317,7 @@ Returned normally from f.
 
 ### 总结
 
-处理defer的时候我们越早越好，defer的执行是从下往上执行的，defer的执行总是在return之前，并且总是先赋值，然后执行defer语句的。
+处理defer的时候我们越早越好，dafer要定义在panic之前，panic之后的defer是不能执行的，defer的执行是从下往上执行的，defer的执行总是在return之前，并且总是先赋值，然后执行defer语句的。
 对于defer调用匿名函数，我们需要变量的引用，避免发生闭包，出现莫名的错误。同时defer是存在性能问题的，对于性能要求高的我们还是要
 考虑放弃使用defer。
 
