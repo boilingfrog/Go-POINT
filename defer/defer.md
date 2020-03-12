@@ -1,16 +1,15 @@
-[TOC]
 - [defer](#defer)
-  * [前言](#--)
-  * [defer的定义](#defer---)
-  * [defer执行的规则](#defer-----)
-  * [为什么需要defer](#-----defer)
-  * [defer进阶](#defer--)
-    + [作为匿名函数](#------)
-    + [作为函数参数](#------)
-  * [defer命令执行的时机](#defer-------)
-  * [defer配合recover](#defer--recover)
-  * [总结](#--)
-  * [参考](#--)
+  * [前言](#%e5%89%8d%e8%a8%80)
+  * [defer的定义](#defer%e7%9a%84%e5%ae%9a%e4%b9%89)
+  * [defer执行的规则](#defer%e6%89%a7%e8%a1%8c%e7%9a%84%e8%a7%84%e5%88%99)
+  * [为什么需要defer](#%e4%b8%ba%e4%bb%80%e4%b9%88%e9%9c%80%e8%a6%81defer)
+  * [defer进阶](#defer%e8%bf%9b%e9%98%b6)
+    + [作为匿名函数](#%e4%bd%9c%e4%b8%ba%e5%8c%bf%e5%90%8d%e5%87%bd%e6%95%b0)
+    + [作为函数参数](#%e4%bd%9c%e4%b8%ba%e5%87%bd%e6%95%b0%e5%8f%82%e6%95%b0)
+  * [defer命令执行的时机](#defer%e5%91%bd%e4%bb%a4%e6%89%a7%e8%a1%8c%e7%9a%84%e6%97%b6%e6%9c%ba)
+  * [defer配合recover](#defer%e9%85%8d%e5%90%88recover)
+  * [总结](#%e6%80%bb%e7%bb%93)
+  * [参考](#%e5%8f%82%e8%80%83)
 
 ## defer
 
@@ -324,8 +323,8 @@ Returned normally from f.
 
 ### 参考
 【go语言并发编程实战】   
-【Golang之轻松化解defer的温柔陷阱】https://www.cnblogs.com/qcrao-2018/p/10367346.html#%E4%BB%80%E4%B9%88%E6%98%AFdefer  
 【golang的defer精析】https://my.oschina.net/yuwenc/blog/300592  
 【深入理解 Go defer】https://segmentfault.com/a/1190000019303572  
 【go defer,panic,recover详解 go 的异常处理】https://www.jianshu.com/p/63e3d57f285f  
 【go defer,panic,recover-需要梯子】https://blog.golang.org/defer-panic-and-recover  
+【Golang之轻松化解defer的温柔陷阱】https://www.cnblogs.com/qcrao-2018/p/10367346.html#%E4%BB%80%E4%B9%88%E6%98%AFdefer  
