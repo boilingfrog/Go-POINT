@@ -258,6 +258,45 @@ func f() (r int) {
 ### defer配合recover
 
 
+>``Panic`` is a built-in function that stops the ordinary flow of control and begins panicking. When the function F calls panic, execution of F stops, any deferred functions in F are executed normally, and then F returns to its caller. To the caller, F then behaves like a call to panic. The process continues up the stack until all functions in the current goroutine have returned, at which point the program crashes. Panics can be initiated by invoking panic directly. They can also be caused by runtime errors, such as out-of-bounds array accesses.
+ 
+>``Recover`` is a built-in function that regains control of a panicking goroutine. Recover is only useful inside deferred functions. During normal execution, a call to recover will return nil and have no other effect. If the current goroutine is panicking, a call to recover will capture the value given to panic and resume normal execution.
+
+``Panic``是一个内置函数，可停止常规控制流并开始恐慌。 当函数F调用恐慌时，F的执行停止，F中任何延迟的函数都将正常执行，然后F返回其调用方。 对于呼叫者，F然后表现得像是发生了恐慌。 该过程将继续执行堆栈，直到返回当前goroutine中的所有函数为止，此时程序崩溃。 紧急事件可以通过直接调用紧急事件来启动。 它们也可能是由运行时错误引起的，例如越界数组访问。
+
+``恢复``是一个内置函数，可以重新获得对紧急恐慌例程的控制。 恢复仅在延迟函数内部有用。 在正常执行期间，恢复调用将返回nil并且没有其他效果。 如果当前goroutine处于恐慌状态，则调用restore会捕获提供给panic的值并恢复正常执行。
+
+````go
+func main() {
+    f()
+    fmt.Println("Returned normally from f.")
+}
+
+func f() {
+    defer func() {
+        if r := recover(); r != nil {
+            fmt.Println("Recovered in f", r)
+        }
+    }()
+    fmt.Println("Calling g.")
+    g(0)
+    fmt.Println("Returned normally from g.")
+}
+
+func g(i int) {
+    if i > 3 {
+        fmt.Println("Panicking!")
+        panic(fmt.Sprintf("%v", i))
+    }
+    defer fmt.Println("Defer in g", i)
+    fmt.Println("Printing in g", i)
+    g(i + 1)
+}
+````
+
+
+
+
 ### 总结
 
 
@@ -265,4 +304,5 @@ func f() (r int) {
 【go语言并发编程实战】   
 【Golang之轻松化解defer的温柔陷阱】https://www.cnblogs.com/qcrao-2018/p/10367346.html#%E4%BB%80%E4%B9%88%E6%98%AFdefer  
 【golang的defer精析】https://my.oschina.net/yuwenc/blog/300592  
-【深入理解 Go defer】https://segmentfault.com/a/1190000019303572
+【深入理解 Go defer】https://segmentfault.com/a/1190000019303572  
+【go defer,panic,recover详解 go 的异常处理】https://www.jianshu.com/p/63e3d57f285f
