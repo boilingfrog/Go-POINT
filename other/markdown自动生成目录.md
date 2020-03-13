@@ -1,15 +1,9 @@
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
-
 - [Markdown自动生成目录](#markdown%E8%87%AA%E5%8A%A8%E7%94%9F%E6%88%90%E7%9B%AE%E5%BD%95)
   - [使用npm语法生成](#%E4%BD%BF%E7%94%A8npm%E8%AF%AD%E6%B3%95%E7%94%9F%E6%88%90)
     - [１、安装npm](#%EF%BC%91%E5%AE%89%E8%A3%85npm)
     - [2、安装doctoc插件](#2%E5%AE%89%E8%A3%85doctoc%E6%8F%92%E4%BB%B6)
     - [3、执行生成](#3%E6%89%A7%E8%A1%8C%E7%94%9F%E6%88%90)
   - [参考](#%E5%8F%82%E8%80%83)
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## Markdown自动生成目录
 
