@@ -1,3 +1,33 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [RESTful API](#restful-api)
+  - [前言](#%E5%89%8D%E8%A8%80)
+  - [设计的规范](#%E8%AE%BE%E8%AE%A1%E7%9A%84%E8%A7%84%E8%8C%83)
+    - [协议](#%E5%8D%8F%E8%AE%AE)
+    - [域名](#%E5%9F%9F%E5%90%8D)
+    - [版本](#%E7%89%88%E6%9C%AC)
+    - [路径](#%E8%B7%AF%E5%BE%84)
+    - [HTTP动词](#http%E5%8A%A8%E8%AF%8D)
+    - [GET 方法](#get-%E6%96%B9%E6%B3%95)
+    - [POST 方法](#post-%E6%96%B9%E6%B3%95)
+    - [PUT 方法](#put-%E6%96%B9%E6%B3%95)
+    - [DELETE 方法](#delete-%E6%96%B9%E6%B3%95)
+    - [PATCH 方法](#patch-%E6%96%B9%E6%B3%95)
+  - [过滤信息](#%E8%BF%87%E6%BB%A4%E4%BF%A1%E6%81%AF)
+  - [状态码](#%E7%8A%B6%E6%80%81%E7%A0%81)
+  - [URL中不能有动词](#url%E4%B8%AD%E4%B8%8D%E8%83%BD%E6%9C%89%E5%8A%A8%E8%AF%8D)
+  - [避免层级过深的URI](#%E9%81%BF%E5%85%8D%E5%B1%82%E7%BA%A7%E8%BF%87%E6%B7%B1%E7%9A%84uri)
+  - [URL路径中首选小写字母](#url%E8%B7%AF%E5%BE%84%E4%B8%AD%E9%A6%96%E9%80%89%E5%B0%8F%E5%86%99%E5%AD%97%E6%AF%8D)
+  - [URL路径名词均为复数](#url%E8%B7%AF%E5%BE%84%E5%90%8D%E8%AF%8D%E5%9D%87%E4%B8%BA%E5%A4%8D%E6%95%B0)
+  - [幂等性](#%E5%B9%82%E7%AD%89%E6%80%A7)
+    - [什么是幂等性](#%E4%BB%80%E4%B9%88%E6%98%AF%E5%B9%82%E7%AD%89%E6%80%A7)
+  - [总结](#%E6%80%BB%E7%BB%93)
+  - [参考](#%E5%8F%82%E8%80%83)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## RESTful API
 
 ### 前言
