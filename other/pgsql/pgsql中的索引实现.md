@@ -16,5 +16,7 @@ PostgreSQL提供了好几种索引类型：B-tree, Hash, GiST, SP-GiST和GIN 。
 
 
 
+
+
 ### 参考
 【索引类型】http://www.postgres.cn/docs/9.4/indexes-types.html   
