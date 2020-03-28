@@ -92,7 +92,38 @@ SELECT * FROM t;
 
 6、目前，任何一个被数据修改CTE的表，不允许使用条件规则，和ALSO规则以及INSTEAD规则。  
 
+### RECURSIVE
+    
+可选的RECURSIVE修饰符将WITH从单纯的句法便利变成了一种在标准SQL中不能完成的特性。通过使用RECURSIVE，一个WITH查询可以引用它自己的输出。  
 
+比如下面的这个表：
+````sql
+create table document_directories
+(
+    id         bigserial                                          not null
+        constraint document_directories_pk
+            primary key,
+    name       text                                               not null,
+    created_at timestamp with time zone default CURRENT_TIMESTAMP not null,
+    updated_at timestamp with time zone default CURRENT_TIMESTAMP not null,
+    parent_id  bigint                   default 0                 not null
+);
+
+comment on table document_directories is '文档目录';
+
+comment on column document_directories.name is '名称';
+
+comment on column document_directories.parent_id is '父级id';
+
+INSERT INTO public.document_directories (id, name, created_at, updated_at, parent_id) VALUES (1, '中国', '2020-03-28 15:55:27.137439', '2020-03-28 15:55:27.137439', 0);
+INSERT INTO public.document_directories (id, name, created_at, updated_at, parent_id) VALUES (2, '上海', '2020-03-28 15:55:40.894773', '2020-03-28 15:55:40.894773', 1);
+INSERT INTO public.document_directories (id, name, created_at, updated_at, parent_id) VALUES (3, '北京', '2020-03-28 15:55:53.631493', '2020-03-28 15:55:53.631493', 1);
+INSERT INTO public.document_directories (id, name, created_at, updated_at, parent_id) VALUES (4, '南京', '2020-03-28 15:56:05.496985', '2020-03-28 15:56:05.496985', 1);
+INSERT INTO public.document_directories (id, name, created_at, updated_at, parent_id) VALUES (5, '浦东新区', '2020-03-28 15:56:24.824672', '2020-03-28 15:56:24.824672', 2);
+INSERT INTO public.document_directories (id, name, created_at, updated_at, parent_id) VALUES (6, '徐汇区', '2020-03-28 15:56:39.664924', '2020-03-28 15:56:39.664924', 2);
+INSERT INTO public.document_directories (id, name, created_at, updated_at, parent_id) VALUES (7, '漕宝路', '2020-03-28 15:57:14.320631', '2020-03-28 15:57:14.320631', 6);
+````
+这是一个无限级分类的列表，我们制造几条数据，来分析下RECURSIVE的使用。  
 
 
 
