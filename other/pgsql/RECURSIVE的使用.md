@@ -142,14 +142,53 @@ from res
 ````
 <img src="../../img/cte_1.png" width = "100%" height = "100%" alt="cte" align=center />
 
+#### 递归查询的过程
+
+
+> 1、计算非递归项。对UNION（但不对UNION ALL），抛弃重复行。把所有剩余的行包括在递归查询的结果中，并且也把它们放在一个临时的工作表中。  
+  
+> 2、只要工作表不为空，重复下列步骤：  
+  
+> a计算递归项，用当前工作表的内容替换递归自引用。对UNION（不是UNION ALL），抛弃重复行以及那些与之前结果行重复的行。将剩下的所有行包括在递归查询的结果中，并且也把它们放在一个临时的中间表中。  
+  
+> b用中间表的内容替换工作表的内容，然后清空中间表。  
 
 
 
+#### UNION与UNION ALL的区别
 
+UNION用的比较多union all是直接连接，取到得是所有值，记录可能有重复 union 是取唯一值，记录没有重复  
+
+1、UNION 的语法如下：
+````sql
+    [SQL 语句 1]
+      UNION
+     [SQL 语句 2]
+````
+2、UNION ALL 的语法如下：
+````sql
+  [SQL 语句 1]
+      UNION ALL
+     [SQL 语句 2]
+````
+
+UNION和UNION ALL关键字都是将两个结果集合并为一个，但这两者从使用和效率上来说都有所不同。  
+
+1、对重复结果的处理：UNION在进行表链接后会筛选掉重复的记录，Union All不会去除重复记录。  
+2、对排序的处理：Union将会按照字段的顺序进行排序；UNION ALL只是简单的将两个结果合并后就返回。  
+
+从效率上说，UNION ALL 要比UNION快很多，所以，如果可以确认合并的两个结果集中不包含重复数据且不需要排序时的话，那么就使用UNION ALL。  
+
+#### 总结下就是
+ 
+- UNION去重且排序  
+
+- UNION ALL不去重不排序(效率高)
 
 
 
 
 ### 参考
 【SQL优化（五） PostgreSQL （递归）CTE 通用表表达式】http://www.jasongj.com/sql/cte/  
-【WITH查询（公共表表达式）】http://postgres.cn/docs/11/queries-with.html
+【WITH查询（公共表表达式）】http://postgres.cn/docs/11/queries-with.html  
+【UNION与UNION ALL的区别】https://juejin.im/post/5c131ee4e51d45404123d572
