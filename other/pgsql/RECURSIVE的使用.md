@@ -9,6 +9,10 @@
   - [RECURSIVE](#recursive-1)
     - [递归查询的过程](#%E9%80%92%E5%BD%92%E6%9F%A5%E8%AF%A2%E7%9A%84%E8%BF%87%E7%A8%8B)
     - [拆解下执行的过程](#%E6%8B%86%E8%A7%A3%E4%B8%8B%E6%89%A7%E8%A1%8C%E7%9A%84%E8%BF%87%E7%A8%8B)
+      - [1.执行非递归部分](#1%E6%89%A7%E8%A1%8C%E9%9D%9E%E9%80%92%E5%BD%92%E9%83%A8%E5%88%86)
+      - [2.执行递归部分,如果是UNION,要用当前查询的结果和上一个working table的结果进行去重，然后放到到临时表中。然后把working table的数据替换成临时表里面的数据。](#2%E6%89%A7%E8%A1%8C%E9%80%92%E5%BD%92%E9%83%A8%E5%88%86%E5%A6%82%E6%9E%9C%E6%98%AFunion%E8%A6%81%E7%94%A8%E5%BD%93%E5%89%8D%E6%9F%A5%E8%AF%A2%E7%9A%84%E7%BB%93%E6%9E%9C%E5%92%8C%E4%B8%8A%E4%B8%80%E4%B8%AAworking-table%E7%9A%84%E7%BB%93%E6%9E%9C%E8%BF%9B%E8%A1%8C%E5%8E%BB%E9%87%8D%E7%84%B6%E5%90%8E%E6%94%BE%E5%88%B0%E5%88%B0%E4%B8%B4%E6%97%B6%E8%A1%A8%E4%B8%AD%E7%84%B6%E5%90%8E%E6%8A%8Aworking-table%E7%9A%84%E6%95%B0%E6%8D%AE%E6%9B%BF%E6%8D%A2%E6%88%90%E4%B8%B4%E6%97%B6%E8%A1%A8%E9%87%8C%E9%9D%A2%E7%9A%84%E6%95%B0%E6%8D%AE)
+      - [3、同2，直到数据表中没有数据。](#3%E5%90%8C2%E7%9B%B4%E5%88%B0%E6%95%B0%E6%8D%AE%E8%A1%A8%E4%B8%AD%E6%B2%A1%E6%9C%89%E6%95%B0%E6%8D%AE)
+      - [4、结束递归，将前几个步骤的结果集合并，即得到最终的WITH RECURSIVE的结果集](#4%E7%BB%93%E6%9D%9F%E9%80%92%E5%BD%92%E5%B0%86%E5%89%8D%E5%87%A0%E4%B8%AA%E6%AD%A5%E9%AA%A4%E7%9A%84%E7%BB%93%E6%9E%9C%E9%9B%86%E5%90%88%E5%B9%B6%E5%8D%B3%E5%BE%97%E5%88%B0%E6%9C%80%E7%BB%88%E7%9A%84with-recursive%E7%9A%84%E7%BB%93%E6%9E%9C%E9%9B%86)
     - [WITH RECURSIVE 使用限制](#with-recursive-%E4%BD%BF%E7%94%A8%E9%99%90%E5%88%B6)
     - [CTE 优缺点](#cte-%E4%BC%98%E7%BC%BA%E7%82%B9)
     - [UNION与UNION ALL的区别](#union%E4%B8%8Eunion-all%E7%9A%84%E5%8C%BA%E5%88%AB)
@@ -198,7 +202,7 @@ from res
 2、recursive term（递归部分），即上例中union后面部分  
 
 拆解下我们上面的sql  
-1.执行非递归部分  
+##### 1.执行非递归部分  
 ````sql
   SELECT id, name, parent_id
     FROM document_directories
@@ -206,7 +210,7 @@ from res
 结果集和working table为
 5	浦东新区	2
 ````
-2.执行递归部分,如果是UNION,要用当前查询的结果和上一个working table的结果进行去重，然后放到到临时表中。然后把working table的数据替换成临时表里面的数据。
+##### 2.执行递归部分,如果是UNION,要用当前查询的结果和上一个working table的结果进行去重，然后放到到临时表中。然后把working table的数据替换成临时表里面的数据。
 
 ````sql
  SELECT dd.id,
@@ -217,7 +221,7 @@ from res
 结果集和working table为
 2	上海 > 浦东新区	1
 ````
-3、同2，直到数据表中没有数据。
+##### 3、同2，直到数据表中没有数据。
 
 ````sql
  SELECT dd.id,
@@ -229,11 +233,9 @@ from res
 1	中国 > 上海 > 浦东新区	0
 ````
 
-4、结束递归，将前几个步骤的结果集合并，即得到最终的WITH RECURSIVE的结果集  
+##### 4、结束递归，将前几个步骤的结果集合并，即得到最终的WITH RECURSIVE的结果集  
 
 严格来讲，这个过程实现上是一个迭代的过程而非递归，不过RECURSIVE这个关键词是SQL标准委员会定立的，所以PostgreSQL也延用了RECURSIVE这一关键词。  
-
-
 
 #### WITH RECURSIVE 使用限制
 
