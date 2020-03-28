@@ -11,7 +11,7 @@ WITH语句通常被称为通用表表达式（Common Table Expressions）或者C
 WITH语句作为一个辅助语句依附于主语句，WITH语句和主语句都可以是SELECT，INSERT，UPDATE，DELETE中的任何一种语句。  
 
 举个栗子  
-````go
+````sql
 WITH result AS (
     SELECT d.user_id
     FROM documents d
@@ -33,7 +33,7 @@ WITH result AS (
 
 WITH中可以不仅可以使用SELECT语句，同时还能使用DELETE，UPDATE，INSERT语句。因此，可以使用WITH，在一条SQL语句中进行不同的操作，如下例所示。
 
-````go
+````sql
 WITH moved_rows AS (
   DELETE FROM products
   WHERE
@@ -48,7 +48,7 @@ SELECT * FROM moved_rows;
 
 如果WITH里面使用的不是SELECT语句，并且没有通过RETURNING子句返回结果集，则主查询中不可以引用该CTE，但主查询和WITH语句仍然可以继续执行。这种情况可以实现将多个不相关的语句放在一个SQL语句里，实现了在不显式使用事务的情况下保证WITH语句和主语句的事务性，如下例所示。
 
-````go
+````sql
 WITH d AS (
   DELETE FROM foo
 ),
