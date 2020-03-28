@@ -9,8 +9,8 @@
   - [RECURSIVE](#recursive-1)
     - [递归查询的过程](#%E9%80%92%E5%BD%92%E6%9F%A5%E8%AF%A2%E7%9A%84%E8%BF%87%E7%A8%8B)
     - [拆解下执行的过程](#%E6%8B%86%E8%A7%A3%E4%B8%8B%E6%89%A7%E8%A1%8C%E7%9A%84%E8%BF%87%E7%A8%8B)
-      - [1.执行非递归部分](#1%E6%89%A7%E8%A1%8C%E9%9D%9E%E9%80%92%E5%BD%92%E9%83%A8%E5%88%86)
-      - [2.执行递归部分,如果是UNION,要用当前查询的结果和上一个working table的结果进行去重，然后放到到临时表中。然后把working table的数据替换成临时表里面的数据。](#2%E6%89%A7%E8%A1%8C%E9%80%92%E5%BD%92%E9%83%A8%E5%88%86%E5%A6%82%E6%9E%9C%E6%98%AFunion%E8%A6%81%E7%94%A8%E5%BD%93%E5%89%8D%E6%9F%A5%E8%AF%A2%E7%9A%84%E7%BB%93%E6%9E%9C%E5%92%8C%E4%B8%8A%E4%B8%80%E4%B8%AAworking-table%E7%9A%84%E7%BB%93%E6%9E%9C%E8%BF%9B%E8%A1%8C%E5%8E%BB%E9%87%8D%E7%84%B6%E5%90%8E%E6%94%BE%E5%88%B0%E5%88%B0%E4%B8%B4%E6%97%B6%E8%A1%A8%E4%B8%AD%E7%84%B6%E5%90%8E%E6%8A%8Aworking-table%E7%9A%84%E6%95%B0%E6%8D%AE%E6%9B%BF%E6%8D%A2%E6%88%90%E4%B8%B4%E6%97%B6%E8%A1%A8%E9%87%8C%E9%9D%A2%E7%9A%84%E6%95%B0%E6%8D%AE)
+      - [1、执行非递归部分](#1%E6%89%A7%E8%A1%8C%E9%9D%9E%E9%80%92%E5%BD%92%E9%83%A8%E5%88%86)
+      - [2、执行递归部分,如果是UNION,要用当前查询的结果和上一个working table的结果进行去重，然后放到到临时表中。然后把working table的数据替换成临时表里面的数据。](#2%E6%89%A7%E8%A1%8C%E9%80%92%E5%BD%92%E9%83%A8%E5%88%86%E5%A6%82%E6%9E%9C%E6%98%AFunion%E8%A6%81%E7%94%A8%E5%BD%93%E5%89%8D%E6%9F%A5%E8%AF%A2%E7%9A%84%E7%BB%93%E6%9E%9C%E5%92%8C%E4%B8%8A%E4%B8%80%E4%B8%AAworking-table%E7%9A%84%E7%BB%93%E6%9E%9C%E8%BF%9B%E8%A1%8C%E5%8E%BB%E9%87%8D%E7%84%B6%E5%90%8E%E6%94%BE%E5%88%B0%E5%88%B0%E4%B8%B4%E6%97%B6%E8%A1%A8%E4%B8%AD%E7%84%B6%E5%90%8E%E6%8A%8Aworking-table%E7%9A%84%E6%95%B0%E6%8D%AE%E6%9B%BF%E6%8D%A2%E6%88%90%E4%B8%B4%E6%97%B6%E8%A1%A8%E9%87%8C%E9%9D%A2%E7%9A%84%E6%95%B0%E6%8D%AE)
       - [3、同2，直到数据表中没有数据。](#3%E5%90%8C2%E7%9B%B4%E5%88%B0%E6%95%B0%E6%8D%AE%E8%A1%A8%E4%B8%AD%E6%B2%A1%E6%9C%89%E6%95%B0%E6%8D%AE)
       - [4、结束递归，将前几个步骤的结果集合并，即得到最终的WITH RECURSIVE的结果集](#4%E7%BB%93%E6%9D%9F%E9%80%92%E5%BD%92%E5%B0%86%E5%89%8D%E5%87%A0%E4%B8%AA%E6%AD%A5%E9%AA%A4%E7%9A%84%E7%BB%93%E6%9E%9C%E9%9B%86%E5%90%88%E5%B9%B6%E5%8D%B3%E5%BE%97%E5%88%B0%E6%9C%80%E7%BB%88%E7%9A%84with-recursive%E7%9A%84%E7%BB%93%E6%9E%9C%E9%9B%86)
     - [WITH RECURSIVE 使用限制](#with-recursive-%E4%BD%BF%E7%94%A8%E9%99%90%E5%88%B6)
@@ -21,6 +21,7 @@
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 
 ## RECURSIVE
 
@@ -47,11 +48,9 @@ WITH result AS (
     WHERE ur.id IS NOT NULL
 )select * from info
 ````
-定义了两个WITH辅助语句，result和info。result查询出符合要求的user信息，然后info对这个信息进行组装，组装出我们需要的
-数据信息。
+定义了两个WITH辅助语句，result和info。result查询出符合要求的user信息，然后info对这个信息进行组装，组装出我们需要的数据信息。
 
-当然不用这个也是可以的，不过CTE主要的还是做数据的过滤。什么意思呢，我们可以定义多层级的CTE，然后一层层的查询过滤组装。最终筛选出我们
-需要的数据，当然你可能会问为什么不一次性拿出所有的数据呢，当然如果数据很大，我们通过多层次的数据过滤组装，在效率上也更好。
+当然不用这个也是可以的，不过CTE主要的还是做数据的过滤。什么意思呢，我们可以定义多层级的CTE，然后一层层的查询过滤组装。最终筛选出我们需要的数据，当然你可能会问为什么不一次性拿出所有的数据呢，当然如果数据很大，我们通过多层次的数据过滤组装，在效率上也更好。
 
 ### 在WITH中使用数据修改语句
 
@@ -179,7 +178,7 @@ WITH RECURSIVE res(id, name, parent_id) AS (
 select *
 from res
 ````
-<img src="../../img/cte_1.png" width = "100%" height = "100%" alt="cte" align=center />
+![](https://img2020.cnblogs.com/blog/1237626/202003/1237626-20200329015425207-244915367.png)
 
 #### 递归查询的过程
 
@@ -202,7 +201,7 @@ from res
 2、recursive term（递归部分），即上例中union后面部分  
 
 拆解下我们上面的sql  
-##### 1.执行非递归部分  
+##### 1、执行非递归部分  
 ````sql
   SELECT id, name, parent_id
     FROM document_directories
@@ -210,7 +209,7 @@ from res
 结果集和working table为
 5	浦东新区	2
 ````
-##### 2.执行递归部分,如果是UNION,要用当前查询的结果和上一个working table的结果进行去重，然后放到到临时表中。然后把working table的数据替换成临时表里面的数据。
+##### 2、执行递归部分,如果是UNION,要用当前查询的结果和上一个working table的结果进行去重，然后放到到临时表中。然后把working table的数据替换成临时表里面的数据。
 
 ````sql
  SELECT dd.id,
@@ -239,25 +238,26 @@ from res
 
 #### WITH RECURSIVE 使用限制
 
-- 如果在recursive term中使用LEFT JOIN，自引用必须在“左”边
-- 如果在recursive term中使用RIGHT JOIN，自引用必须在“右”边
-- recursive term中不允许使用FULL JOIN
-- recursive term中不允许使用GROUP BY和HAVING
-- 不允许在recursive term的WHERE语句的子查询中使用CTE的名字
-- 不支持在recursive term中对CTE作aggregation
-- recursive term中不允许使用ORDER BY
-- LIMIT / OFFSET不允许在recursive term中使用
-- FOR UPDATE不可在recursive term中使用
-- recursive term中SELECT后面不允许出现引用CTE名字的子查询
-- 同时使用多个CTE表达式时，不允许多表达式之间互相访问（支持单向访问）
-- 在recursive term中不允许使用FOR UPDATE
+1、 如果在recursive term中使用LEFT JOIN，自引用必须在“左”边
+2、 如果在recursive term中使用RIGHT JOIN，自引用必须在“右”边
+3、 recursive term中不允许使用FULL JOIN
+4、 recursive term中不允许使用GROUP BY和HAVING
+5、 不允许在recursive term的WHERE语句的子查询中使用CTE的名字
+6、 不支持在recursive term中对CTE作aggregation
+7、 recursive term中不允许使用ORDER BY
+8、 LIMIT / OFFSET不允许在recursive term中使用
+9、 FOR UPDATE不可在recursive term中使用
+10、 recursive term中SELECT后面不允许出现引用CTE名字的子查询
+11、 同时使用多个CTE表达式时，不允许多表达式之间互相访问（支持单向访问）
+12、 在recursive term中不允许使用FOR UPDATE
 
 #### CTE 优缺点
-- 可以使用递归 WITH RECURSIVE，从而实现其它方式无法实现或者不容易实现的查询
-- 当不需要将查询结果被其它独立查询共享时，它比视图更灵活也更轻量
-- CTE只会被计算一次，且可在主查询中多次使用
-- CTE可极大提高代码可读性及可维护性
-- CTE不支持将主查询中where后的限制条件push down到CTE中，而普通的子查询支持
+
+1、 可以使用递归 WITH RECURSIVE，从而实现其它方式无法实现或者不容易实现的查询
+2、 当不需要将查询结果被其它独立查询共享时，它比视图更灵活也更轻量
+3、 CTE只会被计算一次，且可在主查询中多次使用
+4、 CTE可极大提高代码可读性及可维护性
+5、 CTE不支持将主查询中where后的限制条件push down到CTE中，而普通的子查询支持
 
 #### UNION与UNION ALL的区别
 
@@ -291,9 +291,7 @@ UNION和UNION ALL关键字都是将两个结果集合并为一个，但这两者
 
 ### 总结
 
-recursive是pgsql中提供的一种递归的机制，比如当我们查询一个完整的树形结构使用这个就很完美，但是我们应该避免发生递归的死循环，也就是数据的环状。当然他只是cte中的一个查询的属性，对于cte的使用，我们也不能忽略它需要注意的地方，使用多个子句时，这些子句和主语句会并行执行。我们是不能判断那个将会被执行的，在一条SQL语句中，更新同一记录多次，只有其中一条会生效，并且很难预测哪一个会生效。
-当然功能还是很强大的，WITH语句和主语句都可以是SELECT，INSERT，UPDATE，DELETE中的任何一种语句，我们可以组装出我们需要的任何操作的场景。
-
+recursive是pgsql中提供的一种递归的机制，比如当我们查询一个完整的树形结构使用这个就很完美，但是我们应该避免发生递归的死循环，也就是数据的环状。当然他只是cte中的一个查询的属性，对于cte的使用，我们也不能忽略它需要注意的地方，使用多个子句时，这些子句和主语句会并行执行。我们是不能判断那个将会被执行的，在一条SQL语句中，更新同一记录多次，只有其中一条会生效，并且很难预测哪一个会生效。当然功能还是很强大的，WITH语句和主语句都可以是SELECT，INSERT，UPDATE，DELETE中的任何一种语句，我们可以组装出我们需要的任何操作的场景。
 
 ### 参考
 【SQL优化（五） PostgreSQL （递归）CTE 通用表表达式】http://www.jasongj.com/sql/cte/  
