@@ -29,6 +29,37 @@ WITH result AS (
 当然不用这个也是可以的，不过CTE主要的还是做数据的过滤。什么意思呢，我们可以定义多层级的CTE，然后一层层的查询过滤组装。最终筛选出我们
 需要的数据，当然你可能会问为什么不一次性拿出所有的数据呢，当然如果数据很大，我们通过多层次的数据过滤组装，在效率上也更好。
 
+### 在WITH中使用数据修改语句
+
+WITH中可以不仅可以使用SELECT语句，同时还能使用DELETE，UPDATE，INSERT语句。因此，可以使用WITH，在一条SQL语句中进行不同的操作，如下例所示。
+
+````go
+WITH moved_rows AS (
+  DELETE FROM products
+  WHERE
+    "date" >= '2010-10-01'
+  AND "date" < '2010-11-01'
+  RETURNING *
+)
+INSERT INTO products_log
+SELECT * FROM moved_rows;
+````
+本例通过WITH中的DELETE语句从products表中删除了一个月的数据，并通过RETURNING子句将删除的数据集赋给moved_rows这一CTE，最后在主语句中通过INSERT将删除的商品插入products_log中。
+
+如果WITH里面使用的不是SELECT语句，并且没有通过RETURNING子句返回结果集，则主查询中不可以引用该CTE，但主查询和WITH语句仍然可以继续执行。这种情况可以实现将多个不相关的语句放在一个SQL语句里，实现了在不显式使用事务的情况下保证WITH语句和主语句的事务性，如下例所示。
+
+````go
+WITH d AS (
+  DELETE FROM foo
+),
+u as (
+  UPDATE foo SET a = 1
+  WHERE b = 2
+)
+DELETE FROM bar;
+````
+
+
 
 
 ### 参考
