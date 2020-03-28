@@ -125,6 +125,26 @@ INSERT INTO public.document_directories (id, name, created_at, updated_at, paren
 ````
 这是一个无限级分类的列表，我们制造几条数据，来分析下RECURSIVE的使用。  
 
+````sql
+WITH RECURSIVE res AS (
+    SELECT id, name, parent_id
+    FROM document_directories
+    WHERE id = 5
+    UNION
+    SELECT dd.id,
+           dd.name || ' > ' || d.name,
+           dd.parent_id
+    FROM res d
+             INNER JOIN document_directories dd ON dd.id = d.parent_id
+)
+select *
+from res
+````
+<img src="../../img/cte_1.png" width = "100%" height = "100%" alt="cte" align=center />
+
+
+
+
 
 
 
