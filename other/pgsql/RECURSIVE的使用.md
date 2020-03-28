@@ -1,3 +1,23 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [RECURSIVE](#recursive)
+  - [前言](#%E5%89%8D%E8%A8%80)
+  - [CTE or WITH](#cte-or-with)
+  - [在WITH中使用数据修改语句](#%E5%9C%A8with%E4%B8%AD%E4%BD%BF%E7%94%A8%E6%95%B0%E6%8D%AE%E4%BF%AE%E6%94%B9%E8%AF%AD%E5%8F%A5)
+  - [WITH使用注意事项](#with%E4%BD%BF%E7%94%A8%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9)
+  - [RECURSIVE](#recursive-1)
+    - [递归查询的过程](#%E9%80%92%E5%BD%92%E6%9F%A5%E8%AF%A2%E7%9A%84%E8%BF%87%E7%A8%8B)
+    - [拆解下执行的过程](#%E6%8B%86%E8%A7%A3%E4%B8%8B%E6%89%A7%E8%A1%8C%E7%9A%84%E8%BF%87%E7%A8%8B)
+    - [WITH RECURSIVE 使用限制](#with-recursive-%E4%BD%BF%E7%94%A8%E9%99%90%E5%88%B6)
+    - [CTE 优缺点](#cte-%E4%BC%98%E7%BC%BA%E7%82%B9)
+    - [UNION与UNION ALL的区别](#union%E4%B8%8Eunion-all%E7%9A%84%E5%8C%BA%E5%88%AB)
+    - [总结](#%E6%80%BB%E7%BB%93)
+  - [总结](#%E6%80%BB%E7%BB%93-1)
+  - [参考](#%E5%8F%82%E8%80%83)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## RECURSIVE
 
 ### 前言
@@ -139,11 +159,27 @@ WITH RECURSIVE res AS (
 )
 select *
 from res
+
+当然这个sql也可以这样写
+WITH RECURSIVE res(id, name, parent_id) AS (
+    SELECT id, name, parent_id
+    FROM document_directories
+    WHERE id = 5
+    UNION
+    SELECT dd.id,
+           dd.name || ' > ' || d.name,
+           dd.parent_id
+    FROM res d
+             INNER JOIN document_directories dd ON dd.id = d.parent_id
+)
+select *
+from res
 ````
 <img src="../../img/cte_1.png" width = "100%" height = "100%" alt="cte" align=center />
 
 #### 递归查询的过程
 
+这是pgsql操作文档中的描述:
 
 > 1、计算非递归项。对UNION（但不对UNION ALL），抛弃重复行。把所有剩余的行包括在递归查询的结果中，并且也把它们放在一个临时的工作表中。  
   
@@ -153,7 +189,73 @@ from res
   
 > b用中间表的内容替换工作表的内容，然后清空中间表。  
 
+#### 拆解下执行的过程
 
+其实执行就分成了两部分：  
+
+1、non-recursive term（非递归部分），即上例中的union前面部分  
+
+2、recursive term（递归部分），即上例中union后面部分  
+
+拆解下我们上面的sql  
+1.执行非递归部分  
+````sql
+  SELECT id, name, parent_id
+    FROM document_directories
+    WHERE id = 5
+结果集和working table为
+5	浦东新区	2
+````
+2.执行递归部分,如果是UNION,要用当前查询的结果和上一个working table的结果进行去重，然后放到到临时表中。然后把working table的数据替换成临时表里面的数据。
+
+````sql
+ SELECT dd.id,
+           dd.name || ' > ' || d.name,
+           dd.parent_id
+    FROM res d
+             INNER JOIN document_directories dd ON dd.id = d.parent_id
+结果集和working table为
+2	上海 > 浦东新区	1
+````
+3、同2，直到数据表中没有数据。
+
+````sql
+ SELECT dd.id,
+           dd.name || ' > ' || d.name,
+           dd.parent_id
+    FROM res d
+             INNER JOIN document_directories dd ON dd.id = d.parent_id
+结果集和working table为
+1	中国 > 上海 > 浦东新区	0
+````
+
+4、结束递归，将前几个步骤的结果集合并，即得到最终的WITH RECURSIVE的结果集  
+
+严格来讲，这个过程实现上是一个迭代的过程而非递归，不过RECURSIVE这个关键词是SQL标准委员会定立的，所以PostgreSQL也延用了RECURSIVE这一关键词。  
+
+
+
+#### WITH RECURSIVE 使用限制
+
+- 如果在recursive term中使用LEFT JOIN，自引用必须在“左”边
+- 如果在recursive term中使用RIGHT JOIN，自引用必须在“右”边
+- recursive term中不允许使用FULL JOIN
+- recursive term中不允许使用GROUP BY和HAVING
+- 不允许在recursive term的WHERE语句的子查询中使用CTE的名字
+- 不支持在recursive term中对CTE作aggregation
+- recursive term中不允许使用ORDER BY
+- LIMIT / OFFSET不允许在recursive term中使用
+- FOR UPDATE不可在recursive term中使用
+- recursive term中SELECT后面不允许出现引用CTE名字的子查询
+- 同时使用多个CTE表达式时，不允许多表达式之间互相访问（支持单向访问）
+- 在recursive term中不允许使用FOR UPDATE
+
+#### CTE 优缺点
+- 可以使用递归 WITH RECURSIVE，从而实现其它方式无法实现或者不容易实现的查询
+- 当不需要将查询结果被其它独立查询共享时，它比视图更灵活也更轻量
+- CTE只会被计算一次，且可在主查询中多次使用
+- CTE可极大提高代码可读性及可维护性
+- CTE不支持将主查询中where后的限制条件push down到CTE中，而普通的子查询支持
 
 #### UNION与UNION ALL的区别
 
@@ -179,16 +281,20 @@ UNION和UNION ALL关键字都是将两个结果集合并为一个，但这两者
 
 从效率上说，UNION ALL 要比UNION快很多，所以，如果可以确认合并的两个结果集中不包含重复数据且不需要排序时的话，那么就使用UNION ALL。  
 
-#### 总结下就是
+#### 总结
  
 - UNION去重且排序  
 
 - UNION ALL不去重不排序(效率高)
 
+### 总结
 
+recursive是pgsql中提供的一种递归的机制，比如当我们查询一个完整的树形结构使用这个就很完美，但是我们应该避免发生递归的死循环，也就是数据的环状。当然他只是cte中的一个查询的属性，对于cte的使用，我们也不能忽略它需要注意的地方，使用多个子句时，这些子句和主语句会并行执行。我们是不能判断那个将会被执行的，在一条SQL语句中，更新同一记录多次，只有其中一条会生效，并且很难预测哪一个会生效。
+当然功能还是很强大的，WITH语句和主语句都可以是SELECT，INSERT，UPDATE，DELETE中的任何一种语句，我们可以组装出我们需要的任何操作的场景。
 
 
 ### 参考
 【SQL优化（五） PostgreSQL （递归）CTE 通用表表达式】http://www.jasongj.com/sql/cte/  
 【WITH查询（公共表表达式）】http://postgres.cn/docs/11/queries-with.html  
-【UNION与UNION ALL的区别】https://juejin.im/post/5c131ee4e51d45404123d572
+【UNION与UNION ALL的区别】https://juejin.im/post/5c131ee4e51d45404123d572  
+【PostgreSQL的递归查询(with recursive)】https://my.oschina.net/Kenyon/blog/55137
