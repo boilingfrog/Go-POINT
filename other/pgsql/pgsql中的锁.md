@@ -10,6 +10,10 @@
 
 用户可见的锁，用户自己能够主动调用的，可以在pg_locks中看到是否grant的锁。包括regular lock和咨询锁。
 
+#### regular Lock
+
+
+
 
 
 
