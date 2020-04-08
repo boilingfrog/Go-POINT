@@ -35,7 +35,7 @@ FOR NO KEY UPFATE
 FOR SHARE
 FOR KEY SHARE
 ````
-###### FOR UPDATE
+#### FOR UPDATE
 
 FOR UPDATE锁可以使得SELECT语句获取行级锁，用于更新数据。锁定该行可以防止该行在本次的操作过程中，被其他的事务获取锁或者进行更改删除操作。就是说其他事务的操作会被阻塞直到当前事务结束；同样的，SELECT FOR UPDATE命令会等待直
 到前一个事务结束。即尝试 UPDATE、DELETE、SELECT FOR UPDATE、SELECT FOR NO KEY UPDATE、SELECT FOR SHARE 或 SELECT FOR KEY SHARE 的其他事务将被阻塞。反过来，SELECT FOR UPDATE将等待已经在相同行上运行以上这些命令的
@@ -43,15 +43,15 @@ FOR UPDATE锁可以使得SELECT语句获取行级锁，用于更新数据。锁�
 
 任何在一行上的DELETE命令也会获得FOR UPDATE锁模式，在某些列上修改值的UPDATE也会获得该锁模式。当前UPDATE情况中被考虑的列集合是那些具有能用于外键的唯一索引的列（所以部分索引和表达式索引不被考虑），但是这种要求未来有可能会改变。
 
-###### FOR NO KEY UPDATE
+#### FOR NO KEY UPDATE
 
 和FOR UPDATE命令类似，但是对于获取锁的要求更加宽松一些，在同一行中不会阻塞SELECT FOR KEY SHARE命令。同样在UPDATE命令的时候如果没有获取到FOR UPDATE锁的情况下会获取到该锁。
 
-###### FOR SHARE
+#### FOR SHARE
 
 行为与FOR NO KEY UPDATE类似，不过它在每个检索到的行上获得一个共享锁而不是排他锁。一个共享锁会阻塞其他事务在这些行上执行UPDATE、DELETE、SELECT FOR UPDATE或者SELECT FOR NO KEY UPDATE，但是它不会阻止它们执行SELECT FOR SHARE或者SELECT FOR KEY SHARE。
 
-###### FOR KEY SHARE
+#### FOR KEY SHARE
 
 行为与FOR SHARE类似，不过锁较弱：SELECT FOR UPDATE会被阻塞，但是SELECT FOR NO KEY UPDATE不会被阻塞。一个键共享锁会阻塞其他事务执行修改键值的DELETE或者UPDATE，但不会阻塞其他UPDATE，也不会阻止SELECT FOR NO KEY UPDATE、SELECT FOR SHARE或者SELECT FOR KEY SHARE。
  
