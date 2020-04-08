@@ -1,8 +1,19 @@
-## pgsql中的锁
+- [pgsql中的行锁](#pgsql%E4%B8%AD%E7%9A%84%E8%A1%8C%E9%94%81)
+  - [前言](#%E5%89%8D%E8%A8%80)
+  - [用户可见的锁](#%E7%94%A8%E6%88%B7%E5%8F%AF%E8%A7%81%E7%9A%84%E9%94%81)
+    - [regular Lock](#regular-lock)
+    - [行级别](#%E8%A1%8C%E7%BA%A7%E5%88%AB)
+        - [FOR UPDATE](#for-update)
+        - [FOR NO KEY UPDATE](#for-no-key-update)
+        - [FOR SHARE](#for-share)
+        - [FOR KEY SHARE](#for-key-share)
+  - [参考](#%E5%8F%82%E8%80%83)
+
+## pgsql中的行锁
 
 ### 前言
 
-日常的工作中，对于同一个资源的操作，有时候我们难免要加上锁，以防止在操作中被别的进程给删除或者更改掉了。
+日常的工作中，对于同一个资源的操作，有时候我们难免要加上锁，以防止在操作中被别的进程给删除或者更改掉了，那么更多还是行级锁，那么我们就来探究下。
 
 ### 用户可见的锁
 
@@ -13,9 +24,7 @@
 #### regular Lock
  
 regular lock分为表级别和行级别两种。
-
-##### 表级别
-
+ 
 #### 行级别
 
 通过一些数据库操作自动获得一些行锁，行锁并不阻塞数据查询，只阻塞writes和locker，比如如下操作。
@@ -38,8 +47,17 @@ FOR UPDATE锁可以使得SELECT语句获取行级锁，用于更新数据。锁�
 
 和FOR UPDATE命令类似，但是对于获取锁的要求更加宽松一些，在同一行中不会阻塞SELECT FOR KEY SHARE命令。同样在UPDATE命令的时候如果没有获取到FOR UPDATE锁的情况下会获取到该锁。
 
+###### FOR SHARE
 
+行为与FOR NO KEY UPDATE类似，不过它在每个检索到的行上获得一个共享锁而不是排他锁。一个共享锁会阻塞其他事务在这些行上执行UPDATE、DELETE、SELECT FOR UPDATE或者SELECT FOR NO KEY UPDATE，但是它不会阻止它们执行SELECT FOR SHARE或者SELECT FOR KEY SHARE。
+
+###### FOR KEY SHARE
+
+行为与FOR SHARE类似，不过锁较弱：SELECT FOR UPDATE会被阻塞，但是SELECT FOR NO KEY UPDATE不会被阻塞。一个键共享锁会阻塞其他事务执行修改键值的DELETE或者UPDATE，但不会阻塞其他UPDATE，也不会阻止SELECT FOR NO KEY UPDATE、SELECT FOR SHARE或者SELECT FOR KEY SHARE。
  
+![](https://img2020.cnblogs.com/blog/1237626/202004/1237626-20200408142154977-1951304776.png)
+
+举个栗子
 
 
 ### 参考
