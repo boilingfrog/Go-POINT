@@ -26,7 +26,15 @@ FOR NO KEY UPFATE
 FOR SHARE
 FOR KEY SHARE
 ````
+###### FOR UPDATE
+
+FOR UPDATE锁可以使得SELECT语句获取行级锁，用于更新数据。锁定该行可以防止该行在本次的操作过程中，被其他的事务获取锁或者进行更改删除操作。就是说其他事务的操作会被阻塞直到当前事务结束；同样的，SELECT FOR UPDATE命令会等待直
+到前一个事务结束。
 
 
 
+### 参考
+
+【Postgresql锁机制（表锁和行锁）】https://blog.csdn.net/turbo_zone/article/details/84036511  
+【postgresql行级锁for update测试】https://blog.csdn.net/shuoyu816/article/details/80086810  
 
