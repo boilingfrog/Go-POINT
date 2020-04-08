@@ -11,8 +11,21 @@
 用户可见的锁，用户自己能够主动调用的，可以在pg_locks中看到是否grant的锁。包括regular lock和咨询锁。
 
 #### regular Lock
+ 
+regular lock分为表级别和行级别两种。
 
+##### 表级别
 
+#### 行级别
+
+通过一些数据库操作自动获得一些行锁，行锁并不阻塞数据查询，只阻塞writes和locker，比如如下操作。
+
+````sql
+FOR UPDATE
+FOR NO KEY UPFATE
+FOR SHARE
+FOR KEY SHARE
+````
 
 
 
