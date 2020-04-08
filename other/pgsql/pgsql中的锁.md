@@ -29,12 +29,19 @@ FOR KEY SHARE
 ###### FOR UPDATE
 
 FOR UPDATE锁可以使得SELECT语句获取行级锁，用于更新数据。锁定该行可以防止该行在本次的操作过程中，被其他的事务获取锁或者进行更改删除操作。就是说其他事务的操作会被阻塞直到当前事务结束；同样的，SELECT FOR UPDATE命令会等待直
-到前一个事务结束。
+到前一个事务结束。即尝试 UPDATE、DELETE、SELECT FOR UPDATE、SELECT FOR NO KEY UPDATE、SELECT FOR SHARE 或 SELECT FOR KEY SHARE 的其他事务将被阻塞。反过来，SELECT FOR UPDATE将等待已经在相同行上运行以上这些命令的
+并发事务，并且接着锁定并且返回被更新的行（或者没有行，因为行可能已被删除）。不过，在一个REPEATABLE READ或SERIALIZABLE事务中，如果一个要被锁定的行在事务开始后被更改，将会抛出一个错误。  
 
+任何在一行上的DELETE命令也会获得FOR UPDATE锁模式，在某些列上修改值的UPDATE也会获得该锁模式。当前UPDATE情况中被考虑的列集合是那些具有能用于外键的唯一索引的列（所以部分索引和表达式索引不被考虑），但是这种要求未来有可能会改变。
 
+###### FOR NO KEY UPDATE
+
+和FOR UPDATE命令类似，但是对于获取锁的要求更加宽松一些，在同一行中不会阻塞SELECT FOR KEY SHARE命令。同样在UPDATE命令的时候如果没有获取到FOR UPDATE锁的情况下会获取到该锁。
 
 ### 参考
 
 【Postgresql锁机制（表锁和行锁）】https://blog.csdn.net/turbo_zone/article/details/84036511  
 【postgresql行级锁for update测试】https://blog.csdn.net/shuoyu816/article/details/80086810  
+【PostgreSQL 锁解密 】https://www.oschina.net/translate/postgresql-locking-revealed  
+【显式锁定】http://postgres.cn/docs/11/explicit-locking.html
 
