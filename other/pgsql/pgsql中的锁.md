@@ -38,6 +38,10 @@ FOR UPDATE锁可以使得SELECT语句获取行级锁，用于更新数据。锁�
 
 和FOR UPDATE命令类似，但是对于获取锁的要求更加宽松一些，在同一行中不会阻塞SELECT FOR KEY SHARE命令。同样在UPDATE命令的时候如果没有获取到FOR UPDATE锁的情况下会获取到该锁。
 
+
+ 
+
+
 ### 参考
 
 【Postgresql锁机制（表锁和行锁）】https://blog.csdn.net/turbo_zone/article/details/84036511  
