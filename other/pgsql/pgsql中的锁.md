@@ -101,6 +101,69 @@ where id = 1
 不加锁两个事务的查询结果是一致的
 
 
+### 加锁测试（FOR UPDATE）
+
+查询1   
+````
+/*查询事务1*/
+begin;
+select *
+from test_lock
+where id = 1
+for update
+````
+![](https://img2020.cnblogs.com/blog/1237626/202004/1237626-20200409182052197-1990136146.png)
+
+查询2   
+````
+/*查询事务2*/
+begin;
+select *
+from test_lock
+where id = 1
+for update
+````
+![](https://img2020.cnblogs.com/blog/1237626/202004/1237626-20200409182325383-95897351.png)
+
+当事务1在查询中锁住资源的时候，事务2就一直查不到数据，等待事务1提交  
+
+查询1事务提交  
+````
+commit
+````
+事务2的查询马上结束等待，查询出当前的数据
+![](https://img2020.cnblogs.com/blog/1237626/202004/1237626-20200409182638341-617903954.png)
+
+别忘了事务2的commit提交
+
+````
+命令说明：
+
+begin;--开启事务
+
+begin transaction;--开启事务
+
+commit;--提交
+
+rollback;--回滚
+
+set lock_timeout=5000;--设置超时时间
+````
+
+#### 需要注意的点
+
+连表查询加锁时，不支持单边连接形式，例如：
+````sql
+  select u.*,r.* from db_user u left join db_role r on u.roleid=r.id for update;
+````
+ 
+支持以下形式，并锁住了两个表中关联的数据：
+````sql
+ select u.*,r.* from db_user u, db_role r where u.roleid=r.id for update;
+````
+
+
+
 ### 参考
 
 【Postgresql锁机制（表锁和行锁）】https://blog.csdn.net/turbo_zone/article/details/84036511  
