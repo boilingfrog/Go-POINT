@@ -69,4 +69,4 @@ ERROR:  could not serialize access due to concurrent update
 
 
 ### 摘录
-【http://postgres.cn/docs/11】 PostgreSQL 11.2 手册
+【PostgreSQL 11.2 手册】http://postgres.cn/docs/11
