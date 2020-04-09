@@ -149,6 +149,38 @@ rollback;--回滚
 set lock_timeout=5000;--设置超时时间
 ````
 
+
+### 加锁测试（FOR UPDATE,UPDATE）
+
+UPDATE和DELETE，操作也是带锁的，测试下和FOR UPDATE的阻塞情况  
+查询1
+````sql
+/*查询事务1*/
+begin;
+update test_lock set name='mignming' where id=1
+````
+查询2 
+````sql
+/*查询事务2*/
+begin;
+select *
+from test_lock
+where id = 1
+for update
+````
+![](https://img2020.cnblogs.com/blog/1237626/202004/1237626-20200409193209526-140841898.png)
+
+发现SELECT FOR UPDATE被阻塞了  
+
+提交查询1，update的事务  
+````
+commit
+````
+然后查询2结束阻塞，获取到了事务1更新的数据  
+
+![](https://img2020.cnblogs.com/blog/1237626/202004/1237626-20200409193454427-2004964869.png)
+
+
 #### 需要注意的点
 
 连表查询加锁时，不支持单边连接形式，例如：
