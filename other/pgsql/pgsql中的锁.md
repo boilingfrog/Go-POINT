@@ -57,8 +57,48 @@ FOR UPDATE锁可以使得SELECT语句获取行级锁，用于更新数据。锁�
  
 ![](https://img2020.cnblogs.com/blog/1237626/202004/1237626-20200408142154977-1951304776.png)
 
-举个栗子
-// TODO 先去弄明白pgsql的事物隔离
+### 测试下加锁之后的数据可见性
+
+````
+create table test_lock
+(
+    id   serial not null,
+    name text   not null
+);
+
+alter table test_lock
+    owner to postgres;
+
+create unique index test_lock_id_uindex
+    on test_lock (id);
+
+INSERT INTO public.test_lock (id, name) VALUES (1, '小明');
+INSERT INTO public.test_lock (id, name) VALUES (2, '小白');
+````
+
+#### 不加锁测试查询
+查询1
+````
+/*查询事务1*/
+begin;
+select *
+from test_lock
+where id = 1
+````
+![](https://img2020.cnblogs.com/blog/1237626/202004/1237626-20200409181425768-2143198880.png)
+
+查询2
+
+````
+/*查询事务2*/
+begin;
+select *
+from test_lock
+where id = 1
+````
+![](https://img2020.cnblogs.com/blog/1237626/202004/1237626-20200409181517542-1473678999.png)
+
+不加锁两个事务的查询结果是一致的
 
 
 ### 参考
