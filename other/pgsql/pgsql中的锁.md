@@ -76,31 +76,6 @@ INSERT INTO public.test_lock (id, name) VALUES (1, '小明');
 INSERT INTO public.test_lock (id, name) VALUES (2, '小白');
 ````
 
-#### 不加锁测试查询
-查询1
-````
-/*查询事务1*/
-begin;
-select *
-from test_lock
-where id = 1
-````
-![](https://img2020.cnblogs.com/blog/1237626/202004/1237626-20200409181425768-2143198880.png)
-
-查询2
-
-````
-/*查询事务2*/
-begin;
-select *
-from test_lock
-where id = 1
-````
-![](https://img2020.cnblogs.com/blog/1237626/202004/1237626-20200409181517542-1473678999.png)
-
-不加锁两个事务的查询结果是一致的
-
-
 ### 加锁测试（FOR UPDATE）
 
 查询1   
@@ -136,19 +111,6 @@ commit
 
 别忘了事务2的commit提交  
 
-#### 命令说明
-````
-begin;--开启事务
-
-begin transaction;--开启事务
-
-commit;--提交
-
-rollback;--回滚
-
-set lock_timeout=5000;--设置超时时间
-````
-
 
 ### 加锁测试（FOR UPDATE,UPDATE）
 
@@ -180,6 +142,20 @@ commit
 
 ![](https://img2020.cnblogs.com/blog/1237626/202004/1237626-20200409193454427-2004964869.png)
 
+别忘了事务2的commit提交  
+
+#### 命令说明
+````
+begin;--开启事务
+
+begin transaction;--开启事务
+
+commit;--提交
+
+rollback;--回滚
+
+set lock_timeout=5000;--设置超时时间
+````
 
 #### 需要注意的点
 
