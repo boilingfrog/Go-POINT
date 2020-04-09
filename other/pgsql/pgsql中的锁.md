@@ -134,11 +134,10 @@ commit
 事务2的查询马上结束等待，查询出当前的数据
 ![](https://img2020.cnblogs.com/blog/1237626/202004/1237626-20200409182638341-617903954.png)
 
-别忘了事务2的commit提交
+别忘了事务2的commit提交  
 
+#### 命令说明
 ````
-命令说明：
-
 begin;--开启事务
 
 begin transaction;--开启事务
@@ -162,6 +161,48 @@ set lock_timeout=5000;--设置超时时间
  select u.*,r.* from db_user u, db_role r where u.roleid=r.id for update;
 ````
 
+#### 举个栗子
+
+有一个分类表category，有一个文档表document。一个分类对应多个文档，删除分类的时候有一个限制，分类下面必须没有文档才能删除。这时候删除可能出现这样的场景，当删除分类的时候，后面新建了一个文档，两事务并行，根据pgsql默认的事务隔离级别，读已提交。新建文档，通过分类id获取到的分类信息，是进行分类删除之前的信息，也就是查询到这个分类存在。当两个事物一起执行了，有可能出现新建的文档的分类id不存在的情况。那就出现了脏数据了。  
+
+如何解决呢？  
+
+首先想到的肯定是加锁了。
+
+如果一个资源加锁了，后面的操作必须要等到前面资源操作结束才能获取到资源信息。
+
+这是pgsq文档对读已提交隔离中行锁的查询描述，需要注意的是UPDATE,DELETE也是会锁住资源的
+>UPDATE、DELETE、SELECT FOR UPDATE和SELECT FOR SHARE命令在搜索目标行时的行为和SELECT一样： 它们将只找到在命令开始时已经被提交的行。 不过，在被找到时，这样的目标行可能已经被其它并发事务更新（或删除或锁住）。在这种情况下， 即将进行的更新将等待第一个更新事务提交或者回滚（如果它还在进行中）。 如果第一个更新事务回滚，那么它的作用将被忽略并且第二个事务可以继续更新最初发现的行。 如果第一个更新事务提交，若该行被第一个更新者删除，则第二个更新事务将忽略该行，否则第二个更新者将试图在该行的已被更新的版本上应用它的操作。该命令的搜索条件（WHERE子句）将被重新计算来看该行被更新的版本是否仍然符合搜索条件。如果符合，则第二个更新者使用该行的已更新版本继续其操作。在SELECT FOR UPDATE和SELECT FOR SHARE的情况下，这意味着把该行的已更新版本锁住并返回给客户端。
+
+所以，解决方法就是在，添加文档的时候对分类id加锁，这样删除分类的锁就和下面查询的锁互斥了，两者必须有个先后执行的顺序，会避免脏数据的产生。
+
+````sql
+	WITH lock_document_categories_cte AS (
+		SELECT id
+		FROM document_categories
+		WHERE id = ${categoryId}
+		AND enterprise_id = ${enterpriseId}
+		FOR UPDATE
+	),lock_document_directories_cte AS (
+		SELECT id
+		FROM document_directories
+		WHERE id = ${directoryId}
+		AND enterprise_id = ${enterpriseId}
+		FOR UPDATE
+	)
+	INSERT INTO documents (
+		enterprise_id, directory_id, category_id, code, name, author_id
+	) VALUES (
+		${enterpriseId}, (SELECT * FROM lock_document_directories_cte), (SELECT * FROM lock_document_categories_cte), ${code}, ${name}, ${authorId}
+	)
+	RETURNING id
+````
+通过lock_document_categories_cte中的FOR UPDATE，锁住资源，这样就和delete中的锁互斥了。
+
+
+### 总结
+
+UPDATE、DELETE、SELECT FOR UPDATE和SELECT FOR SHARE。都会对资源加锁。当加锁的资源在被执行的时候。后面的操作，要等前面资源操作执行完成才能进行操作， 即将进行的更新将等待第一个更新事务提交或者回滚（如果它还在进行中）。 如果第一个更新事务回滚，那么它的作用将被忽略并且第二个事务可以继续更新最初发现的行。 如果第一个更新事务提交，若该行被第一个更新者删除，则第二个更新事务将忽略该行，否则第二个更新者将试图在该行的已被更新的版本上应用它的操作。该命令的搜索条件（WHERE子句）将被重新计算来看该行被更新的版本是否仍然符合搜索条件。如果符合，则第二个更新者使用该行的已更新版本继续其操作。在SELECT FOR UPDATE和SELECT FOR SHARE的情况下，这意味着把该行的已更新版本锁住并返回给客户端。
 
 
 ### 参考
