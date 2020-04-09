@@ -31,7 +31,7 @@
 #### regular Lock
  
 regular lock分为表级别和行级别两种。
- 
+
 #### 行级别
 
 通过一些数据库操作自动获得一些行锁，行锁并不阻塞数据查询，只阻塞writes和locker，比如如下操作。
@@ -168,12 +168,12 @@ set lock_timeout=5000;--设置超时时间
 
 连表查询加锁时，不支持单边连接形式，例如：
 ````sql
-  select u.*,r.* from db_user u left join db_role r on u.roleid=r.id for update;
+select u.*,r.* from db_user u left join db_role r on u.roleid=r.id for update;
 ````
  
 支持以下形式，并锁住了两个表中关联的数据：
 ````sql
- select u.*,r.* from db_user u, db_role r where u.roleid=r.id for update;
+select u.*,r.* from db_user u, db_role r where u.roleid=r.id for update;
 ````
 
 ### 举个栗子
