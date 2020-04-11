@@ -126,7 +126,7 @@ fmt.Println(err.Error)
 
 ### 推荐方法
 
-`github.com/pkg/errors`这个包给除了解决的方案。  
+`github.com/pkg/errors`这个包给出了解决的方案。  
 
 它的使用非常简单，如果我们要新生成一个错误，可以使用New函数,生成的错误，自带调用堆栈信息。 
 
