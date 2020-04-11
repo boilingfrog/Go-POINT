@@ -1,3 +1,11 @@
+- [go中的error](#go%E4%B8%AD%E7%9A%84error)
+  - [error和panic](#error%E5%92%8Cpanic)
+  - [error接口](#error%E6%8E%A5%E5%8F%A3)
+  - [go中err的困局](#go%E4%B8%ADerr%E7%9A%84%E5%9B%B0%E5%B1%80)
+  - [推荐方法](#%E6%8E%A8%E8%8D%90%E6%96%B9%E6%B3%95)
+  - [总结](#%E6%80%BB%E7%BB%93)
+  - [参考](#%E5%8F%82%E8%80%83)
+
 ## go中的error
 
 go中的错误处理，是通过返回值的形式来出来，要么你忽略，要么你处理（处理也可以是继续返回给调用者），对于golang这种设计方式，我们会在代码中写大量的if判断，以便做出决定。
@@ -162,10 +170,11 @@ func Cause(err error) error {
 
 ### 总结
 
-对于err我们都是将err放在函数返回值的最后一个，同时对于会出错的函数我们都会返回一个err，当然对于一些函数，我们可能不确定之后是否会有错误的产生，所以一般也是预留一个err的返回。  
+对于err我们都是将err放在函数返回值的最后一个，同时对于会出错的函数我们都会返回一个`err`，当然对于一些函数，我们可能不确定之后是否会有错误的产生，所以一般也是预留一个`err`的返回。  
 
-Go 中的 error 过于简单，以至于无法记录太多的上下文信息，对于错误包裹也没有比较好的办法。当然，这些可以通过第三方库来解决。
+Go 中的 `error` 过于简单，以至于无法记录太多的上下文信息，对于错误包裹也没有比较好的办法。当然，这些可以通过第三方库来解决。
 
+Go 语言使用 `error` 和 `panic` 处理错误和异常是一个非常好的做法，比较清晰。至于是使用 `error` 还是 `panic`，看具体的业务场景。
 
 
 ### 参考
@@ -175,3 +184,4 @@ Go 中的 error 过于简单，以至于无法记录太多的上下文信息，�
 【The Go Blog Error handling and Go】https://blog.golang.org/error-handling-and-go  
 【Go 1.13 errors 基本用法】https://segmentfault.com/a/1190000020398774  
 【Go与Error的前世今生】https://zhuanlan.zhihu.com/p/55975116  
+【Go 系列教程 —— 32. panic 和 recover】https://studygolang.com/articles/12785  
