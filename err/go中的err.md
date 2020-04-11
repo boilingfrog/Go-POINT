@@ -28,6 +28,45 @@ type error interface {
 
 ``errors.New()``是我们会经常使用的，我们来探究下这个函数  
 
+````go
+// src/errors/errors.go
+
+func New(text string) error {
+	return &errorString{text}
+}
+
+type errorString struct {
+	s string
+}
+
+func (e *errorString) Error() string {
+	return e.s
+}
+````
+
+使用 New 函数创建出来的 error 类型实际上是 errors 包里未导出的 errorString 类型，它包含唯一的一个字段 s，并且实现了唯一的方法：Error() string。
+
+举个使用的栗子  
+
+````go
+func Sqrt(f float64) (float64, error) {
+    if f < 0 {
+        return 0, errors.New("math: square root of negative number")
+    }
+    // implementation
+}
+````
+
+我们可以使用`errors.New`来定制我们需要的错误信息  
+
+
+
+
+
+
+
+
+
 
 
 
