@@ -44,7 +44,7 @@ func (e *errorString) Error() string {
 }
 ````
 
-使用 New 函数创建出来的 error 类型实际上是 errors 包里未导出的 errorString 类型，它包含唯一的一个字段 s，并且实现了唯一的方法：Error() string。
+使用 `New` 函数创建出来的 `error` 类型实际上是 `errors` 包里未导出的 `errorString` 类型，它包含唯一的一个字段 s，并且实现了唯一的方法：`Error() string。`
 
 举个使用的栗子  
 
@@ -68,7 +68,7 @@ if f < 0 {
 ````
 通过`fmt.Errorf`我们不仅能打印错误，同时还能看到具体什么数数值引起的错误。它会先将字符串格式化，然后再调用`errors.New`来创建错误。
 
-当我们想知道错误类型，并且打印错误的时候，直接打印 error：  
+当我们想知道错误类型，并且打印错误的时候，直接打印 `error`：  
 
 ````go
 fmt.Println(err)
@@ -83,9 +83,11 @@ fmt.Println(err.Error)
 
 ****注意：对于err我们都是将err放在函数返回值的最后一个，同时对于会出错的函数我们都会返回一个err，当然对于一些函数，我们可能不确定之后是否会有错误的产生，所以一般也是预留一个err的返回。****
 
+### go中err的困局
 
-
-
+在go中，`err`的是通过返回值的形式返回。编程人员，要不处理，要不忽略。所以我们的代码就会大量的出现对错误的`if`判断。  
+出于对代码的健壮性考虑，我们对于每一个错误，都是不能忽略的。因为出错的同时，很可能会返回一个 nil 类型的对象。如果不对错误进行判断，那下一行对 `nil` 对象的操作百分之百会引发一个 `panic`。
+所以就造成了`err`满天飞。
 
 
 
@@ -106,3 +108,4 @@ fmt.Println(err.Error)
 【Golang error 的突围】https://www.cnblogs.com/qcrao-2018/p/11538387.html  
 【The Go Blog Error handling and Go】https://blog.golang.org/error-handling-and-go  
 【Go 1.13 errors 基本用法】https://segmentfault.com/a/1190000020398774  
+【Go与Error的前世今生】https://zhuanlan.zhihu.com/p/55975116  
