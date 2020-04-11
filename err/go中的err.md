@@ -38,6 +38,14 @@ panic：不可预见的异常
 
 在一般情况下，我们不应通过调用panic函数来报告普通的错误，而应该只把它作为报告致命错误的一种方式。当某些不应该发生的场景发生时，我们就应该调用panic。  
 
+总结下panic的使用场景  
+
+1、空指针引用  
+2、下标越界  
+3、除数为0  
+4、不应该出现的分支，比如default  
+5、输入不应该引起函数错误  
+
 ### error接口
 
 go中的error是一个接口类型  
@@ -187,3 +195,4 @@ Go 语言使用 `error` 和 `panic` 处理错误和异常是一个非常好的�
 【Go 1.13 errors 基本用法】https://segmentfault.com/a/1190000020398774  
 【Go与Error的前世今生】https://zhuanlan.zhihu.com/p/55975116  
 【Go 系列教程 —— 32. panic 和 recover】https://studygolang.com/articles/12785  
+【Golang错误和异常处理的正确姿势】https://www.jianshu.com/p/f30da01eea97
