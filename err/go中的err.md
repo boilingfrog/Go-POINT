@@ -59,6 +59,30 @@ func Sqrt(f float64) (float64, error) {
 
 我们可以使用`errors.New`来定制我们需要的错误信息  
 
+但是对于上面的报错，我们知道是不知道报错的上下文信息的，我们就知道程序出错了，不利于我们错误的排查。我们可以使用`fmt.Errorf`来输出上下文信息。
+
+````go
+if f < 0 {
+    return 0, fmt.Errorf("math: square root of negative number %g", f)
+}
+````
+通过`fmt.Errorf`我们不仅能打印错误，同时还能看到具体什么数数值引起的错误。它会先将字符串格式化，然后再调用`errors.New`来创建错误。
+
+当我们想知道错误类型，并且打印错误的时候，直接打印 error：  
+
+````go
+fmt.Println(err)
+````
+
+或者：  
+
+````go
+fmt.Println(err.Error)
+````
+``fmt`` 包会自动调用 ``err.Error()`` 函数来打印字符串。
+
+对于err我们都是将err放在函数返回值的最后一个，同时对于会出错的函数我们都会返回一个err，当然对于一些函数，我们可能不确定之后是否会有错误的产生，所以一般也是预留一个err的返回。
+
 
 
 
@@ -80,4 +104,5 @@ func Sqrt(f float64) (float64, error) {
 
 【Go语言(golang)的错误(error)处理的推荐方案】https://www.flysnow.org/2019/01/01/golang-error-handle-suggestion.html  
 【Golang error 的突围】https://www.cnblogs.com/qcrao-2018/p/11538387.html  
-【The Go Blog Error handling and Go】https://blog.golang.org/error-handling-and-go
+【The Go Blog Error handling and Go】https://blog.golang.org/error-handling-and-go  
+【Go 1.13 errors 基本用法】https://segmentfault.com/a/1190000020398774  
