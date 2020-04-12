@@ -120,8 +120,81 @@ true
 true
 ````
 
+#### As
+
+这个和上面的 `errors.Is` 大体上是一样的，区别在于 `Is` 是严格判断相等，即两个 `error` 是否相等。而 `As` 则是判断类型是否相同，并提取第一个符合目标类型的错误，用来统一处理某一类错误。
+
+````go
+func As(err error, target interface{}) bool
+````
+
+源码如下：
+
+````go
+func As(err error, target interface{}) bool {
+    // target 不能为 nil
+	if target == nil {
+		panic("errors: target cannot be nil")
+	}
+	
+	val := reflectlite.ValueOf(target)
+	typ := val.Type()
+	
+	// target 必须是一个非空指针
+	if typ.Kind() != reflectlite.Ptr || val.IsNil() {
+		panic("errors: target must be a non-nil pointer")
+	}
+	
+	// 保证 target 是一个接口类型或者实现了 Error 接口
+	if e := typ.Elem(); e.Kind() != reflectlite.Interface && !e.Implements(errorType) {
+		panic("errors: *target must be interface or implement error")
+	}
+	targetType := typ.Elem()
+	for err != nil {
+	    // 使用反射判断是否可被赋值，如果可以就赋值并且返回true
+		if reflectlite.TypeOf(err).AssignableTo(targetType) {
+			val.Elem().Set(reflectlite.ValueOf(err))
+			return true
+		}
+		
+		// 调用 error 自定义的 As 方法，实现自己的类型断言代码
+		if x, ok := err.(interface{ As(interface{}) bool }); ok && x.As(target) {
+			return true
+		}
+		// 不断地 Unwrap，一层层的获取嵌套的 error
+		err = Unwrap(err)
+	}
+	return false
+}
+````
+
+举个栗子
+
+````go
+type ErrorString struct {
+    s string
+}
+
+func (e *ErrorString) Error() string {
+    return e.s
+}
+
+var targetErr *ErrorString
+err := fmt.Errorf("new error:[%w]", &ErrorString{s:"target err"})
+fmt.Println(errors.As(err, &targetErr))
+````
+输出
+````
+// output
+true
+````
+
+#### 扩展
+
+`Is As` 两个方法已经预留了口子，可以由自定义的 `error struct` 实现并覆盖调用。
 
 
 ### 参考
  
 【Go 1.13 errors 基本用法】https://segmentfault.com/a/1190000020398774
+【Go语言(golang)新发布的1.13中的Error Wrapping深度分析】https://www.flysnow.org/2019/09/06/go1.13-error-wrapping.html
