@@ -23,9 +23,102 @@ err3: [err2: [new error]]
 ````
 `err2` 就是一个合法的被包装的 `error`，同样地，`err3` 也是一个被包装的 `error`，如此可以一直套下去。  
 
+#### Unwrap
 
+拆开一个被包装的 `error`  
 
+````go
+func Unwrap(err error) error
+````
+将嵌套的 error 解析出来，多层嵌套需要调用 Unwrap 函数多次，才能获取最里层的 error。  
 
+源码如下：  
+
+````go
+func Unwrap(err error) error {
+    // 判断是否实现了 Unwrap 方法
+	u, ok := err.(interface {
+		Unwrap() error
+	})
+	// 如果不是，返回 nil
+	if !ok {
+		return nil
+	}
+	// 调用 Unwrap 方法返回被嵌套的 error
+	return u.Unwrap()
+}
+````
+
+对 `err` 进行断言，看它是否实现了 `Unwrap` 方法，如果是，调用它的 `Unwrap` 方法。否则，返回 `nil`。
+
+````go
+err1 := errors.New("new error")
+err2 := fmt.Errorf("err2: [%w]", err1)
+err3 := fmt.Errorf("err3: [%w]", err2)
+
+fmt.Println(errors.Unwrap(err3))
+fmt.Println(errors.Unwrap(errors.Unwrap(err3)))
+````
+
+输出
+
+````go
+// output
+err2: [new error]
+new error
+````
+
+#### errors.Is
+
+判断被包装的error是是否含有指定错误。  
+
+当多层调用返回的错误被一次次地包装起来，我们在调用链上游拿到的错误如何判断是否是底层的某个错误呢？  
+
+它递归调用 Unwrap 并判断每一层的 err 是否相等，如果有任何一层 err 和传入的目标错误相等，则返回 true。  
+
+源码如下：
+````go
+func Is(err, target error) bool {
+	if target == nil {
+		return err == target
+	}
+
+	isComparable := reflectlite.TypeOf(target).Comparable()
+	
+	// 无限循环，比较 err 以及嵌套的 error
+	for {
+		if isComparable && err == target {
+			return true
+		}
+		// 调用 error 的 Is 方法，这里可以自定义实现
+		if x, ok := err.(interface{ Is(error) bool }); ok && x.Is(target) {
+			return true
+		}
+		// 返回被嵌套的下一层的 error
+		if err = Unwrap(err); err == nil {
+			return false
+		}
+	}
+}
+````
+通过一个无限循环，使用 `Unwrap` 不断地将 `err` 里层嵌套的 `error` 解开，再看被解开的 `error` 是否实现了 `Is` 方法，并且调用它的 `Is` 方法，当两者都返回 `true` 的时候，整个函数返回 `true`。
+
+举个栗子
+
+````go
+err1 := errors.New("new error")
+err2 := fmt.Errorf("err2: [%w]", err1)
+err3 := fmt.Errorf("err3: [%w]", err2)
+
+fmt.Println(errors.Is(err3, err2))
+fmt.Println(errors.Is(err3, err1))
+````
+输出
+````
+// output
+true
+true
+````
 
 
 
