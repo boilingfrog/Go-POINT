@@ -206,5 +206,5 @@ true
 
 ### 参考
  
-【Go 1.13 errors 基本用法】https://segmentfault.com/a/1190000020398774
+【Go 1.13 errors 基本用法】https://segmentfault.com/a/1190000020398774  
 【Go语言(golang)新发布的1.13中的Error Wrapping深度分析】https://www.flysnow.org/2019/09/06/go1.13-error-wrapping.html
