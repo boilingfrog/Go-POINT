@@ -78,6 +78,7 @@ BUFFERS选项显示关于缓存区的信息。该选项只能与ANALYZE参数一
 
 
 
+
 ### 参考
 【EXPLAIN】http://www.postgres.cn/docs/9.5/sql-explain.html  
 
