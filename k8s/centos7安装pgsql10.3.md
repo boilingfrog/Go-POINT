@@ -1,0 +1,1 @@
+## centos7下安装pgsql10.3
