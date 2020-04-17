@@ -6,3 +6,7 @@
 
 ### 下载pgsql-10.3
 
+系统版本
+
+下载pgsql-10.3:`https://www.postgresql.org/ftp/source/v10.3/` 
+
