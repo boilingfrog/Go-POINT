@@ -203,7 +203,7 @@ psql (PostgreSQL) 10.3
 
 #### 设置开机启动
 
-将pgs安装包中的linux文件复制到/etc/init.d或者/etc/rc.d
+将pgsql安装包中的linux文件复制到/etc/init.d或者/etc/rc.d
 
 ````
 [root@10 postgresql-10.3]# cp contrib/start-scripts/linux /etc/init.d/pgsql
