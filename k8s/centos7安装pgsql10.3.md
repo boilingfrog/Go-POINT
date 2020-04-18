@@ -191,7 +191,13 @@ server started
 
 启动，停止，重启
 ````
-./pg_ctl start\stop\restart -D /usr/local/pgsql/log/pg_server.log
+$ pg_ctl start\stop\restart -D /usr/local/pgsql/log/pg_server.log
+````
+
+需要切换用户 `postgres`,使用`root`用户 `su postgres`切换到`postgres`用户时，执行上面的启动命令会提示权限不够，使用下面的这个命令，就可以了
+ 
+````
+# su - postgres
 ````
 
 #### 查看版本
