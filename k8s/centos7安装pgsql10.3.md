@@ -191,7 +191,7 @@ server started
 
 启动，停止，重启
 ````
-./pg_ctl start\stop\restart -D /usr/local/pgsql/data/
+./pg_ctl start\stop\restart -D /usr/local/pgsql/log/pg_server.log
 ````
 
 #### 查看版本
