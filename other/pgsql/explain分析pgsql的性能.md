@@ -122,8 +122,25 @@ begin
 end $$;
 ````
 
+验证下查询  
 
+````sql
+explain select a.id,b.id from test1 a,test2 b where a.category_id=b.category_id and a.id<10000
 
+QUERY PLAN
+-----------------------------------------------------------------------------------------------------------------------
+Gather  (cost=1170.58..67037.87 rows=14666 width=16)
+  Workers Planned: 2
+  ->  Nested Loop  (cost=170.58..64571.27 rows=6111 width=16)
+        ->  Parallel Bitmap Heap Scan on test1 a  (cost=170.15..24939.15 rows=3748 width=16)
+              Recheck Cond: (id < 10000)
+              ->  Bitmap Index Scan on test1_pk  (cost=0.00..167.90 rows=8996 width=0)
+                    Index Cond: (id < 10000)
+        ->  Index Scan using test2_category_id_index on test2 b  (cost=0.43..10.55 rows=2 width=16)
+              Index Cond: (category_id = a.category_id)
+````
+
+可以看到当有高选择性索引或进行限制性，查询优化器会自动选择`Nested Loop`
 
 
 #### Hash join
@@ -137,6 +154,28 @@ end $$;
 
 测试下  
 
+````sql
+drop index test1_category_id_index;
+drop index test2_category_id_index;
+````
+删除关联查询的字段的索引  
+
+````sql
+explain select a.id,b.id from test1 a,test2 b where a.category_id=b.category_id and a.id<10000
+
+QUERY PLAN
+-----------------------------------------------------------------------------------------------------------------------
+Hash Join  (cost=214297.39..248684.97 rows=14666 width=16)
+  Hash Cond: (a.category_id = b.category_id)
+  ->  Index Scan using test1_pk on test1 a  (cost=0.43..335.86 rows=8996 width=16)
+        Index Cond: (id < 10000)
+  ->  Hash  (cost=109999.98..109999.98 rows=5999998 width=16)
+        ->  Seq Scan on test2 b  (cost=0.00..109999.98 rows=5999998 width=16)
+````
+
+因为没有索引了，并且查询的条数可以完全放入到内存里面，所以查询优化器就选择使用`Hash join`了，对于选择那个表建立散列表，要看查询的条件。如上面的限制条件`a.id<10000`,
+限制了a表查询的数据条数，那么a表条数较少，然后就在a表建立散列表，然后扫描b表。
+
 #### Merge Join
 
 通常情况下散列连接的效果比合并连接的效果好，如果源数据上有索引，或者结果已经排过序，在执行顺序合并连接时就不需要排序了，这时合并连接的性能会优于散列连接。  
@@ -147,6 +186,26 @@ end $$;
 3' 进行merge join对排序结果进行合并。  
 
 `Merge Join`可适于于非等值Join（>，<，>=，<=，但是不包含!=，也即<>）  
+
+````sql
+explain   select a.id,b.id from test1 a,test2 b where a.category_id=b.category_id 
+
+QUERY PLAN
+-----------------------------------------------------------------------------------------------------------------------
+Merge Join  (cost=2342944.84..2575285.64 rows=13041968 width=16)
+  Merge Cond: (b.category_id = a.category_id)
+  ->  Sort  (cost=1005574.67..1020574.66 rows=5999998 width=16)
+        Sort Key: b.category_id
+        ->  Seq Scan on test2 b  (cost=0.00..124999.98 rows=5999998 width=16)
+              Filter: (id < 100000000)
+  ->  Materialize  (cost=1337364.94..1377364.72 rows=7999956 width=16)
+        ->  Sort  (cost=1337364.94..1357364.83 rows=7999956 width=16)
+              Sort Key: a.category_id
+              ->  Seq Scan on test1 a  (cost=0.00..146666.56 rows=7999956 width=16)
+````
+
+`category_id`上面是没有索引的，这时候查询选择了`Merge Join`，上面的`Sort Key: a.category_id`，就是对a表的`category_id`字段排序。
+
 
 #### Nested Loop，Hash JOin，Merge Join对比
 
