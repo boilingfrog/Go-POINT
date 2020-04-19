@@ -43,12 +43,12 @@ BUFFERS选项显示关于缓存区的信息。该选项只能与ANALYZE参数一
 
 #### 全表扫描
 
-全表扫描在pgsql中叫做顺序扫描(seq scan)，全表扫描就是把表的的所有的数据从头到尾读取一遍，然后从数据块中找到符合条件的数据块。
+全表扫描在`pgsql`中叫做顺序扫描(`seq scan`)，全表扫描就是把表的的所有的数据从头到尾读取一遍，然后从数据块中找到符合条件的数据块。
 
 
 #### 索引扫描
 
-索引是为了加快数据查询的速度索引而增加的(Index Scan)。索引扫描也就是我们的查询条件使用到了我们创建的索引，当然什么是索引，自行查阅资料吧。
+索引是为了加快数据查询的速度索引而增加的(`Index Scan`)。索引扫描也就是我们的查询条件使用到了我们创建的索引，当然什么是索引，自行查阅资料吧。
 
 #### 位图扫描
 
@@ -67,6 +67,64 @@ BUFFERS选项显示关于缓存区的信息。该选项只能与ANALYZE参数一
 
 执行的过程：确定一个驱动表（outer table），另一个表为inner table，驱动表中的每一行数据会去inner表中，查找检索数据。注意，驱动表的每一行都去inner表中
 检索，索引驱动表的数据不能太大。对于inner表中的数据就没有限制了，只要创建的索引合适，inner表中数据的大小对查询的性能影响不大。
+
+测试下：  
+
+创建数据表
+
+````sql
+create table test1
+(
+    id          bigserial not null
+        constraint test1_pk
+            primary key,
+    name        text      not null,
+    category_id bigint    not null
+);
+create index test1_category_id_index
+    on test1 (category_id);
+  
+create table test2
+(
+    id          bigserial not null
+        constraint test2_pk
+            primary key,
+    name        text      not null,
+    category_id bigint    not null
+);
+
+create index test2_category_id_index
+    on test2 (category_id);
+````
+
+插入数据,test1插入8000000条，test2插入6000000条  
+
+````sql
+do $$
+declare
+v_idx integer := 1;
+begin
+  while v_idx < 8000000 loop
+       v_idx = v_idx+1;
+    insert into test1 (name, category_id) values ( random()*(20000000000000000-10)+10,random()*(8000000-10)+10);
+  end loop;
+end $$;
+
+
+do $$
+declare
+v_idx integer := 1;
+begin
+  while v_idx < 6000000 loop
+       v_idx = v_idx+1;
+    insert into test2 (name, category_id) values ( random()*(20000000000000000-10)+10,random()*(6000000-10)+10);
+  end loop;
+end $$;
+````
+
+
+
+
 
 #### Hash join
 
@@ -97,7 +155,7 @@ BUFFERS选项显示关于缓存区的信息。该选项只能与ANALYZE参数一
 | -----------------------| -------------------------------| -------------------------------| -------------------------------|
 | 使用条件                | 任何条件                        | 等值连接（=）                    | 等值或非等值连接(>，<，=，>=，<=)，‘<>’除外              |
 | 相关资源                | CPU、磁盘I/O                     | 内存、临时空间                    | 内存、临时空间               |
-| 特点                   | 当有高选择性索引或进行限制性搜索时效率比较高，能够快速返回第一次的搜索结果。|当缺乏索引或者索引条件模糊时，Hash Join比Nested Loop有效。通常比Merge Join快。在数据仓库环境下，如果表的纪录数多，效率高。|当缺乏索引或者索引条件模糊时，Merge Join比Nested Loop有效。非等值连接时，Merge Join比Hash Join更有效|
+| 特点                   | 当有高选择性索引或进行限制性搜索时效率比较高，能够快速返回第一次的搜索结果。|当缺乏索引或者索引条件模糊时，Hash Join比Nested Loop有效。通常比Merge Join快,如果有索引，或者结果已经被排序了，这时候Merge Join的查询更快。在数据仓库环境下，如果表的纪录数多，效率高。|当缺乏索引或者索引条件模糊时，Merge Join比Nested Loop有效。非等值连接时，Merge Join比Hash Join更有效|
 | 缺点                   | 当索引丢失或者查询条件限制不够时，效率很低；当表的纪录数多时，效率低。|为建立哈希表，需要大量内存。第一次的结果返回较慢。|所有的表都需要排序。它为最优化的吞吐量而设计，并且在结果没有全部找到前不返回数据。|
 
 
