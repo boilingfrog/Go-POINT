@@ -76,8 +76,28 @@ Execution time: 1637.480 ms
 
 加了`analyze`可以看到实际的启动时间，`(actual time=0.012..1153.317 rows=8000001 loops=1)`其中:  
 
-- actual time=0.012..1153.317:0.012表示的是启动的时间,`..`后面的时间表示返回所有行需要的时间  
+- actual time=0.012..1153.317:`0.012`表示的是启动的时间,`..`后面的时间表示返回所有行需要的时间  
 - rows=8000001:表示返回的行数  
+
+#### buffers
+
+通过使用buffers来查看缓存区命中的情况  
+
+````sql
+explain  (analyze,buffers) select * from test1
+
+QUERY PLAN
+-----------------------------------------------------------------------------------------------------------------------
+Seq Scan on test1  (cost=0.00..146666.56 rows=7999956 width=33) (actual time=0.013..1166.464 rows=8000001 loops=1)
+  Buffers: shared hit=777 read=65890
+Planning time: 0.049 ms
+Execution time: 1747.163 ms
+````
+
+其中会多出一行`Buffers: shared hit=777 read=65890`。  
+
+- shared hit=777：表示的在共享内存里面直接读到`777`个块；
+- read=65890：表示
 
 #### 全表扫描
 
