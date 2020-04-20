@@ -60,6 +60,25 @@ Seq Scan on test1  (cost=0.00..146666.56 rows=7999956 width=33)
 
 其中`cost`描述的是一个`sql`执行的代价。
 
+#### analyze
+
+通过`analyze`可以看到更加精确的执行计划。  
+
+````sql
+explain  analyze select * from test1
+
+QUERY PLAN
+-----------------------------------------------------------------------------------------------------------------------
+Seq Scan on test1  (cost=0.00..146666.56 rows=7999956 width=33) (actual time=0.012..1153.317 rows=8000001 loops=1)
+Planning time: 0.049 ms
+Execution time: 1637.480 ms
+````
+
+加了`analyze`可以看到实际的启动时间，`(actual time=0.012..1153.317 rows=8000001 loops=1)`其中:  
+
+- actual time=0.012..1153.317:0.012表示的是启动的时间,`..`后面的时间表示返回所有行需要的时间  
+- rows=8000001:表示返回的行数  
+
 #### 全表扫描
 
 全表扫描在`pgsql`中叫做顺序扫描(`seq scan`)，全表扫描就是把表的的所有的数据从头到尾读取一遍，然后从数据块中找到符合条件的数据块。
