@@ -1,5 +1,3 @@
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [EXPLAIN分析pgsql的性能](#explain%E5%88%86%E6%9E%90pgsql%E7%9A%84%E6%80%A7%E8%83%BD)
   - [前言](#%E5%89%8D%E8%A8%80)
