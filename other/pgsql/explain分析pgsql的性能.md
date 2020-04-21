@@ -1,3 +1,26 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [EXPLAIN分析pgsql的性能](#explain%E5%88%86%E6%9E%90pgsql%E7%9A%84%E6%80%A7%E8%83%BD)
+  - [前言](#%E5%89%8D%E8%A8%80)
+  - [EXPLAIN命令](#explain%E5%91%BD%E4%BB%A4)
+    - [EXPLAIN -- 显示一个语句的执行计划](#explain----%E6%98%BE%E7%A4%BA%E4%B8%80%E4%B8%AA%E8%AF%AD%E5%8F%A5%E7%9A%84%E6%89%A7%E8%A1%8C%E8%AE%A1%E5%88%92)
+    - [命令详解](#%E5%91%BD%E4%BB%A4%E8%AF%A6%E8%A7%A3)
+    - [EXPLAIN输出结果展示](#explain%E8%BE%93%E5%87%BA%E7%BB%93%E6%9E%9C%E5%B1%95%E7%A4%BA)
+    - [analyze](#analyze)
+    - [buffers](#buffers)
+    - [全表扫描](#%E5%85%A8%E8%A1%A8%E6%89%AB%E6%8F%8F)
+    - [索引扫描](#%E7%B4%A2%E5%BC%95%E6%89%AB%E6%8F%8F)
+    - [位图扫描](#%E4%BD%8D%E5%9B%BE%E6%89%AB%E6%8F%8F)
+    - [条件过滤](#%E6%9D%A1%E4%BB%B6%E8%BF%87%E6%BB%A4)
+    - [Nestloop join](#nestloop-join)
+    - [Hash join](#hash-join)
+    - [Merge Join](#merge-join)
+    - [Nested Loop，Hash JOin，Merge Join对比](#nested-loophash-joinmerge-join%E5%AF%B9%E6%AF%94)
+  - [参考](#%E5%8F%82%E8%80%83)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## EXPLAIN分析pgsql的性能
 
 ### 前言
