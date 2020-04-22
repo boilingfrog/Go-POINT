@@ -17,8 +17,6 @@
     - [Nested Loop，Hash JOin，Merge Join对比](#nested-loophash-joinmerge-join%E5%AF%B9%E6%AF%94)
   - [参考](#%E5%8F%82%E8%80%83)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-
 ## EXPLAIN分析pgsql的性能
 
 ### 前言
