@@ -116,7 +116,8 @@ Execution time: 1747.163 ms
 其中会多出一行`Buffers: shared hit=777 read=65890`。  
 
 - shared hit=777：表示的在共享内存里面直接读到`777`个块；
-- read=65890：表示
+- read=65890：表示从磁盘中读了`65890`块  
+- written: 表示写磁盘共`xx`块  
 
 #### 全表扫描
 
