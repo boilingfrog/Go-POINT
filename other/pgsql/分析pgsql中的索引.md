@@ -20,3 +20,14 @@ B-tree可以在可排序数据上的处理等值和范围查询。
 >
 
 ````
+
+##### 实现
+
+
+
+
+
+### 参考
+
+【深入浅出PostgreSQL B-Tree索引结构】https://yq.aliyun.com/articles/53701 
+【PostgreSQL内核分析——BTree索引】https://www.cnblogs.com/scu-cjx/p/9960483.html   
