@@ -23,6 +23,8 @@ B-tree可以在可排序数据上的处理等值和范围查询。
 
 ##### 实现
 
+pgsql中B-tree的实现是根据《Effiicient Locking for Concurrent Operations on B-Trees》论文设计实现的。
+
 
 
 
