@@ -35,9 +35,16 @@ PostgreSQL的索引结构，也是按照这种方式进行存储的。
 
 ![](https://img2020.cnblogs.com/blog/1237626/202004/1237626-20200429093159100-190402728.png)
 
+PageHeaderDate:是长度为20字节的页头数据，包括该文件块的一般信息，如：  
 
+- 空闲空间的起始和结束位置  
+- Special space的开始位置  
+- 项指针的开始位置  
+- 标志信息，如是否存在空闲项指针、是否所有的元组都可见  
+
+ 
 
 ### 参考
 
-【深入浅出PostgreSQL B-Tree索引结构】https://yq.aliyun.com/articles/53701 
-【PostgreSQL内核分析——BTree索引】https://www.cnblogs.com/scu-cjx/p/9960483.html   
+【深入浅出PostgreSQL B-Tree索引结构】https://yq.aliyun.com/articles/53701   
+【PostgreSQL内核分析——BTree索引】https://www.cnblogs.com/scu-cjx/p/9960483.html    
