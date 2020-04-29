@@ -23,7 +23,9 @@ B-tree可以在可排序数据上的处理等值和范围查询。
 
 ##### 实现
 
-pgsql中B-tree的实现是根据《Effiicient Locking for Concurrent Operations on B-Trees》论文设计实现的。
+pgsql中B-tree的实现是根据《Effiicient Locking for Concurrent Operations on B-Trees》论文设计实现的。  
+Lehman和Yao的论文中，修改了B树的结构，不管是内部节点还是叶子节点，都有一个指针指向兄弟节点。  
+![](https://img2020.cnblogs.com/blog/1237626/202004/1237626-20200429090003097-1404023179.png)
 
 
 
