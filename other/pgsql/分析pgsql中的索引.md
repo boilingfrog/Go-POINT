@@ -45,7 +45,7 @@ PageHeaderDate:是长度为20字节的页头数据，包括该文件块的一般
 
 Freespase是指未分配的空间（空闲空间）  
 
-新插入的元组及其对应的Linp元素都会从Freespase空间来分配，Linp从Freespase头部开始分配，新元组是从尾部开始分配。  
+新插入的元组及其对应的Linp元素都会从Freespase空间来分配，Linp从Freespase头部开始分配，新元组（tuple）是从尾部开始分配。而PostgreSQL的索引结构，也是按照上述页面结构进行存储的。  
 
 Special space 是特殊空间：  
 
@@ -57,7 +57,8 @@ Special space 是特殊空间：
 
 图中的索引索引元组，`itup1,itup2,itup3`。它们是有序的。它们存储的是元组在业内的实际位置，通过`liup`可以快速的访问到索引元组。
 
-根据
+根据b-tree，每层的非最右节点需要一个最大关键值（`High Key`），通过它给出该节点索引关键字的范围。如果要插入的关键字大于`High Key`，就需要移动右边的节点，来寻找合适的插入点。  
+
 
 
 
