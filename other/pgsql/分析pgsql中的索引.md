@@ -77,8 +77,9 @@ Special space 是特殊空间：
 
 ![](https://img2020.cnblogs.com/blog/1237626/202004/1237626-20200429221737736-575274913.png)
 
-由于最有节点不需要`High Key`，所以`linp0`不需要保存`High Key`，将所有的`linp`递减一个位置，`linp3`同样不需要了。
+由于最有节点不需要`High Key`，所以`linp0`不需要保存`High Key`，将所有的`linp`递减一个位置，`linp3`同样不需要了。  
 
+每个节点都有一个指针指向右侧的兄弟，pgsql的实现使用了两个指针，分别指向左右的兄弟节点。这两个指针由尾部的Special的特殊区域保存，
 
 PostgreSQL所实现的BTree索引组织结构如下图：
 
