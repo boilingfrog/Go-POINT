@@ -26,6 +26,11 @@ B+Tree:
 
 ![](https://img2020.cnblogs.com/blog/1237626/202005/1237626-20200501010850273-1335519702.png)
 
+PostgreSQL的B-tree索引：  
+
+![](https://img2020.cnblogs.com/blog/1237626/202005/1237626-20200501011801366-231237104.png)
+
+
 
 #### pgsql中B-Tree
 
@@ -115,3 +120,4 @@ PostgreSQL所实现的BTree索引组织结构如下图：
 【深入浅出PostgreSQL B-Tree索引结构】https://yq.aliyun.com/articles/53701   
 【PostgreSQL内核分析——BTree索引】https://www.cnblogs.com/scu-cjx/p/9960483.html    
 【B-Tree和B+Tree的区别】https://www.cnblogs.com/shengguorui/p/10695646.html  
+【PostgreSQL的B-tree索引】https://www.centos.bz/2019/06/postgresql%e7%9a%84b-tree%e7%b4%a2%e5%bc%95/  
