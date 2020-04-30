@@ -73,10 +73,16 @@ Special space 是特殊空间：
 - 首先将`itup3`复制到该节点的右兄弟节点中，然后将`linp0`指向`itup3`（页面中的`High Key`）。  
 - 然后去掉`linp3`。也就是使用`linp0`指向页面的`High Key`。由于`High Key`（linp0）只是作为一个索引节点中键值的范围，并不指向实际的元组（itup3），所以去掉指向`itup3`的`linp3`。
 
+##### 如果该节点是最右节点
+
+![](https://img2020.cnblogs.com/blog/1237626/202004/1237626-20200429221737736-575274913.png)
+
+由于最有节点不需要`High Key`，所以`linp0`不需要保存`High Key`，将所有的`linp`递减一个位置，`linp3`同样不需要了。
 
 
+PostgreSQL所实现的BTree索引组织结构如下图：
 
-
+![](https://img2020.cnblogs.com/blog/1237626/202004/1237626-20200430112315859-2081271983.png)
 
  
 
