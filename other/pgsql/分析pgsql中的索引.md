@@ -8,7 +8,27 @@ pgsql中索引的支持类型好像还是蛮多的，一一来分析下
 
 PostgreSQL提供了多种索引类型： B-tree、Hash、GiST、SP-GiST 、GIN 和 BRIN。每一种索引类型使用了 一种不同的算法来适应不同类型的查询。
 
-#### B-tree
+### B-tree
+
+首先我们需要弄明白一点`b-tree`就是`btree`。pgsql中使用的`b-tree`是`btree`的修改版本，引入了指向右兄弟节点的指针。   
+
+那么传统的btree和b+tree有什么区别呢？我们来探究下：  
+
+#### B-Tree和B+Tree的区别:
+
+在B+Tree中，所有数据记录节点都是按照键值大小顺序存放在同一层的叶子节点上，而非叶子节点上只存储key值信息，这样可以大大加大每个节点存储的key值数量，降低B+Tree的高度。
+
+B-Tree：  
+
+![](https://img2020.cnblogs.com/blog/1237626/202005/1237626-20200501010816753-1572435028.png)
+
+B+Tree:  
+
+![](https://img2020.cnblogs.com/blog/1237626/202005/1237626-20200501010850273-1335519702.png)
+
+
+#### pgsql中B-Tree
+
 
 B-tree可以在可排序数据上的处理等值和范围查询。  
 例如下面的集中场景:  
@@ -94,3 +114,4 @@ PostgreSQL所实现的BTree索引组织结构如下图：
 
 【深入浅出PostgreSQL B-Tree索引结构】https://yq.aliyun.com/articles/53701   
 【PostgreSQL内核分析——BTree索引】https://www.cnblogs.com/scu-cjx/p/9960483.html    
+【B-Tree和B+Tree的区别】https://www.cnblogs.com/shengguorui/p/10695646.html  
