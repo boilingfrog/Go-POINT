@@ -132,7 +132,32 @@ Special space 是特殊空间：
 
 由于最有节点不需要`High Key`，所以`linp0`不需要保存`High Key`，将所有的`linp`递减一个位置，`linp3`同样不需要了。  
 
-每个节点都有一个指针指向右侧的兄弟，pgsql的实现使用了两个指针，分别指向左右的兄弟节点。  
+每个节点都有一个指针指向右侧的兄弟，pgsql的实现使用了两个指针，分别指向左右的兄弟节点。这两个指针是由页面尾部的一块名为`Special`的特殊区域保存的，里面防止了一个由`BTPageOpaqueData`结构保存的数据。该数据结构记录了该节点在树结构中的左右兄弟节点的指针以及页面类型等信息。
+
+````sql
+/* Btree Page Operation queue Data Struct */
+typedef struct BTPageOpaqueData
+{
+	BlockNumber btpo_prev;		/* 前一页块号，用于索引反向扫描　*/
+	BlockNumber btpo_next;		/* 后一页快页快号，用于索引正向扫描 */
+	union
+	{
+		uint32		level;		/* 页面在索引树中层次，0表示叶子层 */
+		TransactionId xact;		/* 删除页面的是无用ID,永远判断该页面是否可以重新分配使用 */
+	}			btpo;
+	uint16		btpo_flags;		/* 页面类型 */
+	BTCycleId	btpo_cycleid;	/* 页面对应的最新的Vacuum cycle ID */
+} BTPageOpaqueData;
+
+/* Bits defined in btpo_flags */
+#define BTP_LEAF             (1 << 0)  /* 叶子页面，没有该标志标示非叶子页面 */
+#define BTP_ROOT             (1 << 1)  /* 根页面（根页面没有父节点） */
+#define BTP_DELETED          (1 << 2)  /* 页面已从树中删除 */
+#define BTP_META             (1 << 3)  /* 元页面 */
+#define BTP_HALF_DEAD        (1 << 4)  /* 空页面，单还保留在树中 */
+#define BTP_SPLIT_END        (1 << 5)  /* 每一次页面分裂中，待分裂的最后一个页面 */
+#define BTP_HAS_GARBAGE      (1 << 6)  /* 页面中含有LP_DEAD元组。当对索引页面中某些元组进行了删除后，该索引页面并没有立即从物理上删除这些元组，这些元组仍然保留在索引页面中，只是对这些元组进行了标记，同时索引页面中其他有效的元组保持不变 */
+````
 
 PostgreSQL所实现的BTree索引组织结构如下图：
 
