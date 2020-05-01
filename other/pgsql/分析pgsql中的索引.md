@@ -39,7 +39,11 @@ PostgreSQL的B-tree索引：
 3、索引中的数据以非递减的顺序存储（页之间以及页内都是这种顺序），同级的数据页由双向链表连接。因此不需要每次都返回root，通过遍历链表就可以获取一个有序的数据集。  
 
 
+b+tree会将行存储在索引页中，所以一页能存下的记录数会大大减少，从而导致b+tree的层级比单纯的b-tree深一些。 特别是行宽较宽的表。  
 
+例如行宽为几百字节，16K的页可能就只能存储十几条记录，一千万记录的表，索引深度达到7级，加上metapage，命中一条记录需要扫描8个数据块。  
+
+而使用PostgreSQL堆表+PK的方式，索引页通常能存几百条记录（以16K为例，约存储800条记录），索引深度为3时能支撑5亿记录，所以命中一条记录实际上只需要扫描5个块(meta+2 branch+leaf+heap)。  
 
 #### pgsql中B-Tree
 
@@ -130,3 +134,4 @@ PostgreSQL所实现的BTree索引组织结构如下图：
 【PostgreSQL内核分析——BTree索引】https://www.cnblogs.com/scu-cjx/p/9960483.html    
 【B-Tree和B+Tree的区别】https://www.cnblogs.com/shengguorui/p/10695646.html  
 【PostgreSQL的B-tree索引】https://www.centos.bz/2019/06/postgresql%e7%9a%84b-tree%e7%b4%a2%e5%bc%95/  
+【为PostgreSQL讨说法 - 浅析《UBER ENGINEERING SWITCHED FROM POSTGRES TO MYSQL》】https://github.com/digoal/blog/blob/master/201607/20160728_01.md  
