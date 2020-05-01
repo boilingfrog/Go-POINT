@@ -1,3 +1,18 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+- [分析了解pgsql中的索引](#%E5%88%86%E6%9E%90%E4%BA%86%E8%A7%A3pgsql%E4%B8%AD%E7%9A%84%E7%B4%A2%E5%BC%95)
+  - [前言](#%E5%89%8D%E8%A8%80)
+  - [索引](#%E7%B4%A2%E5%BC%95)
+  - [B-tree](#b-tree)
+    - [B-Tree和B+Tree的区别:](#b-tree%E5%92%8Cbtree%E7%9A%84%E5%8C%BA%E5%88%AB)
+    - [pgsql中B-Tree](#pgsql%E4%B8%ADb-tree)
+      - [实现](#%E5%AE%9E%E7%8E%B0)
+      - [如果该节点不是最右节点](#%E5%A6%82%E6%9E%9C%E8%AF%A5%E8%8A%82%E7%82%B9%E4%B8%8D%E6%98%AF%E6%9C%80%E5%8F%B3%E8%8A%82%E7%82%B9)
+      - [如果该节点是最右节点](#%E5%A6%82%E6%9E%9C%E8%AF%A5%E8%8A%82%E7%82%B9%E6%98%AF%E6%9C%80%E5%8F%B3%E8%8A%82%E7%82%B9)
+  - [参考](#%E5%8F%82%E8%80%83)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## 分析了解pgsql中的索引  
 
 ### 前言
