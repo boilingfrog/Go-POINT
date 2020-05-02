@@ -46,5 +46,14 @@ docker中支持5种网络模式
 ### Dockerfile
 
 #### Dockerfile指令
-  
+
+Usage:  docker image build [OPTIONS] PATH | URL | -  
+Options:  
+-t, --tag list     # 镜像名称  
+-f, --file string  # 指定Dockerfile文件位置  
+
+下面是构建nginx
+````
+# docker image  build -t nginx:v1 -f Dockerfile .
+```` 
 
