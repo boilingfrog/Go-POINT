@@ -2,7 +2,22 @@
 
 ### docker
 
+### 镜像 
 
+什么是镜像？   
+简单说，Docker镜像是一个不包含Linux内核而又精简的Linux操作系统。  
+
+镜像从哪里来？  
+Docker Hub是由Docker公司负责维护的公共注册中心，包含大量的容器镜像，Docker工具默认从这个公共镜像库下载镜像。  
+https://hub.docker.com/explore  
+默认是国外的源，下载会慢，建议配置国内镜像仓库：   
+````
+# vi /etc/docker/daemon.json 
+{
+  "registry-mirrors": [ "https://registry.docker-cn.com"]
+}
+````
+  
 
 ### docker中的网络
 
