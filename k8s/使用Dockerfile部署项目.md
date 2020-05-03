@@ -61,4 +61,42 @@ Options:
 ```` 
 
 #### 部署
+  
+1、自定义网络  
 
+``
+docker network create lnmp
+``
+
+2、创建PHP容器  
+
+``
+docker run -itd \
+--name lnmp_php \
+--net lnmp \
+--mount type=bind,src=/app/wwwroot/,dst=/usr/local/nginx/html \
+php:v1
+``
+
+3、创建Nginx容器  
+
+``
+docker run -itd \
+--name lnmp_nginx \
+--net lnmp \
+- p 8888:80
+--mount type=bind,src=/app/wwwroot/,dst=/usr/local/nginx/html \
+nginx:v1
+``
+
+4、创建MySQL容器  
+
+``
+docker run -itd \
+--name lnmp_mysql \
+--net lnmp \
+-p 3306:3306 \
+--mount src=mysql-vol,dst=/var/lib/mysql \
+-e MYSQL_ROOT_PASSWORD=123456 \
+mysql --character-set-server=utf8
+``
