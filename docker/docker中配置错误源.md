@@ -55,3 +55,8 @@ Failed to start Docker Application Container Engine.
 检查了一下`daemon.json`,果真，少了一个`“`。  
 
 修改`daemon.json`，然后重启解决了。
+
+
+### 参考
+
+【docker安装完了以后，服务启动不了】http://www.docker.org.cn/thread/72.html
