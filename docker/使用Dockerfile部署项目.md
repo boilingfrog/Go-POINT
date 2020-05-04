@@ -84,7 +84,7 @@ php:v1
 docker run -itd \
 --name lnmp_nginx \
 --net lnmp \
-- p 8888:80
+-p 8888:80 \
 --mount type=bind,src=/app/wwwroot/,dst=/usr/local/nginx/html \
 nginx:v1
 ``
