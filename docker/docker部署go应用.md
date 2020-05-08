@@ -98,6 +98,37 @@ CMD /usr/sbin/sshd –D
 #### EXPOSE
 
 声明容器运行的服务端口  
+例如：  
+````
+EXPOSE 80
+````
+
+#### ENV
+
+设置容器内环境变量  
+例如：  
+````
+ENV JAVA_HOME /usr/local/jdk1.8.0_45
+````
+
+#### ADD
+
+拷贝文件或目录到镜像，如果是URL或压缩包会自动下载或自动解压  
+例如：  
+````
+ADD <src>… <dest>
+ADD [“<src>”,… “<dest>”]
+ADD https://xxx.com/html.tar.gz /var/www/html
+ADD html.tar.gz /var/www/html
+```` 
+
+#### COPY 
+
+拷贝文件或目录到镜像，用法同上  
+例如：  
+````
+COPY ./start.sh /start.sh 
+````
 
 
 
