@@ -12,4 +12,96 @@
 - 隔离应用
 - 快速、持续部署
 
+### 部署
+ 
+首先准备好go项目,使用了一段简单的代码来进行测试
+
+````go
+package main
+
+import (
+	"fmt"
+	"log"
+	"net/http"
+)
+
+func sayHello(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "hello world")
+}
+func main() {
+	http.HandleFunc("/", sayHello) //注册URI路径与相应的处理函数
+	log.Println("【默认项目】服务启动成功 监听端口 8010")
+	er := http.ListenAndServe("0.0.0.0:8010", nil)
+	if er != nil {
+		log.Fatal("ListenAndServe: ", er)
+	}
+}
+````
+
+服务器需要配置`go`环境。我的`gopath`是在root下面的。
+
+````
+GOPATH="/root/go"
+````
+
+然后上传代码到`src`目录中。我的项目名用的`test`。  
+
+在项目根目录创建`Dockerfile`文件然后写入内容。  
+
+````
+FROM golang:latest
+
+WORKDIR $GOPATH/src/test
+COPY . $GOPATH/src/test
+RUN go build .
+
+EXPOSE 8000 
+ENTRYPOINT ["./test"]
+````
+我们来分析下`Dockerfile`中的几个命令。  
+
+#### FROM 
+
+构建的新镜像是基于哪个镜像   
+例如：  
+````
+FROM centos:6 
+````
+
+#### MAINTAINER
+
+镜像维护者的信息  
+例如：  
+````
+MAINTAINER liz
+````
+
+#### RUN
+
+构建镜像时运行的`shell`命令  
+例如：  
+````
+RUN [“yum”, “install”, “httpd”]  
+RUN yum install httpd  
+````
+
+#### CMD 
+
+运行容器时执行的Shell命令  
+例如：  
+````
+CMD [“-c”, “/start.sh”]  
+CMD ["/usr/sbin/sshd", "-D"]  
+CMD /usr/sbin/sshd –D  
+````
+
+#### EXPOSE
+
+声明容器运行的服务端口  
+
+
+
+
+
+
 
