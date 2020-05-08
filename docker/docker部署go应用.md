@@ -130,9 +130,57 @@ ADD html.tar.gz /var/www/html
 COPY ./start.sh /start.sh 
 ````
 
+#### ENTRYPOINT
 
+运行容器时执行的`Shell`命令  
+例如：  
+````
+ENTRYPOINT [“/bin/bash", “-c", “/start.sh"]
+ENTRYPOINT /bin/bash -c ‘/start.sh’
+````
 
+#### VOLUME
 
+指定容器挂载点到宿主机自动生成的目录或其他容器  
+例如:  
+````
+VOLUME ["/var/lib/mysql"]
+````
 
+#### USER
+
+为RUN、CMD和ENTRYPOINT执行命令指定运行用户  
+USER <user>[:<group>] or USER <UID>[:<GID>]  
+例如:
+````
+USER liz
+````
+
+#### WORKDIR
+
+为RUN、CMD、ENTRYPOINT、COPY和ADD设置工作目录  
+例如：
+````
+WORKDIR /data
+````
+
+#### HEALTHCHECK
+
+健康检查
+````
+HEALTHCHECK --interval=5m --timeout=3s --retries=3 \
+  CMD curl -f http://localhost/ || exit 1
+````
+
+#### ARG
+
+在构建镜像是指定的一些参数  
+例如：
+````
+FROM centos:6
+ARG user     # ARG user=root
+USER $user
+# docker build --build-arg user=liz Dockerfile .
+````
 
 
