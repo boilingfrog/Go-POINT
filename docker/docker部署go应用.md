@@ -9,21 +9,6 @@
     - [创建并运行容器](#%E5%88%9B%E5%BB%BA%E5%B9%B6%E8%BF%90%E8%A1%8C%E5%AE%B9%E5%99%A8)
   - [使用docker-compose部署](#%E4%BD%BF%E7%94%A8docker-compose%E9%83%A8%E7%BD%B2)
   - [上传到docker-hub，然后拉取镜像，部署](#%E4%B8%8A%E4%BC%A0%E5%88%B0docker-hub%E7%84%B6%E5%90%8E%E6%8B%89%E5%8F%96%E9%95%9C%E5%83%8F%E9%83%A8%E7%BD%B2)
-  - [Dockerfile中常用的命令](#dockerfile%E4%B8%AD%E5%B8%B8%E7%94%A8%E7%9A%84%E5%91%BD%E4%BB%A4)
-    - [FROM](#from)
-    - [MAINTAINER](#maintainer)
-    - [RUN](#run)
-    - [CMD](#cmd)
-    - [EXPOSE](#expose)
-    - [ENV](#env)
-    - [ADD](#add)
-    - [COPY](#copy)
-    - [ENTRYPOINT](#entrypoint)
-    - [VOLUME](#volume)
-    - [USER](#user)
-    - [WORKDIR](#workdir)
-    - [HEALTHCHECK](#healthcheck)
-    - [ARG](#arg)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -88,6 +73,8 @@ RUN go build .
 EXPOSE 8000 
 ENTRYPOINT ["./test"]
 ````
+
+Dockerfile中常见命令的分析，详见
 
 #### 构建镜像
 
@@ -265,135 +252,6 @@ test-docker2   | 2020/05/09 09:03:15 【默认项目】服务启动成功 监听
 ^CGracefully stopping... (press Ctrl+C again to force)
 Stopping test-docker2 ... done
 ````
-
-我们来分析下`Dockerfile`中的几个命令。  
-
-
-### Dockerfile中常用的命令
-
-#### FROM 
-
-构建的新镜像是基于哪个镜像   
-例如：  
-````
-FROM centos:6 
-````
-
-#### MAINTAINER
-
-镜像维护者的信息  
-例如：  
-````
-MAINTAINER liz
-````
-
-#### RUN
-
-构建镜像时运行的`shell`命令  
-例如：  
-````
-RUN [“yum”, “install”, “httpd”]  
-RUN yum install httpd  
-````
-
-#### CMD 
-
-运行容器时执行的Shell命令  
-例如：  
-````
-CMD [“-c”, “/start.sh”]  
-CMD ["/usr/sbin/sshd", "-D"]  
-CMD /usr/sbin/sshd –D  
-````
-
-#### EXPOSE
-
-声明容器运行的服务端口  
-例如：  
-````
-EXPOSE 80
-````
-
-#### ENV
-
-设置容器内环境变量  
-例如：  
-````
-ENV JAVA_HOME /usr/local/jdk1.8.0_45
-````
-
-#### ADD
-
-拷贝文件或目录到镜像，如果是URL或压缩包会自动下载或自动解压  
-例如：  
-````
-ADD <src>… <dest>
-ADD [“<src>”,… “<dest>”]
-ADD https://xxx.com/html.tar.gz /var/www/html
-ADD html.tar.gz /var/www/html
-```` 
-
-#### COPY 
-
-拷贝文件或目录到镜像，用法同上  
-例如：  
-````
-COPY ./start.sh /start.sh 
-````
-
-#### ENTRYPOINT
-
-运行容器时执行的`Shell`命令  
-例如：  
-````
-ENTRYPOINT [“/bin/bash", “-c", “/start.sh"]
-ENTRYPOINT /bin/bash -c ‘/start.sh’
-````
-
-#### VOLUME
-
-指定容器挂载点到宿主机自动生成的目录或其他容器  
-例如:  
-````
-VOLUME ["/var/lib/mysql"]
-````
-
-#### USER
-
-为RUN、CMD和ENTRYPOINT执行命令指定运行用户  
-USER <user>[:<group>] or USER <UID>[:<GID>]  
-例如:
-````
-USER liz
-````
-
-#### WORKDIR
-
-为RUN、CMD、ENTRYPOINT、COPY和ADD设置工作目录  
-例如：
-````
-WORKDIR /data
-````
-
-#### HEALTHCHECK
-
-健康检查
-````
-HEALTHCHECK --interval=5m --timeout=3s --retries=3 \
-  CMD curl -f http://localhost/ || exit 1
-````
-
-#### ARG
-
-在构建镜像是指定的一些参数  
-例如：
-````
-FROM centos:6
-ARG user     # ARG user=root
-USER $user
-# docker build --build-arg user=liz Dockerfile .
-````
-
 
 
 ### 参考
