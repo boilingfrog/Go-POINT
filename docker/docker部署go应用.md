@@ -74,7 +74,7 @@ EXPOSE 8000
 ENTRYPOINT ["./test"]
 ````
 
-Dockerfile中常见命令的分析，详见[Dockerfile常见的命令](http://www.google.com/)
+Dockerfile中常见命令的分析，详见[Dockerfile常见的命令](https://github.com/boilingfrog/Go-POINT/blob/master/docker/dockerfile%E4%B8%AD%E5%B8%B8%E7%94%A8%E7%9A%84%E5%91%BD%E4%BB%A4.md)
 
 #### 构建镜像
 
