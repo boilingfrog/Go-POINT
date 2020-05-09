@@ -327,7 +327,34 @@ e40d297cf5f8: Pushed
 latest: digest: sha256:0ec0fa83015614135357629a433a7d9d19ea57c9f6e5d774772c644509884fa8 size: 2421
 ````
 
+然后创新创建`docker-compose.yml`文件。
+````
+version: '3'
 
+networks:
+  basic:
+
+services:
+
+  test-docker:
+    container_name: test-docker2
+    image: liz2019/test-docker-go-hub
+    ports:
+      - "8020:8010"
+    networks:
+      - basic
+~                     
+````
+然后启动
+````
+# docker-compose up
+Creating network "go_basic" with the default driver
+Creating test-docker2 ... done
+Attaching to test-docker2
+test-docker2   | 2020/05/09 09:03:15 【默认项目】服务启动成功 监听端口 8010
+^CGracefully stopping... (press Ctrl+C again to force)
+Stopping test-docker2 ... done
+````
 
 
 
