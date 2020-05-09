@@ -238,5 +238,44 @@ Successfully tagged test-docker-go:latest
 ````
 ![](https://img2020.cnblogs.com/blog/1237626/202005/1237626-20200509105727786-1309538238.png)
 
+上面成功创建并启动了`go`容器，下面尝试用`docker-composer`，创建并启动容器。
+
+在项目的根目录创建`docker-compose.yml`文件。
+````
+version: '2'
+
+networks:
+  basic:
+
+services:
+
+  test-docker:
+    container_name: test-docker1
+    image: test-docker-go
+    ports:
+      - "8020:8010"
+    networks:
+      - basic
+````
+然后启动`docker-composer`
+````
+# docker-compose up
+Recreating test-docker1 ... done
+Attaching to test-docker1
+test-docker1   | 2020/05/09 06:33:47 【默认项目】服务启动成功 监听端口 8010
+````
+
+
+
+
+
+
+
+
+
+
+
+
+
 ### 参考
 【Gin实践 连载九 将Golang应用部署到Docker】https://segmentfault.com/a/1190000013960558   
