@@ -265,9 +265,67 @@ Attaching to test-docker1
 test-docker1   | 2020/05/09 06:33:47 【默认项目】服务启动成功 监听端口 8010
 ````
 
+下面尝试把镜像上传到`hub.docker`，然后通过拉取镜像，启动容器。  
 
+首先打包镜像到镜像仓库，同理先打包成镜像，为了区分上面的，新打了一个镜像。  
+````
+# docker build -t test-docker-go-hub .
+Sending build context to Docker daemon  14.34kB
+Step 1/6 : FROM golang:latest
+ ---> 2421885b04da
+Step 2/6 : WORKDIR $GOPATH/src/test
+ ---> Using cache
+ ---> bdedf88480c9
+Step 3/6 : COPY . $GOPATH/src/test
+ ---> Using cache
+ ---> 4e8b7f1a47b9
+Step 4/6 : RUN go build .
+ ---> Using cache
+ ---> 3d5ae3a19f94
+Step 5/6 : EXPOSE 8000
+ ---> Using cache
+ ---> 40f1958f50a8
+Step 6/6 : ENTRYPOINT ["./test"]
+ ---> Using cache
+ ---> 7c834b14f69a
+Successfully built 7c834b14f69a
+Successfully tagged test-docker-go-hub:latest
+````
 
+然后登录`hub.docker`。
+````
+# docker login
+Login with your Docker ID to push and pull images from Docker Hub. If you don't have a Docker ID, head over to https://hub.docker.com to create one.
+Username: liz2019
+Password: 
+````
 
+之后把打包的镜像`push`到仓库中。需要注意的是，需要将镜像打个`tag`，不然`push`会报错
+````
+denied: requested access to the resource is denied
+````
+
+打`tag`
+````
+# docker tag test-docker-go-hub liz2019/test-docker-go-hub
+````
+
+然后`push`
+````
+# docker push liz2019/test-docker-go-hub
+The push refers to repository [docker.io/liz2019/test-docker-go-hub]
+12a132dad8d5: Pushed 
+16b18b49dbb5: Pushed 
+1ffec8d4838f: Pushed 
+6e69dbdef94b: Pushed 
+f0c38edb3fff: Pushed 
+ef234633eec2: Pushed 
+8967306e673e: Pushed 
+9794a3b3ed45: Pushed 
+5f77a51ade6a: Pushed 
+e40d297cf5f8: Pushed 
+latest: digest: sha256:0ec0fa83015614135357629a433a7d9d19ea57c9f6e5d774772c644509884fa8 size: 2421
+````
 
 
 
@@ -279,3 +337,4 @@ test-docker1   | 2020/05/09 06:33:47 【默认项目】服务启动成功 监听
 
 ### 参考
 【Gin实践 连载九 将Golang应用部署到Docker】https://segmentfault.com/a/1190000013960558   
+【Docker三剑客——Compose】https://blog.csdn.net/Anumbrella/article/details/80877643  
