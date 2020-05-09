@@ -183,4 +183,55 @@ USER $user
 # docker build --build-arg user=liz Dockerfile .
 ````
 
+### 构建镜像
 
+在项目目录下面执行
+````
+ docker build -t test-docker-go .
+````
+我们来看下这条命令
+````
+Usage:  docker image build [OPTIONS] PATH | URL | -
+Options:
+-t, --tag list     # 镜像名称
+-f, --file string  # 指定Dockerfile文件位置
+
+示例：
+docker build . 
+docker build -t shykes/myapp .
+docker build -t shykes/myapp -f /path/Dockerfile /path
+````
+执行命令，然后打包镜像
+````
+# docker build -t test-docker-go .
+Sending build context to Docker daemon  14.34kB
+Step 1/6 : FROM golang:latest
+ ---> 2421885b04da
+Step 2/6 : WORKDIR $GOPATH/src/test
+ ---> Running in f372c7f2e310
+Removing intermediate container f372c7f2e310
+ ---> bdedf88480c9
+Step 3/6 : COPY . $GOPATH/src/test
+ ---> 4e8b7f1a47b9
+Step 4/6 : RUN go build .
+ ---> Running in 851d5c682f76
+Removing intermediate container 851d5c682f76
+ ---> 3d5ae3a19f94
+Step 5/6 : EXPOSE 8000
+ ---> Running in 9ed63b8df046
+Removing intermediate container 9ed63b8df046
+ ---> 40f1958f50a8
+Step 6/6 : ENTRYPOINT ["./test"]
+ ---> Running in d505df7ce50c
+Removing intermediate container d505df7ce50c
+ ---> 7c834b14f69a
+Successfully built 7c834b14f69a
+Successfully tagged test-docker-go:latest
+````
+
+### 创建并运行容器
+
+
+
+### 参考
+【Gin实践 连载九 将Golang应用部署到Docker】https://segmentfault.com/a/1190000013960558   
