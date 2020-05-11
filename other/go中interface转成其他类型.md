@@ -11,8 +11,26 @@ type I interface {
     Get() int
 }
 ````
- 
+`interface`是一组`method`的集合，是`duck-type programming`的一种体现（不关心属性（数据），只关心行为（方法））。我们可以自己定义`interface`类型的`struct`,并提供方法。
 
+````go
+type MyInterface interface{
+    Print()
+}
+
+func TestFunc(x MyInterface) {}
+type MyStruct struct {}
+func (me MyStruct) Print() {}
+
+func main() {
+    var me MyStruct
+    TestFunc(me)
+}
+````
+
+`go` 允许不带任何方法的 `interface` ，这种类型的 `interface` 叫 `empty interface`。  
+
+如果一个类型实现了一个 `interface` 中所有方法，我们说类型实现了该 `interface`，所以所有类型都实现了 `empty interface`，因为任何一种类型至少实现了 0 个方法。`go` 没有显式的关键字用来实现 `interface`，只需要实现 `interface` 包含的方法即可。
 
 
 ### 参考
