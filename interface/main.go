@@ -1,6 +1,8 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type Sortable interface {
 	Len() int
@@ -50,18 +52,16 @@ func (array StringArr) Swap(i int, j int) {
 
 //测试
 func main() {
-	intArray1 := IntArr{3, 4, 2, 6, 10, 1}
-	bubbleSort(intArray1)
-	fmt.Println(intArray1)
-
-	stringArray1 := StringArr{"hello", "i", "am", "go", "lang"}
-	bubbleSort(stringArray1)
-	fmt.Println(stringArray1)
-
 	v := "hello world"
 	fmt.Println(typeof(v))
 }
 
 func typeof(v interface{}) string {
-	return fmt.Sprintf("%T", v)
+	value, ok := v.(string)
+
+	if ok {
+		return value
+	}
+
+	return ""
 }

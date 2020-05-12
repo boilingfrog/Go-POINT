@@ -75,8 +75,15 @@ func typeof(v interface{}) string {
 
 让我们通过一个例子来更加深入的理解。  
 
+````
+value, ok := v.(string)
 
-类型不确定可以使用:
+if ok {
+    return value
+}
+````
+
+类型不确定可以配合`switch`:
 
 ````go
 func main() {
