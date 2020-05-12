@@ -55,6 +55,7 @@ func (array StringArr) Swap(i int, j int) {
 func main() {
 	v := "hello world"
 	fmt.Println(typeof(v))
+
 }
 func typeof(v interface{}) string {
 	return reflect.TypeOf(v).String()
