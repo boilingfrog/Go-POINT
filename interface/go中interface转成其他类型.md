@@ -34,6 +34,59 @@ func main() {
 
 `interface`还可以作为返回值使用。  
 
+为什么要使用`interface`
+
+Francesc 给出了下面上个理由：  
+
+1、writing generic algorithm  
+2、hiding implementation detail  
+3、providing interception points  
+
+#### writing generic algorithm
+
+首先我们应该清楚一点。`go`中是没有泛型的。
+
+>Why does Go not have generic types? Generics may well be added at some point. We don’t feel an urgency for them.Generics are convenient but they come at a cost in complexity in the type system and run-time… Meanwhile, Go’s built-in maps and slices, plus the ability to use the empty interface to construct containers mean in many cases it is possible to write code that does what generics would enable, if less smoothly.
+
+但是通过使用 `interface` 我们可以实现“泛型编程”，为什么？因为 `interface` 是一种抽象类型，任何具体类型（int, string）和抽象类型（user defined）都可以封装成 `interface`。
+
+我们来看下标准库中的`sort`
+
+````go
+package sort
+
+// A type, typically a collection, that satisfies sort.Interface can be
+// sorted by the routines in this package.  The methods require that the
+// elements of the collection be enumerated by an integer index.
+type Interface interface {
+    // Len is the number of elements in the collection.
+    Len() int
+    // Less reports whether the element with
+    // index i should sort before the element with index j.
+    Less(i, j int) bool
+    // Swap swaps the elements with indexes i and j.
+    Swap(i, j int)
+}
+
+
+
+// Sort sorts data.
+// It makes one call to data.Len to determine n, and O(n*log(n)) calls to
+// data.Less and data.Swap. The sort is not guaranteed to be stable.
+func Sort(data Interface) {
+    // Switch to heapsort if depth of 2*ceil(lg(n+1)) is reached.
+    n := data.Len()
+    maxDepth := 0
+    for i := n; i > 0; i >>= 1 {
+        maxDepth++
+    }
+    maxDepth *= 2
+    quickSort(data, 0, n, maxDepth)
+}
+````
+// TODO
+
+### hiding implement detail
 
 
 
@@ -46,3 +99,4 @@ func main() {
 【深入理解 Go Interface】https://zhuanlan.zhihu.com/p/32926119   
 【GO如何支持泛型】https://zhuanlan.zhihu.com/p/74525591  
 【Golang面向对象编程】https://code.tutsplus.com/zh-hans/tutorials/lets-go-object-oriented-programming-in-golang--cms-26540  
+【深度解密Go语言之关于 interface 的10个问题】https://www.cnblogs.com/qcrao-2018/p/10766091.html  
