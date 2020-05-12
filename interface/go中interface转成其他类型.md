@@ -75,7 +75,7 @@ func typeof(v interface{}) string {
 
 让我们通过一个例子来更加深入的理解。  
 
-````
+````go
 value, ok := v.(string)
 
 if ok {
