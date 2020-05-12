@@ -2,7 +2,7 @@
 
 ### 首先了解下interface
 
-什么是`interface`?
+#### 什么是`interface`?
 
 首先 `interface` 是一种类型，从它的定义可以看出来用了 `type` 关键字，更准确的说 `interface` 是一种具有一组方法的类型，这些方法定义了 `interface` 的行为。
 
@@ -34,62 +34,68 @@ func main() {
 
 `interface`还可以作为返回值使用。  
 
-为什么要使用`interface`
+#### 如何判断 interface 变量存储的是哪种类型
 
-Francesc 给出了下面上个理由：  
+日常中使用`interface`,有时候需要判断原来是什么类型的值转成了`interface`。一般有以下几种方式：
 
-1、writing generic algorithm  
-2、hiding implementation detail  
-3、providing interception points  
-
-#### writing generic algorithm
-
-首先我们应该清楚一点。`go`中是没有泛型的。
-
->Why does Go not have generic types? Generics may well be added at some point. We don’t feel an urgency for them.Generics are convenient but they come at a cost in complexity in the type system and run-time… Meanwhile, Go’s built-in maps and slices, plus the ability to use the empty interface to construct containers mean in many cases it is possible to write code that does what generics would enable, if less smoothly.
-
-但是通过使用 `interface` 我们可以实现“泛型编程”，为什么？因为 `interface` 是一种抽象类型，任何具体类型（int, string）和抽象类型（user defined）都可以封装成 `interface`。
-
-我们来看下标准库中的`sort`
+##### fmt
 
 ````go
-package sort
-
-// A type, typically a collection, that satisfies sort.Interface can be
-// sorted by the routines in this package.  The methods require that the
-// elements of the collection be enumerated by an integer index.
-type Interface interface {
-    // Len is the number of elements in the collection.
-    Len() int
-    // Less reports whether the element with
-    // index i should sort before the element with index j.
-    Less(i, j int) bool
-    // Swap swaps the elements with indexes i and j.
-    Swap(i, j int)
+import "fmt"
+func main() {
+    v := "hello world"
+    fmt.Println(typeof(v))
 }
-
-
-
-// Sort sorts data.
-// It makes one call to data.Len to determine n, and O(n*log(n)) calls to
-// data.Less and data.Swap. The sort is not guaranteed to be stable.
-func Sort(data Interface) {
-    // Switch to heapsort if depth of 2*ceil(lg(n+1)) is reached.
-    n := data.Len()
-    maxDepth := 0
-    for i := n; i > 0; i >>= 1 {
-        maxDepth++
-    }
-    maxDepth *= 2
-    quickSort(data, 0, n, maxDepth)
+func typeof(v interface{}) string {
+    return fmt.Sprintf("%T", v)
 }
 ````
-// TODO
 
-### hiding implement detail
+##### 反射
+
+````
+import (
+    "reflect"
+    "fmt"
+)
+func main() {
+    v := "hello world"
+    fmt.Println(typeof(v))
+}
+func typeof(v interface{}) string {
+    return reflect.TypeOf(v).String()
+}
+````  
+
+##### 断言
+
+`Go`语言里面有一个语法，可以直接判断是否是该类型的变量： `value, ok = element.(T)`，这里`value`就是变量的值，`ok`是一个`bool`类型，`element`是`interface`变量，`T`是断言的类型。  
+
+如果`element`里面确实存储了`T`类型的数值，那么ok返回`true`，否则返回`false`。  
+
+让我们通过一个例子来更加深入的理解。  
 
 
+类型不确定可以使用:
 
+````go
+func main() {
+    v := "hello world"
+    fmt.Println(typeof(v))
+}
+func typeof(v interface{}) string {
+    switch t := v.(type) {
+    case int:
+        return "int"
+    case float64:
+        return "float64"
+    //... etc
+    default:
+        _ = t
+        return "unknown"
+    }
+}
+````
 
 
 
@@ -100,3 +106,4 @@ func Sort(data Interface) {
 【GO如何支持泛型】https://zhuanlan.zhihu.com/p/74525591  
 【Golang面向对象编程】https://code.tutsplus.com/zh-hans/tutorials/lets-go-object-oriented-programming-in-golang--cms-26540  
 【深度解密Go语言之关于 interface 的10个问题】https://www.cnblogs.com/qcrao-2018/p/10766091.html  
+【golang如何获取变量的类型：反射，类型断言】https://ieevee.com/tech/2017/07/29/go-type.html    

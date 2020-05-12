@@ -57,4 +57,11 @@ func main() {
 	stringArray1 := StringArr{"hello", "i", "am", "go", "lang"}
 	bubbleSort(stringArray1)
 	fmt.Println(stringArray1)
+
+	v := "hello world"
+	fmt.Println(typeof(v))
+}
+
+func typeof(v interface{}) string {
+	return fmt.Sprintf("%T", v)
 }
