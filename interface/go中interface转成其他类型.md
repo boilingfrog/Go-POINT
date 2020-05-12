@@ -1,7 +1,22 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
 - [go中interface转换成原来的类型](#go%E4%B8%ADinterface%E8%BD%AC%E6%8D%A2%E6%88%90%E5%8E%9F%E6%9D%A5%E7%9A%84%E7%B1%BB%E5%9E%8B)
   - [首先了解下interface](#%E9%A6%96%E5%85%88%E4%BA%86%E8%A7%A3%E4%B8%8Binterface)
-    - [什么是`interface`?](#%E4%BB%80%E4%B9%88%E6%98%AFinterface)
+    - [什么是interface?](#%E4%BB%80%E4%B9%88%E6%98%AFinterface)
+    - [如何判断interface变量存储的是哪种类型](#%E5%A6%82%E4%BD%95%E5%88%A4%E6%96%ADinterface%E5%8F%98%E9%87%8F%E5%AD%98%E5%82%A8%E7%9A%84%E6%98%AF%E5%93%AA%E7%A7%8D%E7%B1%BB%E5%9E%8B)
+      - [fmt](#fmt)
+      - [反射](#%E5%8F%8D%E5%B0%84)
+      - [断言](#%E6%96%AD%E8%A8%80)
+  - [参考](#%E5%8F%82%E8%80%83)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+
+- [go中interface转换成原来的类型](#go%E4%B8%ADinterface%E8%BD%AC%E6%8D%A2%E6%88%90%E5%8E%9F%E6%9D%A5%E7%9A%84%E7%B1%BB%E5%9E%8B)
+  - [首先了解下interface](#%E9%A6%96%E5%85%88%E4%BA%86%E8%A7%A3%E4%B8%8Binterface)
+    - [什么是interface?](#%E4%BB%80%E4%B9%88%E6%98%AFinterface)
     - [如何判断 interface 变量存储的是哪种类型](#%E5%A6%82%E4%BD%95%E5%88%A4%E6%96%AD-interface-%E5%8F%98%E9%87%8F%E5%AD%98%E5%82%A8%E7%9A%84%E6%98%AF%E5%93%AA%E7%A7%8D%E7%B1%BB%E5%9E%8B)
       - [fmt](#fmt)
       - [反射](#%E5%8F%8D%E5%B0%84)
@@ -13,7 +28,7 @@
 
 ### 首先了解下interface
 
-#### 什么是`interface`?
+#### 什么是interface?
 
 首先 `interface` 是一种类型，从它的定义可以看出来用了 `type` 关键字，更准确的说 `interface` 是一种具有一组方法的类型，这些方法定义了 `interface` 的行为。
 
@@ -45,7 +60,7 @@ func main() {
 
 `interface`还可以作为返回值使用。  
 
-#### 如何判断 interface 变量存储的是哪种类型
+#### 如何判断interface变量存储的是哪种类型
 
 日常中使用`interface`,有时候需要判断原来是什么类型的值转成了`interface`。一般有以下几种方式：
 
@@ -232,7 +247,7 @@ type emptyInterface struct {
 
 
 ### 参考
-【理解 Go interface 的 5 个关键点】https://sanyuesha.com/2017/07/22/how-to-understand-go-interface/ 
+【理解 Go interface 的 5 个关键点】https://sanyuesha.com/2017/07/22/how-to-understand-go-interface/  
 【深入理解 Go Interface】https://zhuanlan.zhihu.com/p/32926119   
 【GO如何支持泛型】https://zhuanlan.zhihu.com/p/74525591  
 【Golang面向对象编程】https://code.tutsplus.com/zh-hans/tutorials/lets-go-object-oriented-programming-in-golang--cms-26540  
