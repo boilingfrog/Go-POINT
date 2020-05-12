@@ -104,7 +104,7 @@ func typeof(v interface{}) string {
 }
 ````
 
-对于fmt也是用了反射的:
+对于fmt也是用了反射的,同时里面也用到了断言:
 
 ````go
 func (p *pp) printArg(arg interface{}, verb rune) {
@@ -190,6 +190,34 @@ func (p *pp) printArg(arg interface{}, verb rune) {
 	}
 }
 ````
+
+下面来简单探究下反射是如何判断`interface`  
+
+````go
+// TypeOf returns the reflection Type that represents the dynamic type of i.
+// If i is a nil interface value, TypeOf returns nil.
+func TypeOf(i interface{}) Type {
+	eface := *(*emptyInterface)(unsafe.Pointer(&i))
+	return toType(eface.typ)
+}
+````
+
+`eface := *(*emptyInterface)(unsafe.Pointer(&i))`用到了一个`emptyInterface`，我们来看下这个结构的信息:
+
+````go
+// emptyInterface is the header for an interface{} value.
+type emptyInterface struct {
+	typ  *rtype
+	word unsafe.Pointer
+}
+````
+
+其中`typ`指向一个`rtype`实体， 它表示`interface`的类型以及赋给这个`interface`的实体类型。`word`则指向`interface`具体的值，一般而言是一个指向堆内存的指针。  
+
+`TypeOf`看到的是空接口`interface{}`，它将变量的地址转换为空接口，然后将得到的`rtype`转为`Type`接口返回。需要注意，当调用`reflect.TypeOf`的之前，已经发生了一次隐式的类型转换，即将具体类型的向空接口转换。这个过程比较简单，只要拷贝`typ *rtype`和`word unsafe.Pointer`就可以了。  
+
+
+
 
 
 ### 参考

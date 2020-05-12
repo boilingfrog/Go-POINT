@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"reflect"
 )
 
 type Sortable interface {
@@ -55,13 +56,6 @@ func main() {
 	v := "hello world"
 	fmt.Println(typeof(v))
 }
-
 func typeof(v interface{}) string {
-	value, ok := v.(string)
-
-	if ok {
-		return value
-	}
-
-	return ""
+	return reflect.TypeOf(v).String()
 }
