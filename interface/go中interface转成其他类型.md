@@ -30,9 +30,19 @@ func main() {
 
 `go` 允许不带任何方法的 `interface` ，这种类型的 `interface` 叫 `empty interface`。  
 
-如果一个类型实现了一个 `interface` 中所有方法，我们说类型实现了该 `interface`，所以所有类型都实现了 `empty interface`，因为任何一种类型至少实现了 0 个方法。`go` 没有显式的关键字用来实现 `interface`，只需要实现 `interface` 包含的方法即可。
+如果一个类型实现了一个 `interface` 中所有方法，必须是所有的方法，我们说类型实现了该 `interface`，所以所有类型都实现了 `empty interface`，因为任何一种类型至少实现了 0 个方法。`go` 没有显式的关键字用来实现 `interface`，只需要实现 `interface` 包含的方法即可。  
+
+`interface`还可以作为返回值使用。  
+
+
+
+
+
+
 
 
 ### 参考
 【理解 Go interface 的 5 个关键点】https://sanyuesha.com/2017/07/22/how-to-understand-go-interface/ 
 【深入理解 Go Interface】https://zhuanlan.zhihu.com/p/32926119   
+【GO如何支持泛型】https://zhuanlan.zhihu.com/p/74525591  
+【Golang面向对象编程】https://code.tutsplus.com/zh-hans/tutorials/lets-go-object-oriented-programming-in-golang--cms-26540  
