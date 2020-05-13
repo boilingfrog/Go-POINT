@@ -225,8 +225,68 @@ type emptyInterface struct {
 
 `TypeOf`看到的是空接口`interface{}`，它将变量的地址转换为空接口，然后将得到的`rtype`转为`Type`接口返回。需要注意，当调用`reflect.TypeOf`的之前，已经发生了一次隐式的类型转换，即将具体类型的向空接口转换。这个过程比较简单，只要拷贝`typ *rtype`和`word unsafe.Pointer`就可以了。  
 
+### 来看下interface的底层源码
+
+我的go版本是`go version go1.13.7`  
+
+`iface`和`eface`都是`Go`中描述接口的底层结构体，区别在于`iface`描述的接口包含方法，而`eface`则是不包含任何方法的空接口：`interface{}`。  
+
+### eface
+
+代码在runtime/runtime2.go:  
+
+````go
+type eface struct {
+	_type *_type
+	data  unsafe.Pointer
+}
+````
+
+`eface`有两个字段，`_type`指向对象的类型信息，`data`数据指针。指针指向的数据地址，一般是在堆上的。  
+
+我们来看下`_type`  
+
+````
+// src/rumtime/runtime2.go
+type _type struct {
+    size       uintptr     // 类型的大小
+    ptrdata    uintptr     // size of memory prefix holding all pointers
+    hash       uint32      // 类型的Hash值
+    tflag      tflag       // 类型的Tags 
+    align      uint8       // 结构体内对齐
+    fieldalign uint8       // 结构体作为field时的对齐
+    kind       uint8       // 类型编号 定义于runtime/typekind.go
+    alg        *typeAlg    // 类型元方法 存储hash和equal两个操作。map key便使用key的_type.alg.hash(k)获取hash值
+    gcdata    *byte        // GC相关信息
+    str       nameOff      // 类型名字的偏移    
+    ptrToThis typeOff    
+}
+````
 
 
+
+#### iface  
+
+````go
+type iface struct {
+	tab  *itab
+	data unsafe.Pointer
+}
+
+// layout of Itab known to compilers
+// allocated in non-garbage-collected memory
+// Needs to be in sync with
+// ../cmd/compile/internal/gc/reflect.go:/^func.dumptypestructs.
+type itab struct {
+	inter *interfacetype
+	_type *_type
+	hash  uint32 // copy of _type.hash. Used for type switches.
+	_     [4]byte
+	fun   [1]uintptr // variable sized. fun[0]==0 means _type does not implement inter.
+}
+````
+
+`iface`是
 
 
 ### 参考
@@ -236,3 +296,4 @@ type emptyInterface struct {
 【Golang面向对象编程】https://code.tutsplus.com/zh-hans/tutorials/lets-go-object-oriented-programming-in-golang--cms-26540  
 【深度解密Go语言之关于 interface 的10个问题】https://www.cnblogs.com/qcrao-2018/p/10766091.html  
 【golang如何获取变量的类型：反射，类型断言】https://ieevee.com/tech/2017/07/29/go-type.html    
+【Go接口详解】https://zhuanlan.zhihu.com/p/27055513  

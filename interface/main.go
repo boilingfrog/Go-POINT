@@ -56,6 +56,9 @@ func main() {
 	v := "hello world"
 	fmt.Println(typeof(v))
 
+	var _tt = 12
+	_ = _tt
+
 }
 func typeof(v interface{}) string {
 	return reflect.TypeOf(v).String()
