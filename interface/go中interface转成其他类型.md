@@ -263,6 +263,65 @@ type _type struct {
 }
 ````
 
+`_type`是`go`中类型的公共描述，里面包含`GC`，反射等需要的细节，它决定`data`应该如何解释和操作。对于不同的数据类型它的描述信息是不一样的，在`_type`的基础之上配合一些额外的描述信息，来进行区分。  
+
+````go
+// src/runtime/type.go
+// ptrType represents a pointer type.
+type ptrType struct {
+   typ     _type   // 指针类型 
+   elem  *_type // 指针所指向的元素类型
+}
+type chantype struct {
+    typ  _type        // channel类型
+    elem *_type     // channel元素类型
+    dir  uintptr
+}
+type maptype struct {
+    typ           _type
+    key           *_type
+    elem          *_type
+    bucket        *_type // internal type representing a hash bucket
+    hmap          *_type // internal type representing a hmap
+    keysize       uint8  // size of key slot
+    indirectkey   bool   // store ptr to key instead of key itself
+    valuesize     uint8  // size of value slot
+    indirectvalue bool   // store ptr to value instead of value itself
+    bucketsize    uint16 // size of bucket
+    reflexivekey  bool   // true if k==k for all keys
+    needkeyupdate bool   // true if we need to update key on an overwrite
+}
+````
+
+这些类型信息的第一个字段都是`_type`(类型本身的信息)，接下来是一堆类型需要的其它详细信息(如子类型信息)，这样在进行类型相关操作时，可通过一个字`(typ *_type)`即可表述所有类型，然后再通过`_type.kind`可解析出其具体类型，最后通过地址转换即可得到类型完整的”_type树”，参考`reflect.Type.Elem()`函数:
+
+````go
+// reflect/type.go
+// reflect.rtype结构体定义和runtime._type一致  type.kind定义也一致(为了分包而重复定义)
+// Elem()获取rtype中的元素类型，只针对复合类型(Array, Chan, Map, Ptr, Slice)有效
+func (t *rtype) Elem() Type {
+   switch t.Kind() {
+   case Array:
+      tt := (*arrayType)(unsafe.Pointer(t))
+      return toType(tt.elem)
+   case Chan:
+      tt := (*chanType)(unsafe.Pointer(t))
+      return toType(tt.elem)
+   case Map:
+      // 对Map来讲，Elem()得到的是其Value类型
+      // 可通过rtype.Key()得到Key类型
+      tt := (*mapType)(unsafe.Pointer(t))
+      return toType(tt.elem)
+   case Ptr:
+      tt := (*ptrType)(unsafe.Pointer(t))
+      return toType(tt.elem)
+   case Slice:
+      tt := (*sliceType)(unsafe.Pointer(t))
+      return toType(tt.elem)
+   }
+   panic("reflect: Elem of invalid type")
+}
+````
 
 
 #### iface  
@@ -285,6 +344,9 @@ type itab struct {
 	fun   [1]uintptr // variable sized. fun[0]==0 means _type does not implement inter.
 }
 ````
+
+
+
 
 `iface`是
 
