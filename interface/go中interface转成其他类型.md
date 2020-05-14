@@ -343,7 +343,7 @@ type itab struct {
 	_type *_type          // 接口实际指向值的类型信息
 	hash  uint32 // copy of _type.hash. Used for type switches.
 	_     [4]byte
-	fun   [1]uintptr     // 接口方法实现列表，即函数地址列表，按字典序排序
+	fun   [1]uintptr     // 接口方法实现列表，即函数地址列表，按字典序排序 variable sized
 }
 // runtime/type.go
 // 非空接口类型，接口定义，包路径等。
@@ -359,6 +359,23 @@ type imethod struct {
    ityp typeOff              // 描述方法参数返回值等细节
 }
 ````
+
+`iface`同样也是有两个指针，`tab`指向一个`itab`实体， 它表示接口的类型以及赋给这个接口的实体类型。`data`则指向接口具体的值，一般而言是一个指向堆内存的指针。  
+
+`fun`表示`interface`中`method`的具体实现。比如`interfacetype`包含了两个`method`分别是`A`和`B`。但是有一点很奇怪，这个`fun`是长度为1的`uintptr`数组，那么是怎么表示多个的呢？  
+其实上面源码的注释已经能给到我们答案了，`variable sized`，这是个是可变大小的。go中的`uintptr`一般用来存放指针的值，那这里对应的就是函数指针的值（也就是函数的调用地址）。但是这里的 fun 是一个长度为 1 的 uintptr 数组。我们看一下 runtime 包的 additab 函数。
+
+````go
+func additab(m *itab, locked, canfail bool) {
+    ...
+    *(*unsafe.Pointer)(add(unsafe.Pointer(&m.fun[0]), uintptr(k)*sys.PtrSize)) = ifn
+    ...
+}
+````
+
+也就是在`fun[0]`后面一次写入其他`method`对应的函数指针。
+
+
 
 
 
