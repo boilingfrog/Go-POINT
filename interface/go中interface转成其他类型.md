@@ -326,6 +326,8 @@ func (t *rtype) Elem() Type {
 
 #### iface  
 
+表示的是非空的接口:  
+
 ````go
 type iface struct {
 	tab  *itab
@@ -337,14 +339,26 @@ type iface struct {
 // Needs to be in sync with
 // ../cmd/compile/internal/gc/reflect.go:/^func.dumptypestructs.
 type itab struct {
-	inter *interfacetype
-	_type *_type
+	inter *interfacetype  // 接口定义的类型信息
+	_type *_type          // 接口实际指向值的类型信息
 	hash  uint32 // copy of _type.hash. Used for type switches.
 	_     [4]byte
-	fun   [1]uintptr // variable sized. fun[0]==0 means _type does not implement inter.
+	fun   [1]uintptr     // 接口方法实现列表，即函数地址列表，按字典序排序
+}
+// runtime/type.go
+// 非空接口类型，接口定义，包路径等。
+type interfacetype struct {
+   typ     _type
+   pkgpath name
+   mhdr    []imethod      // 接口方法声明列表，按字典序排序
+}
+
+// 接口的方法声明 
+type imethod struct {
+   name nameOff              // 方法名
+   ityp typeOff              // 描述方法参数返回值等细节
 }
 ````
-
 
 
 
