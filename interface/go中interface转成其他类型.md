@@ -373,14 +373,7 @@ func additab(m *itab, locked, canfail bool) {
 }
 ````
 
-也就是在`fun[0]`后面一次写入其他`method`对应的函数指针。
-
-
-
-
-
-`iface`是
-
+也就是在`fun[0]`后面一次写入其他`method`对应的函数指针。  
 
 ### 参考
 【理解 Go interface 的 5 个关键点】https://sanyuesha.com/2017/07/22/how-to-understand-go-interface/  
