@@ -383,6 +383,48 @@ func additab(m *itab, locked, canfail bool) {
 
 也就是在`fun[0]`后面一次写入其他`method`对应的函数指针。  
 
+### 接口的动态类型和动态值
+
+````go
+type iface struct {
+	tab  *itab
+	data unsafe.Pointer
+}
+````
+
+`iface`我们可以看到，是有一个`tab`接口指针，指向数据类型，`data`数据指针，指向具体的数据。他们也被称为`动态类型`和`动态值`。  
+因为两个都是指针，所以默认值都是`nil`。所以当两者都是`nil`的时候这个接口值才是`nil`,也就是`接口值 == nil`。  
+
+````go
+func main() {
+	var f interface{}
+	fmt.Println("+++动态类型和动态值都是nil+++")
+	fmt.Println(f == nil)
+	fmt.Printf("f: %T, %v\n", f, f)
+
+	var g *string
+	f = g
+	fmt.Println("+++类型为 *string+++")
+	fmt.Println(f == nil)
+	fmt.Printf("f: %T, %v\n", f, f)
+}
+````
+
+打印下输出:  
+
+````go
++++动态类型和动态值都是nil+++
+true
+f: <nil>, <nil>
++++类型为 *string+++
+false
+f: *string, <nil> 
+````
+
+
+
+
+
 ### 参考
 【理解 Go interface 的 5 个关键点】https://sanyuesha.com/2017/07/22/how-to-understand-go-interface/  
 【深入理解 Go Interface】https://zhuanlan.zhihu.com/p/32926119   

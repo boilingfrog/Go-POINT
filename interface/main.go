@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"reflect"
 )
 
 type Sortable interface {
@@ -51,15 +50,27 @@ func (array StringArr) Swap(i int, j int) {
 	array[i], array[j] = array[j], array[i]
 }
 
-//测试
-func main() {
-	v := "hello world"
-	fmt.Println(typeof(v))
-
-	var _tt = 12
-	_ = _tt
-
+type Coder interface {
+	code()
 }
-func typeof(v interface{}) string {
-	return reflect.TypeOf(v).String()
+
+type CoderName struct {
+	name string
+}
+
+func (g CoderName) code() {
+	fmt.Printf("%s is coding\n", g.name)
+}
+
+func main() {
+	var f interface{}
+	fmt.Println("+++动态类型和动态值都是nil+++")
+	fmt.Println(f == nil)
+	fmt.Printf("f: %T, %v\n", f, f)
+
+	var g *string
+	f = g
+	fmt.Println("+++类型为 *string+++")
+	fmt.Println(f == nil)
+	fmt.Printf("f: %T, %v\n", f, f)
 }
