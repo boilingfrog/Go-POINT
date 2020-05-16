@@ -373,17 +373,7 @@ type imethod struct {
 `iface`同样也是有两个指针，`tab`指向一个`itab`实体， 它表示接口的类型以及赋给这个接口的实体类型。`data`则指向接口具体的值，一般而言是一个指向堆内存的指针。  
 
 `fun`表示`interface`中`method`的具体实现。比如`interfacetype`包含了两个`method`分别是`A`和`B`。但是有一点很奇怪，这个`fun`是长度为1的`uintptr`数组，那么是怎么表示多个的呢？  
-其实上面源码的注释已经能给到我们答案了，`variable sized`，这是个是可变大小的。go中的`uintptr`一般用来存放指针的值，那这里对应的就是函数指针的值（也就是函数的调用地址）。但是这里的 fun 是一个长度为 1 的 uintptr 数组。我们看一下 runtime 包的 additab 函数。
-
-````go
-func additab(m *itab, locked, canfail bool) {
-    ...
-    *(*unsafe.Pointer)(add(unsafe.Pointer(&m.fun[0]), uintptr(k)*sys.PtrSize)) = ifn
-    ...
-}
-````
-
-也就是在`fun[0]`后面一次写入其他`method`对应的函数指针。  
+其实上面源码的注释已经能给到我们答案了，`variable sized`，这是个是可变大小的。go中的`uintptr`一般用来存放指针的值，那这里对应的就是函数指针的值（也就是函数的调用地址）。如果有更多的方法，在它之后的内存空间里继续存储。也就是在`fun[0]`后面一次写入其他`method`对应的函数指针。  
 
 接口的类型转换是怎么实现的呢？  
 
@@ -546,13 +536,11 @@ func itabAdd(m *itab) {
 }
 ````
 
-最后总结下:
+最后总结下:  
 
-````
-具体类型转空接口时，_type 字段直接复制源类型的 _type；调用 mallocgc 获得一块新内存，把值复制进去，data 再指向这块新内存。
-具体类型转非空接口时，入参 tab 是编译器在编译阶段预先生成好的，新接口 tab 字段直接指向入参 tab 指向的 itab；调用 mallocgc 获得一块新内存，把值复制进去，data 再指向这块新内存。
-而对于接口转接口，itab 调用 getitab 函数获取。只用生成一次，之后直接从 hash 表中获取。
-````
+- 1、具体类型转空接口时，_type 字段直接复制源类型的 _type；调用 mallocgc 获得一块新内存，把值复制进去，data 再指向这块新内存。
+- 2、具体类型转非空接口时，入参 tab 是编译器在编译阶段预先生成好的，新接口 tab 字段直接指向入参 tab 指向的 itab；调用 mallocgc 获得一块新内存，把值复制进去，data 再指向这块新内存。
+- 3、而对于接口转接口，itab 调用 getitab 函数获取。只用生成一次，之后直接从 hash 表中获取。
 
 ### 接口的动态类型和动态值
 
