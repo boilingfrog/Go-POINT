@@ -1,6 +1,7 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+
 - [go中interface转换成原来的类型](#go%E4%B8%ADinterface%E8%BD%AC%E6%8D%A2%E6%88%90%E5%8E%9F%E6%9D%A5%E7%9A%84%E7%B1%BB%E5%9E%8B)
   - [首先了解下interface](#%E9%A6%96%E5%85%88%E4%BA%86%E8%A7%A3%E4%B8%8Binterface)
     - [什么是interface?](#%E4%BB%80%E4%B9%88%E6%98%AFinterface)
@@ -10,7 +11,8 @@
       - [断言](#%E6%96%AD%E8%A8%80)
   - [来看下interface的底层源码](#%E6%9D%A5%E7%9C%8B%E4%B8%8Binterface%E7%9A%84%E5%BA%95%E5%B1%82%E6%BA%90%E7%A0%81)
   - [eface](#eface)
-    - [iface](#iface)
+  - [iface](#iface)
+  - [接口的动态类型和动态值](#%E6%8E%A5%E5%8F%A3%E7%9A%84%E5%8A%A8%E6%80%81%E7%B1%BB%E5%9E%8B%E5%92%8C%E5%8A%A8%E6%80%81%E5%80%BC)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -332,7 +334,7 @@ func (t *rtype) Elem() Type {
 ````
 
 
-#### iface  
+### iface  
 
 表示的是非空的接口:  
 
