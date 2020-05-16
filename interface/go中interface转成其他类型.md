@@ -385,6 +385,175 @@ func additab(m *itab, locked, canfail bool) {
 
 也就是在`fun[0]`后面一次写入其他`method`对应的函数指针。  
 
+接口的类型转换是怎么实现的呢？  
+
+举个例子: 
+
+````go
+type coder interface {
+	code()
+	run()
+}
+
+type runner interface {
+	run()
+}
+
+type Gopher struct {
+	language string
+}
+
+func (g Gopher) code() {
+	return
+}
+
+func (g Gopher) run() {
+	return
+}
+
+func main() {
+	var c coder = Gopher{}
+
+	var r runner
+	r = c
+	fmt.Println(c, r)
+}
+````
+
+定义了两个` interface: coder` 和 `runner`。定义了一个实体类型 `Gopher`，类型 `Gopher` 实现了两个方法，分别是 `run()` 和 `code()`。`main` 函数里定义了一个接口变量 `c`，绑定了一个 `Gopher` 对象，之后将 `c` 赋值给另外一个接口变量` r` 。赋值成功的原因是 `c` 中包含 `run()` 方法。这样，两个接口变量完成了转换。  
+
+上面的转换调用了下面的函数实现的
+
+````go
+func convI2I(inter *interfacetype, i iface) (r iface) {
+	tab := i.tab
+	if tab == nil {
+		return
+	}
+	if tab.inter == inter {
+		r.tab = tab
+		r.data = i.data
+		return
+	}
+	r.tab = getitab(inter, tab._type, false)
+	r.data = i.data
+	return
+}
+````
+
+关于`conv`的函数定义，其中E代表eface，I代表iface，T代表编译器已知类型，即静态类型。  
+
+`inter`表示转换之后的接口类型，`i`表示转换之前的实体类型接口，`r`表示转换之后的实体类型接口。  
+这个函数先做了判断，如果两个转换之前和转换之后的接口类型是一样的，就直接把转换之前的接口信息赋值给r就可以了。如果不一样，就调用`getitab`
+
+````go
+func getitab(inter *interfacetype, typ *_type, canfail bool) *itab {
+	if len(inter.mhdr) == 0 {
+		throw("internal error - misuse of itab")
+	}
+
+	// easy case
+	if typ.tflag&tflagUncommon == 0 {
+		if canfail {
+			return nil
+		}
+		name := inter.typ.nameOff(inter.mhdr[0].name)
+		panic(&TypeAssertionError{nil, typ, &inter.typ, name.name()})
+	}
+
+	var m *itab
+
+	// First, look in the existing table to see if we can find the itab we need.
+	// This is by far the most common case, so do it without locks.
+	// Use atomic to ensure we see any previous writes done by the thread
+	// that updates the itabTable field (with atomic.Storep in itabAdd).
+	t := (*itabTableType)(atomic.Loadp(unsafe.Pointer(&itabTable)))
+	if m = t.find(inter, typ); m != nil {
+		goto finish
+	}
+
+	// Not found.  Grab the lock and try again.
+	lock(&itabLock)
+	if m = itabTable.find(inter, typ); m != nil {
+		unlock(&itabLock)
+		goto finish
+	}
+
+	// Entry doesn't exist yet. Make a new entry & add it.
+	m = (*itab)(persistentalloc(unsafe.Sizeof(itab{})+uintptr(len(inter.mhdr)-1)*sys.PtrSize, 0, &memstats.other_sys))
+	m.inter = inter
+	m._type = typ
+	m.init()
+	itabAdd(m)
+	unlock(&itabLock)
+finish:
+	if m.fun[0] != 0 {
+		return m
+	}
+	if canfail {
+		return nil
+	}
+	// this can only happen if the conversion
+	// was already done once using the , ok form
+	// and we have a cached negative result.
+	// The cached result doesn't record which
+	// interface function was missing, so initialize
+	// the itab again to get the missing function name.
+	panic(&TypeAssertionError{concrete: typ, asserted: &inter.typ, missingMethod: m.init()})
+}
+````
+简单总结一下：`getitab` 函数会根据 `interfacetype` 和 `_type` 去全局的 `itab` 哈希表中查找，如果能找到，则直接返回；否则，会根据给定的 `interfacetype` 和 `_type` 新生成一个 `itab`，并插入到 `itab` 哈希表，这样下一次就可以直接拿到 `itab`。  
+
+
+再来看一下 `itabAdd` 函数的代码：  
+
+````go
+// itabAdd adds the given itab to the itab hash table.
+// itabLock must be held.
+func itabAdd(m *itab) {
+	// Bugs can lead to calling this while mallocing is set,
+	// typically because this is called while panicing.
+	// Crash reliably, rather than only when we need to grow
+	// the hash table.
+	if getg().m.mallocing != 0 {
+		throw("malloc deadlock")
+	}
+
+	t := itabTable
+	if t.count >= 3*(t.size/4) { // 75% load factor
+		// Grow hash table.
+		// t2 = new(itabTableType) + some additional entries
+		// We lie and tell malloc we want pointer-free memory because
+		// all the pointed-to values are not in the heap.
+		t2 := (*itabTableType)(mallocgc((2+2*t.size)*sys.PtrSize, nil, true))
+		t2.size = t.size * 2
+
+		// Copy over entries.
+		// Note: while copying, other threads may look for an itab and
+		// fail to find it. That's ok, they will then try to get the itab lock
+		// and as a consequence wait until this copying is complete.
+		iterate_itabs(t2.add)
+		if t2.count != t.count {
+			throw("mismatched count during itab table copy")
+		}
+		// Publish new hash table. Use an atomic write: see comment in getitab.
+		atomicstorep(unsafe.Pointer(&itabTable), unsafe.Pointer(t2))
+		// Adopt the new table as our own.
+		t = itabTable
+		// Note: the old table can be GC'ed here.
+	}
+	t.add(m)
+}
+````
+
+最后总结下:
+
+````
+具体类型转空接口时，_type 字段直接复制源类型的 _type；调用 mallocgc 获得一块新内存，把值复制进去，data 再指向这块新内存。
+具体类型转非空接口时，入参 tab 是编译器在编译阶段预先生成好的，新接口 tab 字段直接指向入参 tab 指向的 itab；调用 mallocgc 获得一块新内存，把值复制进去，data 再指向这块新内存。
+而对于接口转接口，itab 调用 getitab 函数获取。只用生成一次，之后直接从 hash 表中获取。
+````
+
 ### 接口的动态类型和动态值
 
 ````go
