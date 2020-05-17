@@ -13,6 +13,7 @@
   - [eface](#eface)
   - [iface](#iface)
   - [接口的动态类型和动态值](#%E6%8E%A5%E5%8F%A3%E7%9A%84%E5%8A%A8%E6%80%81%E7%B1%BB%E5%9E%8B%E5%92%8C%E5%8A%A8%E6%80%81%E5%80%BC)
+  - [interface如何支持泛型](#interface%E5%A6%82%E4%BD%95%E6%94%AF%E6%8C%81%E6%B3%9B%E5%9E%8B)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -595,8 +596,77 @@ false
 f: *string, <nil> 
 ````
 
+### interface如何支持泛型
 
+严格来说，在 Golang 中并不支持泛型编程。在 C++ 等高级语言中使用泛型编程非常的简单，所以泛型编程一直是 `Golang` 诟病最多的地方。但是使用 `interface` 我们可以实现“泛型编程”，为什么？因为 `interface` 是一种抽象类型，任何具体类型（int, string）和抽象类型（user defined）都可以封装成 `interface`。以标准库的 sort 为例。
 
+````go
+package sort
+
+// A type, typically a collection, that satisfies sort.Interface can be
+// sorted by the routines in this package.  The methods require that the
+// elements of the collection be enumerated by an integer index.
+type Interface interface {
+    // Len is the number of elements in the collection.
+    Len() int
+    // Less reports whether the element with
+    // index i should sort before the element with index j.
+    Less(i, j int) bool
+    // Swap swaps the elements with indexes i and j.
+    Swap(i, j int)
+}
+
+...
+
+// Sort sorts data.
+// It makes one call to data.Len to determine n, and O(n*log(n)) calls to
+// data.Less and data.Swap. The sort is not guaranteed to be stable.
+func Sort(data Interface) {
+    // Switch to heapsort if depth of 2*ceil(lg(n+1)) is reached.
+    n := data.Len()
+    maxDepth := 0
+    for i := n; i > 0; i >>= 1 {
+        maxDepth++
+    }
+    maxDepth *= 2
+    quickSort(data, 0, n, maxDepth)
+}
+````
+
+`Sort` 函数的形参是一个 `interface`，包含了三个方法：`Len()，Less(i,j int)，Swap(i, j int)`。使用的时候不管数组的元素类型是什么类型`（int, float, string…）`，只要我们实现了这三个方法就可以使用 `Sort` 函数，这样就实现了“泛型编程”。有一点比较麻烦的是，我们需要自己封装一下。下面是一个例子。
+
+````go
+type Person struct {
+    Name string
+    Age  int
+}
+
+func (p Person) String() string {
+    return fmt.Sprintf("%s: %d", p.Name, p.Age)
+}
+
+// ByAge implements sort.Interface for []Person based on
+// the Age field.
+type ByAge []Person //自定义
+
+func (a ByAge) Len() int           { return len(a) }
+func (a ByAge) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByAge) Less(i, j int) bool { return a[i].Age < a[j].Age }
+
+func main() {
+    people := []Person{
+        {"Bob", 31},
+        {"John", 42},
+        {"Michael", 17},
+        {"Jenny", 26},
+    }
+
+    fmt.Println(people)
+    sort.Sort(ByAge(people))
+    fmt.Println(people)
+}
+````
+具体一点来说，也就是如果是在实现一个服务时，对于不同场景，可以将其共同特征抽象出来，在一个`interface`中声明，然后给不同的场景定义其特定的`struct`，上层的逻辑可以通过传入`interface`来执行，特化则通过`struct`实现对应的方法，从而达到一定程度的泛型。 
 
 
 ### 参考
