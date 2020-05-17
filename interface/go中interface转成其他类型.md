@@ -493,7 +493,22 @@ finish:
 }
 ````
 简单总结一下：`getitab` 函数会根据 `interfacetype` 和 `_type` 去全局的 `itab` 哈希表中查找，如果能找到，则直接返回；否则，会根据给定的 `interfacetype` 和 `_type` 新生成一个 `itab`，并插入到 `itab` 哈希表，这样下一次就可以直接拿到 `itab`。  
+第一次去查询的时候如果查找到，直接返回
 
+````go
+if m = t.find(inter, typ); m != nil {
+		goto finish
+	}
+````
+
+如果在`hash`表中没有找到，这时候锁住`itabLock`，然后去重新写入`itab`到哈希表，当写入之后，上游的查询拿到值了，解除锁的阻塞，然后返回。
+
+````go
+if m = itabTable.find(inter, typ); m != nil {
+		unlock(&itabLock)
+		goto finish
+	}
+````
 
 再来看一下 `itabAdd` 函数的代码：  
 
