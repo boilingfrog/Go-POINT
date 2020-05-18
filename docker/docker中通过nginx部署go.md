@@ -4,8 +4,13 @@
 
 什么是`Nginx`？  
 
-`Nginx`是一个高性能的`HTTP`和反向代理服务器，也是一个`IMAP/POP3/SMTP`代理服务器。  
+`Nginx` 是一个 `Web Server`，可以用作反向代理、负载均衡、邮件代理、`TCP / UDP、HTT`P 服务器等等，它拥有很多吸引人的特性，例如：  
 
-`Nginx`是一款轻量级的`Web`服务器/反向代理服务器以及电子邮件代理服务器，并在一个`BSD-like`协议下发行。由俄罗斯的程序设计师`lgor Sysoev`所开发，供俄国大型的入口网站及搜索引擎Rambler使用。其特点是占有内存少，并发能力强，事实上`nginx`的并发能力确实在同类型的网页服务器中表现较好。  
-
-`Nginx`相较于`Apache\lighttpd`具有占有内存少，稳定性高等优势，并且依靠并发能力强，丰富的模块库以及友好灵活的配置而闻名。在`Linux`操作系统下，`nginx`使用`epoll`事件模型,得益于此，nginx在Linux操作系统下效率相当高。同时`Nginx`在`OpenBSD`或`FreeBSD`操作系统上采用类似于`Epoll`的高效事件模型`kqueue`.  
+- 以较低的内存占用率处理 10,000 多个并发连接（每10k非活动HTTP保持活动连接约2.5 MB ）
+- 静态服务器（处理静态文件）
+- 正向、反向代理
+- 负载均衡
+- 通过OpenSSL 对 TLS / SSL 与 SNI 和 OCSP 支持
+- FastCGI、SCGI、uWSGI 的支持
+- WebSockets、HTTP/1.1 的支持
+- Nginx + Lua
