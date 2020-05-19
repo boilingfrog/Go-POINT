@@ -63,7 +63,7 @@
 
 #### Nginx镜像
 
-使用`docker-composer`构建`Nginx`
+使用`docker-composer`构建`Nginx`,然后
 
 
 
