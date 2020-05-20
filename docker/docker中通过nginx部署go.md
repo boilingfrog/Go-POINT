@@ -63,7 +63,20 @@
 
 #### Nginx镜像
 
-使用`docker-composer`构建`Nginx`,然后
+使用`docker-composer`构建`Nginx`:
+
+````
+version: '2'
+services:
+  nginx:
+    image: nginx
+    network_mode: host
+    ports:
+      - "8888:80"
+    environment:
+      - NGINX_HOST=127.0.0.1
+      - NGINX_PORT=80
+````
 
 
 
