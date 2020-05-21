@@ -70,13 +70,12 @@ version: '2'
 services:
   nginx:
     image: nginx
-    network_mode: host
+    restart: always
     ports:
-      - "8888:80"
-    environment:
-      - NGINX_HOST=127.0.0.1
-      - NGINX_PORT=80
+      - 8888:80
 ````
+
+简单
 
 
 
