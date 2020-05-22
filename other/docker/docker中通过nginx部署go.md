@@ -68,16 +68,25 @@
 ````
 version: '2'
 services:
-  nginx:
+  liz-nginx:
     image: nginx
     restart: always
     ports:
       - 8888:80
+    volumes:
+      - ./wwwroot:/usr/share/nginx/html
+      - ./conf/nginx.conf:/etc/nginx/nginx.conf
 ````
 
-简单
+简单介绍下：
 
-
+- version:表示使用那个版本的compose。
+- service：就是要定义的docker容器
+- nginx:容器的名称
+- image:表示使用的镜像。我放的ngixn，也就是docker官方镜像上目前能找到最新版的镜像。
+- restart:设置为always，表明此容器应该在停止的情况下总是重启，比如，服务器启动时，这个容器就跟着启动，不用手动启动。
+- ports：这个是容器自己运行的端口号和需要暴露的端口号。比如： - 8080:80，表示容器内运行着的端口是80，把端口暴露给8080端口，从外面访问的是8080端口，就能自动映射到80端口上。
+- volumes:这个是数据卷。表示数据、配置文件等存放的位置。
 
 
 ### 参考 
