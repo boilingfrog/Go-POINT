@@ -116,6 +116,9 @@ Starting nginx_liz-nginx_1 ... done
 
 
 
+
 ### 参考 
 
 【正向代理与反向代理【总结】】https://www.cnblogs.com/anker/p/6056540.html  
+【使用docker-compose部署nginx】https://www.jianshu.com/p/1f6232d787d9  
+【使用 Docker Compose 部署 Nginx 配置虚拟主机】https://segmentfault.com/a/1190000022348558  
