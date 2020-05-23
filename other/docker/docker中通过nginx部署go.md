@@ -98,6 +98,21 @@ Starting nginx_liz-nginx_1 ... done
 
 ![](https://img2020.cnblogs.com/blog/1237626/202005/1237626-20200523201856834-787125314.png)
 
+因为我们把`wwwroot`挂载到`/usr/share/nginx/html`里面了，当时里面没有放初始化的页面。  
+
+在`wwwroot`里面新建`index.html`,然后再次访问
+
+![](https://img2020.cnblogs.com/blog/1237626/202005/1237626-20200523202412917-14821316.png)
+
+成功了。  
+
+然后尝试把`ngixn`需要的配置文件也通过文件挂载的方式加进去。
+
+
+
+
+
+
 
 
 
