@@ -282,6 +282,28 @@ http {
 }
 ````
 
+然后把我们的`nginx.conf`的配置文件给挂载进去
+
+````
+version: '2'
+services:
+  liz-nginx:
+    image: nginx
+    restart: always
+    ports:
+      - 8888:80
+    volumes:
+      - ./conf/nginx.conf:/etc/nginx/nginx.conf
+      - ./wwwroot:/usr/share/nginx/html 
+````
+
+然后启动`docker-compose up -d`  
+再次访问  
+![](https://img2020.cnblogs.com/blog/1237626/202005/1237626-20200524212905448-631115693.png)
+
+
+
+
 ### 参考 
 
 【正向代理与反向代理【总结】】https://www.cnblogs.com/anker/p/6056540.html  
