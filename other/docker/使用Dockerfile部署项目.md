@@ -17,7 +17,12 @@ https://hub.docker.com/explore
   "registry-mirrors": [ "https://registry.docker-cn.com"]
 }
 ````
-  
+
+然后重启
+
+````
+systemctl restart docker.service
+````
 
 ### docker中的网络
 

@@ -248,14 +248,39 @@ http {
 }
 ````
 
+创建`ngixn.conf`
 
+````
+user  nginx;
+# 指定使用 CPU 资源数量
+worker_processes  1;
 
+events {
+    # 连接数
+    worker_connections  1024;
+}
 
-
-
-
-
-
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+    sendfile        on;
+    keepalive_timeout  65;
+    
+	# 虚拟主机一配置
+    server {
+        # 指定端口
+        listen       80;
+        # 指定 IP （可以是域名）
+        server_name  127.0.0.1;
+        location / {
+            # 虚拟主机内的资源访问路径
+            root   /usr/share/nginx/html;
+            # 首页
+            index  index.html index.htm;
+        }
+    }
+}
+````
 
 ### 参考 
 
