@@ -63,7 +63,7 @@
 
 #### Nginx镜像
 
-使用`docker-composer`构建`Nginx`:
+使用`docker-composer`构建`Nginx`，创建`docker-compose.yml`:
 
 ````
 version: '2'
@@ -109,6 +109,7 @@ Starting nginx_liz-nginx_1 ... done
 然后尝试把`ngixn`需要的配置文件也通过文件挂载的方式加进去。
 
 
+docker中反而
 
 
 
