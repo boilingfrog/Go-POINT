@@ -299,7 +299,62 @@ services:
 
 然后启动`docker-compose up -d`  
 再次访问  
+
 ![](https://img2020.cnblogs.com/blog/1237626/202005/1237626-20200524212905448-631115693.png)
+
+
+#### server_name
+
+对于其中的`server_name`具体是如何使用的呢？  
+
+`server name` 为虚拟服务器的识别路径。因此不同的域名会通过请求头中的`HOST`字段，匹配到特定的`server`块，转发到对应的应用服务器中去。  
+
+我们重新配置`nginx.conf`
+
+````
+user  nginx;
+# 指定使用 CPU 资源数量
+worker_processes  1;
+
+events {
+    # 连接数
+    worker_connections  1024;
+}
+
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+    sendfile        on;
+    keepalive_timeout  65;
+    
+	
+    server {
+        # 指定端口
+        listen       80;
+        # 指定 IP （可以是域名）
+        server_name  www.liz.com;
+        location / {
+            # 虚拟主机内的资源访问路径
+            root   /usr/share/nginx/html;
+            # 首页
+            index  indexa.html index.htm;
+        }
+    }
+    server {
+        # 指定端口
+        listen       80;
+        # 指定 IP （可以是域名）
+        server_name  www.liz.*;
+        location / {
+            # 虚拟主机内的资源访问路径
+            root   /usr/share/nginx/html;
+            # 首页
+            index  indexb.html index.htm;
+        }
+    }
+}
+````
+
 
 
 
@@ -311,3 +366,4 @@ services:
 【使用 Docker Compose 部署 Nginx 配置虚拟主机】https://segmentfault.com/a/1190000022348558  
 【nginx快速入门之配置篇】https://zhuanlan.zhihu.com/p/31202053  
 【Nginx配置文件nginx.conf中文详解】https://www.jianshu.com/p/3e2b9964c279  
+【nginx配置:server_name的作用】https://blog.csdn.net/Cheng_Kohui/article/details/82930464  
