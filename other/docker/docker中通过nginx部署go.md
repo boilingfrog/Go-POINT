@@ -384,3 +384,4 @@ http {
 【nginx快速入门之配置篇】https://zhuanlan.zhihu.com/p/31202053  
 【Nginx配置文件nginx.conf中文详解】https://www.jianshu.com/p/3e2b9964c279  
 【nginx配置:server_name的作用】https://blog.csdn.net/Cheng_Kohui/article/details/82930464  
+【Nginx 配置常用参数，看这一篇就够了】https://learnku.com/articles/36768  
