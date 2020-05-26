@@ -373,7 +373,23 @@ http {
 
 ![](https://img2020.cnblogs.com/blog/1237626/202005/1237626-20200525091649351-1483203651.png)
 
-这样通过域名加端口的访问好奇怪。接下来用  
+这样通过域名加端口的访问好奇怪。`http`的请求默认的是`80`，端口。我们只要把`docker-compose`中配置的`80`端口也映射到虚机的`80`就好了。
+
+````
+version: '2'
+services:
+  liz-nginx:
+    image: nginx
+    restart: always
+    ports:
+      - 8888:80
+      - 80:80
+    volumes:
+      - ./conf/nginx.conf:/etc/nginx/nginx.conf
+      - ./wwwroot:/usr/share/nginx/html
+````
+![](https://img2020.cnblogs.com/blog/1237626/202005/1237626-20200526225412111-445199338.png)
+
 
 
 ### 参考 
