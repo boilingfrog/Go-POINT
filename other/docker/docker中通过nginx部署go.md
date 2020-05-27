@@ -392,6 +392,94 @@ services:
 
 然后探讨下如何使用`nginx`部署`go`项目  
 
+首先跑起来一个`go`项目，这个之前已经做过了，可以参考`https://www.cnblogs.com/ricklz/p/12860434.html`  
+直接拿之前创建的镜像，构建`docker-compose.yml`。我就直接把`nginx`和`go`放到同一个`docker-compose.yml`中了。  
+
+````
+version: '2'
+
+networks:
+  basic:
+
+services:
+  liz-nginx:
+    image: nginx
+    container_name: liz.com
+    restart: always
+    ports:
+      - 8888:80
+      - 80:80
+    volumes:
+      - ./wwwroot:/usr/share/nginx/html
+      - ./conf/nginx.conf:/etc/nginx/nginx.conf
+    networks:
+      - basic
+
+  test-docker:
+    container_name: test-docker2
+    image: liz2019/test-docker-go-hub
+    ports:
+      - 8020:8010
+    networks:
+      - basic
+````
+
+然后修改`ngixn`的配置文件  
+
+````
+user  nginx;
+# 指定使用 CPU 资源数量
+worker_processes  1;
+
+events {
+    # 连接数
+    worker_connections  1024;
+}
+
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+    sendfile        on;
+    keepalive_timeout  65;
+    
+    upstream liz.com {
+      server 192.168.56.201:8888;
+    }
+	
+    server {
+        # 指定端口
+        listen       80;
+        # 指定 IP （可以是域名）
+        server_name  www.liz.com;
+        location / {
+            # 虚拟主机内的资源访问路径
+            root   /usr/share/nginx/html;
+            # 首页
+            index  indexa.html index.htm;
+        }
+
+        location /api/ {
+           proxy_pass   http://192.168.56.201:8889;
+           proxy_set_header Host $host;
+           proxy_redirect off;
+	   proxy_set_header X-Real-IP $remote_addr;
+	 }
+    }
+    server {
+        # 指定端口
+        listen       80;
+        # 指定 IP （可以是域名）
+        server_name  www.liz.cn;
+        location / {
+           proxy_pass   http://127.0.0.1:8010;
+        }
+
+    }
+}
+````
+
+
+
 
 ### 参考 
 
