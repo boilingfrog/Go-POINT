@@ -126,8 +126,8 @@ Successfully tagged test-docker-go:latest
 
 执行命令运行并创建容器
 ````
-# docker run -p 8000:8010 test-docker-go
-2020/05/09 02:55:43 【默认项目】服务启动成功 监听端口 8010
+# docker run -p 8000:8000 test-docker-go
+2020/05/09 02:55:43 【默认项目】服务启动成功 监听端口 8000
 ````
 ![](https://img2020.cnblogs.com/blog/1237626/202005/1237626-20200509105727786-1309538238.png)
 
