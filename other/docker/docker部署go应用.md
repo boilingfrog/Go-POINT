@@ -45,8 +45,8 @@ func sayHello(w http.ResponseWriter, r *http.Request) {
 }
 func main() {
 	http.HandleFunc("/", sayHello) //注册URI路径与相应的处理函数
-	log.Println("【默认项目】服务启动成功 监听端口 8010")
-	er := http.ListenAndServe("0.0.0.0:8010", nil)
+	log.Println("【默认项目】服务启动成功 监听端口 8000")
+	er := http.ListenAndServe("0.0.0.0:8000", nil)
 	if er != nil {
 		log.Fatal("ListenAndServe: ", er)
 	}
@@ -149,7 +149,7 @@ services:
     container_name: test-docker1
     image: test-docker-go
     ports:
-      - "8020:8010"
+      - "8020:8000"
     networks:
       - basic
 ````
@@ -238,7 +238,7 @@ services:
     container_name: test-docker2
     image: liz2019/test-docker-go-hub
     ports:
-      - "8020:8010"
+      - "8020:8000"
     networks:
       - basic
 ````
@@ -248,7 +248,7 @@ services:
 Creating network "go_basic" with the default driver
 Creating test-docker2 ... done
 Attaching to test-docker2
-test-docker2   | 2020/05/09 09:03:15 【默认项目】服务启动成功 监听端口 8010
+test-docker2   | 2020/05/09 09:03:15 【默认项目】服务启动成功 监听端口 8000
 ^CGracefully stopping... (press Ctrl+C again to force)
 Stopping test-docker2 ... done
 ````

@@ -398,8 +398,6 @@ services:
 ````
 version: '2'
 
-networks:
-  basic:
 
 services:
   liz-nginx:
@@ -412,22 +410,19 @@ services:
     volumes:
       - ./wwwroot:/usr/share/nginx/html
       - ./conf/nginx.conf:/etc/nginx/nginx.conf
-    networks:
-      - basic
 
   test-docker:
     container_name: test-docker2
     image: liz2019/test-docker-go-hub
+    restart: always
     ports:
-      - 8020:8010
-    networks:
-      - basic
+      - 8020:8000
 ````
 
 然后修改`ngixn`的配置文件  
 
 ````
-user  nginx;
+user nginx;
 # 指定使用 CPU 资源数量
 worker_processes  1;
 
@@ -442,9 +437,6 @@ http {
     sendfile        on;
     keepalive_timeout  65;
     
-    upstream liz.com {
-      server 192.168.56.201:8888;
-    }
 	
     server {
         # 指定端口
@@ -457,23 +449,16 @@ http {
             # 首页
             index  indexa.html index.htm;
         }
-
-        location /api/ {
-           proxy_pass   http://192.168.56.201:8889;
-           proxy_set_header Host $host;
-           proxy_redirect off;
-	   proxy_set_header X-Real-IP $remote_addr;
-	 }
     }
     server {
         # 指定端口
         listen       80;
         # 指定 IP （可以是域名）
-        server_name  www.liz.cn;
+        server_name  www.liz.*;
         location / {
-           proxy_pass   http://127.0.0.1:8010;
+            # 虚拟主机内的资源访问路径
+            proxy_pass  http://test-docker2:8000;
         }
-
     }
 }
 ````
