@@ -1,3 +1,19 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [docker配合Nginx部署go应用](#docker%E9%85%8D%E5%90%88nginx%E9%83%A8%E7%BD%B2go%E5%BA%94%E7%94%A8)
+  - [Nginx](#nginx)
+  - [名词解释](#%E5%90%8D%E8%AF%8D%E8%A7%A3%E9%87%8A)
+    - [正向代理](#%E6%AD%A3%E5%90%91%E4%BB%A3%E7%90%86)
+    - [反向代理](#%E5%8F%8D%E5%90%91%E4%BB%A3%E7%90%86)
+  - [构建镜像](#%E6%9E%84%E5%BB%BA%E9%95%9C%E5%83%8F)
+    - [Nginx镜像](#nginx%E9%95%9C%E5%83%8F)
+    - [配置nginx.conf](#%E9%85%8D%E7%BD%AEnginxconf)
+      - [server_name](#server_name)
+  - [参考](#%E5%8F%82%E8%80%83)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## docker配合Nginx部署go应用 
 
 ### Nginx
@@ -105,6 +121,8 @@ Starting nginx_liz-nginx_1 ... done
 ![](https://img2020.cnblogs.com/blog/1237626/202005/1237626-20200523202412917-14821316.png)
 
 成功了。  
+
+#### 配置nginx.conf
 
 然后尝试把`ngixn`需要的配置文件也通过文件挂载的方式加进去。  
 
@@ -303,7 +321,7 @@ services:
 ![](https://img2020.cnblogs.com/blog/1237626/202005/1237626-20200524212905448-631115693.png)
 
 
-#### server_name
+##### server_name
 
 对于其中的`server_name`具体是如何使用的呢？  
 
