@@ -528,9 +528,115 @@ http {
 - weight=number:设置这台上游服务器的转发权重，默认是1。
 - max_fails=number:该选项与`fail_timeout`配合使用，指的是如果在`fail_timeout`时间段内，如果向上游的服务器转发次数超过`number`,
 则认为在当前的`fail_timeout`时间段内这台上游服务器不可用。`max_fails`的默认值是1，如果设置成0表示不检查失败次数。
-- fail_timeout:表示
+- fail_timeout:表示该段时间内转发失败多少次后就认为上游服务器暂时不可用，用于优化反向代理功能。它与上游服务器建立连接的超时时间、读取上游服务器的相应超时时间无关。`fail_timeout`默认的是10秒。
+- down:表示所在的上游服务器永久下线。只在`ip_hash`才有用。
+- hackup:在使用`ip_hash`配置时时它是无效的。它表示所在的上游服务器只是备份的服务器，只有在所有的非备份服务器都失效后，才会向所在的上游服务器转发请求。
+
+````
+    upstream myapp1 {
+        server srv1.example.com weight=2 max_fails=3 fail_timeout=15;
+        server srv2.example.com weight=3;
+        server srv3.example.com;
+    }
+````
+
+做个测试
+
+````
+version: '2'
 
 
+services:
+  liz-nginx:
+    image: nginx
+    container_name: liz.com
+    restart: always
+    ports:
+      - 8888:80
+      - 80:80
+    volumes:
+      - ./wwwroot:/usr/share/nginx/html
+      - ./conf/nginx.conf:/etc/nginx/nginx.conf
+
+  test-docker1:
+    container_name: test-docker1
+    image: liz2019/test-docker-go-hub:v1.0
+    ports:
+      - 8010:8010
+
+
+  test-docker2:
+    container_name: test-docker2
+    image: liz2019/test-docker-go-hub:v2.0
+    ports:
+      - 8020:8020
+
+  test-docker3:
+    container_name: test-docker3
+    image: liz2019/test-docker-go-hub:v3.0
+    ports:
+      - 8030:8030
+
+````
+
+分别`push`了三个版本的`liz2019/test-docker-go-hub`镜像，分别监听不同的端口。  
+
+然后修改`nginx.conf`,通过`upstream`，实现三个`go`项目的负载。
+
+````
+user nginx;
+# 指定使用 CPU 资源数量
+worker_processes  1;
+
+events {
+    # 连接数
+    worker_connections  1024;
+}
+
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+    sendfile        on;
+    keepalive_timeout  65;
+
+    upstream go-hub {
+        server test-docker1:8010;
+        server test-docker2:8020;
+        server test-docker3:8030;
+    }    
+	
+    server {
+        # 指定端口
+        listen       80;
+        # 指定 IP （可以是域名）
+        server_name  www.liz.com;
+        location / {
+            # 虚拟主机内的资源访问路径
+            root   /usr/share/nginx/html;
+            # 首页
+            index  indexa.html index.htm;
+        }
+    }
+    server {
+        # 指定端口
+        listen       80;
+        # 指定 IP （可以是域名）
+        server_name  www.liz.*;
+        location / {
+            # 虚拟主机内的资源访问路
+            proxy_pass  http://go-hub;
+        }
+    }
+}
+````
+
+连续请求三次，发现已经转向了不同的服务中了
+
+![](https://img2020.cnblogs.com/blog/1237626/202005/1237626-20200531005531792-18867647.png)
+
+![](https://img2020.cnblogs.com/blog/1237626/202005/1237626-20200531005539384-133220062.png)
+
+![](https://img2020.cnblogs.com/blog/1237626/202005/1237626-20200531005547174-278560853.png)
 
 
 
