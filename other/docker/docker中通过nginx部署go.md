@@ -10,6 +10,12 @@
     - [Nginx镜像](#nginx%E9%95%9C%E5%83%8F)
     - [配置nginx.conf](#%E9%85%8D%E7%BD%AEnginxconf)
       - [server_name](#server_name)
+  - [Nginx中的负载均衡](#nginx%E4%B8%AD%E7%9A%84%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1)
+    - [轮询](#%E8%BD%AE%E8%AF%A2)
+      - [upstream块](#upstream%E5%9D%97)
+      - [server](#server)
+    - [ip_hash](#ip_hash)
+    - [最少连接](#%E6%9C%80%E5%B0%91%E8%BF%9E%E6%8E%A5)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -630,7 +636,7 @@ http {
 }
 ````
 
-连续请求三次，发现已经转向了不同的服务中了
+连续请求三次，发现已经转向了不同的服务中了，一个简单的负载均衡就实现了。
 
 ![](https://img2020.cnblogs.com/blog/1237626/202005/1237626-20200531005531792-18867647.png)
 
@@ -638,8 +644,36 @@ http {
 
 ![](https://img2020.cnblogs.com/blog/1237626/202005/1237626-20200531005547174-278560853.png)
 
+#### ip_hash
 
+当对后端的多台动态应用服务器做负载均衡时，ip_hash指令能够将某个客户端IP的请求通过哈希算法定位到同一台后端服务器上。这样，当来自某个IP的用户在后端Web服务器A上登录后，再访问该站点的其他URL，能够保证其访问的还是后端Web服务器A。
+如果不采用ip_hash指令，假设来自某个IP的用户在后端Web服务器A上登录后，再访问该站点的其他URL，有可能被定向到后端Web服务器B,C...上，由于用户登录后SESSION信息是记录在服务器A上的，B,C...上没有，这时就会提示用户来登录
 
+````
+    upstream myapp1 {
+        ip_hash;
+        server srv1.example.com;
+        server srv2.example.com;
+        server srv3.example.com;
+    }
+````
+
+`ip_hash`和`weight`不可同时使用。如果`upstream`中一台服务器不能使用了，不能直接删除该配置。可以加上`down`，确保转发策略的一贯性。
+
+#### 最少连接
+
+连接最少的. 最少连接允许在某些请求需要较长时间才能完成的情况下更公平地控制应用程序实例上的负载.  
+
+使用最少连接的负载平衡，nginx将尝试不使繁忙的应用程序服务器因过多的请求而过载，而是将新的请求分配给不太繁忙的服务器.  
+
+````
+ upstream myapp1 {
+        least_conn;
+        server srv1.example.com;
+        server srv2.example.com;
+        server srv3.example.com;
+    }
+````
 
 ### 参考 
 
