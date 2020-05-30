@@ -483,6 +483,56 @@ http {
 
  ![](https://img2020.cnblogs.com/blog/1237626/202005/1237626-20200529223308691-1764828146.png)
 
+### Nginx中的负载均衡
+
+>Load balancing across multiple application instances is a commonly used technique for optimizing resource utilization, maximizing throughput, reducing latency, and ensuring fault-tolerant configurations.  
+>It is possible to use nginx as a very efficient HTTP load balancer to distribute traffic to several application servers and to improve performance, scalability and reliability of web applications with nginx.
+
+`nginx`中实现了三种的负载策略:
+
+- 轮循（默认）
+Nginx根据请求次数，将每个请求均匀分配到每台服务器
+- 最少连接
+将请求分配给连接数最少的服务器。Nginx会统计哪些服务器的连接数最少。
+- IP Hash
+绑定处理请求的服务器。第一次请求时，根据该客户端的IP算出一个HASH值，将请求分配到集群中的某一台服务器上。后面该客户端的所有请求，都将通过HASH算法，找到之前处理这台客户端请求的服务器，然后将请求交给它来处理。
+
+#### 轮询
+
+##### upstream块
+
+`upstream`定义了一个上游服务器的集群，便于反向代理中的`proxy_pass`使用
+
+````
+http {
+    upstream myapp1 {
+        server srv1.example.com;
+        server srv2.example.com;
+        server srv3.example.com;
+    }
+
+    server {
+        listen 80;
+
+        location / {
+            proxy_pass http://myapp1;
+        }
+    }
+}
+````
+
+##### server
+
+`server`配置项指定了上游服务器的名字，这个名字可以是域名，IP地址端口，UNIX句柄等，在其后面也可以跟下列的参数
+
+- weight=number:设置这台上游服务器的转发权重，默认是1。
+- max_fails=number:该选项与`fail_timeout`配合使用，指的是如果在`fail_timeout`时间段内，如果向上游的服务器转发次数超过`number`,
+则认为在当前的`fail_timeout`时间段内这台上游服务器不可用。`max_fails`的默认值是1，如果设置成0表示不检查失败次数。
+- fail_timeout:表示
+
+
+
+
 
 
 ### 参考 
