@@ -13,7 +13,9 @@ yum install git -y
 然后初始化仓库
 
 ````
-# su git
+# useradd git
+# passwd git
+# su - git
 # mkdir repos
 # cd repos
 # mkdir app.git
