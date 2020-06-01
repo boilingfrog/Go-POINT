@@ -84,3 +84,10 @@ ln -s /usr/local/java/jdk1.8.0_171/bin/java /usr/bin/java
 ````
 java -version
 ````
+
+
+#### 启动jenkins
+
+````
+# systemctl start jenkins
+````
