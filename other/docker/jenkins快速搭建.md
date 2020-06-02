@@ -57,7 +57,7 @@ tar -zxvf jdk-8.tar.gz -C /usr/local/java/
 3、设置环境变量
 
 ````
-vim /etc/profile
+vi /etc/profile
 ````
 
 在末尾添加
