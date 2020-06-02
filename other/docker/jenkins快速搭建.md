@@ -39,7 +39,7 @@ sudo rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io.key
 yum install jenkins
 ````
 
-启动的时候需要依赖`java`环境，先去安装下。下载直接到官网下载即可`http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html`
+启动的时候需要依赖`java`环境，先去安装下。下载直接到官网下载即可`http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html`,官网需要登录。也可以通过这个链接下载`https://www.kagura.me/dev/20200424112618.html`
 
 1、创建安装目录
 
@@ -50,7 +50,7 @@ mkdir /usr/local/java/
 2、解压至安装目录
 
 ````
-tar -zxvf jdk-8u171-linux-x64.tar.gz -C /usr/local/java/
+tar -zxvf jdk-8.tar.gz -C /usr/local/java/
 
 ````
 
@@ -63,7 +63,7 @@ vim /etc/profile
 在末尾添加
 
 ````
-export JAVA_HOME=/usr/local/java/jdk1.8.0_171
+export JAVA_HOME=/usr/local/java/jdk1.8.0_251
 export JRE_HOME=${JAVA_HOME}/jre
 export CLASSPATH=.:${JAVA_HOME}/lib:${JRE_HOME}/lib
 export PATH=${JAVA_HOME}/bin:$PATH
@@ -78,7 +78,7 @@ source /etc/profile
 添加软链接
 
 ````
-ln -s /usr/local/java/jdk1.8.0_171/bin/java /usr/bin/java
+ln -s /usr/local/java/jdk1.8.0_251/bin/java /usr/bin/java
 ````
 
 查看版本
@@ -92,4 +92,17 @@ java -version
 
 ````
 # systemctl start jenkins
+````
+
+查看jenkins的运行状态
+
+````
+# ps -ef |grep jenkins
+````
+
+主要关掉防火墙
+
+````
+# systemctl stop firewalld
+# systemctl disable firewalld
 ````
