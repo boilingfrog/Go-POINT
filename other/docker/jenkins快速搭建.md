@@ -106,3 +106,12 @@ java -version
 # systemctl stop firewalld
 # systemctl disable firewalld
 ````
+
+开始构建  
+
+下载插件
+
+````
+Extended Choice Parameter
+Git Parameter
+````
