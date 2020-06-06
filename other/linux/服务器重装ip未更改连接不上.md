@@ -2,14 +2,14 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 
-- [服务器重装ip未更改,ssh改连不上](#%E6%9C%8D%E5%8A%A1%E5%99%A8%E9%87%8D%E8%A3%85ip%E6%9C%AA%E6%9B%B4%E6%94%B9ssh%E6%94%B9%E8%BF%9E%E4%B8%8D%E4%B8%8A)
+- [服务器重装ip未更改,ssh连不上](#%E6%9C%8D%E5%8A%A1%E5%99%A8%E9%87%8D%E8%A3%85ip%E6%9C%AA%E6%9B%B4%E6%94%B9ssh%E8%BF%9E%E4%B8%8D%E4%B8%8A)
   - [前言](#%E5%89%8D%E8%A8%80)
   - [原因](#%E5%8E%9F%E5%9B%A0)
   - [解决方法](#%E8%A7%A3%E5%86%B3%E6%96%B9%E6%B3%95)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-## 服务器重装ip未更改,ssh改连不上
+## 服务器重装ip未更改,ssh连不上
 
 ### 前言
 
