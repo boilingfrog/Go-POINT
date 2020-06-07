@@ -1,3 +1,14 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [Linux命令-tail](#linux%E5%91%BD%E4%BB%A4-tail)
+  - [命令分析](#%E5%91%BD%E4%BB%A4%E5%88%86%E6%9E%90)
+    - [命令格式](#%E5%91%BD%E4%BB%A4%E6%A0%BC%E5%BC%8F)
+    - [参数](#%E5%8F%82%E6%95%B0)
+    - [例子](#%E4%BE%8B%E5%AD%90)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## Linux命令-tail
 
 ### 命令分析
