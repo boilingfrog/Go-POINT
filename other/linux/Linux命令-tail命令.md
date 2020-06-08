@@ -37,18 +37,15 @@ tail [参数] [文件]
 实时查看`jenkins`的日志
 
 ````
-# tail -f  /var/log/jenkins/jenkins.log
-Please use the following password to proceed to installation:
-
-600ef7d47db54ff2bfc518a6c2f2a857
-
-This may also be found at: /var/lib/jenkins/secrets/initialAdminPassword
-
-*************************************************************
-*************************************************************
-*************************************************************
-
-2020-06-07 14:10:31.384+0000 [id=44]	INFO	h.m.DownloadService$Downloadable#load: Obtained the updated data file for hudson.tasks.Maven.MavenInstaller
-2020-06-07 14:10:31.385+0000 [id=44]	INFO	hudson.util.Retrier#start: Performed the action check updates server successfully at the attempt #1
-2020-06-07 14:10:31.390+0000 [id=44]	INFO	hudson.model.AsyncPeriodicWork#lambda$doRun$0: Finished Download metadata. 739,411 ms
+# tail -f /var/log/jenkins/jenkins.log
+2020-06-08 00:34:16.777+0000 [id=27]	INFO	o.s.c.s.AbstractApplicationContext#obtainFreshBeanFactory: Bean factory for application context [org.springframework.web.context.support.StaticWebApplicationContext@67401a8e]: org.springframework.beans.factory.support.DefaultListableBeanFactory@4eb5cf66
+2020-06-08 00:34:16.779+0000 [id=27]	INFO	o.s.b.f.s.DefaultListableBeanFactory#preInstantiateSingletons: Pre-instantiating singletons in org.springframework.beans.factory.support.DefaultListableBeanFactory@4eb5cf66: defining beans [filter,legacy]; root of factory hierarchy
+2020-06-08 00:34:17.027+0000 [id=27]	INFO	jenkins.InitReactorRunner$1#onAttained: Completed initialization
+2020-06-08 00:34:17.111+0000 [id=20]	INFO	hudson.WebAppMain$3#run: Jenkins is fully up and running
+2020-06-08 00:34:51.566+0000 [id=41]	INFO	h.m.DownloadService$Downloadable#load: Obtained the updated data file for hudson.tasks.Maven.MavenInstaller
+2020-06-08 00:34:52.639+0000 [id=41]	INFO	h.m.DownloadService$Downloadable#load: Obtained the updated data file for hudson.plugins.gradle.GradleInstaller
+2020-06-08 00:34:53.453+0000 [id=41]	INFO	h.m.DownloadService$Downloadable#load: Obtained the updated data file for hudson.tasks.Ant.AntInstaller
+2020-06-08 00:34:55.783+0000 [id=41]	INFO	h.m.DownloadService$Downloadable#load: Obtained the updated data file for hudson.tools.JDKInstaller
+2020-06-08 00:34:55.783+0000 [id=41]	INFO	hudson.util.Retrier#start: Performed the action check updates server successfully at the attempt #1
+2020-06-08 00:34:55.787+0000 [id=41]	INFO	hudson.model.AsyncPeriodicWork#lambda$doRun$0: Finished Download metadata. 42,704 ms
 ````
