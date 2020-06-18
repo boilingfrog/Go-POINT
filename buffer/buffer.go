@@ -56,4 +56,8 @@ func main() {
 	fmt.Println(buf4)
 	buf5 := bytes.NewBuffer([]byte{})
 	fmt.Println(buf5)
+
+	buf := bytes.NewBuffer([]byte{})
+	buf.WriteString("小花猫")
+	fmt.Println(buf.String())
 }

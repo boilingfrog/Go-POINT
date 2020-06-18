@@ -64,13 +64,13 @@ func main() {
 	buf2 := bytes.NewBuffer([]byte("hello"))
 	fmt.Println(buf2)
 	buf3 := bytes.NewBuffer([]byte{byte('h'), byte('e'), byte('l'), byte('l'), byte('o')})
-	fmt.Println(buf3)
+	fmt.Println(buf3) 
     // 以上三者等效
 
 	buf4 := bytes.NewBufferString("")
 	fmt.Println(buf4)
 	buf5 := bytes.NewBuffer([]byte{})
-	fmt.Println(buf5)
+	fmt.Println(buf5) 
     // 以上两者等效
 ````
 
@@ -87,6 +87,15 @@ func NewBufferString(s string) *Buffer {
 
 #### bytes.buffer的数据写入
 
+写入`string`
+
+````
+	buf := bytes.NewBuffer([]byte{})
+	buf.WriteString("小花猫")
+	fmt.Println(buf.String())
+````
+
+写入
 
 
 
