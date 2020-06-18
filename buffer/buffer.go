@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"os"
 )
 
@@ -13,7 +14,7 @@ type Buff struct {
 
 // 初始化
 func NewBuff() *Buff {
-	b := bytes.NewBuffer(make([]byte, 0))
+	b := bytes.NewBuffer([]byte{})
 	return &Buff{
 		Buffer: b,
 		Writer: bufio.NewWriter(b),
@@ -41,7 +42,18 @@ func (b *Buff) SaveAS(name string) error {
 }
 
 func main() {
-	var b = NewBuff()
+	//var b = NewBuff()
 
-	b.WriteString("haah")
+	// b.WriteString("haah")
+
+	buf1 := bytes.NewBufferString("hello")
+	fmt.Println(buf1)
+	buf2 := bytes.NewBuffer([]byte("hello"))
+	fmt.Println(buf2)
+	buf3 := bytes.NewBuffer([]byte{byte('h'), byte('e'), byte('l'), byte('l'), byte('o')})
+	fmt.Println(buf3)
+	buf4 := bytes.NewBufferString("")
+	fmt.Println(buf4)
+	buf5 := bytes.NewBuffer([]byte{})
+	fmt.Println(buf5)
 }

@@ -16,7 +16,7 @@ type Buff struct {
 
 // 初始化
 func NewBuff() *Buff {
-	b := bytes.NewBuffer(make([]byte, 0))
+	b := bytes.NewBuffer([]byte{})
 	return &Buff{
 		Buffer: b,
 		Writer: bufio.NewWriter(b),
@@ -49,6 +49,54 @@ func main() {
 	b.WriteString("haah")
 }
 ````
+
+### 了解下bytes.buffer
+
+`bytes.buffer`是一个缓冲`byte`类型的缓冲器，这个缓冲器里存放着都是`byte`。
+
+#### 如何创建bytes.buffer
+
+放几种创建的方式
+
+````go
+	buf1 := bytes.NewBufferString("hello")
+	fmt.Println(buf1)
+	buf2 := bytes.NewBuffer([]byte("hello"))
+	fmt.Println(buf2)
+	buf3 := bytes.NewBuffer([]byte{byte('h'), byte('e'), byte('l'), byte('l'), byte('o')})
+	fmt.Println(buf3)
+    // 以上三者等效
+
+	buf4 := bytes.NewBufferString("")
+	fmt.Println(buf4)
+	buf5 := bytes.NewBuffer([]byte{})
+	fmt.Println(buf5)
+    // 以上两者等效
+````
+
+查看源码可知
+
+````go
+func NewBuffer(buf []byte) *Buffer { return &Buffer{buf: buf} }
+
+func NewBufferString(s string) *Buffer {
+	return &Buffer{buf: []byte(s)}
+}
+````
+`NewBufferString`也是将参数转成 `[]byte()`。然后，初始化`Buffer`。
+
+#### bytes.buffer的数据写入
+
+
+
+
+
+
+
+### 参考
+
+【go语言的bytes.buffer】https://my.oschina.net/u/943306/blog/127981  
+
 
  
 
