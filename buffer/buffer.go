@@ -42,34 +42,9 @@ func (b *Buff) SaveAS(name string) error {
 }
 
 func main() {
-	//var b = NewBuff()
-
-	// b.WriteString("haah")
-
-	buf1 := bytes.NewBufferString("hello")
-	fmt.Println(buf1)
-	buf2 := bytes.NewBuffer([]byte("hello"))
-	fmt.Println(buf2)
-	buf3 := bytes.NewBuffer([]byte{byte('h'), byte('e'), byte('l'), byte('l'), byte('o')})
-	fmt.Println(buf3)
-	buf4 := bytes.NewBufferString("")
-	fmt.Println(buf4)
-	buf5 := bytes.NewBuffer([]byte{})
-	fmt.Println(buf5)
-
-	buf := bytes.NewBuffer([]byte{})
-	buf.WriteString("小花猫")
+	buf := bytes.NewBufferString("hello")
 	fmt.Println(buf.String())
-	s := []byte("小黑猫")
-	buf.Write(s)
-	fmt.Println(buf.String())
-
-	var b byte = '?'
-	buf.WriteByte(b)
-
-	fmt.Println(buf.String())
-
-	var r rune = '小'
-	buf.WriteRune(r)
-	fmt.Println(buf.String())
+	b := buf.Next(2)          // 重头开始，取2个
+	fmt.Println(buf.String()) // 变小了
+	fmt.Println(string(b))    // 打印he
 }
