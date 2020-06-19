@@ -1,6 +1,7 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+
 - [buffer](#buffer)
   - [前言](#%E5%89%8D%E8%A8%80)
   - [例子](#%E4%BE%8B%E5%AD%90)
@@ -11,6 +12,7 @@
       - [写入[]byte](#%E5%86%99%E5%85%A5byte)
       - [写入byte](#%E5%86%99%E5%85%A5byte)
       - [写入rune](#%E5%86%99%E5%85%A5rune)
+      - [从文件写入](#%E4%BB%8E%E6%96%87%E4%BB%B6%E5%86%99%E5%85%A5)
     - [数据写出](#%E6%95%B0%E6%8D%AE%E5%86%99%E5%87%BA)
       - [写出数据到io.Writer](#%E5%86%99%E5%87%BA%E6%95%B0%E6%8D%AE%E5%88%B0iowriter)
       - [Read](#read)
@@ -146,6 +148,20 @@ func NewBufferString(s string) *Buffer {
 	fmt.Println(buf.String())
 ````
 
+##### 从文件写入
+
+````go
+file, err := os.Open("./buffer/test.txt") //test.txt的内容是“world”
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer file.Close()
+	fmt.Println(file.Sync())
+	buf := bytes.NewBufferString("hello ")
+	buf.ReadFrom(file)        //将text.txt内容追加到缓冲器的尾部
+	fmt.Println(buf.String()) //打印“hello world”
+````
+
 #### 数据写出
 
 ##### 写出数据到io.Writer
@@ -153,7 +169,7 @@ func NewBufferString(s string) *Buffer {
 ````go
 	file, _ := os.Open("text.txt")
 	buf := bytes.NewBufferString("hello")
-	buf.WriteTo(file) //hello写到text.txt文件中了
+	buf.WriteTo(file) // hello写到text.txt文件中了
 ````
 
 `os.File`就是实现`io.Writer`
@@ -170,32 +186,32 @@ func NewBufferString(s string) *Buffer {
 
 	bufRead.Read(sRead)           // 接着读，但是bufRead之剩下lo，所以只有lo被读出了
 	fmt.Println(bufRead.String()) // 打印结果为空
-	fmt.Println(string(sRead))    // 大一结果lol，前两位的lo表示的本次的读出，因为bufRead只有两位，后面的l还是上次的读出结果
+	fmt.Println(string(sRead))    // 打印结果lol，前两位的lo表示的本次的读出，因为bufRead只有两位，后面的l还是上次的读出结果
 ````
 
 ##### ReadByte
 
 ````go
     buf := bytes.NewBufferString("hello")
-    fmt.Println(buf.String()) //buf.String()方法是吧buf里的内容转成string，>以便于打印
-    b, _ := buf.ReadByte()    //读取第一个byte，赋值给b
-    fmt.Println(buf.String()) //打印 ello，缓冲器头部第一个h被拿掉
-    fmt.Println(string(b))    //打印 h
+    fmt.Println(buf.String()) // buf.String()方法是吧buf里的内容转成string，>以便于打印
+    b, _ := buf.ReadByte()    // 读取第一个byte，赋值给b
+    fmt.Println(buf.String()) // 打印 ello，缓冲器头部第一个h被拿掉
+    fmt.Println(string(b))    // 打印 h
 ````
 
 ##### ReadRune
 
 ````go
     buf := bytes.NewBufferString("好hello")
-    fmt.Println(buf.String()) //buf.String()方法是吧buf里的内容转成string，>以便于打印
-    b, n, _ := buf.ReadRune() //读取第一个rune，赋值给b
-    fmt.Println(buf.String()) //打印 hello
-    fmt.Println(string(b))    //打印中文字： 好，缓冲器头部第一个“好”被拿掉
-    fmt.Println(n)            //打印3，“好”作为utf8储存占3个byte
-    b, n, _ = buf.ReadRune()  //再读取第一个rune，赋值给b
-    fmt.Println(buf.String()) //打印 ello
-    fmt.Println(string(b))    //打印h，缓冲器头部第一个h被拿掉
-    fmt.Println(n)            //打印 1，“h”作为utf8储存占1个byte
+    fmt.Println(buf.String()) // buf.String()方法是吧buf里的内容转成string，>以便于打印
+    b, n, _ := buf.ReadRune() // 读取第一个rune，赋值给b
+    fmt.Println(buf.String()) // 打印 hello
+    fmt.Println(string(b))    // 打印中文字： 好，缓冲器头部第一个“好”被拿掉
+    fmt.Println(n)            // 打印3，“好”作为utf8储存占3个byte
+    b, n, _ = buf.ReadRune()  // 再读取第一个rune，赋值给b
+    fmt.Println(buf.String()) // 打印 ello
+    fmt.Println(string(b))    // 打印h，缓冲器头部第一个h被拿掉
+    fmt.Println(n)            // 打印 1，“h”作为utf8储存占1个byte
 ````
 
 ##### ReadBytes
@@ -205,10 +221,10 @@ func NewBufferString(s string) *Buffer {
 ````go
     var d byte = 'e' //分隔符为e
 	buf := bytes.NewBufferString("hello")
-	fmt.Println(buf.String()) //buf.String()方法是吧buf里的内容转成string，以便于打印
-	b, _ := buf.ReadBytes(d)  //读到分隔符，并返回给b
-	fmt.Println(buf.String()) //打印 llo，缓冲器被取走一些数据
-	fmt.Println(string(b))    //打印 he，找到e了，将缓冲器从头开始，到e的内容都返回给b
+	fmt.Println(buf.String()) // buf.String()方法是吧buf里的内容转成string，以便于打印
+	b, _ := buf.ReadBytes(d)  // 读到分隔符，并返回给b
+	fmt.Println(buf.String()) // 打印 llo，缓冲器被取走一些数据
+	fmt.Println(string(b))    // 打印 he，找到e了，将缓冲器从头开始，到e的内容都返回给b
 ````
 
 ##### ReadString
@@ -218,10 +234,10 @@ func NewBufferString(s string) *Buffer {
 ````go
 	var d byte = 'e' //分隔符为e
 	buf := bytes.NewBufferString("hello")
-	fmt.Println(buf.String()) //buf.String()方法是吧buf里的内容转成string，以便于打印
-	b, _ := buf.ReadString(d) //读到分隔符，并返回给b
-	fmt.Println(buf.String()) //打印 llo，缓冲器被取走一些数据
-	fmt.Println(b)            //打印 he，找到e了，将缓冲器从头开始，到e的内容都返回给b
+	fmt.Println(buf.String()) // buf.String()方法是吧buf里的内容转成string，以便于打印
+	b, _ := buf.ReadString(d) // 读到分隔符，并返回给b
+	fmt.Println(buf.String()) // 打印 llo，缓冲器被取走一些数据
+	fmt.Println(b)            // 打印 he，找到e了，将缓冲器从头开始，到e的内容都返回给b
 ````
 
 ##### Next

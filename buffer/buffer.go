@@ -42,9 +42,13 @@ func (b *Buff) SaveAS(name string) error {
 }
 
 func main() {
-	buf := bytes.NewBufferString("hello")
-	fmt.Println(buf.String())
-	b := buf.Next(2)          // 重头开始，取2个
-	fmt.Println(buf.String()) // 变小了
-	fmt.Println(string(b))    // 打印he
+	file, err := os.Open("./buffer/test.txt") //test.txt的内容是“world”
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer file.Close()
+	fmt.Println(file.Sync())
+	buf := bytes.NewBufferString("hello ")
+	buf.ReadFrom(file)        //将text.txt内容追加到缓冲器的尾部
+	fmt.Println(buf.String()) //打印“hello world”
 }
