@@ -202,7 +202,7 @@ func NewBufferString(s string) *Buffer {
 
 `ReadBytes`和`ReadByte`是有区别的。`ReadBytes`需要一个分隔符来对`buffer`进行分割读取。
 
-````
+````go
     var d byte = 'e' //分隔符为e
 	buf := bytes.NewBufferString("hello")
 	fmt.Println(buf.String()) //buf.String()方法是吧buf里的内容转成string，以便于打印
@@ -228,7 +228,7 @@ func NewBufferString(s string) *Buffer {
 
 使用`Next`可依次读出固定长度的内容
 
-````
+````go
 	buf := bytes.NewBufferString("hello")
 	fmt.Println(buf.String())
 	b := buf.Next(2)          // 重头开始，取2个
