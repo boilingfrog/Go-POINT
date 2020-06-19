@@ -89,16 +89,37 @@ func NewBufferString(s string) *Buffer {
 
 写入`string`
 
-````
+````go
 	buf := bytes.NewBuffer([]byte{})
 	buf.WriteString("小花猫")
 	fmt.Println(buf.String())
 ````
 
-写入
+写入`[]byte`
 
+````go
+    buf := bytes.NewBuffer([]byte{})
+	s := []byte("小黑猫")
+	buf.Write(s)
+	fmt.Println(buf.String())
+````
 
+写入`byte`
 
+````go
+	var b byte = '?'
+	buf.WriteByte(b)
+
+	fmt.Println(buf.String())
+````
+
+写入`rune`
+
+````go
+	var r rune = '小'
+	buf.WriteRune(r)
+	fmt.Println(buf.String())
+````
 
 
 

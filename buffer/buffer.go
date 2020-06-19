@@ -60,4 +60,16 @@ func main() {
 	buf := bytes.NewBuffer([]byte{})
 	buf.WriteString("小花猫")
 	fmt.Println(buf.String())
+	s := []byte("小黑猫")
+	buf.Write(s)
+	fmt.Println(buf.String())
+
+	var b byte = '?'
+	buf.WriteByte(b)
+
+	fmt.Println(buf.String())
+
+	var r rune = '小'
+	buf.WriteRune(r)
+	fmt.Println(buf.String())
 }
