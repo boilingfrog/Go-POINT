@@ -67,4 +67,32 @@ func main() {
 ![bufio](images/bufio-write.png?raw=true)
 
 
+#### 源码解析
+
+#### Reader对象
+
+bufio.Reader 是bufio中对io.Reader 的封装
+
+````go
+// Reader implements buffering for an io.Reader object.
+type Reader struct {
+	buf          []byte
+	rd           io.Reader // reader provided by the client
+	r, w         int       // buf read and write positions
+	err          error
+	lastByte     int // last byte read for UnreadByte; -1 means invalid
+	lastRuneSize int // size of last rune read for UnreadRune; -1 means invalid
+}
+````
+
+bufio.Read(p []byte) 的思路如下：  
+
+1、如果缓冲区有内容直接，清空缓存区，然后
+
+
+
+
+
+
+
 

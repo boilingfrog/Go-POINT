@@ -11,4 +11,6 @@ func main() {
 	var w = bufio.NewWriter(s)
 	w.WriteString("你好")
 	fmt.Println(s.String())
+
+	w.Available()
 }
