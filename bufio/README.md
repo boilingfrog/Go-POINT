@@ -52,8 +52,14 @@ func main() {
 
 ### bufio
 
-> // Package bufio implements buffered I/O. It wraps an io.Reader or io.Writer
-> // object, creating another object (Reader or Writer) that also implements
-> // the interface but provides buffering and some help for textual I/O.
+> Package bufio implements buffered I/O. It wraps an io.Reader or io.Writer object, creating another object (Reader or Writer) that also implements the interface but provides buffering and some help for textual I/O.  
 
-`bufio`包实现了有缓冲的`I/O`。它包装一个`io.Reader`或`io.Writer`接口对象，创建另一个也实现了该接口，且同时还提供了缓冲和一些文本`I/O`的帮助函数的对象。
+`bufio`包实现了有缓冲的`I/O`。它包装一个`io.Reader`或`io.Writer`接口对象，创建另一个也实现了该接口，且同时还提供了缓冲和一些文本`I/O`的帮助函数的对象。  
+
+简单的说就是`bufio`会把文件内容读取到缓存中（内存），然后再取读取需要的内容的时候，直接在缓存中读取，避免文件的`i/o`操作。同样，通过`bufio`写入内容，也是先写入到缓存中（内存），然后由缓存写入到文件。避免多次小内容的写入操作`I/O`。
+
+![Aaron Swartz](images/bufio-write.png?raw=true)
+![Aaron Swartz](images/bufio-write.jpg?raw=true)
+
+
+

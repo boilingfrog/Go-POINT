@@ -2,11 +2,13 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 )
 
 func main() {
-	fmt.Println(1212)
-
-	bufio.NewReader()
+	var s = bytes.NewBuffer([]byte{})
+	var w = bufio.NewWriter(s)
+	w.WriteString("你好")
+	fmt.Println(s.String())
 }
