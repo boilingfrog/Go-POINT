@@ -60,11 +60,11 @@ func main() {
 
 读取  
 
-![Aaron Swartz](images/bufio-read.png)  
+![bufio](images/bufio-read.png)  
 
 写入  
 
-![Aaron Swartz](images/bufio-write.png?raw=true)
+![bufio](images/bufio-write.png?raw=true)
 
 
 
