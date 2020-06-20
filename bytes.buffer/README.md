@@ -252,6 +252,8 @@ file, err := os.Open("./buffer/test.txt") //test.txt的内容是“world”
 	fmt.Println(string(b))    // 打印he
 ````
 
+### bufio
+
 
 
 ### 参考
