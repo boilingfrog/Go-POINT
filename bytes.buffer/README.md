@@ -252,10 +252,6 @@ file, err := os.Open("./buffer/test.txt") //test.txt的内容是“world”
 	fmt.Println(string(b))    // 打印he
 ````
 
-### bufio
-
-
-
 ### 参考
 
 【go语言的bytes.buffer】https://my.oschina.net/u/943306/blog/127981  
