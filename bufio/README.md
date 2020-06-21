@@ -107,14 +107,14 @@ func (b *Reader) Read(p []byte) (n int, err error) {
 		}
 		return 0, b.readErr()
 	}
-     // r:从buf中读走的字节（偏移）；w:buf中填充内容的偏移；
-    // w - r 是buf中可被读的长度（缓存数据的大小），也是Buffered()方法的返回值
-    // b.r == b.w 表示，当前缓冲区里面没有内容
+	// r:从buf中读走的字节（偏移）；w:buf中填充内容的偏移；
+	// w - r 是buf中可被读的长度（缓存数据的大小），也是Buffered()方法的返回值
+	// b.r == b.w 表示，当前缓冲区里面没有内容
 	if b.r == b.w {
 		if b.err != nil {
 			return 0, b.readErr()
 		}
-        // 如果p的大小大于等于缓冲区大小，则直接将数据读入p，然后返回
+		// 如果p的大小大于等于缓冲区大小，则直接将数据读入p，然后返回
 		if len(p) >= len(b.buf) {
 			// Large read, empty buffer.
 			// Read directly into p to avoid copy.
@@ -142,7 +142,7 @@ func (b *Reader) Read(p []byte) (n int, err error) {
 		b.w += n
 	}
 
-     // copy缓存区的内容到p中
+	// copy缓存区的内容到p中
 	// copy as much as we can
 	n = copy(p, b.buf[b.r:b.w])
 	b.r += n
