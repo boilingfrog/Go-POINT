@@ -219,11 +219,62 @@ the line1:hello
 the line2: world
 ````
 
-do not rescan area we scanned before，因此推荐使用`ReadBytes`或者`ReadString`来代替。
+##### ReadString
 
+`ReadString`是通过调用`ReadBytes`来实现的，看下源码：
 
+````go
+func (b *Reader) ReadString(delim byte) (string, error) {
+	bytes, err := b.ReadBytes(delim)
+	return string(bytes), err
+}
+````
 
+使用例子：
 
+````go
+	reader := bufio.NewReader(strings.NewReader("hello \n world"))
+	line1, _ := reader.ReadString('\n')
+	fmt.Printf("the line1:%s\n", line1)
+
+	line2, _ := reader.ReadString('\n')
+	fmt.Printf("the line2:%s\n", line2)
+````
+
+##### ReadLine
+
+根据官方的解释这个是不推荐使用的，推荐使用`ReadBytes('\n')` or `ReadString('\n')`来替代。  
+
+ReadLine尝试返回单独的行，不包括行尾的换行符。如果一行大于缓存，isPrefix会被设置为true，同时返回该行的开始部分（等于缓存大小的部分）。该行剩余的部分就会在下次调用的时候返回。当下次调用返回该行剩余部分时，isPrefix将会是false。跟ReadSlice一样，返回的line只是buffer的引用，在下次执行IO操作时，line会无效。  
+
+````go
+	reader := bufio.NewReader(strings.NewReader("hello \n world"))
+	line1, _, _ := reader.ReadLine()
+	fmt.Printf("the line1:%s\n", line1)
+
+	line2, _, _ := reader.ReadLine()
+	fmt.Printf("the line2:%s\n", line2)
+````
+
+##### Peek
+
+`Peek`只是查看下`Reader`有没有读取的n个字节。相比于`ReadSlice`，是并发安全的。因为`ReadSlice`返回的[]byte只是buffer中的引用，在下次IO操作后会无效。  
+
+````go
+func main() {
+	reader := bufio.NewReaderSize(strings.NewReader("hello world"), 12)
+	go Peek(reader)
+	go reader.ReadBytes('d')
+	time.Sleep(1e8)
+}
+
+func Peek(reader *bufio.Reader) {
+	line, _ := reader.Peek(5)
+	fmt.Printf("%s\n", line)
+	time.Sleep(1)
+	fmt.Printf("%s\n", line)
+}
+````
 
 
 
