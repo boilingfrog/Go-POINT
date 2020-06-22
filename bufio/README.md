@@ -88,9 +88,9 @@ type Reader struct {
 
 bufio.Read(p []byte) 的思路如下：  
 
-1、如果缓冲区有内容,直接读取内容到p中。
-2、如果缓存区没有内容，并且读取的内容大于缓存的大小，直接不经过缓存直接读取文件。
-3、如果缓存没有内容则，并且读取的内容小于缓存的大小，写入文件到缓存。当写完
+1、如果缓冲区有内容,直接读取内容到p中。  
+2、如果缓存区没有内容，并且读取的内容大于缓存的大小，直接不经过缓存直接读取文件。  
+3、如果缓存没有内容则，并且读取的内容小于缓存的大小，写入文件到缓存。然后重复1。
 
 ````go
 // Read reads data into p.
@@ -151,6 +151,77 @@ func (b *Reader) Read(p []byte) (n int, err error) {
 	return n, nil
 }
 ````
+
+##### 实例化
+
+`bufio` 包提供了两个实例化 `bufio.Reader` 对象的函数：`NewReader` 和 `NewReaderSize`。其中，`NewReader` 函数是调用 `NewReaderSize`。  
+函数实现的：  
+
+````
+// NewReader returns a new Reader whose buffer has the default size.
+func NewReader(rd io.Reader) *Reader {
+    // defaultBufSize = 4096,默认的大小
+	return NewReaderSize(rd, defaultBufSize)
+}
+````
+
+调用的`NewReaderSize`
+
+````go
+// NewReaderSize returns a new Reader whose buffer has at least the specified
+// size. If the argument io.Reader is already a Reader with large enough
+// size, it returns the underlying Reader.
+func NewReaderSize(rd io.Reader, size int) *Reader {
+	// Is it already a Reader?
+	b, ok := rd.(*Reader)
+	if ok && len(b.buf) >= size {
+		return b
+	}
+	if size < minReadBufferSize {
+		size = minReadBufferSize
+	}
+	r := new(Reader)
+	r.reset(make([]byte, size), rd)
+	return r
+}
+````
+
+##### ReadSlice
+
+
+// ReadSlice reads until the first occurrence of delim in the input,  
+// returning a slice pointing at the bytes in the buffer.  
+// The bytes stop being valid at the next read.  
+// If ReadSlice encounters an error before finding a delimiter,  
+// it returns all the data in the buffer and the error itself (often io.EOF).  
+// ReadSlice fails with error ErrBufferFull if the buffer fills without a delim.  
+// Because the data returned from ReadSlice will be overwritten  
+// by the next I/O operation, most clients should use  
+// ReadBytes or ReadString instead.  
+// ReadSlice returns err != nil if and only if line does not end in delim.  
+
+`ReadSlice`需要放置一个界定符号，来分割
+
+````go
+	reader := bufio.NewReader(strings.NewReader("hello \n world"))
+	line1, _ := reader.ReadSlice('\n')
+	fmt.Printf("the line1:%s\n", line1)
+
+	line2, _ := reader.ReadSlice('\n')
+	fmt.Printf("the line2:%s\n", line2)
+````
+
+输出
+
+````
+the line1:hello 
+
+the line2: world
+````
+
+do not rescan area we scanned before，因此推荐使用`ReadBytes`或者`ReadString`来代替。
+
+
 
 
 

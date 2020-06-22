@@ -2,27 +2,16 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
+	"strings"
 )
 
 func main() {
-	var s = bytes.NewBuffer([]byte{})
-	//var w = bufio.NewWriter(s)
-	//w.WriteString("你好")
-	//fmt.Println(s.String())
+	reader := bufio.NewReader(strings.NewReader("hello \n world"))
+	line1, _ := reader.ReadSlice('\n')
+	fmt.Printf("the line1:%s\n", line1)
 
-	r := bufio.NewReader(s)
-
-	s.WriteString("哈哈哈1\n")
-	s.WriteString("哈哈哈2\n")
-	s.WriteString("哈哈哈3\n")
-	fmt.Println(r.Size())
-	//var dd byte
-
-	//fmt.Println(r.ReadString(dd))
-	p, _ := r.Peek(100)
-
-	fmt.Printf("%s\n", p)
+	line2, _ := reader.ReadSlice('\n')
+	fmt.Printf("the line2:%s\n", line2)
 
 }
