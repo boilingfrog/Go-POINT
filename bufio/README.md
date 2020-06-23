@@ -276,6 +276,9 @@ func Peek(reader *bufio.Reader) {
 }
 ````
 
+#### Scanner
+
+`bufio.Reader`结构体中所有读取数据的方法，都包含了`delim`分隔符，这个用起来很不方便，所以`Google`对此在go1.1版本中加入了`bufio.Scanner`结构体，用于读取数据。
 
 
 
