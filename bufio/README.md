@@ -1,7 +1,6 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-
 - [bufio](#bufio)
   - [前言](#%E5%89%8D%E8%A8%80)
   - [例子](#%E4%BE%8B%E5%AD%90)
@@ -16,7 +15,7 @@
     - [Scanner](#scanner)
       - [Give me more data](#give-me-more-data)
       - [Error](#error)
-  - [Writer 对象](#writer-%E5%AF%B9%E8%B1%A1)
+    - [Writer 对象](#writer-%E5%AF%B9%E8%B1%A1)
       - [实例化](#%E5%AE%9E%E4%BE%8B%E5%8C%96-1)
       - [Available](#available)
       - [Buffered](#buffered)
@@ -404,7 +403,7 @@ func main() {
 "1" "2" "3" "4" "" 
 ````  
 
-### Writer 对象
+#### Writer 对象
 
 bufio.Write(p []byte) 的思路如下:  
 
@@ -537,6 +536,26 @@ func (b *Writer) Flush() error {
 
     // 写入字符串，如果返回写入的字节数比 len(s) 小，返回的error会解释原因
     func (b *Writer) WriteString(s string) (int, error)
+```
+
+使用的demo
+
+```go
+var s = bytes.NewBuffer([]byte{})
+	var w = bufio.NewWriter(s)
+	w.WriteString("hello world")
+	w.WriteString("你好")
+	fmt.Printf("string--%s", s.String())
+	fmt.Println()
+	w.Flush()
+	fmt.Printf("string--%s", s.String())
+```
+
+输出
+
+```go
+string--
+string--hello world你好
 ```
 
 ##### ReadWriter
