@@ -78,15 +78,6 @@ func main() {
 
 简单的说就是`bufio`会把文件内容读取到缓存中（内存），然后再取读取需要的内容的时候，直接在缓存中读取，避免文件的`i/o`操作。同样，通过`bufio`写入内容，也是先写入到缓存中（内存），然后由缓存写入到文件。避免多次小内容的写入操作`I/O`。  
 
-读取  
-
-![bufio](images/bufio-read.png)  
-
-写入  
-
-![bufio](images/bufio-write.png?raw=true)
-
-
 #### 源码解析
 
 #### Reader对象
@@ -112,6 +103,8 @@ bufio.Read(p []byte) 的思路如下：
 2、当缓存区没有内容的时候且len(p)>len(buf),即要读取的内容比缓存区还要大，直接去文件读取即可  
 3、当缓存区没有内容的时候且len(p)<len(buf),即要读取的内容比缓存区小，缓存区从文件读取内容充满缓存区，并将p填满（此时缓存区有剩余内容）  
 4、以后再次读取时缓存区有内容，将缓存区内容全部填入p并清空缓存区（此时和情况1一样）  
+
+![bufio](images/bufio-read.png)  
 
 ````go
 // Read reads data into p.
@@ -412,6 +405,8 @@ bufio.Write(p []byte) 的思路如下:
 3、如果是空buf，直接把p写入到文件中。  
 4、如果buf不为空，使用p把buf填满然后把buf写入到文件中。  
 5、然后重复1。  
+
+![bufio](images/bufio-write.png?raw=true)
 
 ````go
 // If nn < len(p), it also returns an error explaining
