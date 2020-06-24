@@ -583,4 +583,4 @@ string--hello world你好
 
 ### 总结
 
-`bufio`中的`Writer`和`Reader`实现了带缓存的`I/O`。其中关于`Reader`中的操作，都需要一个界定符号，推荐使用`ReadBytes` or `ReadString`，不推荐使用`ReadLine`。ReadSlice 从输入中读取，直到遇到第一个界定符（delim）为止，返回一个指向缓存中字节的 `slice`，在下次调用读操作（read）时，这些字节会无效。在 `Reader` 类型中，感觉没有让人特别满意的方法。于是，`Go1.1`增加了一个类型：`Scanner`。我们一般在读取数据到缓冲区时，且想要采用分隔符分隔数据流时，我们一般使用`bufio.Scanner`数据结构，而不使用`bufio.Reader`。但是，。需要更多对错误管理的控制或token很大，或必须从`reader`连续扫描的程序，应使用`bufio.Reader`代替。对于`Writer`的使用，我们不要忘记最后的`Flush`操作。
+`bufio`中的`Writer`和`Reader`实现了带缓存的`I/O`。其中关于`Reader`中的操作，都需要一个界定符号，推荐使用`ReadBytes` or `ReadString`，不推荐使用`ReadLine`。ReadSlice 从输入中读取，直到遇到第一个界定符（delim）为止，返回一个指向缓存中字节的 `slice`，在下次调用读操作（read）时，这些字节会无效，所以我们要慎用，并发读取的时候可能存在问题。在 `Reader` 类型中，感觉没有让人特别满意的方法。于是，`Go1.1`增加了一个类型：`Scanner`。我们一般在读取数据到缓冲区时，且想要采用分隔符分隔数据流时，我们一般使用`bufio.Scanner`数据结构，而不使用`bufio.Reader`。但是，需要更多对错误管理的控制或token很大，或必须从`reader`连续扫描的程序，应使用`bufio.Reader`代替。对于`Writer`的使用，我们不要忘记最后的`Flush`操作。
