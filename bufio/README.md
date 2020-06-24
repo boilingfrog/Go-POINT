@@ -1,3 +1,23 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [bufio](#bufio)
+  - [前言](#%E5%89%8D%E8%A8%80)
+  - [例子](#%E4%BE%8B%E5%AD%90)
+  - [bufio](#bufio-1)
+    - [源码解析](#%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90)
+    - [Reader对象](#reader%E5%AF%B9%E8%B1%A1)
+      - [实例化](#%E5%AE%9E%E4%BE%8B%E5%8C%96)
+      - [ReadSlice](#readslice)
+      - [ReadString](#readstring)
+      - [ReadLine](#readline)
+      - [Peek](#peek)
+    - [Scanner](#scanner)
+      - [Give me more data](#give-me-more-data)
+      - [Error](#error)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## bufio
 
 ### 前言
@@ -307,3 +327,77 @@ Scanner类型提供了方便的读取数据的接口，如从换行符分隔的�
 ##### Give me more data
 
 缓冲区的默认 `size` 是 4096。如果我们指定了最小的缓存区的大小，当在读取的过程中，如果指定的最小缓冲区的大小不足以放置读取的内容，就会发生扩容，原则是新的长度是之前的两倍。
+
+````go
+input := "abcdefghijkl"
+	scanner := bufio.NewScanner(strings.NewReader(input))
+	split := func(data []byte, atEOF bool) (advance int, token []byte, err error) {
+		fmt.Printf("%t\t%d\t%s\n", atEOF, len(data), data)
+		return 0, nil, nil
+	}
+	scanner.Split(split)
+	buf := make([]byte, 2)
+	scanner.Buffer(buf, bufio.MaxScanTokenSize)
+	for scanner.Scan() {
+		fmt.Printf("%s\n", scanner.Text())
+	}
+````
+
+输出
+
+````go
+false   2       ab
+false   4       abcd
+false   8       abcdefgh
+false   12      abcdefghijkl
+true    12      abcdefghijkl
+````
+
+上面的长度是从2开始的，然后是倍数扩增，直到读取完全部的数据，但是扩增的长度还是小于最大的默认长度4096。   
+
+
+##### Error
+
+````go
+func (s *Scanner) Err() error
+````
+
+`Err`返回`Scanner`遇到的第一个非`EOF`的错误。  
+
+````go
+func main() {
+	// Comma-separated list; last entry is empty.
+	const input = "1,2,3,4,"
+	scanner := bufio.NewScanner(strings.NewReader(input))
+	// Define a split function that separates on commas.
+	onComma := func(data []byte, atEOF bool) (advance int, token []byte, err error) {
+		for i := 0; i < len(data); i++ {
+			if data[i] == ',' {
+				return i + 1, data[:i], nil
+			}
+		}
+		if !atEOF {
+			return 0, nil, nil
+		}
+		// There is one final token to be delivered, which may be the empty string.
+		// Returning bufio.ErrFinalToken here tells Scan there are no more tokens after this
+		// but does not trigger an error to be returned from Scan itself.
+		return 0, data, bufio.ErrFinalToken
+	}
+	scanner.Split(onComma)
+	// Scan.
+	for scanner.Scan() {
+		fmt.Printf("%q ", scanner.Text())
+	}
+	if err := scanner.Err(); err != nil {
+		fmt.Fprintln(os.Stderr, "reading input:", err)
+	}
+}
+````
+
+输出
+
+````go
+"1" "2" "3" "4" "" 
+````  
+
