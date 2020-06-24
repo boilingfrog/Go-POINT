@@ -8,12 +8,17 @@ import (
 )
 
 func main() {
-	scanner := bufio.NewScanner(
-		strings.NewReader("ABCDEFG\nHIJKELM"),
-	)
-	scanner.Split(bufio.ScanWords /*四种方式之一，你也可以自定义, 实现SplitFunc方法*/)
+	input := "abcdefghijkl"
+	scanner := bufio.NewScanner(strings.NewReader(input))
+	split := func(data []byte, atEOF bool) (advance int, token []byte, err error) {
+		fmt.Printf("%t\t%d\t%s\n", atEOF, len(data), data)
+		return 0, nil, nil
+	}
+	scanner.Split(split)
+	buf := make([]byte, 2)
+	scanner.Buffer(buf, bufio.MaxScanTokenSize)
 	for scanner.Scan() {
-		fmt.Println(scanner.Text()) // scanner.Bytes()
+		fmt.Printf("%s\n", scanner.Text())
 	}
 }
 

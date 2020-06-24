@@ -280,7 +280,30 @@ func Peek(reader *bufio.Reader) {
 
 `bufio.Reader`结构体中所有读取数据的方法，都包含了`delim`分隔符，这个用起来很不方便，所以`Google`对此在go1.1版本中加入了`bufio.Scanner`结构体，用于读取数据。
 
+````go
+type Scanner struct {
+    // 内含隐藏或非导出字段
+}
+````
 
+Scanner类型提供了方便的读取数据的接口，如从换行符分隔的文本里读取每一行。  
 
+`Scanner.Scan`方法默认是以换行符`\n`，作为分隔符。如果你想指定分隔符，`Go`语言提供了四种方法，`ScanBytes`(返回单个字节作为一个 `token`), `ScanLines`(返回一行文本), `ScanRunes`(返回单个 `UTF-8` 编码的 `rune` 作为一个 `token`)和`ScanWords`(返回通过“空格”分词的单词)。   
 
+扫描会在抵达输入流结尾、遇到的第一个`I/O`错误、`token`过大不能保存进缓冲时，不可恢复的停止。当扫描停止后，当前读取位置可能会远在最后一个获得的`token`后面。需要更多对错误管理的控制或`token`很大，或必须从`reader`连续扫描的程序，应使用`bufio.Reader`代替。  
 
+````go
+	input := "hello world"
+	scanner := bufio.NewScanner(strings.NewReader(input))
+	scanner.Split(bufio.ScanWords)
+	for scanner.Scan() {
+		fmt.Println(scanner.Text())
+	}
+	if err := scanner.Err(); err != nil {
+		fmt.Fprintln(os.Stderr, "reading input:", err)
+	}
+````
+
+##### Give me more data
+
+缓冲区的默认 `size` 是 4096。如果我们指定了最小的缓存区的大小，当在读取的过程中，如果指定的最小缓冲区的大小不足以放置读取的内容，就会发生扩容，原则是新的长度是之前的两倍。
