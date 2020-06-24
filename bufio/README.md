@@ -108,9 +108,10 @@ type Reader struct {
 
 bufio.Read(p []byte) 的思路如下：  
 
-1、如果缓冲区有内容,直接读取内容到p中。  
-2、如果缓存区没有内容，并且读取的内容大于缓存的大小，直接不经过缓存直接读取文件。  
-3、如果缓存没有内容则，并且读取的内容小于缓存的大小，写入文件到缓存。然后重复1。
+1、当缓存区有内容的时，将缓存区内容全部填入p并清空缓存区  
+2、当缓存区没有内容的时候且len(p)>len(buf),即要读取的内容比缓存区还要大，直接去文件读取即可  
+3、当缓存区没有内容的时候且len(p)<len(buf),即要读取的内容比缓存区小，缓存区从文件读取内容充满缓存区，并将p填满（此时缓存区有剩余内容）  
+4、以后再次读取时缓存区有内容，将缓存区内容全部填入p并清空缓存区（此时和情况1一样）  
 
 ````go
 // Read reads data into p.
@@ -148,6 +149,7 @@ func (b *Reader) Read(p []byte) (n int, err error) {
 			}
 			return n, b.readErr()
 		}
+		// buff容量大于p，直接将buff中填满
 		// One read.
 		// Do not use b.fill, which will loop.
 		b.r = 0
@@ -162,7 +164,7 @@ func (b *Reader) Read(p []byte) (n int, err error) {
 		b.w += n
 	}
 
-	// copy缓存区的内容到p中
+	// copy缓存区的内容到p中（填充满p）
 	// copy as much as we can
 	n = copy(p, b.buf[b.r:b.w])
 	b.r += n
@@ -308,7 +310,7 @@ type Scanner struct {
 
 Scanner类型提供了方便的读取数据的接口，如从换行符分隔的文本里读取每一行。  
 
-`Scanner.Scan`方法默认是以换行符`\n`，作为分隔符。如果你想指定分隔符，`Go`语言提供了四种方法，`ScanBytes`(返回单个字节作为一个 `token`), `ScanLines`(返回一行文本), `ScanRunes`(返回单个 `UTF-8` 编码的 `rune` 作为一个 `token`)和`ScanWords`(返回通过“空格”分词的单词)。   
+`Scanner.Scan`方法默认是以换行符`\n`，作为分隔符。如果你想指定分隔符，`Go`语言提供了四种方法，`ScanBytes`(返回单个字节作为一个 `token`), `ScanLines`(返回一行文本), `ScanRunes`(返回单个 `UTF-8` 编码的 `rune` 作为一个 `token`)和`ScanWords`(返回通过“空格”分词的单词)。除了这几个预定的，我们也可以自定义分割函数。  
 
 扫描会在抵达输入流结尾、遇到的第一个`I/O`错误、`token`过大不能保存进缓冲时，不可恢复的停止。当扫描停止后，当前读取位置可能会远在最后一个获得的`token`后面。需要更多对错误管理的控制或`token`很大，或必须从`reader`连续扫描的程序，应使用`bufio.Reader`代替。  
 
@@ -401,3 +403,44 @@ func main() {
 "1" "2" "3" "4" "" 
 ````  
 
+### Writer 对象
+
+bufio.Write(p []byte) 的思路如下:  
+
+1、判断buf中可用容量是否能放下p，如能放下直接存放进去。  
+2、如果可用容量不能放下，然后判断当前buf是否是空buf。  
+3、如果是空buf，直接把p写入到文件中。  
+4、如果buf不为空，使用p把buf填满然后把buf写入到文件中。  
+5、然后重复1。  
+
+````go
+// If nn < len(p), it also returns an error explaining
+// why the write is short.
+func (b *Writer) Write(p []byte) (nn int, err error) {
+	// p的长度大于buf的可用容量
+	for len(p) > b.Available() && b.err == nil {
+		var n int 
+		// buff中内容为空，直接操作p写入到文件中
+		if b.Buffered() == 0 {
+			// Large write, empty buffer.
+			// Write directly from p to avoid copy.
+			n, b.err = b.wr.Write(p)
+		} else {
+            // 如果buff里面内容不是空，使用p填充buff，然后更新buff内容到文件中
+			n = copy(b.buf[b.n:], p)
+			b.n += n
+			b.Flush()
+		}
+		nn += n
+		p = p[n:]
+	}
+	if b.err != nil {
+		return nn, b.err
+	}
+    // p的长度小于，buff的可用容量，直接存放到buff中即可
+	n := copy(b.buf[b.n:], p)
+	b.n += n
+	nn += n
+	return nn, nil
+}
+````
