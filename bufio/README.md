@@ -1,6 +1,7 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+
 - [bufio](#bufio)
   - [前言](#%E5%89%8D%E8%A8%80)
   - [例子](#%E4%BE%8B%E5%AD%90)
@@ -15,6 +16,13 @@
     - [Scanner](#scanner)
       - [Give me more data](#give-me-more-data)
       - [Error](#error)
+  - [Writer 对象](#writer-%E5%AF%B9%E8%B1%A1)
+      - [实例化](#%E5%AE%9E%E4%BE%8B%E5%8C%96-1)
+      - [Available](#available)
+      - [Buffered](#buffered)
+      - [Flush](#flush)
+      - [写入的方法](#%E5%86%99%E5%85%A5%E7%9A%84%E6%96%B9%E6%B3%95)
+      - [ReadWriter](#readwriter)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -439,3 +447,113 @@ func (b *Writer) Write(p []byte) (nn int, err error) {
 	return nn, nil
 }
 ````
+
+##### 实例化
+
+和 `Reader` 类型一样，`bufio` 包提供了两个实例化 `bufio.Writer` 对象的函数：`NewWriter` 和 `NewWriterSize`。其中，`NewWriter` 函数是调用 `NewWriterSize` 函数实现的：  
+
+````go
+// NewWriter returns a new Writer whose buffer has the default size.
+func NewWriter(w io.Writer) *Writer {
+    // 	defaultBufSize = 4096
+	return NewWriterSize(w, defaultBufSize)
+}
+````
+
+NewWriterSize:
+ 
+````go
+// NewWriterSize returns a new Writer whose buffer has at least the specified
+// size. If the argument io.Writer is already a Writer with large enough
+// size, it returns the underlying Writer.
+func NewWriterSize(w io.Writer, size int) *Writer {
+	// Is it already a Writer?
+	b, ok := w.(*Writer)
+	if ok && len(b.buf) >= size {
+		return b
+	}
+	if size <= 0 {
+		size = defaultBufSize
+	}
+	return &Writer{
+		buf: make([]byte, size),
+		wr:  w,
+	}
+}
+````
+
+##### Available
+
+Available 方法获取缓存中还未使用的字节数（缓存大小 - 字段 n 的值）
+
+##### Buffered
+
+Buffered 方法获取写入当前缓存中的字节数（字段 n 的值）
+
+##### Flush
+
+该方法将缓存中的所有数据写入底层的 `io.Writer` 对象中。使用 `bufio.Writer` 时，在所有的 `Write` 操作完成之后，应该调用 `Flush` 方法使得缓存都写入 `io.Writer` 对象中。  
+
+```go
+// Flush writes any buffered data to the underlying io.Writer.
+func (b *Writer) Flush() error {
+	if b.err != nil {
+		return b.err
+	}
+	if b.n == 0 {
+		return nil
+	}
+	n, err := b.wr.Write(b.buf[0:b.n])
+	if n < b.n && err == nil {
+		err = io.ErrShortWrite
+	}
+	if err != nil {
+		if n > 0 && n < b.n {
+			copy(b.buf[0:b.n-n], b.buf[n:b.n])
+		}
+		b.n -= n
+		b.err = err
+		return err
+	}
+	b.n = 0
+	return nil
+}
+```
+
+##### 写入的方法
+
+```go
+// 实现了 io.ReaderFrom 接口
+    func (b *Writer) ReadFrom(r io.Reader) (n int64, err error)
+
+    // 实现了 io.Writer 接口
+    func (b *Writer) Write(p []byte) (nn int, err error)
+
+    // 实现了 io.ByteWriter 接口
+    func (b *Writer) WriteByte(c byte) error
+
+    // io 中没有该方法的接口，它用于写入单个 Unicode 码点，返回写入的字节数（码点占用的字节），内部实现会根据当前 rune 的范围调用 WriteByte 或 WriteString
+    func (b *Writer) WriteRune(r rune) (size int, err error)
+
+    // 写入字符串，如果返回写入的字节数比 len(s) 小，返回的error会解释原因
+    func (b *Writer) WriteString(s string) (int, error)
+```
+
+##### ReadWriter
+
+`ReadWriter` 结构存储了 `bufio.Reader` 和 `bufio.Writer` 类型的指针（内嵌），它实现了 `io.ReadWriter` 结构。
+
+````go
+    type ReadWriter struct {
+        *Reader
+        *Writer
+    }
+````
+
+`ReadWriter` 的实例化可以跟普通结构类型一样，也可以通过调用 `bufio.NewReadWriter` 函数来实现：只是简单的实例化 `ReadWriter`
+
+```go
+    func NewReadWriter(r *Reader, w *Writer) *ReadWriter {
+        return &ReadWriter{r, w}
+    }
+```
