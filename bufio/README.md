@@ -1,6 +1,7 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+
 - [bufio](#bufio)
   - [前言](#%E5%89%8D%E8%A8%80)
   - [例子](#%E4%BE%8B%E5%AD%90)
@@ -22,6 +23,7 @@
       - [Flush](#flush)
       - [写入的方法](#%E5%86%99%E5%85%A5%E7%9A%84%E6%96%B9%E6%B3%95)
       - [ReadWriter](#readwriter)
+  - [总结](#%E6%80%BB%E7%BB%93)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -226,20 +228,22 @@ func NewReaderSize(rd io.Reader, size int) *Reader {
 
 ````go
 	reader := bufio.NewReader(strings.NewReader("hello \n world"))
-	line1, _ := reader.ReadSlice('\n')
-	fmt.Printf("the line1:%s\n", line1)
+	line, _ := reader.ReadSlice('\n')
+	fmt.Printf("the line:%s\n", line)
 
-	line2, _ := reader.ReadSlice('\n')
-	fmt.Printf("the line2:%s\n", line2)
+	line, _ = reader.ReadSlice('\n')
+	fmt.Printf("the line:%s\n", line)
 ````
 
 输出
 
 ````
-the line1:hello 
+the line:hello 
 
-the line2: world
+the line: world
 ````
+
+`ReadSlice` 从输入中读取，直到遇到第一个界定符（delim）为止，返回一个指向缓存中字节的 slice，在下次调用读操作（read）时，这些字节会无效
 
 ##### ReadString
 
@@ -576,3 +580,7 @@ string--hello world你好
         return &ReadWriter{r, w}
     }
 ```
+
+### 总结
+
+`bufio`中的`Writer`和`Reader`实现了带缓存的`I/O`。其中关于`Reader`中的操作，都需要一个界定符号，推荐使用`ReadBytes` or `ReadString`，不推荐使用`ReadLine`。ReadSlice 从输入中读取，直到遇到第一个界定符（delim）为止，返回一个指向缓存中字节的 `slice`，在下次调用读操作（read）时，这些字节会无效。在 `Reader` 类型中，感觉没有让人特别满意的方法。于是，`Go1.1`增加了一个类型：`Scanner`。我们一般在读取数据到缓冲区时，且想要采用分隔符分隔数据流时，我们一般使用`bufio.Scanner`数据结构，而不使用`bufio.Reader`。但是，。需要更多对错误管理的控制或token很大，或必须从`reader`连续扫描的程序，应使用`bufio.Reader`代替。对于`Writer`的使用，我们不要忘记最后的`Flush`操作。

@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"strings"
 )
 
 type Buff struct {
@@ -42,13 +43,10 @@ func (b *Buff) SaveAS(name string) error {
 }
 
 func main() {
-	file, err := os.Open("./buffer/test.txt") //test.txt的内容是“world”
-	if err != nil {
-		fmt.Println(err)
-	}
-	defer file.Close()
-	fmt.Println(file.Sync())
-	buf := bytes.NewBufferString("hello ")
-	buf.ReadFrom(file)        //将text.txt内容追加到缓冲器的尾部
-	fmt.Println(buf.String()) //打印“hello world”
+	reader := bufio.NewReader(strings.NewReader("hello \n world"))
+	line, _ := reader.ReadSlice('\n')
+	fmt.Printf("the line:%s\n", line)
+
+	line, _ = reader.ReadSlice('\n')
+	fmt.Printf("the line:%s\n", line)
 }
