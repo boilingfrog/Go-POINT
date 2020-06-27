@@ -14,3 +14,6 @@
 总结下：  
 `Session`是在服务端保存的一个数据结构，用来跟踪用户的状态，这个数据可以保存在集群、数据库、文件中；  
 `Cookie`是客户端保存用户信息的一种机制，用来记录用户的一些信息，也是实现`Session`的一种方式。  
+
+
+![bufio](images/login-session.png?raw=true)
