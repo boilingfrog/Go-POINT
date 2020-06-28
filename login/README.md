@@ -30,6 +30,8 @@
 
 可以对数据做个签名。 比如说我用`HMAC-SHA256`算法，加上一个只有我才知道的密钥，对数据做一个签名，把这个签名和数据一起作为`token`，由于密钥别人不知道，就无法伪造`token`了。  
 
+![bufio](images/login-token.png?raw=true)
+
   
 
 
