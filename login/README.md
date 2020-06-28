@@ -32,7 +32,9 @@
 
 ![bufio](images/login-token.png?raw=true)
 
-  
+客户端在第二次请求时候，带上之前服务端返回的`token`信息。服务端就用这个`token`来校验用户的状态。拿到`token`使用签发时相同的算法和秘钥，重新生成签名，和用户传递的`token`里面的签名作比较，如果匹配的上，表示`token`正确这个用户当前处于登陆状态，匹配不上，就提示重新登陆。 
+
+![bufio](images/login-token-sign.png?raw=true)
 
 
 
