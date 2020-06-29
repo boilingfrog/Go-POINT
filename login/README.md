@@ -32,7 +32,7 @@
 
 ![bufio](images/login-token.png?raw=true)
 
-客户端在第二次请求时候，带上之前服务端返回的`token`信息。服务端就用这个`token`来校验用户的状态。拿到`token`使用签发时相同的算法和秘钥，重新生成签名，和用户传递的`token`里面的签名作比较，如果匹配的上，表示`token`正确这个用户当前处于登陆状态，匹配不上，就提示重新登陆。 
+客户端在第二次请求时候，带上之前服务端返回的`token`信息。服务端就用这个`token`来校验用户的状态。拿到`token`使用签发时相同的算法和秘钥，重新生成签名，和用户传递的`token`里面的签名作比较，如果匹配的上，表示`token`正确这个用户当前处于登陆状态，匹配不上，就提示重新登陆。因为秘钥和签名的算法是用户是不可见的，这样就避免了`token`被伪造了。  
 
 ![bufio](images/login-token-sign.png?raw=true)
 
@@ -44,6 +44,17 @@
 - 支持移动设备
 - 跨程序调用
 - 安全
+
+
+#### Acesss Token和Refresh Token
+
+常用的还是`Acesss Token`配合`Refresh Token`来实现token的认证。  
+
+`Acesss Token`就是上面介绍的token。不过一般`Acesss Token`的过期时间比较短，所以一般配合`Refresh Token`。当`Acesss Token`过期了，通过`Refresh Token`来换取新的`Acesss Token`。避免用户频繁的登录操作。  
+
+
+
+
 
 
 
