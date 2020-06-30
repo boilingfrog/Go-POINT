@@ -54,6 +54,8 @@
 
 `Acesss Token`就是上面介绍的token。不过一般`Acesss Token`的过期时间比较短，所以一般配合`Refresh Token`。当`Acesss Token`过期了，通过`Refresh Token`来换取新的`Acesss Token`。避免用户频繁的登录操作。  
 
+![bufio](images/login-session-refresh.png?raw=true)
+
 
 
 
