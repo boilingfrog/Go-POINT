@@ -47,7 +47,6 @@
 - 跨程序调用
 - 安全
 
-
 #### Acesss Token和Refresh Token
 
 常用的还是`Acesss Token`配合`Refresh Token`来实现token的认证。  
@@ -56,9 +55,9 @@
 
 ![bufio](images/login-session-refresh.png?raw=true)
 
+一般`Acesss Token`和`Refresh Token`在签发的时候会存储在服务端，当通过`Refresh Token`换取`Acesss Token`的时候也是会更新`Acesss Token`的值。 
 
+### JWT
 
-
-
-
+前面的两种读需要在服务端存储，JWT是服务端不存储任何信息，在每次请求的时候进行校验。  
 
