@@ -1,3 +1,16 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [login](#login)
+  - [Cookie和Session](#cookie%E5%92%8Csession)
+  - [Token](#token)
+    - [总结下token的优点](#%E6%80%BB%E7%BB%93%E4%B8%8Btoken%E7%9A%84%E4%BC%98%E7%82%B9)
+    - [Acesss Token和Refresh Token](#acesss-token%E5%92%8Crefresh-token)
+  - [JWT](#jwt)
+  - [OAuth2.0](#oauth20)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## login
 
 ### Cookie和Session
@@ -60,4 +73,16 @@
 ### JWT
 
 前面的两种读需要在服务端存储，JWT是服务端不存储任何信息，在每次请求的时候进行校验。  
+
+详情参见`https://www.ruanyifeng.com/blog/2018/07/json_web_token-tutorial.html`这个已经描述的很清晰了。  
+
+总结下：大致的认证流程如上图，生成`JWT`的`Signature`需要配合一个密匙，这个密匙只有服务器才知道，通过`header`中的算法生成签名。 当校验`JWT`的正确性也是，通过秘钥和算法对传递进来的`JWT`中的`Header`和`Payload`部分重新生成签名和之前的签名作比对，来匹配`JWT`的正确性。  
+
+当然`JWT`也并不是完美的：  
+
+- JWT 的最大缺点是，由于服务器不保存 session 状态，因此无法在使用过程中废止某个 token，或者更改 token 的权限。也就是说，一旦 JWT 签发了，在到期之前就会始终有效，除非服务器部署额外的逻辑。
+- JWT 本身包含了认证信息，一旦泄露，任何人都可以获得该令牌的所有权限。为了减少盗用，JWT 的有效期应该设置得比较短。对于一些比较重要的权限，使用时应该再次对用户进行认证。
+
+
+### OAuth2.0
 
