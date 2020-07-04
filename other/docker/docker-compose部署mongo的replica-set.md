@@ -3,8 +3,8 @@
 
 
 - [通过docker-compose搭建mongo的replica set高可用](#%E9%80%9A%E8%BF%87docker-compose%E6%90%AD%E5%BB%BAmongo%E7%9A%84replica-set%E9%AB%98%E5%8F%AF%E7%94%A8)
+  - [前言](#%E5%89%8D%E8%A8%80)
   - [备份数据](#%E5%A4%87%E4%BB%BD%E6%95%B0%E6%8D%AE)
-    - [使用数据库连接工具](#%E4%BD%BF%E7%94%A8%E6%95%B0%E6%8D%AE%E5%BA%93%E8%BF%9E%E6%8E%A5%E5%B7%A5%E5%85%B7)
     - [备份数据到本地](#%E5%A4%87%E4%BB%BD%E6%95%B0%E6%8D%AE%E5%88%B0%E6%9C%AC%E5%9C%B0)
     - [数据恢复](#%E6%95%B0%E6%8D%AE%E6%81%A2%E5%A4%8D)
   - [集群搭建](#%E9%9B%86%E7%BE%A4%E6%90%AD%E5%BB%BA)
@@ -16,14 +16,13 @@
 
 ## 通过docker-compose搭建mongo的replica set高可用
 
+### 前言 
+
 搭建一个mongo的集群，同时原来单机mongo的数据需要迁移到集群中。  
 
 处理思路：单机mongo的数据通过`mongodump`备份，然后集群搭建起来了，在`mongorestore`导入到集群中，实现数据的迁移。  
 
-
 ### 备份数据
-
-#### 使用数据库连接工具
 
 备份(mongodump)与恢复(mongorestore)  
 
