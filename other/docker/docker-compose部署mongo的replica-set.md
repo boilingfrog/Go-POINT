@@ -11,6 +11,8 @@
     - [生成keyFile](#%E7%94%9F%E6%88%90keyfile)
     - [创建yml文件](#%E5%88%9B%E5%BB%BAyml%E6%96%87%E4%BB%B6)
     - [初始化副本集](#%E5%88%9D%E5%A7%8B%E5%8C%96%E5%89%AF%E6%9C%AC%E9%9B%86)
+  - [增加副本集](#%E5%A2%9E%E5%8A%A0%E5%89%AF%E6%9C%AC%E9%9B%86)
+  - [了解下Replica set](#%E4%BA%86%E8%A7%A3%E4%B8%8Breplica-set)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -173,16 +175,427 @@ mongo -u 账号 -p 密码
 
 ````
 > rs.initiate({
-...     _id: "mongos",
-...     members: [
-...         { _id : 0, host : "192.168.56.201:37017" },
-...         { _id : 1, host : "192.168.56.201:37018" },
-...         { _id : 2, host : "192.168.56.201:37019" },
-            { _id : 3, host : "192.168.56.201:37020" }
-...     ]
-... });
+... ...     _id: "mongos",
+... ...     members: [
+... ...         { _id : 0, host : "192.168.56.201:37017" },
+... ...         { _id : 1, host : "192.168.56.201:37018" },
+... ...         { _id : 2, host : "192.168.56.201:37019" }
+... ...     ]
+... ... });
 { "ok" : 1 }
+
 ````
-上面提示ok就是表示成功了，这时候会选举出Primary节点。重新通过`rs.status()`查看状态就能看到了。  
+上面提示ok就是表示成功了，这时候会选举出Primary节点。重新通过`rs.status()`查看状态就能看到了。
+
+```
+rs.status()
+{
+	"set" : "mongos",
+	"date" : ISODate("2020-07-04T13:02:44.676Z"),
+	"myState" : 1,
+	"term" : NumberLong(1),
+	"syncingTo" : "",
+	"syncSourceHost" : "",
+	"syncSourceId" : -1,
+	"heartbeatIntervalMillis" : NumberLong(2000),
+	"majorityVoteCount" : 2,
+	"writeMajorityCount" : 2,
+	"optimes" : {
+		"lastCommittedOpTime" : {
+			"ts" : Timestamp(1593867760, 1),
+			"t" : NumberLong(1)
+		},
+		"lastCommittedWallTime" : ISODate("2020-07-04T13:02:40.809Z"),
+		"readConcernMajorityOpTime" : {
+			"ts" : Timestamp(1593867760, 1),
+			"t" : NumberLong(1)
+		},
+		"readConcernMajorityWallTime" : ISODate("2020-07-04T13:02:40.809Z"),
+		"appliedOpTime" : {
+			"ts" : Timestamp(1593867760, 1),
+			"t" : NumberLong(1)
+		},
+		"durableOpTime" : {
+			"ts" : Timestamp(1593867760, 1),
+			"t" : NumberLong(1)
+		},
+		"lastAppliedWallTime" : ISODate("2020-07-04T13:02:40.809Z"),
+		"lastDurableWallTime" : ISODate("2020-07-04T13:02:40.809Z")
+	},
+	"lastStableRecoveryTimestamp" : Timestamp(1593867720, 5),
+	"lastStableCheckpointTimestamp" : Timestamp(1593867720, 5),
+	"electionCandidateMetrics" : {
+		"lastElectionReason" : "electionTimeout",
+		"lastElectionDate" : ISODate("2020-07-04T13:02:00.300Z"),
+		"termAtElection" : NumberLong(1),
+		"lastCommittedOpTimeAtElection" : {
+			"ts" : Timestamp(0, 0),
+			"t" : NumberLong(-1)
+		},
+		"lastSeenOpTimeAtElection" : {
+			"ts" : Timestamp(1593867709, 1),
+			"t" : NumberLong(-1)
+		},
+		"numVotesNeeded" : 2,
+		"priorityAtElection" : 1,
+		"electionTimeoutMillis" : NumberLong(10000),
+		"numCatchUpOps" : NumberLong(-29631936),
+		"newTermStartDate" : ISODate("2020-07-04T13:02:00.787Z"),
+		"wMajorityWriteAvailabilityDate" : ISODate("2020-07-04T13:02:01.528Z")
+	},
+	"members" : [
+		{
+			"_id" : 0,
+			"name" : "192.168.56.201:37017",
+			"ip" : "192.168.56.201",
+			"health" : 1,
+			"state" : 1,
+			"stateStr" : "PRIMARY",
+			"uptime" : 155,
+			"optime" : {
+				"ts" : Timestamp(1593867760, 1),
+				"t" : NumberLong(1)
+			},
+			"optimeDate" : ISODate("2020-07-04T13:02:40Z"),
+			"syncingTo" : "",
+			"syncSourceHost" : "",
+			"syncSourceId" : -1,
+			"infoMessage" : "could not find member to sync from",
+			"electionTime" : Timestamp(1593867720, 1),
+			"electionDate" : ISODate("2020-07-04T13:02:00Z"),
+			"configVersion" : 1,
+			"self" : true,
+			"lastHeartbeatMessage" : ""
+		},
+		{
+			"_id" : 1,
+			"name" : "192.168.56.201:37018",
+			"ip" : "192.168.56.201",
+			"health" : 1,
+			"state" : 2,
+			"stateStr" : "SECONDARY",
+			"uptime" : 54,
+			"optime" : {
+				"ts" : Timestamp(1593867760, 1),
+				"t" : NumberLong(1)
+			},
+			"optimeDurable" : {
+				"ts" : Timestamp(1593867760, 1),
+				"t" : NumberLong(1)
+			},
+			"optimeDate" : ISODate("2020-07-04T13:02:40Z"),
+			"optimeDurableDate" : ISODate("2020-07-04T13:02:40Z"),
+			"lastHeartbeat" : ISODate("2020-07-04T13:02:44.402Z"),
+			"lastHeartbeatRecv" : ISODate("2020-07-04T13:02:43.511Z"),
+			"pingMs" : NumberLong(0),
+			"lastHeartbeatMessage" : "",
+			"syncingTo" : "192.168.56.201:37017",
+			"syncSourceHost" : "192.168.56.201:37017",
+			"syncSourceId" : 0,
+			"infoMessage" : "",
+			"configVersion" : 1
+		},
+		{
+			"_id" : 2,
+			"name" : "192.168.56.201:37019",
+			"ip" : "192.168.56.201",
+			"health" : 1,
+			"state" : 2,
+			"stateStr" : "SECONDARY",
+			"uptime" : 54,
+			"optime" : {
+				"ts" : Timestamp(1593867760, 1),
+				"t" : NumberLong(1)
+			},
+			"optimeDurable" : {
+				"ts" : Timestamp(1593867760, 1),
+				"t" : NumberLong(1)
+			},
+			"optimeDate" : ISODate("2020-07-04T13:02:40Z"),
+			"optimeDurableDate" : ISODate("2020-07-04T13:02:40Z"),
+			"lastHeartbeat" : ISODate("2020-07-04T13:02:44.402Z"),
+			"lastHeartbeatRecv" : ISODate("2020-07-04T13:02:43.533Z"),
+			"pingMs" : NumberLong(0),
+			"lastHeartbeatMessage" : "",
+			"syncingTo" : "192.168.56.201:37017",
+			"syncSourceHost" : "192.168.56.201:37017",
+			"syncSourceId" : 0,
+			"infoMessage" : "",
+			"configVersion" : 1
+		}
+	],
+	"ok" : 1,
+	"$clusterTime" : {
+		"clusterTime" : Timestamp(1593867760, 1),
+		"signature" : {
+			"hash" : BinData(0,"Zr91geLBqJM7xN3vVVMWnJYAexk="),
+			"keyId" : NumberLong("6845609731550085123")
+		}
+	},
+	"operationTime" : Timestamp(1593867760, 1)
+}
+```
+
+通过`rs.status()`的输出我们就能分出那个是`PRIMARY`节点了。
 
 
+### 增加副本集
+
+之前已经初始化了三个mongo，我们在原来的基础上再增加一个副本集。  
+
+首先编写`docker-compose-set.yml`增加mongodb4
+
+````
+mongodb4:
+    image: mongo:4.2.1
+    volumes:
+      - /data/mongo/data/mongo4:/data/db
+      - ./mongodb.key:/data/mongodb.key
+    user: root
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=handle
+      - MONGO_INITDB_ROOT_PASSWORD=jimeng2017
+      - MONGO_INITDB_DATABASE=handle
+    container_name: mongodb4
+    ports:
+      - 37020:27017
+    command: mongod --replSet mongos --keyFile /data/mongodb.key
+    restart: always
+    entrypoint:
+      - bash
+      - -c
+      - |
+        chmod 400 /data/mongodb.key
+        chown 999:999 /data/mongodb.key
+        exec docker-entrypoint.sh $$@
+````
+
+启动
+
+````
+docker-compose -f  docker-compose-set.yml up -d
+````
+
+然后进入到`PRIMARY`,执行
+
+````
+> rs.add("192.168.56.201:37020")
+{
+	"ok" : 1,
+	"$clusterTime" : {
+		"clusterTime" : Timestamp(1593868399, 1),
+		"signature" : {
+			"hash" : BinData(0,"BZJ2tCwFE1NvE22/LwGzFTWy+1M="),
+			"keyId" : NumberLong("6845609731550085123")
+		}
+	},
+	"operationTime" : Timestamp(1593868399, 1)
+}
+````
+
+再次查看
+
+````
+> rs.status()
+{
+	"set" : "mongos",
+	"date" : ISODate("2020-07-04T13:13:27.944Z"),
+	"myState" : 1,
+	"term" : NumberLong(3),
+	"syncingTo" : "",
+	"syncSourceHost" : "",
+	"syncSourceId" : -1,
+	"heartbeatIntervalMillis" : NumberLong(2000),
+	"majorityVoteCount" : 3,
+	"writeMajorityCount" : 3,
+	"optimes" : {
+		"lastCommittedOpTime" : {
+			"ts" : Timestamp(1593868399, 1),
+			"t" : NumberLong(3)
+		},
+		"lastCommittedWallTime" : ISODate("2020-07-04T13:13:19.243Z"),
+		"readConcernMajorityOpTime" : {
+			"ts" : Timestamp(1593868399, 1),
+			"t" : NumberLong(3)
+		},
+		"readConcernMajorityWallTime" : ISODate("2020-07-04T13:13:19.243Z"),
+		"appliedOpTime" : {
+			"ts" : Timestamp(1593868399, 1),
+			"t" : NumberLong(3)
+		},
+		"durableOpTime" : {
+			"ts" : Timestamp(1593868399, 1),
+			"t" : NumberLong(3)
+		},
+		"lastAppliedWallTime" : ISODate("2020-07-04T13:13:19.243Z"),
+		"lastDurableWallTime" : ISODate("2020-07-04T13:13:19.243Z")
+	},
+	"lastStableRecoveryTimestamp" : Timestamp(1593868366, 1),
+	"lastStableCheckpointTimestamp" : Timestamp(1593868366, 1),
+	"electionCandidateMetrics" : {
+		"lastElectionReason" : "electionTimeout",
+		"lastElectionDate" : ISODate("2020-07-04T13:06:06.408Z"),
+		"termAtElection" : NumberLong(3),
+		"lastCommittedOpTimeAtElection" : {
+			"ts" : Timestamp(0, 0),
+			"t" : NumberLong(-1)
+		},
+		"lastSeenOpTimeAtElection" : {
+			"ts" : Timestamp(1593867860, 1),
+			"t" : NumberLong(1)
+		},
+		"numVotesNeeded" : 2,
+		"priorityAtElection" : 1,
+		"electionTimeoutMillis" : NumberLong(10000),
+		"numCatchUpOps" : NumberLong(37018),
+		"newTermStartDate" : ISODate("2020-07-04T13:06:06.753Z"),
+		"wMajorityWriteAvailabilityDate" : ISODate("2020-07-04T13:06:07.255Z")
+	},
+	"members" : [
+		{
+			"_id" : 0,
+			"name" : "192.168.56.201:37017",
+			"ip" : "192.168.56.201",
+			"health" : 1,
+			"state" : 2,
+			"stateStr" : "SECONDARY",
+			"uptime" : 452,
+			"optime" : {
+				"ts" : Timestamp(1593868399, 1),
+				"t" : NumberLong(3)
+			},
+			"optimeDurable" : {
+				"ts" : Timestamp(1593868399, 1),
+				"t" : NumberLong(3)
+			},
+			"optimeDate" : ISODate("2020-07-04T13:13:19Z"),
+			"optimeDurableDate" : ISODate("2020-07-04T13:13:19Z"),
+			"lastHeartbeat" : ISODate("2020-07-04T13:13:27.642Z"),
+			"lastHeartbeatRecv" : ISODate("2020-07-04T13:13:27.493Z"),
+			"pingMs" : NumberLong(0),
+			"lastHeartbeatMessage" : "",
+			"syncingTo" : "",
+			"syncSourceHost" : "",
+			"syncSourceId" : -1,
+			"infoMessage" : "",
+			"configVersion" : 2
+		},
+		{
+			"_id" : 1,
+			"name" : "192.168.56.201:37018",
+			"ip" : "192.168.56.201",
+			"health" : 1,
+			"state" : 2,
+			"stateStr" : "SECONDARY",
+			"uptime" : 452,
+			"optime" : {
+				"ts" : Timestamp(1593868399, 1),
+				"t" : NumberLong(3)
+			},
+			"optimeDurable" : {
+				"ts" : Timestamp(1593868399, 1),
+				"t" : NumberLong(3)
+			},
+			"optimeDate" : ISODate("2020-07-04T13:13:19Z"),
+			"optimeDurableDate" : ISODate("2020-07-04T13:13:19Z"),
+			"lastHeartbeat" : ISODate("2020-07-04T13:13:27.622Z"),
+			"lastHeartbeatRecv" : ISODate("2020-07-04T13:13:27.493Z"),
+			"pingMs" : NumberLong(13),
+			"lastHeartbeatMessage" : "",
+			"syncingTo" : "",
+			"syncSourceHost" : "",
+			"syncSourceId" : -1,
+			"infoMessage" : "",
+			"configVersion" : 2
+		},
+		{
+			"_id" : 2,
+			"name" : "192.168.56.201:37019",
+			"ip" : "192.168.56.201",
+			"health" : 1,
+			"state" : 1,
+			"stateStr" : "PRIMARY",
+			"uptime" : 454,
+			"optime" : {
+				"ts" : Timestamp(1593868399, 1),
+				"t" : NumberLong(3)
+			},
+			"optimeDate" : ISODate("2020-07-04T13:13:19Z"),
+			"syncingTo" : "",
+			"syncSourceHost" : "",
+			"syncSourceId" : -1,
+			"infoMessage" : "",
+			"electionTime" : Timestamp(1593867966, 1),
+			"electionDate" : ISODate("2020-07-04T13:06:06Z"),
+			"configVersion" : 2,
+			"self" : true,
+			"lastHeartbeatMessage" : ""
+		},
+		{
+			"_id" : 3,
+			"name" : "192.168.56.201:37020",
+			"ip" : "192.168.56.201",
+			"health" : 1,
+			"state" : 2,
+			"stateStr" : "SECONDARY",
+			"uptime" : 8,
+			"optime" : {
+				"ts" : Timestamp(1593868399, 1),
+				"t" : NumberLong(3)
+			},
+			"optimeDurable" : {
+				"ts" : Timestamp(1593868399, 1),
+				"t" : NumberLong(3)
+			},
+			"optimeDate" : ISODate("2020-07-04T13:13:19Z"),
+			"optimeDurableDate" : ISODate("2020-07-04T13:13:19Z"),
+			"lastHeartbeat" : ISODate("2020-07-04T13:13:27.418Z"),
+			"lastHeartbeatRecv" : ISODate("2020-07-04T13:13:27.823Z"),
+			"pingMs" : NumberLong(0),
+			"lastHeartbeatMessage" : "",
+			"syncingTo" : "",
+			"syncSourceHost" : "",
+			"syncSourceId" : -1,
+			"infoMessage" : "",
+			"configVersion" : 2
+		}
+	],
+	"ok" : 1,
+	"$clusterTime" : {
+		"clusterTime" : Timestamp(1593868399, 1),
+		"signature" : {
+			"hash" : BinData(0,"BZJ2tCwFE1NvE22/LwGzFTWy+1M="),
+			"keyId" : NumberLong("6845609731550085123")
+		}
+	},
+	"operationTime" : Timestamp(1593868399, 1)
+}
+````
+
+可以看到最新的节点已经加进去了
+
+### 了解下Replica set
+
+`Replica set`，由一组Mongod实例（进程）组成，包含一个Primary节点和多个Secondary节点,`Mongodb Driver`（客户端）的所有数据都写入Primary，Secondary从Primary同步写入的数据,通过这样的方式来保持复制集内所有成员存储相同的数据集，提供数据的高可用。    
+
+优点：  
+- 确保数据安全
+- 高（24 * 7）数据可用性
+- 灾难恢复
+- 无需停机维护（例如备份，索引重建，压缩）
+- 读取缩放（要读取的额外副本）
+- 副本集对应用程序是透明的
+
+
+复制在MongoDB中的工作方式  
+
+- MongoDB通过使用副本集来实现复制。 副本集是一组托管相同数据集的mongod实例。 在副本中，一个节点是接收所有写操作的主节点。 所有其他实例，例如第二实例，都将应用来自第一实例的操作，以便它们具有相同的数据集。 副本集只能有一个主节点。  
+- 副本集是一组两个或更多节点（通常至少需要3个节点）。  
+- 在副本集中，一个节点是主要节点，其余节点是次要节点。 
+- 所有数据从主节点复制到辅助节点。  
+- 在自动故障转移或维护时，将为主节点建立选举，并选举一个新的主节点。  
+- 恢复失败的节点后，它再次加入副本集并用作辅助节点。  
+
+下面就是工作的流程图  
+
+![bufio](images/replication.png?raw=true)
