@@ -599,7 +599,7 @@ docker-compose -f  docker-compose-set.yml up -d
 
 下面就是工作的流程图  
 
-![bufio](images/replication.png?raw=true)
+![bufio](../images/replication.png?raw=true)
 
 ### 测试连接
 
