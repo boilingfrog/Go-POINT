@@ -13,6 +13,7 @@
     - [初始化副本集](#%E5%88%9D%E5%A7%8B%E5%8C%96%E5%89%AF%E6%9C%AC%E9%9B%86)
   - [增加副本集](#%E5%A2%9E%E5%8A%A0%E5%89%AF%E6%9C%AC%E9%9B%86)
   - [了解下Replica set](#%E4%BA%86%E8%A7%A3%E4%B8%8Breplica-set)
+  - [测试连接](#%E6%B5%8B%E8%AF%95%E8%BF%9E%E6%8E%A5)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -599,3 +600,113 @@ docker-compose -f  docker-compose-set.yml up -d
 下面就是工作的流程图  
 
 ![bufio](images/replication.png?raw=true)
+
+### 测试连接
+
+使用go测试下是否能正常连接和读写数据。
+
+show dbs;：查看数据库
+
+````
+> show dbs
+admin         0.000GB
+bs-cx         0.000GB
+config        0.000GB
+handle        0.001GB
+handle-core4  0.019GB
+local         0.020GB
+stud          0.000GB
+````
+
+use stud;：切换到指定数据库，如果不存在该数据库就创建。
+
+````
+> use stud
+switched to db stud
+````
+
+db;：显示当前所在数据库。
+
+````
+> db
+stud
+````
+
+db.dropDatabase()：删除当前数据库
+
+````
+> db.dropDatabase();
+{ "ok" : 1 }
+````
+
+测试写入数据，使用的包`https://github.com/mongodb/mongo-go-driver`
+
+````go
+package main
+
+import (
+	"context"
+	"fmt"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"log"
+)
+
+type Student struct {
+	Name string
+	Age  int
+}
+
+func main() {
+	uri := "mongodb://handle:jimeng2017@192.168.56.201:37017,192.168.56.201:37018,192.168.56.201:37019,192.168.56.201:37020/admin?replicaSet=mongos"
+	// 设置客户端连接配置
+	clientOptions := options.Client().ApplyURI(uri)
+
+	// 连接到MongoDB
+	client, err := mongo.Connect(context.TODO(), clientOptions)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// 检查连接
+	err = client.Ping(context.TODO(), nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("Connected to MongoDB!")
+	collection := client.Database("stud").Collection("student")
+
+	s1 := Student{"小红", 12}
+	insertResult, err := collection.InsertOne(context.TODO(), s1)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("Inserted a single document: ", insertResult.InsertedID)
+
+	var result Student
+	filter := bson.D{{"name", "小红"}}
+
+	err = collection.FindOne(context.TODO(), filter).Decode(&result)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("Found a single document: %+v\n", result)
+
+	// 断开连接
+	err = client.Disconnect(context.TODO())
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("Connection to MongoDB closed.")
+}
+````
+
+打印下输出
+
+```go
+Connected to MongoDB!
+Inserted a single document:  ObjectID("5f00b6092aef651857151754")
+Found a single document: {Name:小红 Age:12}
+Connection to MongoDB closed.
+```
