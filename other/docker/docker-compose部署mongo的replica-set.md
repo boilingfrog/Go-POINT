@@ -140,7 +140,7 @@ services:
         exec docker-entrypoint.sh $$@
 ````
 
-文件详解
+文件详解  
 `chown 999:999 /data/mongodb.key` 999用户是容器中的mongod用户，通过chown修改文件用户权限  
 `mongod --replSet mongos --keyFile /data/mongodb.key` 启动命令，`--replSet mongos` 以副本集形式启动并将副本集名字命名为 mongos ，`--keyFile /data/mongodb.key` 设置keyFile，用于副本集通信，文件通过 volumes 映射到容器内  
 
