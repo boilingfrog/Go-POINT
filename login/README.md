@@ -22,7 +22,7 @@
 
 第一次创建`Session`的时候，服务端会在`HTTP`协议中告诉客户端，需要在`Cookie`里面记录一个`Session ID`，以后每次请求把这个会话ID发送到服务器，我就知道你是谁了。   
 
-![bufio](images/login-session.png?raw=true)
+![login](images/login-session.png?raw=true)
 
 总结下：  
 `Session`是在服务端保存的一个数据结构，用来跟踪用户的状态，这个数据可以保存在集群、数据库、文件中；  
@@ -39,17 +39,17 @@
 
 在基于`token`实现用户登录的方案中：用户第一次登录，服务端根据用户的信息生成`Token`。然后发放给客户端，客户端保存好`Token`，然后在之后的访问中，都带上`Token`的信息。服务端根据`Token`解析，判断当前的用户信息。  
 
-![bufio](images/login-token-process.png?raw=true)
+![login](images/login-token-process.png?raw=true)
 
 当然，裸漏的`Token`是很容易被非法持有和篡改的。如何优化呢？  
 
 可以对数据做个签名。 比如说我用`HMAC-SHA256`算法，加上一个只有我才知道的密钥，对数据做一个签名，把这个签名和数据一起作为`token`，由于密钥别人不知道，就无法伪造`token`了。  
 
-![bufio](images/login-token.png?raw=true)
+![login](images/login-token.png?raw=true)
 
 客户端在第二次请求时候，带上之前服务端返回的`token`信息。服务端就用这个`token`来校验用户的状态。拿到`token`使用签发时相同的算法和秘钥，重新生成签名，和用户传递的`token`里面的签名作比较，如果匹配的上，表示`token`正确这个用户当前处于登陆状态，匹配不上，就提示重新登陆。因为秘钥和签名的算法是用户是不可见的，这样就避免了`token`被伪造了。  
 
-![bufio](images/login-token-sign.png?raw=true)
+![login](images/login-token-sign.png?raw=true)
 
 当然，如果一个`token`被劫持了，里面的信息没有被更改，那么还是可以验证通过的，这是不可避免的。  
 
@@ -66,7 +66,7 @@
 
 `Acesss Token`就是上面介绍的token。不过一般`Acesss Token`的过期时间比较短，所以一般配合`Refresh Token`。当`Acesss Token`过期了，通过`Refresh Token`来换取新的`Acesss Token`。避免用户频繁的登录操作。  
 
-![bufio](images/login-session-refresh.png?raw=true)
+![login](images/login-session-refresh.png?raw=true)
 
 一般`Acesss Token`和`Refresh Token`在签发的时候会存储在服务端，当通过`Refresh Token`换取`Acesss Token`的时候也是会更新`Acesss Token`的值。 
 
@@ -77,6 +77,8 @@
 详情参见`https://www.ruanyifeng.com/blog/2018/07/json_web_token-tutorial.html`这个已经描述的很清晰了。  
 
 总结下：大致的认证流程如上图，生成`JWT`的`Signature`需要配合一个密匙，这个密匙只有服务器才知道，通过`header`中的算法生成签名。 当校验`JWT`的正确性也是，通过秘钥和算法对传递进来的`JWT`中的`Header`和`Payload`部分重新生成签名和之前的签名作比对，来匹配`JWT`的正确性。  
+
+![login](../images/login-jwt.png?raw=true)
 
 当然`JWT`也并不是完美的：  
 
