@@ -78,7 +78,7 @@
 
 总结下：大致的认证流程如上图，生成`JWT`的`Signature`需要配合一个密匙，这个密匙只有服务器才知道，通过`header`中的算法生成签名。 当校验`JWT`的正确性也是，通过秘钥和算法对传递进来的`JWT`中的`Header`和`Payload`部分重新生成签名和之前的签名作比对，来匹配`JWT`的正确性。  
 
-![login](../images/login-jwt.png?raw=true)
+![login](images/login-jwt.png?raw=true)
 
 当然`JWT`也并不是完美的：  
 
