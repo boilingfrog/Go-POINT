@@ -140,7 +140,7 @@ services:
 然后启动
 
 ````
-docker-compose -f  docker-compose-set.yml up -d
+docker-compose -f  docker-compose.yml up -d
 ````
 
 #### 初始化副本集
