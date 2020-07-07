@@ -572,6 +572,97 @@ docker-compose -f  docker-compose-set.yml up -d
 
 可以看到最新的节点已经加进去了
 
+我们熟练之后，就也可以把初始化副本集的工作也放到yml中  
+
+````
+version: '3.3'
+
+services:
+  mongodb1:
+    image: mongo:4.2.1
+    volumes:
+      - /data/mongo/data/mongo1:/data/db
+      - ./mongodb.key:/data/mongodb.key
+    user: root
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=handle
+      - MONGO_INITDB_ROOT_PASSWORD=jimeng2017
+      - MONGO_INITDB_DATABASE=handle
+    container_name: mongodb1
+    ports:
+      - 37017:27017
+    command: mongod --replSet mongos --keyFile /data/mongodb.key
+    restart: always
+    entrypoint:
+      - bash
+      - -c
+      - |
+        chmod 400 /data/mongodb.key
+        chown 999:999 /data/mongodb.key
+        exec docker-entrypoint.sh $$@
+
+  mongodb2:
+    image: mongo:4.2.1
+    volumes:
+      - /data/mongo/data/mongo2:/data/db
+      - ./mongodb.key:/data/mongodb.key
+    user: root
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=handle
+      - MONGO_INITDB_ROOT_PASSWORD=jimeng2017
+      - MONGO_INITDB_DATABASE=handle
+    container_name: mongodb2
+    ports:
+      - 37018:27017
+    command: mongod --replSet mongos --keyFile /data/mongodb.key
+    restart: always
+    entrypoint:
+      - bash
+      - -c
+      - |
+        chmod 400 /data/mongodb.key
+        chown 999:999 /data/mongodb.key
+        exec docker-entrypoint.sh $$@
+
+  mongodb3:
+    image: mongo:4.2.1
+    volumes:
+      - /data/mongo/data/mongo3:/data/db
+      - ./mongodb.key:/data/mongodb.key
+    user: root
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=handle
+      - MONGO_INITDB_ROOT_PASSWORD=jimeng2017
+      - MONGO_INITDB_DATABASE=handle
+    container_name: mongodb3
+    ports:
+      - 37019:27017
+    command: mongod --replSet mongos --keyFile /data/mongodb.key
+    restart: always
+    entrypoint:
+      - bash
+      - -c
+      - |
+        chmod 400 /data/mongodb.key
+        chown 999:999 /data/mongodb.key
+        exec docker-entrypoint.sh $$@
+
+  mongodb-init:
+    image: mongo:4.2.1
+    depends_on:
+      - mongodb1
+      - mongodb2
+      - mongodb3
+    restart: on-failure:5
+    command:
+      - mongo
+      - mongodb://handle:jimeng2017@192.168.1.11:37017/admin
+      - --eval
+      - 'rs.initiate({ _id: "mongos", members: [{_id:1,host:"192.168.1.11:37017"},{_id:2,host:"192.168.1.11:37018"},{_id:3,host:"192.168.1.11:37019"}]})'
+````
+
+直接`docker-compose up -d`就能完成镜像的构建和节点的初始化了
+
 ### 测试连接
 
 使用go测试下是否能正常连接和读写数据。
