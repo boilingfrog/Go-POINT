@@ -12,6 +12,7 @@
     - [创建yml文件](#%E5%88%9B%E5%BB%BAyml%E6%96%87%E4%BB%B6)
     - [初始化副本集](#%E5%88%9D%E5%A7%8B%E5%8C%96%E5%89%AF%E6%9C%AC%E9%9B%86)
   - [增加副本集](#%E5%A2%9E%E5%8A%A0%E5%89%AF%E6%9C%AC%E9%9B%86)
+  - [将节点初始化也放到yml中](#%E5%B0%86%E8%8A%82%E7%82%B9%E5%88%9D%E5%A7%8B%E5%8C%96%E4%B9%9F%E6%94%BE%E5%88%B0yml%E4%B8%AD)
   - [了解下Replica set](#%E4%BA%86%E8%A7%A3%E4%B8%8Breplica-set)
   - [测试连接](#%E6%B5%8B%E8%AF%95%E8%BF%9E%E6%8E%A5)
 
@@ -577,7 +578,124 @@ docker-compose -f  docker-compose-set.yml up -d
 }
 ````
 
-可以看到最新的节点已经加进去了
+可以看到最新的节点已经加进去了   
+
+### 将节点初始化也放到yml中
+
+如果熟练了，我们可以将副本集的初始化也放到yml中完成
+
+````
+version: '3.3'
+
+services:
+  mongodb1:
+    image: mongo:4.2.1
+    volumes:
+      - /data/mongo/data/mongo1:/data/db
+      - ./mongodb.key:/data/mongodb.key
+    user: root
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=handle
+      - MONGO_INITDB_ROOT_PASSWORD=jimeng2017
+      - MONGO_INITDB_DATABASE=handle
+    container_name: mongodb1
+    ports:
+      - 37017:27017
+    command: mongod --replSet mongos --keyFile /data/mongodb.key
+    restart: always
+    entrypoint:
+      - bash
+      - -c
+      - |
+        chmod 400 /data/mongodb.key
+        chown 999:999 /data/mongodb.key
+        exec docker-entrypoint.sh $$@
+
+  mongodb2:
+    image: mongo:4.2.1
+    volumes:
+      - /data/mongo/data/mongo2:/data/db
+      - ./mongodb.key:/data/mongodb.key
+    user: root
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=handle
+      - MONGO_INITDB_ROOT_PASSWORD=jimeng2017
+      - MONGO_INITDB_DATABASE=handle
+    container_name: mongodb2
+    ports:
+      - 37018:27017
+    command: mongod --replSet mongos --keyFile /data/mongodb.key
+    restart: always
+    entrypoint:
+      - bash
+      - -c
+      - |
+        chmod 400 /data/mongodb.key
+        chown 999:999 /data/mongodb.key
+        exec docker-entrypoint.sh $$@
+
+  mongodb3:
+    image: mongo:4.2.1
+    volumes:
+      - /data/mongo/data/mongo3:/data/db
+      - ./mongodb.key:/data/mongodb.key
+    user: root
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=handle
+      - MONGO_INITDB_ROOT_PASSWORD=jimeng2017
+      - MONGO_INITDB_DATABASE=handle
+    container_name: mongodb3
+    ports:
+      - 37019:27017
+    command: mongod --replSet mongos --keyFile /data/mongodb.key
+    restart: always
+    entrypoint:
+      - bash
+      - -c
+      - |
+        chmod 400 /data/mongodb.key
+        chown 999:999 /data/mongodb.key
+        exec docker-entrypoint.sh $$@
+
+  mongodb4:
+    image: mongo:4.2.1
+    volumes:
+      - /data/mongo/data/mongo4:/data/db
+      - ./mongodb.key:/data/mongodb.key
+    user: root
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=handle
+      - MONGO_INITDB_ROOT_PASSWORD=jimeng2017
+      - MONGO_INITDB_DATABASE=handle
+    container_name: mongodb4
+    ports:
+      - 37020:27017
+    command: mongod --replSet mongos --keyFile /data/mongodb.key
+    restart: always
+    entrypoint:
+      - bash
+      - -c
+      - |
+        chmod 400 /data/mongodb.key
+        chown 999:999 /data/mongodb.key
+        exec docker-entrypoint.sh $$@
+
+  mongodb-init:
+    image: mongo:4.2.1
+    depends_on:
+      - mongodb1
+      - mongodb2
+      - mongodb3
+      - mongodb4
+    restart: on-failure:5
+    command:
+      - mongo
+      - mongodb://handle:jimeng2017@192.168.56.201:37017/admin
+      - --eval
+      - 'rs.initiate({ _id: "mongos", members: [{_id:1,host:"192.168.56.201:37017"},{_id:2,host:"192.168.56.201:37018"},{_id:3,host:"192.168.56.201:37019"},{_id:4,host:"192.168.56.201:37020"}]})'
+````
+
+这样通过`docker-compose up -d`就能完成镜像的构建和副本集的初始化  
 
 ### 了解下Replica set
 

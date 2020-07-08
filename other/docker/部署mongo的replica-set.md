@@ -8,6 +8,7 @@
     - [创建yml文件](#%E5%88%9B%E5%BB%BAyml%E6%96%87%E4%BB%B6)
     - [初始化副本集](#%E5%88%9D%E5%A7%8B%E5%8C%96%E5%89%AF%E6%9C%AC%E9%9B%86)
   - [增加副本集](#%E5%A2%9E%E5%8A%A0%E5%89%AF%E6%9C%AC%E9%9B%86)
+  - [将节点初始化也放到yml中](#%E5%B0%86%E8%8A%82%E7%82%B9%E5%88%9D%E5%A7%8B%E5%8C%96%E4%B9%9F%E6%94%BE%E5%88%B0yml%E4%B8%AD)
   - [测试连接](#%E6%B5%8B%E8%AF%95%E8%BF%9E%E6%8E%A5)
 
 ## 通过docker-compose搭建mongo的replica set高可用
@@ -571,6 +572,8 @@ docker-compose -f  docker-compose-set.yml up -d
 ````
 
 可以看到最新的节点已经加进去了
+
+### 将节点初始化也放到yml中
 
 我们熟练之后，就也可以把初始化副本集的工作也放到yml中  
 
