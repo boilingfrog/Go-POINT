@@ -30,7 +30,9 @@ mongo1
 // 创建db的data目录
 # cd /usr/local/mongodb/
 # mkdir data
+// 存放数据
 # mkdir data/db
+// 存放log
 # mkdir data/logs
 # touch data/mongodb.log
 # cd data
@@ -40,6 +42,7 @@ mongo1
 写入配置文件，`vi mongodb.cof`
 
 ````
+// 端口
 port = 27018
 bind_ip = 0.0.0.0
 #集群名字
