@@ -502,6 +502,6 @@ mongodump -h 192.168.56.101:27018 -u handle -p jimeng2017 -o /home/liz/Desktop/m
 mongorestore -h 192.168.56.101:27018 -u handle -p jimeng2017  /home/liz/Desktop/mongo-bei
 ````
 
-注意：更换自己服务器上面的ip和mongo对应的账号密码
+注意：更换自己服务器上面的ip和mongo对应的账号密码  
 
 
