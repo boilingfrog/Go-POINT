@@ -1,6 +1,24 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+
+- [Elasticsearch](#elasticsearch)
+  - [前言](#%E5%89%8D%E8%A8%80)
+  - [深度分页的问题](#%E6%B7%B1%E5%BA%A6%E5%88%86%E9%A1%B5%E7%9A%84%E9%97%AE%E9%A2%98)
+    - [如何解决](#%E5%A6%82%E4%BD%95%E8%A7%A3%E5%86%B3)
+      - [修改默认值](#%E4%BF%AE%E6%94%B9%E9%BB%98%E8%AE%A4%E5%80%BC)
+      - [使用search_after方法](#%E4%BD%BF%E7%94%A8search_after%E6%96%B9%E6%B3%95)
+      - [scroll 滚动搜索](#scroll-%E6%BB%9A%E5%8A%A8%E6%90%9C%E7%B4%A2)
+  - [es中的近似聚合](#es%E4%B8%AD%E7%9A%84%E8%BF%91%E4%BC%BC%E8%81%9A%E5%90%88)
+  - [总结](#%E6%80%BB%E7%BB%93)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## Elasticsearch
 
-### 最近工作中用到了`Elasticsearch`，但是遇到几个挺坑的点，还是记录下。
+### 前言
+ 
+最近工作中用到了`Elasticsearch`，但是遇到几个挺坑的点，还是记录下。
 
 ### 深度分页的问题
 
@@ -105,3 +123,32 @@ GET /_search/scroll
 之后的查询依次类推  
 
 这个游标查询返回的下一批结果。 尽管我们指定字段`size`的值为1000，我们有可能取到超过这个值数量的文档。 当查询的时候， 字段 size 作用于单个分片，所以每个批次实际返回的文档数量最大为`size * number_of_primary_shards`。   
+
+### es中的近似聚合
+
+对于es来讲，其中的去重计数。是个近似的值，不像mysql中的是精确值，存在5%的误差，不过可以通过设置`precision_threshold`来解决少量数据的精准度
+
+```go
+GET /cars/transactions/_search
+{
+    "size" : 0,
+    "aggs" : {
+        "distinct_colors" : {
+            "cardinality" : {
+              "field" : "color",
+              "precision_threshold" : 100  // precision_threshold 接受 0–40,000 之间的数字，更大的值还是会被当作 40,000 来处理。
+            }
+        }
+    }
+}
+```
+
+示例会确保当字段唯一值在 100 以内时会得到非常准确的结果。尽管算法是无法保证这点的，但如果基数在阈值以下，几乎总是`100%`正确的。高于阈值的基数会开始节省内存而牺牲准确度，同时也会对度量结果带入误差。  
+
+对于指定的阈值,`HLL`的数据结构会大概使用`precision_threshold * 8`字节的内存，所以就必须在牺牲内存和获得额外的准确度间做平衡。  
+
+在实际应用中，`100`的阈值可以在唯一值为百万的情况下仍然将误差维持`5%`以内。  
+
+### 总结
+
+当我们选型es时候，要充分考虑到上面的几点。
