@@ -20,4 +20,8 @@
 
 `Playbooks`可用于声明配置,更强大的地方在于,在 `playbooks` 中可以编排有序的执行过程,甚至于做到在多组机器间,来回有序的执行特别指定的步骤.并且可以同步或异步的发起任务.  
 
+#### 常用到的指令
 
+ ansible all -m ping
+
+ ansible-playbook playbooks/09.deploy-handle-enterprise.yml
