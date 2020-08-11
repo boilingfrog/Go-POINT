@@ -28,10 +28,10 @@ ansible all -m ping
 ```
 执行
 ```go
- ansible-playbook playbooks/09.deploy-handle-enterprise.yml  
+ansible-playbook xxxx.yml  
 ``` 
 查看这个 playbook 的执行会影响到哪些 hosts  
  ```go
- ansible-playbook playbook.yml --list-hosts
+ansible-playbook playbook.yml --list-hosts
 ```
 
