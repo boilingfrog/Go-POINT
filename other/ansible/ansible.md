@@ -22,10 +22,14 @@
 
 #### 常用到的指令
 
- ansible all -m ping  
-
+查看ip是否可用
+```go
+ansible all -m ping 
+```
+执行
+```go
  ansible-playbook playbooks/09.deploy-handle-enterprise.yml  
- 
+``` 
 查看这个 playbook 的执行会影响到哪些 hosts  
  ```go
  ansible-playbook playbook.yml --list-hosts
