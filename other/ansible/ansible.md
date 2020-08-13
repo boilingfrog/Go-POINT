@@ -28,6 +28,18 @@
 
 在发生改变时执行的操作  
 
+Handlers 也是一些 task 的列表,通过名字来引用,它们和一般的 task 并没有什么区别.Handlers 是由通知者进行 notify, 如果没有被 notify,handlers 不会执行.不管有多少个通知者进行了 notify,等到 play 中的所有 task 执行完成之后,handlers 也只会被执行一次.  
+
+```go
+handlers:
+    - name: restart memcached
+      service:  name=memcached state=restarted
+    - name: restart apache
+      service: name=apache state=restarted
+```
+
+Handlers 最佳的应用场景是用来重启服务,或者触发系统重启操作.除此以外很少用到了.
+ 
 #### 常用到的指令
 
 查看ip是否可用
