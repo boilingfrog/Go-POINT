@@ -40,6 +40,11 @@ handlers:
 
 Handlers 最佳的应用场景是用来重启服务,或者触发系统重启操作.除此以外很少用到了.
  
+##### task
+
+对于playbook,我们一般使用 include 语句引用 task 文件的方法，将playbook进行拆分。   
+ 
+ 
 #### 常用到的指令
 
 查看ip是否可用
