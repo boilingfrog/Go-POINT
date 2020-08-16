@@ -60,3 +60,6 @@ ansible-playbook xxxx.yml
 ansible-playbook playbook.yml --list-hosts
 ```
 
+
+
+
