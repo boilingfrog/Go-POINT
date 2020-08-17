@@ -1,8 +1,41 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+
+- [ansible](#ansible)
+  - [前言](#%E5%89%8D%E8%A8%80)
+  - [常用到的指令](#%E5%B8%B8%E7%94%A8%E5%88%B0%E7%9A%84%E6%8C%87%E4%BB%A4)
+  - [设置服务器免密登录](#%E8%AE%BE%E7%BD%AE%E6%9C%8D%E5%8A%A1%E5%99%A8%E5%85%8D%E5%AF%86%E7%99%BB%E5%BD%95)
+  - [ansible了解](#ansible%E4%BA%86%E8%A7%A3)
+    - [变量名的使用](#%E5%8F%98%E9%87%8F%E5%90%8D%E7%9A%84%E4%BD%BF%E7%94%A8)
+    - [playbooks了解](#playbooks%E4%BA%86%E8%A7%A3)
+      - [Handlers](#handlers)
+      - [task](#task)
+      - [register使用](#register%E4%BD%BF%E7%94%A8)
+      - [set_fact使用](#set_fact%E4%BD%BF%E7%94%A8)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## ansible
 
 ### 前言
 
 用到了就总结下吧
+
+### 常用到的指令
+
+查看ip是否可用
+```go
+ansible all -m ping 
+```
+执行
+```go
+ansible-playbook xxxx.yml  
+``` 
+查看这个 playbook 的执行会影响到哪些 hosts  
+ ```go
+ansible-playbook playbook.yml --list-hosts
+```
 
 ### 设置服务器免密登录
 
@@ -42,23 +75,62 @@ Handlers 最佳的应用场景是用来重启服务,或者触发系统重启操�
  
 ##### task
 
-对于playbook,我们一般使用 include 语句引用 task 文件的方法，将playbook进行拆分。   
- 
- 
-#### 常用到的指令
+对于playbook,我们一般使用 include 语句引用 task 文件的方法，将playbook进行拆分。 
 
-查看ip是否可用
-```go
-ansible all -m ping 
+##### register使用
+
+`register`的作用一般用于获取命令输出和判断执行是否成功。  
+
+`register`可以存储指定命令的输出结果到一个自定义的变量中，我们可以通过访问这个自定义的变量来获取命令的输出，然后判断是否执行成功。  
+
+````
+- name: Check than logfile exists
+  stat: path={{ DATA_PATH }}/mongos/log/mongo.log
+  register: logfile_start
+  when: MONGO_SYSYTEMLOG_DESTIANTION == "file"
+
+- name: Create log if missing
+  file:
+    state: touch
+    dest: "{{ DATA_PATH }}/mongos/log/mongo.log"
+    owner: mongod
+    group: mongod
+    mode: 0644
+  when: ( MONGO_SYSYTEMLOG_DESTIANTION == "file"
+        and logfile_start is defined
+        and not logfile_start.stat.exists )
+````
+
+通过判断`logfile_start`来判断目标目录是否存在。  
+
+##### set_fact使用
+
+`set_fact`用来做变量的赋值。  
+
+````
+- name: 注册replicaset_host变量
+  set_fact:
+    replicaset_host: []
+
+- name: 循环处理host
+  set_fact:
+    replicaset_host: "{{replicaset_host}} + [ '{{ item }}:{{ MONGO_NET_PORT }}' ]"
+  with_items: "{{ groups['mongo'] }}"
+````
+
+比如上面注册了一个`replicaset_host`数组，下面通过`with_items`循环对`replicaset_host`进行了赋值操作，之后后面的task就可以直接使用这个变量了。
+
 ```
-执行
-```go
-ansible-playbook xxxx.yml  
-``` 
-查看这个 playbook 的执行会影响到哪些 hosts  
- ```go
-ansible-playbook playbook.yml --list-hosts
+- name: 初始化副本集
+  mongodb_replicaset:
+    login_host: localhost
+    login_port: "{{ MONGO_NET_PORT }}"
+    login_user: "{{ MONGO_ROOT_USERNAME }}"
+    login_password: "{{ MONGO_ROOT_PASSWORD }}"
+    replica_set: mongos
+    members: "{{ replicaset_host }}"
 ```
+ 
 
 
 
