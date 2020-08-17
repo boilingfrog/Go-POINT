@@ -5,6 +5,10 @@
 - [ansible](#ansible)
   - [前言](#%E5%89%8D%E8%A8%80)
   - [常用到的指令](#%E5%B8%B8%E7%94%A8%E5%88%B0%E7%9A%84%E6%8C%87%E4%BB%A4)
+    - [查看ip是否可用](#%E6%9F%A5%E7%9C%8Bip%E6%98%AF%E5%90%A6%E5%8F%AF%E7%94%A8)
+    - [执行](#%E6%89%A7%E8%A1%8C)
+    - [执行,查看日志输出](#%E6%89%A7%E8%A1%8C%E6%9F%A5%E7%9C%8B%E6%97%A5%E5%BF%97%E8%BE%93%E5%87%BA)
+    - [查看这个 playbook 的执行会影响到哪些 hosts](#%E6%9F%A5%E7%9C%8B%E8%BF%99%E4%B8%AA-playbook-%E7%9A%84%E6%89%A7%E8%A1%8C%E4%BC%9A%E5%BD%B1%E5%93%8D%E5%88%B0%E5%93%AA%E4%BA%9B-hosts)
   - [设置服务器免密登录](#%E8%AE%BE%E7%BD%AE%E6%9C%8D%E5%8A%A1%E5%99%A8%E5%85%8D%E5%AF%86%E7%99%BB%E5%BD%95)
   - [ansible了解](#ansible%E4%BA%86%E8%A7%A3)
     - [变量名的使用](#%E5%8F%98%E9%87%8F%E5%90%8D%E7%9A%84%E4%BD%BF%E7%94%A8)
@@ -24,15 +28,19 @@
 
 ### 常用到的指令
 
-查看ip是否可用
+#### 查看ip是否可用
 ```go
 ansible all -m ping 
 ```
-执行
+#### 执行
 ```go
 ansible-playbook xxxx.yml  
 ``` 
-查看这个 playbook 的执行会影响到哪些 hosts  
+#### 执行,查看日志输出
+```go
+ansible-playbook xxxx.yml -vvv 
+``` 
+#### 查看这个 playbook 的执行会影响到哪些 hosts  
  ```go
 ansible-playbook playbook.yml --list-hosts
 ```
