@@ -17,6 +17,7 @@
       - [task](#task)
       - [register使用](#register%E4%BD%BF%E7%94%A8)
       - [set_fact使用](#set_fact%E4%BD%BF%E7%94%A8)
+      - [ansible构建mongo的replicaset](#ansible%E6%9E%84%E5%BB%BAmongo%E7%9A%84replicaset)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -45,13 +46,15 @@ ansible-playbook xxxx.yml -vvv
 ansible-playbook playbook.yml --list-hosts
 ```
 
-### 设置服务器免密登录
-
-添加本机的pub,公钥到目标服务器`~/.ssh/authorized_keys`中，然后设置权限`chmod 600 /root/.ssh/authorized_keys`  
-
 ### ansible了解
 
 `Ansible`是使用`Python`开发的自动化运维工具，如果这么说比较抽象的话，那么可以说`Ansible`可以让服务器管理人员使用文本来管理服务器，编写一段配置文件，在不同的机器上执行。  
+
+`Ansible`的使用需要在目标服务器上添加自己电脑的公钥，设置免密登录。  
+
+### 设置服务器免密登录
+
+添加本机的pub,公钥到目标服务器`~/.ssh/authorized_keys`中，然后设置权限`chmod 600 /root/.ssh/authorized_keys`  
 
 #### 变量名的使用
 
@@ -145,11 +148,42 @@ Handlers 最佳的应用场景是用来重启服务,或者触发系统重启操�
 
 构建的思路：  
 
-1、通过rpm安装mongo的包，然后安装依赖的程序 
-2、配置mongo.service  
-3、配置mongo.conf，初始化的mongo是没有账号密码的，所以先初始化一个无需验证的mongo.conf。然后配置登录的账号密码。 之后在配置mongo.conf为需要认证。重启。  
-4、初始化副本集，设置开机启动。  
+1、通过rpm安装mongo的包，然后安装依赖的程序  
+2、配置`mongo.service`  
+3、配置`mongo.conf`，初始化的mongo是没有账号密码的，所以先初始化一个无需验证的`mongo.conf`。配置好之后，重启服务。
+4、设置登录的账号密码，之后修改`mongo.conf`为需要认证的。重启服务。
+5、初始化副本集，设置开机启动。  
 
-项目的地址[https://github.com/boilingfrog/ansible-mongo-replicaset-role/tree/master/roles/mongo]
+项目结构：  
+
+````
+.
+├── deploy-mongo.yml
+└── roles
+    └── mongo
+        ├── defaults  // 一些配置信息
+        │   └── main.yml
+        ├── files  // mongo的安装包
+        │   └── rpms
+        │       ├── mongodb-org-unstable-mongos-4.1.8-1.el7.x86_64.rpm
+        │       ├── mongodb-org-unstable-server-4.1.8-1.el7.x86_64.rpm
+        │       ├── mongodb-org-unstable-shell-4.1.8-1.el7.x86_64.rpm
+        │       └── mongodb-org-unstable-tools-4.1.8-1.el7.x86_64.rpm
+        ├── handlers // notify重启服务的task
+        │   └── main.yml
+        ├── tasks
+        │   ├── auth_initialization.yml
+        │   ├── authorization.yml
+        │   ├── configure.yml
+        │   ├── init_replicaset.yml
+        │   ├── install_task.yml
+        │   └── main.yml
+        └── templates
+            ├── mongodb.service.j2
+            └── mongod.conf.j2
+
+````
+  
+项目的地址[https://github.com/boilingfrog/ansible-mongo-replicaset-role] 
 
 
