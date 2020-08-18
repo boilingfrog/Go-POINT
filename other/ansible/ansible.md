@@ -65,6 +65,8 @@ ansible-playbook playbook.yml --list-hosts
 
 `modules` 具有”幂等”性.重复多次执行`playbook`是安全的。  
 
+比如对于创建文件夹，如果不存在就创建，存在了就不创建了。  
+
 ##### Handlers
 
 在发生改变时执行的操作  
