@@ -21,6 +21,8 @@ docker打包镜像
 
 使用nginx打包一个静态页面的镜像  
 
+测试的代码地址[https://github.com/boilingfrog/daily-test/tree/master/docker-images/test]  
+
 #### 1、制作`dockerfile`  
 
 ```
