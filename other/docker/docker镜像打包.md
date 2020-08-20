@@ -92,4 +92,6 @@ d0f104dc0a1f: Mounted from liz2019/docker-file-image
 latest: digest: sha256:53e8eb1dc6749f05cd303a13588584f9944b6f66b25b8914c49923a16c1ba6b2 size: 1569
 ```
 
-成功了
+成功了  
+
+最后运行下`docker run -p 8000:80 test-static`  
