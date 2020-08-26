@@ -1,6 +1,7 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+
 - [linux中的权限](#linux%E4%B8%AD%E7%9A%84%E6%9D%83%E9%99%90)
   - [前言](#%E5%89%8D%E8%A8%80)
   - [深入了解](#%E6%B7%B1%E5%85%A5%E4%BA%86%E8%A7%A3)
@@ -132,10 +133,13 @@ $ ls -la /bin/su
 3、SGID主要用在目录上；
 ```
 
-- SBIT
+- SBIT 目前只针对目录有效，对于目录的作用是：当用户在该目录下建立文件或目录时，仅有自己与 root才有权力删除。  
 
+栗子：  
 
+最具有代表的就是/tmp目录，任何人都可以在/tmp内增加、修改文件（因为权限全是rwx），但仅有该文件/目录建立者与 root能够删除自己的目录或文件  
 
+注：SBIT对文件不起作用。  
 
 SET位权限：  
 
