@@ -106,6 +106,28 @@ rw- 权限就是 4 + 2 = 6
 
 linux除了设置正常的读写操作权限外，还有关于一类设置也是涉及到权限，叫做Linxu附加权限。包括 SET位权限（suid，sgid）和粘滞位权限（sticky）。  
 
+- SUID 让本来没有相应权限的用户运行这个程序时，可以访问他没有权限访问的资源。  
+
+```
+1、SUID权限仅对二进制程序有效。
+2、执行者对于该程序需要具有x的可执行权限。
+3、本权限仅在执行该程序的过程中有效。
+4、执行者将具有该程序拥有者的权限。
+```
+
+- SGID 和SUID类似，不过SGID是针对所属用户组权限的。  
+
+```
+1、SGID对二进制程序有用；
+2、程序执行者对于该程序来说需具备x的权限；
+3、SGID主要用在目录上；
+```
+
+- SBIT
+
+
+
+
 SET位权限：  
 
 `suid/sgid`是为了使“没有取得特权用户要完成一项必须要有特权才可以执行的任务”而产生的。 一般用于给可执行的程序或脚本文件进行设置，其中SUID表示对属主用户增加SET位权限，SGID表示对属组内用户增加SET位权限。执行文件被设置了`SUID、SGID`权限后，任何用户执行该文件时，将获得该文件属主、属组账号对应的身份。在许多环境中，suid 和 sgid 很管用，但是不恰当地使用这些位可能使系统的安全遭到破坏。所以应该尽量避免使用SET位权限程序。（passwd 命令是为数不多的必须使用“suid”的命令之一）。  
@@ -184,6 +206,9 @@ S-- = 100 4
 
 
 
+
+
 ### 参考
 【第六章、Linux 的文件权限与目录配置】http://cn.linux.vbird.org/linux_basic/0210filepermission.php  
 【Linux权限详解（chmod、600、644、666、700、711、755、777、4755、6755、7755）】https://blog.csdn.net/u013197629/article/details/73608613  
+【深入Linux文件权限 SUID/SGID/SBIT】https://blog.csdn.net/imkelt/article/details/53054309?utm_medium=distribute.pc_relevant.none-task-blog-BlogCommendFromMachineLearnPai2-2.channel_param&depth_1-utm_source=distribute.pc_relevant.none-task-blog-BlogCommendFromMachineLearnPai2-2.channel_param
