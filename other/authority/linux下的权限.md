@@ -144,3 +144,9 @@ chmod +t <文件列表..>
 
 同样使用二进制表示下:  
 
+
+
+
+### 参考
+【第六章、Linux 的文件权限与目录配置】http://cn.linux.vbird.org/linux_basic/0210filepermission.php  
+【Linux权限详解（chmod、600、644、666、700、711、755、777、4755、6755、7755）】https://blog.csdn.net/u013197629/article/details/73608613  
