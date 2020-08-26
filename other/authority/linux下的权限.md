@@ -1,3 +1,16 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [linux中的权限](#linux%E4%B8%AD%E7%9A%84%E6%9D%83%E9%99%90)
+  - [前言](#%E5%89%8D%E8%A8%80)
+  - [深入了解](#%E6%B7%B1%E5%85%A5%E4%BA%86%E8%A7%A3)
+  - [数字权限](#%E6%95%B0%E5%AD%97%E6%9D%83%E9%99%90)
+  - [分析下数字权限](#%E5%88%86%E6%9E%90%E4%B8%8B%E6%95%B0%E5%AD%97%E6%9D%83%E9%99%90)
+    - [四位数字权限](#%E5%9B%9B%E4%BD%8D%E6%95%B0%E5%AD%97%E6%9D%83%E9%99%90)
+  - [参考](#%E5%8F%82%E8%80%83)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## linux中的权限
 
 ### 前言
