@@ -11,6 +11,7 @@
       - [SUID](#suid)
       - [SGID](#sgid)
       - [SBIT](#sbit)
+      - [数字权限的表示](#%E6%95%B0%E5%AD%97%E6%9D%83%E9%99%90%E7%9A%84%E8%A1%A8%E7%A4%BA)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
