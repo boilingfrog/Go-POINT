@@ -323,5 +323,5 @@ chown .sshd install.log
 ### 参考
 【第六章、Linux 的文件权限与目录配置】http://cn.linux.vbird.org/linux_basic/0210filepermission.php  
 【Linux权限详解（chmod、600、644、666、700、711、755、777、4755、6755、7755）】https://blog.csdn.net/u013197629/article/details/73608613  
-【深入Linux文件权限 SUID/SGID/SBIT】https://blog.csdn.net/imkelt/article/details/53054309?utm_medium=distribute.pc_relevant.none-task-blog-BlogCommendFromMachineLearnPai2-2.channel_param&depth_1-utm_source=distribute.pc_relevant.none-task-blog-BlogCommendFromMachineLearnPai2-2.channel_param
-【】http://cn.linux.vbird.org/linux_basic/0210filepermission.php#filepermission_ch
+【深入Linux文件权限 SUID/SGID/SBIT】https://blog.csdn.net/imkelt/article/details/53054309?utm_medium=distribute.pc_relevant.none-task-blog-BlogCommendFromMachineLearnPai2-2.channel_param&depth_1-utm_source=distribute.pc_relevant.none-task-blog-BlogCommendFromMachineLearnPai2-2.channel_param  
+【第六章、Linux 的文件权限与目录配置】http://cn.linux.vbird.org/linux_basic/0210filepermission.php#filepermission_ch
