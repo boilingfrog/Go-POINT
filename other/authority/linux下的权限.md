@@ -12,12 +12,17 @@
       - [无权限(-)](#%E6%97%A0%E6%9D%83%E9%99%90-)
       - [三位数字权限的转换](#%E4%B8%89%E4%BD%8D%E6%95%B0%E5%AD%97%E6%9D%83%E9%99%90%E7%9A%84%E8%BD%AC%E6%8D%A2)
       - [如何设置权限](#%E5%A6%82%E4%BD%95%E8%AE%BE%E7%BD%AE%E6%9D%83%E9%99%90)
+      - [最高位的含义](#%E6%9C%80%E9%AB%98%E4%BD%8D%E7%9A%84%E5%90%AB%E4%B9%89)
     - [四位数字权限](#%E5%9B%9B%E4%BD%8D%E6%95%B0%E5%AD%97%E6%9D%83%E9%99%90)
       - [SUID](#suid)
       - [SGID](#sgid)
       - [SBIT](#sbit)
       - [四位数字权限的转换](#%E5%9B%9B%E4%BD%8D%E6%95%B0%E5%AD%97%E6%9D%83%E9%99%90%E7%9A%84%E8%BD%AC%E6%8D%A2)
       - [如何设置权限](#%E5%A6%82%E4%BD%95%E8%AE%BE%E7%BD%AE%E6%9D%83%E9%99%90-1)
+    - [如何改变文件属性](#%E5%A6%82%E4%BD%95%E6%94%B9%E5%8F%98%E6%96%87%E4%BB%B6%E5%B1%9E%E6%80%A7)
+      - [改变所属群组, chgrp](#%E6%94%B9%E5%8F%98%E6%89%80%E5%B1%9E%E7%BE%A4%E7%BB%84-chgrp)
+      - [改变文件拥有者, chown](#%E6%94%B9%E5%8F%98%E6%96%87%E4%BB%B6%E6%8B%A5%E6%9C%89%E8%80%85-chown)
+      - [改变权限, chmod](#%E6%94%B9%E5%8F%98%E6%9D%83%E9%99%90-chmod)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -129,7 +134,20 @@ chmod 777 file  (等价于  chmod u=rwx,g=rwx,o=rwx file 或  chmod a=rwx file)
 ```
 chmod 600 file (等价于  chmod u=rw,g=---,o=--- file 或 chmod u=rw,go-rwx file )
 ```
- 
+
+##### 最高位的含义
+
+关于第一位最高位的解释： 上面我们说到了权限表示中后九位的含义，剩下的第一位代表的是文件的类型，类型可以是下面几个中的一个：  
+
+```
+d代表的是目录(directroy)
+-代表的是文件(regular file)
+s代表的是套字文件(socket)
+p代表的管道文件(pipe)或命名管道文件(named pipe)
+l代表的是符号链接文件(symbolic link)
+b代表的是该文件是面向块的设备文件(block-oriented device file)
+```
+
 #### 四位数字权限
 
 linux除了设置正常的读写操作权限外，还有关于一类设置也是涉及到权限，叫做Linxu附加权限。包括 SET位权限（suid，sgid）和粘滞位权限（sticky）。  
@@ -262,7 +280,48 @@ chmod 4755与chmod 755对比多了附加权限值4，这个4表示其他用户�
 
 假设netlogin是root用户创建的一个上网认证程序，如果其他用户要上网也要用到这个程序，那就需要root用户运行chmod 755 netlogin命令使其他用户也能运行netlogin。但假如netlogin执行时需要访问一些只有root用户才有权访问的文件，那么其他用户执行netlogin时可能因为权限不够还是不能上网。这种情况下，就可以用 chmod 4755 netlogin 设置其他用户在执行netlogin也有root用户的权限，从而顺利上网。  
 
+#### 如何改变文件属性
+
+我们先介绍几个常用于群组、拥有者、各种身份的权限之修改的指令，如下所示：  
+
+chgrp ：改变文件所属群组  
+chown ：改变文件拥有者  
+chmod ：改变文件的权限, SUID, SGID, SBIT等等的特性  
+
+##### 改变所属群组, chgrp
+
+改变一个文件的群组真是很简单的，直接以chgrp来改变即可。chgrp的拼写也是有点意思的，这个指令就是change group的缩写。  
+
+不过需要注意的是，我们要改变的用户组，必须在在/etc/group文件内存在才行。  
+
+假设你是以root的身份登入Linux系统的，那么在你的家目录内有一个install.log的文件， 如何将该文件的群组改变一下呢？假设你已经知道在/etc/group里面已经存在一个名为users的群组， 但是testing这个群组名字就不存在/etc/group当中了，此时改变群组成为users与testing分别会有什么现象发生呢？  
+
+![chgrp](https://github.com/zhan-liz/Go-POINT/blob/master/img/au_1.png?raw=true)
+
+发现了吗？文件的群组被改成users了，但是要改成testing的时候， 就会发生错误  
+
+##### 改变文件拥有者, chown
+
+chown的拼写也是change owner的拼写。同样用户必须是已经存在系统中的账号，也就是在/etc/passwd 这个文件中有纪录的用户名称才能改变。  
+
+chown同时也可以修改所属群组  
+
+![chgrp](https://github.com/zhan-liz/Go-POINT/blob/master/img/au_2.png?raw=true)
+
+同时chown也可以简单的修改用户的组  
+
+```
+chown .sshd install.log
+```
+
+其中的sshd代表的就是用户的群组
+
+##### 改变权限, chmod
+
+文章开头已经描述的很清楚了  
+
 ### 参考
 【第六章、Linux 的文件权限与目录配置】http://cn.linux.vbird.org/linux_basic/0210filepermission.php  
 【Linux权限详解（chmod、600、644、666、700、711、755、777、4755、6755、7755）】https://blog.csdn.net/u013197629/article/details/73608613  
 【深入Linux文件权限 SUID/SGID/SBIT】https://blog.csdn.net/imkelt/article/details/53054309?utm_medium=distribute.pc_relevant.none-task-blog-BlogCommendFromMachineLearnPai2-2.channel_param&depth_1-utm_source=distribute.pc_relevant.none-task-blog-BlogCommendFromMachineLearnPai2-2.channel_param
+【】http://cn.linux.vbird.org/linux_basic/0210filepermission.php#filepermission_ch
