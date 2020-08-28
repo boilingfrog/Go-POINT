@@ -11,12 +11,13 @@
       - [执行(x)](#%E6%89%A7%E8%A1%8Cx)
       - [无权限(-)](#%E6%97%A0%E6%9D%83%E9%99%90-)
       - [三位数字权限的转换](#%E4%B8%89%E4%BD%8D%E6%95%B0%E5%AD%97%E6%9D%83%E9%99%90%E7%9A%84%E8%BD%AC%E6%8D%A2)
+      - [如何设置权限](#%E5%A6%82%E4%BD%95%E8%AE%BE%E7%BD%AE%E6%9D%83%E9%99%90)
     - [四位数字权限](#%E5%9B%9B%E4%BD%8D%E6%95%B0%E5%AD%97%E6%9D%83%E9%99%90)
       - [SUID](#suid)
       - [SGID](#sgid)
       - [SBIT](#sbit)
       - [四位数字权限的转换](#%E5%9B%9B%E4%BD%8D%E6%95%B0%E5%AD%97%E6%9D%83%E9%99%90%E7%9A%84%E8%BD%AC%E6%8D%A2)
-      - [如何设置权限](#%E5%A6%82%E4%BD%95%E8%AE%BE%E7%BD%AE%E6%9D%83%E9%99%90)
+      - [如何设置权限](#%E5%A6%82%E4%BD%95%E8%AE%BE%E7%BD%AE%E6%9D%83%E9%99%90-1)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -73,32 +74,6 @@ rx = 4 +1 = 5
 
 若要同时设置 r-x （可读可运行不可写）权限则将该权限位 设置 为 4 +1 = 5  
 
-每个文件都有`拥有者`、`群组`、`其他组`三种权限的粒度。我们在设置权限的时候也是针对这几个粒度进行配置的。即我们可以使用三个数字来配置这三个权限粒度的权限。  
-
-> chmod <abc> file...
-
-````
-其中
-a,b,c各为一个数字，分别代表User、Group、及Other的权限。
-相当于简化版的
-chmod u=权限,g=权限,o=权限 file...
-而此处的权限将用8进制的数字来表示User、Group、及Other的读、写、执行权限
-````
-
-栗子：  
-
-设置所有人可以读写及执行
-
-```asciidoc
-chmod 777 file  (等价于  chmod u=rwx,g=rwx,o=rwx file 或  chmod a=rwx file)
-```
-
-设置拥有者可读写，其他人不可读写执行
-
-```
-chmod 600 file (等价于  chmod u=rw,g=---,o=--- file 或 chmod u=rw,go-rwx file )
-```
-
 ##### 三位数字权限的转换
 
 读，写，执行对应的权限二进制表示为
@@ -127,6 +102,34 @@ rw- 权限就是 4 + 2 = 6
 ...
 ```
 
+##### 如何设置权限
+
+每个文件都有`拥有者`、`群组`、`其他组`三种权限的粒度。我们在设置权限的时候也是针对这几个粒度进行配置的。即我们可以使用三个数字来配置这三个权限粒度的权限。  
+
+> chmod <abc> file...
+
+````
+其中
+a,b,c各为一个数字，分别代表User、Group、及Other的权限。
+相当于简化版的
+chmod u=权限,g=权限,o=权限 file...
+而此处的权限将用8进制的数字来表示User、Group、及Other的读、写、执行权限
+````
+
+栗子：  
+
+设置所有人可以读写及执行
+
+```asciidoc
+chmod 777 file  (等价于  chmod u=rwx,g=rwx,o=rwx file 或  chmod a=rwx file)
+```
+
+设置拥有者可读写，其他人不可读写执行
+
+```
+chmod 600 file (等价于  chmod u=rw,g=---,o=--- file 或 chmod u=rw,go-rwx file )
+```
+ 
 #### 四位数字权限
 
 linux除了设置正常的读写操作权限外，还有关于一类设置也是涉及到权限，叫做Linxu附加权限。包括 SET位权限（suid，sgid）和粘滞位权限（sticky）。  
