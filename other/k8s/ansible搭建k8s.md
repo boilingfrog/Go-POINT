@@ -5,3 +5,20 @@ CFSSL安装
 
 CFSSL是CloudFlare开源的一款PKI/TLS工具。 CFSSL 包含一个命令行工具 和一个用于 签名，验证并且捆绑TLS证书的 HTTP API 服务。 使用Go语言编写。  
 
+本机安装  
+
+```
+wget https://pkg.cfssl.org/R1.2/cfssl_linux-amd64
+chmod +x cfssl_linux-amd64
+sudo mv cfssl_linux-amd64 /root/local/bin/cfssl
+
+wget https://pkg.cfssl.org/R1.2/cfssljson_linux-amd64
+chmod +x cfssljson_linux-amd64
+sudo mv cfssljson_linux-amd64 /root/local/bin/cfssljson
+
+wget https://pkg.cfssl.org/R1.2/cfssl-certinfo_linux-amd64
+chmod +x cfssl-certinfo_linux-amd64
+sudo mv cfssl-certinfo_linux-amd64 /root/local/bin/cfssl-certinfo
+
+export PATH=/root/local/bin:$PATH
+```
