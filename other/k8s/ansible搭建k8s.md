@@ -22,3 +22,11 @@ sudo mv cfssl-certinfo_linux-amd64 /usr/local/bin/cfssl-certinfo
 
 export PATH=/usr/local/bin:$PATH
 ```
+
+git-lfs  
+
+是用来处理git中的大文件的，因为git中的每次提交，存储的是当前全新的文件快照，而不 是仅仅提交部分的快照。所以大文件的存在会造成仓库容量增大。  
+
+
+
+
