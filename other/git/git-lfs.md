@@ -1,5 +1,11 @@
-## git-fls
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+- [git-fls](#git-fls)
+  - [什么是git-fls](#%E4%BB%80%E4%B9%88%E6%98%AFgit-fls)
+  - [基本的命令](#%E5%9F%BA%E6%9C%AC%E7%9A%84%E5%91%BD%E4%BB%A4)
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
+## git-fls
 
 ### 什么是git-fls
 
@@ -34,5 +40,7 @@ git add file.psd
 git commit -m "Add design file"
 git push origin master
 ```
+
+
 
 
