@@ -37,15 +37,22 @@ func gen(ctx context.Context) <-chan int {
 }
 
 func main() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel() // 避免其他地方忘记 cancel，且重复调用不影响
+	//ctx, cancel := context.WithCancel(context.Background())
+	//defer cancel() // 避免其他地方忘记 cancel，且重复调用不影响
+	//
+	//for n := range gen(ctx) {
+	//	fmt.Println(n)
+	//	if n == 5 {
+	//		cancel()
+	//		break
+	//	}
+	//}
+	//
+	var s1 = []int{}
 
-	for n := range gen(ctx) {
-		fmt.Println(n)
-		if n == 5 {
-			cancel()
-			break
-		}
-	}
+	//s1 = append(s1, 21)
+	s1[1] = 0
+	fmt.Println(s1)
+
 	// ……
 }
