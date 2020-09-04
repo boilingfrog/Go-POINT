@@ -1,43 +1,10 @@
-package main
+## 什么是goroutine
 
-import (
-	"context"
-	"fmt"
-	"runtime"
-	"sync"
-	"time"
-)
+### 控制下goroutine的数量  
 
-//func main() {
-//	ch := make(chan struct{})
-//	go func() {
-//		fmt.Println("start working")
-//		time.Sleep(time.Second * 1)
-//		ch <- struct{}{}
-//	}()
-//
-//	<-ch
-//
-//	fmt.Println("finished")
-//}
+一个简单的demo控制下goroutine的数量，不至于无限申请
 
-func gen(ctx context.Context) <-chan int {
-	ch := make(chan int)
-	go func() {
-		var n int
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case ch <- n:
-				n++
-				time.Sleep(time.Second)
-			}
-		}
-	}()
-	return ch
-}
-
+```go
 func main() {
 	jobsCount := 100
 	group := sync.WaitGroup{}
@@ -62,3 +29,4 @@ func main() {
 	group.Wait()
 	fmt.Println("done!")
 }
+```
