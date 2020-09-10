@@ -5,6 +5,8 @@
   - [原子操作](#%E5%8E%9F%E5%AD%90%E6%93%8D%E4%BD%9C)
   - [Go中原子操作的支持](#go%E4%B8%AD%E5%8E%9F%E5%AD%90%E6%93%8D%E4%BD%9C%E7%9A%84%E6%94%AF%E6%8C%81)
     - [CAS](#cas)
+    - [增加或减少](#%E5%A2%9E%E5%8A%A0%E6%88%96%E5%87%8F%E5%B0%91)
+    - [读取或写入](#%E8%AF%BB%E5%8F%96%E6%88%96%E5%86%99%E5%85%A5)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -74,22 +76,56 @@ func addValue(delta int32) {
 }
 ```
 
+这一系列的函数需要比较后再进行交换，也有不需要进行比较就进行交换的原子操作。  
 
+```go
+func SwapInt32(addr *int32, new int32) (old int32)
+func SwapInt64(addr *int64, new int64) (old int64)
+func SwapPointer(addr *unsafe.Pointer, new unsafe.Pointer) (old unsafe.Pointer)
+func SwapUint32(addr *uint32, new uint32) (old uint32)
+func SwapUint64(addr *uint64, new uint64) (old uint64)
+func SwapUintptr(addr *uintptr, new uintptr) (old uintptr)
+```
 
+竞争条件是由于异步的访问共享资源，并试图同时读写该资源而导致的，使用互斥锁和通道的思路都是在线程获得到访问权后阻塞其他线程对共享内存的访问，
+而使用原子操作解决数据竞争问题则是利用了其不可被打断的特性。
 
+#### 增加或减少
 
+对一个数值进行增加或者减少的行为也需要保证是原子的，它对应于atomic包的函数就是
 
+```go
+func AddInt32(addr *int32, delta int32) (new int32)
+func AddInt64(addr *int64, delta int64) (new int64)
+func AddUint32(addr *uint32, delta uint32) (new uint32)
+func AddUint64(addr *uint64, delta uint64) (new uint64)
+func AddUintptr(addr *uintptr, delta uintptr) (new uintptr)
+```
 
+#### 读取或写入
 
+当我们要读取一个变量的时候，很有可能这个变量正在被写入，这个时候，我们就很有可能读取到写到一半的数据。 所以读取操作是需要一个原子行为的。
+在atomic包中就是Load开头的函数群。  
 
+```go
+func LoadInt32(addr *int32) (val int32)
+func LoadInt64(addr *int64) (val int64)
+func LoadPointer(addr *unsafe.Pointer) (val unsafe.Pointer)
+func LoadUint32(addr *uint32) (val uint32)
+func LoadUint64(addr *uint64) (val uint64)
+func LoadUintptr(addr *uintptr) (val uintptr)
+```
 
+读取是有原子性的操作的，同样写入atomic包也提供了相关的操作包。
 
-
-
-
-
-
-
+```go
+func StoreInt32(addr *int32, val int32)
+func StoreInt64(addr *int64, val int64)
+func StorePointer(addr *unsafe.Pointer, val unsafe.Pointer)
+func StoreUint32(addr *uint32, val uint32)
+func StoreUint64(addr *uint64, val uint64)
+func StoreUintptr(addr *uintptr, val uintptr)
+```
 
 ### 参考
 【Go并发编程之美-CAS操作】https://zhuanlan.zhihu.com/p/56733484  
