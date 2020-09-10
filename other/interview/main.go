@@ -43,6 +43,9 @@ func main() {
 	rh := http.RedirectHandler("http://www.baidu.com", 307)
 	mux.Handle("/foo", rh)
 
+	var dmap = make(map[int]string, 1)
+	_ = dmap
+
 	log.Println("Listening...")
 	http.ListenAndServe(":3000", mux)
 }
