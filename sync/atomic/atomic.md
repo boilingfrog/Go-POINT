@@ -51,6 +51,31 @@ func CompareAndSwapUintptr(addr *uintptr, old, new uintptr) (swapped bool)
 总是假设被操作的值未曾改变（即与旧值相等），并一旦确认这个假设的真实性就立即进行值替换。在被操作值被频繁变更的情况下，CAS操作并不那么容易成功
 所以需要不断进行尝试，直到成功为止。  
 
+举个栗子  
+
+```go
+func main() {
+	fmt.Println("======old value=======")
+	fmt.Println(value)
+	addValue(10)
+	fmt.Println("======New value=======")
+	fmt.Println(value)
+
+}
+
+//不断地尝试原子地更新value的值,直到操作成功为止
+func addValue(delta int32) {
+	for {
+		v := value
+		if atomic.CompareAndSwapInt32(&value, v, v+delta) {
+			break
+		}
+	}
+}
+```
+
+
+
 
 
 
