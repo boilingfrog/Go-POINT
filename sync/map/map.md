@@ -10,6 +10,7 @@
     - [Delete](#delete)
     - [LoadOrStore](#loadorstore)
   - [总结](#%E6%80%BB%E7%BB%93)
+  - [流程图片](#%E6%B5%81%E7%A8%8B%E5%9B%BE%E7%89%87)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -427,8 +428,13 @@ func (e *entry) tryLoadOrStore(i interface{}) (actual interface{}, loaded, ok bo
 
 6、当 dirty 为 nil 的时候，read 就代表 map 所有的数据；当 dirty 不为 nil 的时候，dirty 才代表 map 所有的数据。  
 
+### 流程图片
+
+最后附上一张不错的图片
+
 ![alt](../../img//go-sync-map-diagram.png)
 
-
 ### 参考
-【Go sync.Map 实现】https://wudaijun.com/2018/02/go-sync-map-implement/
+【Go sync.Map 实现】https://wudaijun.com/2018/02/go-sync-map-implement/  
+【深度解密 Go 语言之 sync.map】https://www.cnblogs.com/qcrao-2018/p/12833787.html  
+【图片】http://russellluo.com/2017/06/go-sync-map-diagram.html
