@@ -279,7 +279,7 @@ func (e *entry) tryExpungeLocked() (isExpunged bool) {
 ```
 梳理下流程：  
 
-1、首先还是去read map中查询，存在并且p!=expunged,直接修改。（由于修改的是 entry 内部的 pointer，因此 dirty map 也可见）
+1、首先还是去read map中查询，存在并且p!=expunged,直接修改。（由于修改的是 entry 内部的 pointer，因此 dirty map 也可见）  
 2、如果read map中存在该key，但p == expunged。加锁更新p的状态，然后直接更新该entry (此时m.dirty==nil或m.dirty[key]==e)  
 3、如果read map中不存在该Key，但dirty map中存在该key，直接写入更新entry(read map中仍然没有)   
 4、如果read map和dirty map都不存在该key     
