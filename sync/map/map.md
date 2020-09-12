@@ -283,6 +283,54 @@ func (e *entry) tryExpungeLocked() (isExpunged bool) {
 - b. 更新amended字段，标识dirty map中存在read map中没有的key  
 - c. 将k v写入dirty map中，read.m不变  
 
+#### Delete
+
+```go
+// Delete deletes the value for a key.
+func (m *Map) Delete(key interface{}) {
+    // 从read map中寻找
+	read, _ := m.read.Load().(readOnly)
+	e, ok := read.m[key]
+    // 没找到
+	if !ok && read.amended { // read.amended为true代表dirty map中含有m中没有的元素
+		m.mu.Lock()
+        // double check
+		read, _ = m.read.Load().(readOnly)
+		e, ok = read.m[key]
+        // 第二次仍然没找到，但dirty map中存在，则直接从dirty map删除
+		if !ok && read.amended {
+			delete(m.dirty, key)
+		}
+		m.mu.Unlock()
+	}
+    // 如果read存在，将entry.p 置为 nil
+	if ok {
+		e.delete()
+	}
+}
+
+func (e *entry) delete() (hadValue bool) {
+	for {
+		p := atomic.LoadPointer(&e.p)
+		if p == nil || p == expunged {
+			return false
+		}
+		if atomic.CompareAndSwapPointer(&e.p, p, nil) {
+			return true
+		}
+	}
+}
+```
+
+梳理下流程：  
+1、先去read map中寻找，如果存在就直接删除  
+2、如果没找到，并且 read.amended为true代表dirty map中存在，依照传统进行 double check。  
+3、read map找到就删除，没找到判断dirty map是否存在，存在了就删除  
+
+
+### 总结
+
+
 
 
 ### 参考
