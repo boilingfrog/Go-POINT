@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"net/http"
 	_ "net/http/pprof"
 	"time"
 )
@@ -40,10 +39,20 @@ func gen(ctx context.Context) <-chan int {
 
 func main() {
 
-	// 开启pprof，监听请求
-	ip := "0.0.0.0:5555"
-	if err := http.ListenAndServe(ip, nil); err != nil {
-		fmt.Printf("start pprof failed on %s\n", ip)
+	//// 开启pprof，监听请求
+	//ip := "0.0.0.0:5555"
+	//if err := http.ListenAndServe(ip, nil); err != nil {
+	//	fmt.Printf("start pprof failed on %s\n", ip)
+	//}
+
+	var si = make([]int, 2)
+	si = append(si, 1)
+	si = append(si, 23)
+
+	fmt.Println(si)
+	for item := range si {
+		si = append(si, 1)
+		_ = item
 	}
 
 	//rand.Seed(time.Now().UnixNano())
