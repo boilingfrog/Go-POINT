@@ -45,15 +45,20 @@ func main() {
 	//	fmt.Printf("start pprof failed on %s\n", ip)
 	//}
 
-	var si = make([]int, 2)
-	si = append(si, 1)
-	si = append(si, 23)
+	var cs = []int{2, 3, 5, 7, 8, 9, 3}
+	fmt.Println(cs)
+	fmt.Println(cap(cs))
 
-	fmt.Println(si)
-	for item := range si {
-		si = append(si, 1)
-		_ = item
-	}
+	//ch := make(chan int, 3)
+	//
+	//ch <- 1
+	//ch <- 2
+	//ch <- 3
+	//
+	//close(ch)
+	//for value := range ch {
+	//	fmt.Println("value:", value)
+	//}
 
 	//rand.Seed(time.Now().UnixNano())
 	//log.SetFlags(0)
