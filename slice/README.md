@@ -1,13 +1,24 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [切片](#%E5%88%87%E7%89%87)
+  - [什么是slice](#%E4%BB%80%E4%B9%88%E6%98%AFslice)
+    - [slice的创建使用](#slice%E7%9A%84%E5%88%9B%E5%BB%BA%E4%BD%BF%E7%94%A8)
+    - [slice使用的一点规范](#slice%E4%BD%BF%E7%94%A8%E7%9A%84%E4%B8%80%E7%82%B9%E8%A7%84%E8%8C%83)
+- [slice和数组的区别](#slice%E5%92%8C%E6%95%B0%E7%BB%84%E7%9A%84%E5%8C%BA%E5%88%AB)
+- [slice的append是如何发生的](#slice%E7%9A%84append%E6%98%AF%E5%A6%82%E4%BD%95%E5%8F%91%E7%94%9F%E7%9A%84)
+  - [复制Slice和Map注意事项](#%E5%A4%8D%E5%88%B6slice%E5%92%8Cmap%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9)
+    - [接收 Slice 和 Map 作为入参](#%E6%8E%A5%E6%94%B6-slice-%E5%92%8C-map-%E4%BD%9C%E4%B8%BA%E5%85%A5%E5%8F%82)
+    - [返回 Slice 和 Map](#%E8%BF%94%E5%9B%9E-slice-%E5%92%8C-map)
+  - [切片的截取](#%E5%88%87%E7%89%87%E7%9A%84%E6%88%AA%E5%8F%96)
+    - [不发生扩容情况下修改新切片](#%E4%B8%8D%E5%8F%91%E7%94%9F%E6%89%A9%E5%AE%B9%E6%83%85%E5%86%B5%E4%B8%8B%E4%BF%AE%E6%94%B9%E6%96%B0%E5%88%87%E7%89%87)
+    - [发生扩容情况下修改新的切片](#%E5%8F%91%E7%94%9F%E6%89%A9%E5%AE%B9%E6%83%85%E5%86%B5%E4%B8%8B%E4%BF%AE%E6%94%B9%E6%96%B0%E7%9A%84%E5%88%87%E7%89%87)
+  - [总结](#%E6%80%BB%E7%BB%93)
+  - [参考](#%E5%8F%82%E8%80%83)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## 切片
-
-- [什么是slice](#%e4%bb%80%e4%b9%88%e6%98%afslice)
-   - [slice的创建使用](#slice%e7%9a%84%e5%88%9b%e5%bb%ba%e4%bd%bf%e7%94%a8)
-   - [slice使用的一点规范](#slice%e4%bd%bf%e7%94%a8%e7%9a%84%e4%b8%80%e7%82%b9%e8%a7%84%e8%8c%83)
-- [slice和数组的区别](#slice%e5%92%8c%e6%95%b0%e7%bb%84%e7%9a%84%e5%8c%ba%e5%88%ab)
-- [slice的append是如何发生的](#slice%e7%9a%84append%e6%98%af%e5%a6%82%e4%bd%95%e5%8f%91%e7%94%9f%e7%9a%84)
-- [复制Slice和Map注意事项](#%e5%a4%8d%e5%88%b6Slice%e5%92%8cMap%e6%b3%a8%e6%84%8f%e4%ba%8b%e9%a1%b9)
-
-
 
 ### 什么是slice
 
@@ -443,6 +454,174 @@ snapshot := stats.Snapshot()
 </td></tr>
 </tbody></table>
 
+### 切片的截取
+
+基于已有 slice 创建新 slice 对象，被称为 reslice。新 slice 和老 slice 共用底层数组，新老 slice 对底层数组的更改都会影响到彼此。基于数
+组创建的新 slice 对象也是同样的效果：对数组或 slice 元素作的更改都会影响到彼此。  
+
+如果新截取的切片发生了扩容了，就会重新申请新的内存空间，这样就新截取的切片就不指向原来的地址空间了。  
+
+截取的例子：
+
+```go
+ data := [...]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
+ slice := data[2:4:6] // data[low, high, max]
+
+max >= high >= low
+```
+
+或者
+
+```go
+ data := [...]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
+ slice := data[2:4] // data[low, high]
+
+```
+
+这两个`low, high`对应的都是前闭后开。  
+
+区别就是如果不设置`max`,那么新切片的长度cap就是原切片的长度`len(data)-low`  
+设置了`max`那么新切片的长度cap就是原切片的长度`max-low`  
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+	s1 := []int{2, 3, 6, 2, 4, 5, 6, 7}
+	fmt.Println(cap(s1), len(s1))
+
+	s2 := s1[2:3:4]
+	fmt.Println("带上max")
+	fmt.Println(s2)
+	fmt.Println(cap(s2), len(s2))
+
+	fmt.Println("不带max")
+	s3 := s1[2:3]
+	fmt.Println(s3)
+	fmt.Println(cap(s3), len(s3))
+}
+```
+
+输出
+
+```go
+8 8
+带上max
+[6]
+2 1
+不带max
+[6]
+6 1
+```
+
+#### 不发生扩容情况下修改新切片
+
+截取了新的切片，当不发生扩容的情况下，操作新的切片是会对老切片的数据产生影响，因为他们指向的是通一地址空间。  
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+	s1 := []int{2, 3, 6, 2, 4, 5, 6, 7}
+	fmt.Println("原切片")
+	fmt.Println("cap", cap(s1), "len", len(s1))
+
+	s2 := s1[6:7]
+	fmt.Println("新切片")
+	fmt.Println("cap", cap(s2), "len", len(s2))
+	fmt.Println(s2)
+
+	s2 = append(s2, 100)
+	fmt.Println("append之后的新切片")
+	fmt.Println("cap", cap(s2), "len", len(s2))
+	fmt.Println(cap(s2), len(s2))
+	fmt.Println(s2)
+
+	fmt.Println("老切片")
+	fmt.Println(s1)
+}
+```
+
+打印下结果
+
+```go
+原切片
+cap 8 len 8
+新切片
+cap 2 len 1
+[6]
+append之后的新切片
+cap 2 len 2
+2 2
+[6 100]
+老切片
+[2 3 6 2 4 5 6 100]
+```
+
+#### 发生扩容情况下修改新的切片
+
+截取的新的切片发生扩容的情况下，新切片将指向一个新的数据空间。  
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+	s1 := []int{2, 3, 6, 2, 4, 5, 6, 7}
+	fmt.Println("原切片")
+	fmt.Println("cap", cap(s1), "len", len(s1))
+
+	s2 := s1[6:7]
+	fmt.Println("新切片")
+	fmt.Println("cap", cap(s2), "len", len(s2))
+	fmt.Println(s2)
+
+	s2 = append(s2, 100)
+	fmt.Println("append之后的新切片")
+	fmt.Println("cap", cap(s2), "len", len(s2))
+	fmt.Println(cap(s2), len(s2))
+	fmt.Println(s2)
+
+	fmt.Println("老切片")
+	fmt.Println(s1)
+
+	s2 = append(s2, 888)
+	fmt.Println("append之后的新切片，发生扩容")
+	fmt.Println("cap", cap(s2), "len", len(s2))
+	fmt.Println(cap(s2), len(s2))
+	fmt.Println(s2)
+
+	fmt.Println("老切片")
+	fmt.Println(s1)
+
+}
+```
+
+打印下结果
+
+```go
+cap 8 len 8
+新切片
+cap 2 len 1
+[6]
+append之后的新切片
+cap 2 len 2
+2 2
+[6 100]
+老切片
+[2 3 6 2 4 5 6 100]
+append之后的新切片，发生扩容
+cap 4 len 3
+4 3
+[6 100 888]
+老切片
+[2 3 6 2 4 5 6 100]
+```
 
 ### 总结
 - 切片是对底层数组的一个抽象，描述了它的一个片段。
