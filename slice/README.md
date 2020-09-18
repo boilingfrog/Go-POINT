@@ -5,7 +5,7 @@
   - [什么是slice](#%E4%BB%80%E4%B9%88%E6%98%AFslice)
     - [slice的创建使用](#slice%E7%9A%84%E5%88%9B%E5%BB%BA%E4%BD%BF%E7%94%A8)
     - [slice使用的一点规范](#slice%E4%BD%BF%E7%94%A8%E7%9A%84%E4%B8%80%E7%82%B9%E8%A7%84%E8%8C%83)
-- [slice和数组的区别](#slice%E5%92%8C%E6%95%B0%E7%BB%84%E7%9A%84%E5%8C%BA%E5%88%AB)
+  - [slice和数组的区别](#slice%E5%92%8C%E6%95%B0%E7%BB%84%E7%9A%84%E5%8C%BA%E5%88%AB)
   - [slice的append是如何发生的](#slice%E7%9A%84append%E6%98%AF%E5%A6%82%E4%BD%95%E5%8F%91%E7%94%9F%E7%9A%84)
   - [复制Slice和Map注意事项](#%E5%A4%8D%E5%88%B6slice%E5%92%8Cmap%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9)
     - [接收 Slice 和 Map 作为入参](#%E6%8E%A5%E6%94%B6-slice-%E5%92%8C-map-%E4%BD%9C%E4%B8%BA%E5%85%A5%E5%8F%82)
@@ -176,7 +176,7 @@ slice := make([]int, 5, 10) // 长度为5，容量为10
   </td></tr>
   </tbody></table>
   
-## slice和数组的区别
+### slice和数组的区别
 
 slice的底层是数组，slice是对数组的封装，它描述一个数组的片段。两者都可以通过下标访问单个元素。
 
