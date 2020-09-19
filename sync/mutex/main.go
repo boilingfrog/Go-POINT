@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"sync"
 )
 
@@ -14,9 +13,18 @@ const rwmutexMaxReaders = 1 << 30
 
 func main() {
 	t := test{}
-	t.mx.RLock()
-	t.mx.Lock()
-	t.mx.RLock()
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		t.mx.RLock()
+	}()
 
-	fmt.Println(rwmutexMaxReaders)
+	go func() {
+		defer wg.Done()
+		t.mx.Lock()
+	}()
+
+	wg.Wait()
+
 }
