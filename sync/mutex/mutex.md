@@ -1,9 +1,10 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [锁](#%E9%94%81)
-  - [RWMutex](#rwmutex)
-    - [RLock](#rlock)
+
+- [读写锁](#%E8%AF%BB%E5%86%99%E9%94%81)
+  - [基本结构](#%E5%9F%BA%E6%9C%AC%E7%BB%93%E6%9E%84)
+  - [RLock](#rlock)
   - [RUnlock](#runlock)
   - [Lock](#lock)
   - [Unlock](#unlock)
@@ -16,9 +17,9 @@
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-## 锁
+## 读写锁
 
-### RWMutex
+### 基本结构
 
 写锁需要阻塞写锁：一个协程拥有写锁时，其他协程写锁定需要阻塞  
 写锁需要阻塞读锁：一个协程拥有写锁时，其他协程读锁定需要阻塞  
@@ -45,7 +46,7 @@ type RWMutex struct {
 }
 ````
 
-#### RLock
+### RLock
 
 ```go
 // 读加锁
