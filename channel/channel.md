@@ -58,7 +58,21 @@ Golang中使用 CSP中 channel 这个概念。channel 是被单独创建并且�
 #### channel的定义
 
 channel 是一个引用类型，所以在它被初始化之前，它的值是 nil，channel 使用 make 函数进行初始化。go中内置的类型，初始化的时候，我们需要初始化
-channel的长度，如果
+channel的长度。  
+
+指定了长度代表有缓冲
+```go
+ch := make(chan int, 1)
+```
+
+未指定就是无缓冲
+```go
+ch := make(chan int)
+```
+
+有缓冲和无缓冲的差别是什么呢？  
+
+
 
 
 
