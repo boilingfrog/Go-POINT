@@ -113,11 +113,33 @@ type hchan struct {
 简单分析下:  
 
 buf指向底层的循环数组，只有缓冲类型的channel才有。  
+
 sendx，recvx 均指向底层循环数组，表示当前可以发送和接收的元素位置索引值（相对于底层数组）。  
-sendq，recvq 分别表示被阻塞的 goroutine，这些 goroutine 由于尝试读取 channel 或向 channel 发送数据而被阻塞。  
+
+sendq，recvq 分别表示被阻塞的 goroutine，这些 goroutine 由于尝试读取 channel 或向 channel 发送数据而被阻塞。 
+  
 waitq 相关的属性，可以理解为是一个 FIFO 的标准队列。其中 recvq 中是正在等待接收数据的 goroutine，sendq 中是等待发送数据的 goroutine。
 waitq 使用双向链表实现。  
+
 lock通过互斥锁保证数据安全。  
+
+设计思路：  
+
+对于无缓冲的是没有buf,有缓冲的buf是有buf的，长度也就是创建channel制定的长度。  
+
+有缓冲channel的buf是循环使用的，已经读取过的，会被后面新写入的消息覆盖，通过sendx，recvx这两个指向底层数据的指针的滑动，实现对buf的复用。  
+
+具体的消息写入读读取，以及goroutine的阻塞，请看下面  
+
+### 有缓冲channel的操作
+
+#### 读取
+
+
+
+#### 写入
+
+
 
 
 
@@ -137,4 +159,5 @@ lock通过互斥锁保证数据安全。
 【Go的CSP并发模型】https://www.jianshu.com/p/a3c9a05466e1  
 【goroutine, channel 和 CSP】http://www.moye.me/2017/05/05/go-concurrency-patterns/  
 【通过同步和加锁解决多线程的线程安全问题】https://blog.ailemon.me/2019/05/15/solving-multithreaded-thread-safety-problems-by-synchronization-and-locking/  
-【golang channel 有缓冲 与 无缓冲 的重要区别】https://my.oschina.net/u/157514/blog/149192
+【golang channel 有缓冲 与 无缓冲 的重要区别】https://my.oschina.net/u/157514/blog/149192  
+【Golang channel 源码深度剖析】https://www.cyhone.com/articles/analysis-of-golang-channel/   
