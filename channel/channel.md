@@ -72,6 +72,27 @@ ch := make(chan int)
 
 有缓冲和无缓冲的差别是什么呢？  
 
+对不带缓冲的 channel 进行的操作实际上可以看作“同步模式”，带缓冲的则称为“异步模式”。  
+
+同步模式下，发送方和接收方要同步就绪，只有在两者都 ready 的情况下，数据才能在两者间传输（后面会看到，实际上就是内存拷贝）。否则，任意一方
+先行进行发送或接收操作，都会被挂起，等待另一方的出现才能被唤醒。  
+
+异步模式下，在缓冲槽可用的情况下（有剩余容量），发送和接收操作都可以顺利进行。否则，操作的一方（如写入）同样会被挂起，直到出现相反操作
+（如接收）才会被唤醒。  
+
+举个栗子：  
+
+无缓冲的  就是一个送信人去你家门口送信 ，你不在家 他不走，你一定要接下信，他才会走。  
+
+无缓冲保证信能到你手上  
+
+有缓冲的 就是一个送信人去你家仍到你家的信箱 转身就走 ，除非你的信箱满了 他必须等信箱空下来。  
+
+有缓冲的 保证 信能进你家的邮箱  
+
+
+
+
 
 
 
@@ -87,3 +108,4 @@ ch := make(chan int)
 【Go的CSP并发模型】https://www.jianshu.com/p/a3c9a05466e1  
 【goroutine, channel 和 CSP】http://www.moye.me/2017/05/05/go-concurrency-patterns/  
 【通过同步和加锁解决多线程的线程安全问题】https://blog.ailemon.me/2019/05/15/solving-multithreaded-thread-safety-problems-by-synchronization-and-locking/  
+【golang channel 有缓冲 与 无缓冲 的重要区别】https://my.oschina.net/u/157514/blog/149192
