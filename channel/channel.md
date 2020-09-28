@@ -91,6 +91,35 @@ ch := make(chan int)
 有缓冲的 保证 信能进你家的邮箱  
 
 
+### 源码剖析
+
+```go
+type hchan struct {
+    qcount   uint           // buffer 中已放入的元素个数
+    dataqsiz uint           // 用户构造 channel 时指定的 buf 大小,也就是底层循环数组的长度
+    buf      unsafe.Pointer // 指向底层循环数组的指针 只针对有缓冲的 channel
+    elemsize uint16         // buffer 中每个元素的大小
+    closed   uint32         // channel 是否关闭，== 0 代表未 closed
+    elemtype *_type         // channel 元素的类型信息
+    sendx    uint           // 已发送元素在循环数组中的索引
+    recvx    uint           // 已接收元素在循环数组中的索引
+    recvq    waitq          // 等待接收的 goroutine  list of recv waiters
+    sendq    waitq          // 等待发送的 goroutine list of send waiters
+
+    lock mutex              // 保护 hchan 中所有字段
+}
+```
+
+简单分析下:  
+
+buf指向底层的循环数组，只有缓冲类型的channel才有。  
+sendx，recvx 均指向底层循环数组，表示当前可以发送和接收的元素位置索引值（相对于底层数组）。  
+sendq，recvq 分别表示被阻塞的 goroutine，这些 goroutine 由于尝试读取 channel 或向 channel 发送数据而被阻塞。  
+waitq 相关的属性，可以理解为是一个 FIFO 的标准队列。其中 recvq 中是正在等待接收数据的 goroutine，sendq 中是等待发送数据的 goroutine。
+waitq 使用双向链表实现。  
+lock通过互斥锁保证数据安全。  
+
+
 
 
 
