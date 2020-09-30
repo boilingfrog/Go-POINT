@@ -137,7 +137,7 @@ lock通过互斥锁保证数据安全。
 func makechan(t *chantype, size int) *hchan {
 	elem := t.elem
 
-	// compiler checks this but be safe.
+	// 做的一些检查
 	if elem.size >= 1<<16 {
 		throw("makechan: invalid channel element type")
 	}
@@ -157,21 +157,22 @@ func makechan(t *chantype, size int) *hchan {
 	var c *hchan
 	switch {
 	case mem == 0:
-		// Queue or element size is zero.
+		// 队列或元素大小为零
+        // 当前 Channel 中不存在缓冲区，为 runtime.hchan 分配一段内存空间
 		c = (*hchan)(mallocgc(hchanSize, nil, true))
-		// Race detector uses this location for synchronization.
 		c.buf = c.raceaddr()
 	case elem.ptrdata == 0:
-		// Elements do not contain pointers.
-		// Allocate hchan and buf in one call.
+		// 类型不是指针
+		// 一次性给channel和buf（也就是底层数组）分类一块连续的空间
 		c = (*hchan)(mallocgc(hchanSize+mem, nil, true))
 		c.buf = add(unsafe.Pointer(c), hchanSize)
 	default:
-		// Elements contain pointers.
+		// 默认情况下会单独为 runtime.hchan 和缓冲区分配内存
 		c = new(hchan)
 		c.buf = mallocgc(mem, elem, true)
 	}
 
+	// 最后更新几个字段的值
 	c.elemsize = uint16(elem.size)
 	c.elemtype = elem
 	c.dataqsiz = uint(size)
