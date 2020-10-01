@@ -196,19 +196,8 @@ goroutine，最后结束发发送过程。
 3、如果缓冲区满了，那么就把写入数据的goroutine放到sendq中，进入睡眠，最后等待goroutine被唤醒。  
 
 ```go
-/*
- * generic single channel send/recv
- * If block is not nil,
- * then the protocol will not
- * sleep but return if it could
- * not complete.
- *
- * sleep can wake up with g.param == nil
- * when a channel involved in the sleep has
- * been closed.  it is easiest to loop and re-run
- * the operation; we'll see that it's now closed.
- */
 func chansend(c *hchan, ep unsafe.Pointer, block bool, callerpc uintptr) bool {
+    // 如果 channel 是 nil
 	if c == nil {
 		if !block {
 			return false
@@ -224,21 +213,11 @@ func chansend(c *hchan, ep unsafe.Pointer, block bool, callerpc uintptr) bool {
 	if raceenabled {
 		racereadpc(c.raceaddr(), callerpc, funcPC(chansend))
 	}
-
-	// Fast path: check for failed non-blocking operation without acquiring the lock.
+	// 对于不阻塞的 send，快速检测失败场景
 	//
-	// After observing that the channel is not closed, we observe that the channel is
-	// not ready for sending. Each of these observations is a single word-sized read
-	// (first c.closed and second c.recvq.first or c.qcount depending on kind of channel).
-	// Because a closed channel cannot transition from 'ready for sending' to
-	// 'not ready for sending', even if the channel is closed between the two observations,
-	// they imply a moment between the two when the channel was both not yet closed
-	// and not ready for sending. We behave as if we observed the channel at that moment,
-	// and report that the send cannot proceed.
-	//
-	// It is okay if the reads are reordered here: if we observe that the channel is not
-	// ready for sending and then observe that it is not closed, that implies that the
-	// channel wasn't closed during the first observation.
+	// 如果 channel 未关闭且 channel 没有多余的缓冲空间。这可能是：
+	// 1. channel 是非缓冲型的，且等待接收队列里没有 goroutine
+	// 2. channel 是缓冲型的，但循环数组已经装满了元素
 	if !block && c.closed == 0 && ((c.dataqsiz == 0 && c.recvq.first == nil) ||
 		(c.dataqsiz > 0 && c.qcount == c.dataqsiz)) {
 		return false
@@ -248,43 +227,53 @@ func chansend(c *hchan, ep unsafe.Pointer, block bool, callerpc uintptr) bool {
 	if blockprofilerate > 0 {
 		t0 = cputicks()
 	}
-
+    // 加锁
 	lock(&c.lock)
-
+    
+    // 如果channel关闭了
 	if c.closed != 0 {
 		unlock(&c.lock)
 		panic(plainError("send on closed channel"))
 	}
 
+    // 如果接收队列里有 goroutine，直接将要发送的数据拷贝到接收 goroutine
 	if sg := c.recvq.dequeue(); sg != nil {
 		// Found a waiting receiver. We pass the value we want to send
 		// directly to the receiver, bypassing the channel buffer (if any).
 		send(c, sg, ep, func() { unlock(&c.lock) }, 3)
 		return true
 	}
-
+    
+    // 缓冲型的channel，buffer 中已放入的元素个数小于循环数组的长度
 	if c.qcount < c.dataqsiz {
-		// Space is available in the channel buffer. Enqueue the element to send.
+		// qp 指向 buf 的 sendx 位置
 		qp := chanbuf(c, c.sendx)
 		if raceenabled {
 			raceacquire(qp)
 			racerelease(qp)
 		}
+        // 将数据从 ep 处拷贝到 qp
 		typedmemmove(c.elemtype, qp, ep)
+        // 发送的游标加1
 		c.sendx++
+        // 如果发送的游标值等于容量值，游标值归0
 		if c.sendx == c.dataqsiz {
 			c.sendx = 0
 		}
+        // 缓冲区的数量加1
 		c.qcount++
+        // 解锁
 		unlock(&c.lock)
 		return true
 	}
-
+    // buff空间已经满了
+    // 如果不需要阻塞，则直接返回错误
 	if !block {
 		unlock(&c.lock)
 		return false
 	}
 
+    // 否则，阻塞该 goroutine.
 	// Block on the channel. Some receiver will complete our operation for us.
 	gp := getg()
 	mysg := acquireSudog()
@@ -301,7 +290,10 @@ func chansend(c *hchan, ep unsafe.Pointer, block bool, callerpc uintptr) bool {
 	mysg.c = c
 	gp.waiting = mysg
 	gp.param = nil
+    // 将该 goroutine 的结构放入 sendq 队列
 	c.sendq.enqueue(mysg)
+    // 休眠
+    // 等待 goready 唤醒
 	goparkunlock(&c.lock, waitReasonChanSend, traceEvGoBlockSend, 3)
 	// Ensure the value being sent is kept alive until the
 	// receiver copies it out. The sudog has a pointer to the
