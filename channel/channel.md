@@ -197,7 +197,7 @@ goroutine，最后结束发发送过程。
 
 ```go
 func chansend(c *hchan, ep unsafe.Pointer, block bool, callerpc uintptr) bool {
-    // 如果 channel 是 nil
+	// 如果 channel 是 nil
 	if c == nil {
 		if !block {
 			return false
@@ -227,24 +227,24 @@ func chansend(c *hchan, ep unsafe.Pointer, block bool, callerpc uintptr) bool {
 	if blockprofilerate > 0 {
 		t0 = cputicks()
 	}
-    // 加锁
+	// 加锁
 	lock(&c.lock)
-    
-    // 如果channel关闭了
+
+	// 如果channel关闭了
 	if c.closed != 0 {
 		unlock(&c.lock)
 		panic(plainError("send on closed channel"))
 	}
 
-    // 如果接收队列里有 goroutine，直接将要发送的数据拷贝到接收 goroutine
+	// 如果接收队列里有 goroutine，直接将要发送的数据拷贝到接收 goroutine
 	if sg := c.recvq.dequeue(); sg != nil {
 		// Found a waiting receiver. We pass the value we want to send
 		// directly to the receiver, bypassing the channel buffer (if any).
 		send(c, sg, ep, func() { unlock(&c.lock) }, 3)
 		return true
 	}
-    
-    // 缓冲型的channel，buffer 中已放入的元素个数小于循环数组的长度
+
+	// 缓冲型的channel，buffer 中已放入的元素个数小于循环数组的长度
 	if c.qcount < c.dataqsiz {
 		// qp 指向 buf 的 sendx 位置
 		qp := chanbuf(c, c.sendx)
@@ -252,28 +252,28 @@ func chansend(c *hchan, ep unsafe.Pointer, block bool, callerpc uintptr) bool {
 			raceacquire(qp)
 			racerelease(qp)
 		}
-        // 将数据从 ep 处拷贝到 qp
+		// 将数据从 ep 处拷贝到 qp
 		typedmemmove(c.elemtype, qp, ep)
-        // 发送的游标加1
+		// 发送的游标加1
 		c.sendx++
-        // 如果发送的游标值等于容量值，游标值归0
+		// 如果发送的游标值等于容量值，游标值归0
 		if c.sendx == c.dataqsiz {
 			c.sendx = 0
 		}
-        // 缓冲区的数量加1
+		// 缓冲区的数量加1
 		c.qcount++
-        // 解锁
+		// 解锁
 		unlock(&c.lock)
 		return true
 	}
-    // buff空间已经满了
-    // 如果不需要阻塞，则直接返回错误
+	// buff空间已经满了
+	// 如果不需要阻塞，则直接返回错误
 	if !block {
 		unlock(&c.lock)
 		return false
 	}
 
-    // 否则，阻塞该 goroutine.
+	// 否则，阻塞该 goroutine.
 	// Block on the channel. Some receiver will complete our operation for us.
 	gp := getg()
 	mysg := acquireSudog()
@@ -290,10 +290,10 @@ func chansend(c *hchan, ep unsafe.Pointer, block bool, callerpc uintptr) bool {
 	mysg.c = c
 	gp.waiting = mysg
 	gp.param = nil
-    // 将该 goroutine 的结构放入 sendq 队列
+	// 将该 goroutine 的结构放入 sendq 队列
 	c.sendq.enqueue(mysg)
-    // 休眠
-    // 等待 goready 唤醒
+	// 休眠
+	// 等待 goready 唤醒
 	goparkunlock(&c.lock, waitReasonChanSend, traceEvGoBlockSend, 3)
 	// Ensure the value being sent is kept alive until the
 	// receiver copies it out. The sudog has a pointer to the
