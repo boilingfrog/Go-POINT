@@ -322,6 +322,8 @@ func chansend(c *hchan, ep unsafe.Pointer, block bool, callerpc uintptr) bool {
 }
 ```
 
+简单的流程图如下：  
+
 
 
 
