@@ -326,7 +326,7 @@ func chansend(c *hchan, ep unsafe.Pointer, block bool, callerpc uintptr) bool {
 
 ![Aaron Swartz](/img/channel_send.png?raw=true)
 
-
+### 读取数据
 
 
 
