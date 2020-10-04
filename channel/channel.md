@@ -328,7 +328,14 @@ func chansend(c *hchan, ep unsafe.Pointer, block bool, callerpc uintptr) bool {
 
 ### 读取数据
 
+从一个channel读取数据的流程如下：  
 
+1、如果等待发送的`goroutine list`,也就是sendq不为空。并且没有缓存区。直接从sendq中取出一个goroutine，读出当前goroutine中的消息，唤醒goroutine,
+结束读取的过程。  
+2、如果等待发送的`goroutine list`,也就是sendq不为空。说明缓冲区已经满了，移动recvx指针的位置，取出一个数据。同时在sendq中取出一个goroutine,
+读取里面的数据到buf中，结束当前读取。  
+3、如果等待发送的`goroutine list`,也就是sendq为空。并且缓冲区，有数据。直接在缓冲区取出数据，完成本次读取。  
+4、如果等待发送的`goroutine list`,也就是sendq为空。并且缓冲区，没有数据。将当前goroutine加入recvq，进入睡眠，等待被写goroutine唤醒。    
 
 
 
