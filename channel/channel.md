@@ -361,17 +361,12 @@ func chanrecv(c *hchan, ep unsafe.Pointer, block bool) (selected, received bool)
 	}
 
 	// 在非阻塞模式下，快速检测到失败，不用获取锁，快速返回
-	//
-	// After observing that the channel is not ready for receiving, we observe that the
-	// channel is not closed. Each of these observations is a single word-sized read
-	// (first c.sendq.first or c.qcount, and second c.closed).
-	// Because a channel cannot be reopened, the later observation of the channel
-	// being not closed implies that it was also not closed at the moment of the
-	// first observation. We behave as if we observed the channel at that moment
-	// and report that the receive cannot proceed.
-	//
-	// The order of operations is important here: reversing the operations can lead to
-	// incorrect behavior when racing with a close.
+	// 当我们观察到 channel 没准备好接收：
+	// 1. 非缓冲型，等待发送列队 sendq 里没有 goroutine 在等待
+	// 2. 缓冲型，但 buf 里没有元素
+	// 之后，又观察到 closed == 0，即 channel 未关闭。
+	// 因为 channel 不可能被重复打开，所以前一个观测的时候 channel 也是未关闭的，
+	// 因此在这种情况下可以直接宣布接收失败，返回 (false, false)
 	if !block && (c.dataqsiz == 0 && c.sendq.first == nil ||
 		c.dataqsiz > 0 && atomic.Loaduint(&c.qcount) == 0) &&
 		atomic.Load(&c.closed) == 0 {
@@ -407,48 +402,53 @@ func chanrecv(c *hchan, ep unsafe.Pointer, block bool) (selected, received bool)
 	}
 
 	if sg := c.sendq.dequeue(); sg != nil {
-		// Found a waiting sender. If buffer is size 0, receive value
-		// directly from sender. Otherwise, receive from head of queue
-		// and add sender's value to the tail of the queue (both map to
-		// the same buffer slot because the queue is full).
+        // 发现一个等待的发送者。如果缓冲区大小为0，则接收值
+        // 直接来自发件人。否则，从队列头接收
+        // 并将发送方的值添加到队列的尾部(两者都映射到相同的缓冲区槽，因为队列已满)。
 		recv(c, sg, ep, func() { unlock(&c.lock) }, 3)
 		return true, true
 	}
-
+    // 缓冲类型
 	if c.qcount > 0 {
-		// Receive directly from queue
+		// 直接从循环数组里找到要接收的元素
 		qp := chanbuf(c, c.recvx)
 		if raceenabled {
 			raceacquire(qp)
 			racerelease(qp)
 		}
+        // 代码里，没有忽略要接收的值，不是 "<- ch"，而是 "val <- ch"，ep 指向 val
 		if ep != nil {
 			typedmemmove(c.elemtype, ep, qp)
 		}
+        // 清除掉循环数组里相应位置的值
 		typedmemclr(c.elemtype, qp)
+        // 接收游标向前移动
 		c.recvx++
+        // 达到数据的长度，下标重新计算
 		if c.recvx == c.dataqsiz {
 			c.recvx = 0
 		}
+        // buf 数组里的元素个数减 1
 		c.qcount--
+        // 解锁
 		unlock(&c.lock)
 		return true, true
 	}
-
+    // 非阻塞接收，解锁。selected 返回 false，因为没有接收到值
 	if !block {
 		unlock(&c.lock)
 		return false, false
 	}
 
-	// no sender available: block on this channel.
+	// 阻塞
+    // 构建recvq的阻塞队列
 	gp := getg()
 	mysg := acquireSudog()
 	mysg.releasetime = 0
 	if t0 != 0 {
 		mysg.releasetime = -1
 	}
-	// No stack splits between assigning elem and enqueuing mysg
-	// on gp.waiting where copystack can find it.
+   
 	mysg.elem = ep
 	mysg.waitlink = nil
 	gp.waiting = mysg
@@ -457,6 +457,7 @@ func chanrecv(c *hchan, ep unsafe.Pointer, block bool) (selected, received bool)
 	mysg.c = c
 	gp.param = nil
 	c.recvq.enqueue(mysg)
+    // 将当前 goroutine 挂起
 	goparkunlock(&c.lock, waitReasonChanReceive, traceEvGoBlockRecv, 3)
 
 	// someone woke us up
