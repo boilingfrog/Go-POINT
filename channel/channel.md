@@ -337,8 +337,143 @@ func chansend(c *hchan, ep unsafe.Pointer, block bool, callerpc uintptr) bool {
 3、如果等待发送的`goroutine list`,也就是sendq为空。并且缓冲区，有数据。直接在缓冲区取出数据，完成本次读取。  
 4、如果等待发送的`goroutine list`,也就是sendq为空。并且缓冲区，没有数据。将当前goroutine加入recvq，进入睡眠，等待被写goroutine唤醒。    
 
+```go
+// chanrecv在通道c上接收并将接收到的数据写入ep。
+// 如果 ep 是 nil，说明忽略了接收值。
+// 如果 block == false，即非阻塞型接收，在没有数据可接收的情况下，返回 (false, false)
+// 否则，如果 c 处于关闭状态，将 ep 指向的地址清零，返回 (true, false)
+// 否则，用返回值填充 ep 指向的内存地址。返回 (true, true)
+// 如果 ep 非空，则应该指向堆或者函数调用者的栈
+func chanrecv(c *hchan, ep unsafe.Pointer, block bool) (selected, received bool) {
 
+	if debugChan {
+		print("chanrecv: chan=", c, "\n")
+	}
+    // 如果channel为nil
+	if c == nil {
+        // block == false，即非阻塞型接收，在没有数据可接收的情况下，返回 (false, false)
+		if !block {
+			return
+		}
+        // 接收一个 nil 的 channel，goroutine 挂起
+		gopark(nil, nil, waitReasonChanReceiveNilChan, traceEvGoStop, 2)
+		throw("unreachable")
+	}
 
+	// 在非阻塞模式下，快速检测到失败，不用获取锁，快速返回
+	//
+	// After observing that the channel is not ready for receiving, we observe that the
+	// channel is not closed. Each of these observations is a single word-sized read
+	// (first c.sendq.first or c.qcount, and second c.closed).
+	// Because a channel cannot be reopened, the later observation of the channel
+	// being not closed implies that it was also not closed at the moment of the
+	// first observation. We behave as if we observed the channel at that moment
+	// and report that the receive cannot proceed.
+	//
+	// The order of operations is important here: reversing the operations can lead to
+	// incorrect behavior when racing with a close.
+	if !block && (c.dataqsiz == 0 && c.sendq.first == nil ||
+		c.dataqsiz > 0 && atomic.Loaduint(&c.qcount) == 0) &&
+		atomic.Load(&c.closed) == 0 {
+		return
+	}
+
+	var t0 int64
+	if blockprofilerate > 0 {
+		t0 = cputicks()
+	}
+
+    // 加锁
+	lock(&c.lock)
+
+	// channel 已关闭，并且循环数组 buf 里没有元素
+	// 这里可以处理非缓冲型关闭 和 缓冲型关闭但 buf 无元素的情况
+	// 也就是说即使是关闭状态，但在缓冲型的 channel，
+	// buf 里有元素的情况下还能接收到元素
+	if c.closed != 0 && c.qcount == 0 {
+		if raceenabled {
+			raceacquire(c.raceaddr())
+		}
+        // 解锁
+		unlock(&c.lock)
+		if ep != nil {
+			// 从一个已关闭的 channel 执行接收操作，且未忽略返回值
+			// 那么接收的值将是一个该类型的零值
+			// typedmemclr 根据类型清理相应地址的内存
+			typedmemclr(c.elemtype, ep)
+		}
+        // 从一个已关闭的 channel 接收，selected 会返回true
+		return true, false
+	}
+
+	if sg := c.sendq.dequeue(); sg != nil {
+		// Found a waiting sender. If buffer is size 0, receive value
+		// directly from sender. Otherwise, receive from head of queue
+		// and add sender's value to the tail of the queue (both map to
+		// the same buffer slot because the queue is full).
+		recv(c, sg, ep, func() { unlock(&c.lock) }, 3)
+		return true, true
+	}
+
+	if c.qcount > 0 {
+		// Receive directly from queue
+		qp := chanbuf(c, c.recvx)
+		if raceenabled {
+			raceacquire(qp)
+			racerelease(qp)
+		}
+		if ep != nil {
+			typedmemmove(c.elemtype, ep, qp)
+		}
+		typedmemclr(c.elemtype, qp)
+		c.recvx++
+		if c.recvx == c.dataqsiz {
+			c.recvx = 0
+		}
+		c.qcount--
+		unlock(&c.lock)
+		return true, true
+	}
+
+	if !block {
+		unlock(&c.lock)
+		return false, false
+	}
+
+	// no sender available: block on this channel.
+	gp := getg()
+	mysg := acquireSudog()
+	mysg.releasetime = 0
+	if t0 != 0 {
+		mysg.releasetime = -1
+	}
+	// No stack splits between assigning elem and enqueuing mysg
+	// on gp.waiting where copystack can find it.
+	mysg.elem = ep
+	mysg.waitlink = nil
+	gp.waiting = mysg
+	mysg.g = gp
+	mysg.isSelect = false
+	mysg.c = c
+	gp.param = nil
+	c.recvq.enqueue(mysg)
+	goparkunlock(&c.lock, waitReasonChanReceive, traceEvGoBlockRecv, 3)
+
+	// someone woke us up
+	if mysg != gp.waiting {
+		throw("G waiting list is corrupted")
+	}
+	gp.waiting = nil
+	if mysg.releasetime > 0 {
+		blockevent(mysg.releasetime-t0, 2)
+	}
+	closed := gp.param == nil
+	gp.param = nil
+	mysg.c = nil
+	releaseSudog(mysg)
+	return true, !closed
+}
+```
 
 
 
