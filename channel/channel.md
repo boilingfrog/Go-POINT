@@ -349,13 +349,13 @@ func chanrecv(c *hchan, ep unsafe.Pointer, block bool) (selected, received bool)
 	if debugChan {
 		print("chanrecv: chan=", c, "\n")
 	}
-    // 如果channel为nil
+	// 如果channel为nil
 	if c == nil {
-        // block == false，即非阻塞型接收，在没有数据可接收的情况下，返回 (false, false)
+		// block == false，即非阻塞型接收，在没有数据可接收的情况下，返回 (false, false)
 		if !block {
 			return
 		}
-        // 接收一个 nil 的 channel，goroutine 挂起
+		// 接收一个 nil 的 channel，goroutine 挂起
 		gopark(nil, nil, waitReasonChanReceiveNilChan, traceEvGoStop, 2)
 		throw("unreachable")
 	}
@@ -378,7 +378,7 @@ func chanrecv(c *hchan, ep unsafe.Pointer, block bool) (selected, received bool)
 		t0 = cputicks()
 	}
 
-    // 加锁
+	// 加锁
 	lock(&c.lock)
 
 	// channel 已关闭，并且循环数组 buf 里没有元素
@@ -389,7 +389,7 @@ func chanrecv(c *hchan, ep unsafe.Pointer, block bool) (selected, received bool)
 		if raceenabled {
 			raceacquire(c.raceaddr())
 		}
-        // 解锁
+		// 解锁
 		unlock(&c.lock)
 		if ep != nil {
 			// 从一个已关闭的 channel 执行接收操作，且未忽略返回值
@@ -397,18 +397,18 @@ func chanrecv(c *hchan, ep unsafe.Pointer, block bool) (selected, received bool)
 			// typedmemclr 根据类型清理相应地址的内存
 			typedmemclr(c.elemtype, ep)
 		}
-        // 从一个已关闭的 channel 接收，selected 会返回true
+		// 从一个已关闭的 channel 接收，selected 会返回true
 		return true, false
 	}
 
 	if sg := c.sendq.dequeue(); sg != nil {
-        // 发现一个等待的发送者。如果缓冲区大小为0，则接收值
-        // 直接来自发件人。否则，从队列头接收
-        // 并将发送方的值添加到队列的尾部(两者都映射到相同的缓冲区槽，因为队列已满)。
+		// 发现一个等待的发送者。如果缓冲区大小为0，则接收值
+		// 直接来自发件人。否则，从队列头接收
+		// 并将发送方的值添加到队列的尾部(两者都映射到相同的缓冲区槽，因为队列已满)。
 		recv(c, sg, ep, func() { unlock(&c.lock) }, 3)
 		return true, true
 	}
-    // 缓冲类型
+	// 缓冲类型
 	if c.qcount > 0 {
 		// 直接从循环数组里找到要接收的元素
 		qp := chanbuf(c, c.recvx)
@@ -416,39 +416,39 @@ func chanrecv(c *hchan, ep unsafe.Pointer, block bool) (selected, received bool)
 			raceacquire(qp)
 			racerelease(qp)
 		}
-        // 代码里，没有忽略要接收的值，不是 "<- ch"，而是 "val <- ch"，ep 指向 val
+		// 代码里，没有忽略要接收的值，不是 "<- ch"，而是 "val <- ch"，ep 指向 val
 		if ep != nil {
 			typedmemmove(c.elemtype, ep, qp)
 		}
-        // 清除掉循环数组里相应位置的值
+		// 清除掉循环数组里相应位置的值
 		typedmemclr(c.elemtype, qp)
-        // 接收游标向前移动
+		// 接收游标向前移动
 		c.recvx++
-        // 达到数据的长度，下标重新计算
+		// 达到数据的长度，下标重新计算
 		if c.recvx == c.dataqsiz {
 			c.recvx = 0
 		}
-        // buf 数组里的元素个数减 1
+		// buf 数组里的元素个数减 1
 		c.qcount--
-        // 解锁
+		// 解锁
 		unlock(&c.lock)
 		return true, true
 	}
-    // 非阻塞接收，解锁。selected 返回 false，因为没有接收到值
+	// 非阻塞接收，解锁。selected 返回 false，因为没有接收到值
 	if !block {
 		unlock(&c.lock)
 		return false, false
 	}
 
 	// 阻塞
-    // 构建recvq的阻塞队列
+	// 构建recvq的阻塞队列
 	gp := getg()
 	mysg := acquireSudog()
 	mysg.releasetime = 0
 	if t0 != 0 {
 		mysg.releasetime = -1
 	}
-   
+
 	mysg.elem = ep
 	mysg.waitlink = nil
 	gp.waiting = mysg
@@ -457,7 +457,7 @@ func chanrecv(c *hchan, ep unsafe.Pointer, block bool) (selected, received bool)
 	mysg.c = c
 	gp.param = nil
 	c.recvq.enqueue(mysg)
-    // 将当前 goroutine 挂起
+	// 将当前 goroutine 挂起
 	goparkunlock(&c.lock, waitReasonChanReceive, traceEvGoBlockRecv, 3)
 
 	// someone woke us up
