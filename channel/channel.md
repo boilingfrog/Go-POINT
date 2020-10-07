@@ -476,6 +476,9 @@ func chanrecv(c *hchan, ep unsafe.Pointer, block bool) (selected, received bool)
 }
 ```
 
+梳理下流程图： 
+
+![Aaron Swartz](/img/channel_read.png?raw=true)
 
 
 
@@ -487,3 +490,4 @@ func chanrecv(c *hchan, ep unsafe.Pointer, block bool) (selected, received bool)
 【golang channel 有缓冲 与 无缓冲 的重要区别】https://my.oschina.net/u/157514/blog/149192  
 【Golang channel 源码深度剖析】https://www.cyhone.com/articles/analysis-of-golang-channel/   
 【《Go专家编程》Go channel实现原理剖析】https://my.oschina.net/renhc/blog/2246871  
+【深度解密Go语言之channel】https://www.cnblogs.com/qcrao-2018/p/11220651.html  
