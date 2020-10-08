@@ -480,6 +480,8 @@ func chanrecv(c *hchan, ep unsafe.Pointer, block bool) (selected, received bool)
 
 ![Aaron Swartz](/img/channel_read.png?raw=true)
 
+channel
+
 
 
 ### 参考
