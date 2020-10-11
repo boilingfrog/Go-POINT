@@ -482,6 +482,96 @@ func chanrecv(c *hchan, ep unsafe.Pointer, block bool) (selected, received bool)
 
 ### channel的关闭
 
+chanbel的关闭，对于其中的recvq和sendq也就是阻塞的发送者和接收者，对于等待接收者而言，会收到一个相应类型的零值。对于等待发送者，会直接 panic。  
+  
+channel的关闭不当会出现panic的场景：  
+
+1、关闭值为nil的channel  
+2、关闭已经关闭的channel  
+3、向已经关闭的channel写入数据  
+
+```go
+func closechan(c *hchan) {
+	// 关闭值为nil的channel,报错panic
+	if c == nil {
+		panic(plainError("close of nil channel"))
+	}
+    // 加锁
+	lock(&c.lock)
+    // 关闭已经关闭的channel，报错panic
+	if c.closed != 0 {
+		unlock(&c.lock)
+		panic(plainError("close of closed channel"))
+	}
+
+	if raceenabled {
+		callerpc := getcallerpc()
+		racewritepc(c.raceaddr(), callerpc, funcPC(closechan))
+		racerelease(c.raceaddr())
+	}
+    // 修改关闭饿状态
+	c.closed = 1
+
+	var glist gList
+
+	// 释放recvq中的sudog
+	for {
+        // 接收一个sudog
+		sg := c.recvq.dequeue()
+        // 全部接收完毕了
+		if sg == nil {
+			break
+		}
+		// 如果 elem 不为空，说明此 receiver 未忽略接收数据
+		// 给它赋一个相应类型的零值
+		if sg.elem != nil {
+			typedmemclr(c.elemtype, sg.elem)
+			sg.elem = nil
+		}
+		if sg.releasetime != 0 {
+			sg.releasetime = cputicks()
+		}
+        // 取出goroutine
+		gp := sg.g
+		gp.param = nil
+		if raceenabled {
+			raceacquireg(gp, c.raceaddr())
+		}
+		glist.push(gp)
+	}
+
+	// 将 channel 等待发送队列里的 sudog 释放
+	// 如果存在，这些 goroutine 将会 panic
+	for {
+        // 取出
+		sg := c.sendq.dequeue()
+		if sg == nil {
+			break
+		}
+        // 发送者会 panic
+		sg.elem = nil
+		if sg.releasetime != 0 {
+			sg.releasetime = cputicks()
+		}
+		gp := sg.g
+		gp.param = nil
+		if raceenabled {
+			raceacquireg(gp, c.raceaddr())
+		}
+		glist.push(gp)
+	}
+	unlock(&c.lock)
+
+	// Ready all Gs now that we've dropped the channel lock.
+	for !glist.empty() {
+        // 取出一个
+		gp := glist.pop()
+		gp.schedlink = 0
+        // 唤醒相应 goroutine
+		goready(gp, 3)
+	}
+}
+```
 
 
 
