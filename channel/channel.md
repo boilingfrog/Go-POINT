@@ -144,6 +144,8 @@ sendq，recvq 分别表示被阻塞的 goroutine，这些 goroutine 由于尝试
 waitq 相关的属性，可以理解为是一个 FIFO 的标准队列。其中 recvq 中是正在等待接收数据的 goroutine，sendq 中是等待发送数据的 goroutine。
 waitq 使用双向链表实现。  
 
+recvq和sendq，它们是 waitq 结构体，而waitq实际上就是一个双向链表，链表的元素是sudog，里面包含 g 字段，g 表示一个 goroutine，所以 sudog 可以看成一个 goroutine。但是两个还是有区别的。    
+
 lock通过互斥锁保证数据安全。  
 
 设计思路：  
@@ -161,6 +163,12 @@ chan内部实现了一个环形队列作为其缓冲区，队列的长度是创�
 看下实现的图片：  
 
 ![channel](/img/channel.jpg?raw=true)
+
+- dataqsiz指示了队列长度为6，即可缓存6个元素；
+- buf指向队列的内存，队列中还剩余两个元素；
+- qcount表示队列中还有两个元素,也就是[1,3}；
+- sendx指示后续写入的数据存储的位置，取值[0, 6)；
+- recvx指示从该位置读取数据, 取值[0, 6)；
 
 ### 创建
 
