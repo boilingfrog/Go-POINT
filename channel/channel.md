@@ -1,3 +1,24 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [channel](#channel)
+  - [前言](#%E5%89%8D%E8%A8%80)
+  - [设计的原理](#%E8%AE%BE%E8%AE%A1%E7%9A%84%E5%8E%9F%E7%90%86)
+    - [共享内存](#%E5%85%B1%E4%BA%AB%E5%86%85%E5%AD%98)
+    - [csp](#csp)
+  - [channel](#channel-1)
+    - [channel的定义](#channel%E7%9A%84%E5%AE%9A%E4%B9%89)
+  - [源码剖析](#%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90)
+    - [环形队列](#%E7%8E%AF%E5%BD%A2%E9%98%9F%E5%88%97)
+  - [创建](#%E5%88%9B%E5%BB%BA)
+  - [写入数据](#%E5%86%99%E5%85%A5%E6%95%B0%E6%8D%AE)
+  - [读取数据](#%E8%AF%BB%E5%8F%96%E6%95%B0%E6%8D%AE)
+  - [channel的关闭](#channel%E7%9A%84%E5%85%B3%E9%97%AD)
+  - [参考](#%E5%8F%82%E8%80%83)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## channel
 
 ### 前言
@@ -132,6 +153,14 @@ lock通过互斥锁保证数据安全。
 有缓冲channel的buf是循环使用的，已经读取过的，会被后面新写入的消息覆盖，通过sendx，recvx这两个指向底层数据的指针的滑动，实现对buf的复用。  
 
 具体的消息写入读读取，以及goroutine的阻塞，请看下面  
+
+#### 环形队列  
+
+chan内部实现了一个环形队列作为其缓冲区，队列的长度是创建chan时指定的。  
+
+看下实现的图片：  
+
+![channel](/img/channel.jpg?raw=true)
 
 ### 创建
 
@@ -324,7 +353,7 @@ func chansend(c *hchan, ep unsafe.Pointer, block bool, callerpc uintptr) bool {
 
 简单的流程图如下：  
 
-![Aaron Swartz](/img/channel_send1.png?raw=true)
+![channel](/img/channel_send1.png?raw=true)
 
 ### 读取数据
 
@@ -478,7 +507,7 @@ func chanrecv(c *hchan, ep unsafe.Pointer, block bool) (selected, received bool)
 
 梳理下流程图： 
 
-![Aaron Swartz](/img/channel_read.png?raw=true)
+![channel](/img/channel_read.png?raw=true)
 
 ### channel的关闭
 
@@ -496,9 +525,9 @@ func closechan(c *hchan) {
 	if c == nil {
 		panic(plainError("close of nil channel"))
 	}
-    // 加锁
+	// 加锁
 	lock(&c.lock)
-    // 关闭已经关闭的channel，报错panic
+	// 关闭已经关闭的channel，报错panic
 	if c.closed != 0 {
 		unlock(&c.lock)
 		panic(plainError("close of closed channel"))
@@ -509,16 +538,16 @@ func closechan(c *hchan) {
 		racewritepc(c.raceaddr(), callerpc, funcPC(closechan))
 		racerelease(c.raceaddr())
 	}
-    // 修改关闭饿状态
+	// 修改关闭饿状态
 	c.closed = 1
 
 	var glist gList
 
 	// 释放recvq中的sudog
 	for {
-        // 接收一个sudog
+		// 接收一个sudog
 		sg := c.recvq.dequeue()
-        // 全部接收完毕了
+		// 全部接收完毕了
 		if sg == nil {
 			break
 		}
@@ -531,7 +560,7 @@ func closechan(c *hchan) {
 		if sg.releasetime != 0 {
 			sg.releasetime = cputicks()
 		}
-        // 取出goroutine
+		// 取出goroutine
 		gp := sg.g
 		gp.param = nil
 		if raceenabled {
@@ -543,12 +572,12 @@ func closechan(c *hchan) {
 	// 将 channel 等待发送队列里的 sudog 释放
 	// 如果存在，这些 goroutine 将会 panic
 	for {
-        // 取出
+		// 取出
 		sg := c.sendq.dequeue()
 		if sg == nil {
 			break
 		}
-        // 发送者会 panic
+		// 发送者会 panic
 		sg.elem = nil
 		if sg.releasetime != 0 {
 			sg.releasetime = cputicks()
@@ -564,10 +593,10 @@ func closechan(c *hchan) {
 
 	// Ready all Gs now that we've dropped the channel lock.
 	for !glist.empty() {
-        // 取出一个
+		// 取出一个
 		gp := glist.pop()
 		gp.schedlink = 0
-        // 唤醒相应 goroutine
+		// 唤醒相应 goroutine
 		goready(gp, 3)
 	}
 }
