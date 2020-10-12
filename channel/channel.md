@@ -610,6 +610,26 @@ func closechan(c *hchan) {
 }
 ```
 
+### channel的关闭
+
+对于channel的关闭，我们需要注意下：  
+
+1、在不能更改channel状态的情况下，没有简单普遍的方式来检查channel是否已经关闭了  
+
+2、关闭已经关闭的channel会导致panic，所以在closer(关闭者)不知道channel是否已经关闭的情况下去关闭channel是很危险的  
+
+3、发送值到已经关闭的channel会导致panic，所以如果sender(发送者)在不知道channel是否已经关闭的情况下去向channel发送值是很危险的  
+
+对于channel的关闭有这样的一个原则：  
+
+> don't close a channel from the receiver side and don't close a channel if the channel has multiple concurrent senders.
+
+不要从一个receiver侧关闭channel，也不要在有多个sender时，关闭channel。 
+
+向已经关闭的channel发送数据会导致panic，所以在receiver侧关闭，sender是不知道channel是否关闭的，多个sender的情况下，某一个sender关闭了channel,
+其他的sender是不知道这个channel是否关闭的，再次写入数据和关闭，都会导致panic。   
+
+
 
 
 ### 参考
@@ -621,3 +641,4 @@ func closechan(c *hchan) {
 【Golang channel 源码深度剖析】https://www.cyhone.com/articles/analysis-of-golang-channel/   
 【《Go专家编程》Go channel实现原理剖析】https://my.oschina.net/renhc/blog/2246871  
 【深度解密Go语言之channel】https://www.cnblogs.com/qcrao-2018/p/11220651.html  
+【如何优雅地关闭Go channel】https://www.jianshu.com/p/d24dfbb33781  
