@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"math/rand"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -11,50 +12,78 @@ func main() {
 	rand.Seed(time.Now().UnixNano())
 	log.SetFlags(0)
 
-	// ...
 	const MaxRandomNumber = 100000
+	const NumReceivers = 10
 	const NumSenders = 1000
 
 	wgReceivers := sync.WaitGroup{}
-	wgReceivers.Add(1)
+	wgReceivers.Add(NumReceivers)
 
-	// 发送数据的channel
+	// 数据的channel
 	dataCh := make(chan int, 100)
-
-	// 无缓冲的channel作为信号量，通知senders的推出
+	// 关闭的channel的信号
 	stopCh := make(chan struct{})
+	// toStop通知关闭stopCh，同时作为receiver退出的信息
+	toStop := make(chan string, 1)
 
-	// 启动个NumSenders个sender
+	var stoppedBy string
+
+	// 当收到toStop的信号，关闭stopCh
+	go func() {
+		stoppedBy = <-toStop
+		close(stopCh)
+	}()
+
+	// 发送端
 	for i := 0; i < NumSenders; i++ {
-		go func() {
+		go func(id string) {
 			for {
 				value := rand.Intn(MaxRandomNumber)
+				// 满足条件发出关闭的请求到toStop
+				if value == 0 {
+					select {
+					case toStop <- "sender#" + id:
+					default:
+					}
+					return
+				}
 
-				// 监测到退出信号，马上退出goroutine
-				// 否则正常写入dataCh，数据
 				select {
+				// 检测的关闭的stopCh，退出发送者
 				case <-stopCh:
 					return
 				case dataCh <- value:
 				}
 			}
-		}()
+		}(strconv.Itoa(i))
 	}
 
-	// 消费者
-	go func() {
-		defer wgReceivers.Done()
+	// 接收端
+	for i := 0; i < NumReceivers; i++ {
+		go func(id string) {
+			defer wgReceivers.Done()
 
-		for value := range dataCh {
-			// 某个场景下发出退出的信号量
-			if value == MaxRandomNumber-1 {
-				close(stopCh)
-				return
+			for {
+				select {
+				// 检测的关闭的stopCh，退出接收者
+				case <-stopCh:
+					return
+				case value := <-dataCh:
+					// 满足条件发出关闭的请求到toStop
+					if value == MaxRandomNumber-1 {
+						select {
+						case toStop <- "receiver#" + id:
+						default:
+						}
+						return
+					}
+
+					log.Println(value)
+				}
 			}
-
-			log.Println(value)
-		}
-	}()
+		}(strconv.Itoa(i))
+	}
 
 	wgReceivers.Wait()
+	log.Println("stopped by", stoppedBy)
 }

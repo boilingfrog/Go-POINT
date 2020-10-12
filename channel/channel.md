@@ -15,6 +15,10 @@
   - [写入数据](#%E5%86%99%E5%85%A5%E6%95%B0%E6%8D%AE)
   - [读取数据](#%E8%AF%BB%E5%8F%96%E6%95%B0%E6%8D%AE)
   - [channel的关闭](#channel%E7%9A%84%E5%85%B3%E9%97%AD)
+  - [channel的关闭](#channel%E7%9A%84%E5%85%B3%E9%97%AD-1)
+    - [M个receivers，一个sender](#m%E4%B8%AAreceivers%E4%B8%80%E4%B8%AAsender)
+    - [一个receiver，N个sender](#%E4%B8%80%E4%B8%AAreceivern%E4%B8%AAsender)
+    - [M个receiver，N个sender](#m%E4%B8%AAreceivern%E4%B8%AAsender)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -756,10 +760,111 @@ func main() {
 }
 ```
 
-通过stopCh来，作为信号量，来通知发送者的goroutine退出。  
+通过stopCh来，作为信号量，来通知发送者的goroutine退出。 
 
+#### M个receiver，N个sender
 
+这是比较复杂的一个，相比上面的一个receiver，M个receiver中任意一个receiver发出关闭的信息，需要同步到其他的receiver，防止其他的receiver，
+再次发出关闭的请求，出发panic。  
 
+```go
+package main
+
+import (
+	"log"
+	"math/rand"
+	"strconv"
+	"sync"
+	"time"
+)
+
+func main() {
+	rand.Seed(time.Now().UnixNano())
+	log.SetFlags(0)
+
+	const MaxRandomNumber = 100000
+	const NumReceivers = 10
+	const NumSenders = 1000
+
+	wgReceivers := sync.WaitGroup{}
+	wgReceivers.Add(NumReceivers)
+
+	// 数据的channel
+	dataCh := make(chan int, 100)
+	// 关闭的channel的信号
+	stopCh := make(chan struct{})
+	// toStop通知关闭stopCh，同时作为receiver退出的信息
+	toStop := make(chan string, 1)
+
+	var stoppedBy string
+
+	// 当收到toStop的信号，关闭stopCh
+	go func() {
+		stoppedBy = <-toStop
+		close(stopCh)
+	}()
+
+	// 发送端
+	for i := 0; i < NumSenders; i++ {
+		go func(id string) {
+			for {
+				value := rand.Intn(MaxRandomNumber)
+				// 满足条件发出关闭的请求到toStop
+				if value == 0 {
+					select {
+					case toStop <- "sender#" + id:
+					default:
+					}
+					return
+				}
+
+				select {
+				// 检测的关闭的stopCh，退出发送者
+				case <-stopCh:
+					return
+				case dataCh <- value:
+				}
+			}
+		}(strconv.Itoa(i))
+	}
+
+	// 接收端
+	for i := 0; i < NumReceivers; i++ {
+		go func(id string) {
+			defer wgReceivers.Done()
+
+			for {
+				select {
+				// 检测的关闭的stopCh，退出接收者
+				case <-stopCh:
+					return
+				case value := <-dataCh:
+					// 满足条件发出关闭的请求到toStop
+					if value == MaxRandomNumber-1 {
+						select {
+						case toStop <- "receiver#" + id:
+						default:
+						}
+						return
+					}
+
+					log.Println(value)
+				}
+			}
+		}(strconv.Itoa(i))
+	}
+
+	wgReceivers.Wait()
+	log.Println("stopped by", stoppedBy)
+}
+```
+
+这样的设计就很好了，可以在sender和receiver两端发出关闭的请求。保证了sender和receiver都能够退出。   
+
+### 控制goroutine的数量  
+
+go中在大量并发的情况下会产生很多的goroutine，而goroutine使用之后，是不会被完全回收的，大概会有2kb的空间，所以我们希望控制下goroytine的
+并发数量。  
 
 
 
