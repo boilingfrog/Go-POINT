@@ -13,40 +13,48 @@ func main() {
 
 	// ...
 	const MaxRandomNumber = 100000
-	const NumReceivers = 100
+	const NumSenders = 1000
 
-	// 使用WaitGroup来阻塞查看打印的效果
 	wgReceivers := sync.WaitGroup{}
-	wgReceivers.Add(NumReceivers)
+	wgReceivers.Add(1)
 
-	// 设置channel的长度为10
+	// 发送数据的channel
 	dataCh := make(chan int, 100)
 
-	// the sender
-	go func() {
-		for {
-			if value := rand.Intn(MaxRandomNumber); value == 0 {
-				// 需要关闭的时候直接关闭就好了，是很安全的
-				close(dataCh)
-				return
-			} else {
-				dataCh <- value
-			}
-		}
-	}()
+	// 无缓冲的channel作为信号量，通知senders的推出
+	stopCh := make(chan struct{})
 
-	// receivers
-	for i := 0; i < NumReceivers; i++ {
+	// 启动个NumSenders个sender
+	for i := 0; i < NumSenders; i++ {
 		go func() {
-			defer wgReceivers.Done()
+			for {
+				value := rand.Intn(MaxRandomNumber)
 
-			// 监听dataCh，接收里面的值
-			for value := range dataCh {
-				log.Println(value)
+				// 监测到退出信号，马上退出goroutine
+				// 否则正常写入dataCh，数据
+				select {
+				case <-stopCh:
+					return
+				case dataCh <- value:
+				}
 			}
 		}()
 	}
 
-	wgReceivers.Wait()
+	// 消费者
+	go func() {
+		defer wgReceivers.Done()
 
+		for value := range dataCh {
+			// 某个场景下发出退出的信号量
+			if value == MaxRandomNumber-1 {
+				close(stopCh)
+				return
+			}
+
+			log.Println(value)
+		}
+	}()
+
+	wgReceivers.Wait()
 }
