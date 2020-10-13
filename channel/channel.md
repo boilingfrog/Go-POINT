@@ -1,6 +1,5 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
 - [channel](#channel)
   - [前言](#%E5%89%8D%E8%A8%80)
@@ -19,6 +18,7 @@
     - [M个receivers，一个sender](#m%E4%B8%AAreceivers%E4%B8%80%E4%B8%AAsender)
     - [一个receiver，N个sender](#%E4%B8%80%E4%B8%AAreceivern%E4%B8%AAsender)
     - [M个receiver，N个sender](#m%E4%B8%AAreceivern%E4%B8%AAsender)
+  - [控制goroutine的数量](#%E6%8E%A7%E5%88%B6goroutine%E7%9A%84%E6%95%B0%E9%87%8F)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
