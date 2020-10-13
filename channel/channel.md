@@ -1,6 +1,7 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+
 - [channel](#channel)
   - [前言](#%E5%89%8D%E8%A8%80)
   - [设计的原理](#%E8%AE%BE%E8%AE%A1%E7%9A%84%E5%8E%9F%E7%90%86)
@@ -14,11 +15,15 @@
   - [写入数据](#%E5%86%99%E5%85%A5%E6%95%B0%E6%8D%AE)
   - [读取数据](#%E8%AF%BB%E5%8F%96%E6%95%B0%E6%8D%AE)
   - [channel的关闭](#channel%E7%9A%84%E5%85%B3%E9%97%AD)
-  - [channel的关闭](#channel%E7%9A%84%E5%85%B3%E9%97%AD-1)
+  - [优雅的关闭](#%E4%BC%98%E9%9B%85%E7%9A%84%E5%85%B3%E9%97%AD)
     - [M个receivers，一个sender](#m%E4%B8%AAreceivers%E4%B8%80%E4%B8%AAsender)
     - [一个receiver，N个sender](#%E4%B8%80%E4%B8%AAreceivern%E4%B8%AAsender)
     - [M个receiver，N个sender](#m%E4%B8%AAreceivern%E4%B8%AAsender)
+    - [关闭的 channel 仍能读出数据](#%E5%85%B3%E9%97%AD%E7%9A%84-channel-%E4%BB%8D%E8%83%BD%E8%AF%BB%E5%87%BA%E6%95%B0%E6%8D%AE)
   - [控制goroutine的数量](#%E6%8E%A7%E5%88%B6goroutine%E7%9A%84%E6%95%B0%E9%87%8F)
+  - [range和select读取channel的内容区别](#range%E5%92%8Cselect%E8%AF%BB%E5%8F%96channel%E7%9A%84%E5%86%85%E5%AE%B9%E5%8C%BA%E5%88%AB)
+    - [range读取channel内容](#range%E8%AF%BB%E5%8F%96channel%E5%86%85%E5%AE%B9)
+    - [select读取channel内容](#select%E8%AF%BB%E5%8F%96channel%E5%86%85%E5%AE%B9)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -614,7 +619,7 @@ func closechan(c *hchan) {
 }
 ```
 
-### channel的关闭
+### 优雅的关闭
 
 对于channel的关闭，我们需要注意下：  
 
@@ -861,6 +866,41 @@ func main() {
 
 这样的设计就很好了，可以在sender和receiver两端发出关闭的请求。保证了sender和receiver都能够退出。   
 
+#### 关闭的 channel 仍能读出数据
+
+从一个有缓冲的channel里面读取数据，当channel被关闭了，仍能读出有效值。只有当返回的ok为false，读出的是无效的，也就是数据的零值。  
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+	ch := make(chan int, 5)
+	ch <- 18
+	close(ch)
+	x, ok := <-ch
+	if ok {
+		fmt.Println("received: ", x)
+	}
+
+	x, ok = <-ch
+	if !ok {
+		fmt.Println("channel closed, data invalid.")
+		// ok为false
+		fmt.Println(x)
+	}
+}
+```
+
+一个有缓冲的channel，写入了一个数据，当返回的ok为false,取出的数据就是定义类型的零值。  
+
+```go
+received:  18
+channel closed, data invalid.
+0
+```
+
 ### 控制goroutine的数量  
 
 go中在大量并发的情况下会产生很多的goroutine，而goroutine使用之后，是不会被完全回收的，大概会有2kb的空间，所以我们希望控制下goroytine的
@@ -893,7 +933,80 @@ func main() {
 }
 ```
 
+### range和select读取channel的内容区别
 
+#### range读取channel内容
+
+range读取channel里面的内容，会自动等待channel的动作一直到channel被关闭，然后把channel里面的内容全部读出来。  
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+
+    queue := make(chan string, 2)
+    queue <- "one"
+    queue <- "two"
+    close(queue)
+
+    for elem := range queue {
+        fmt.Println(elem)
+    }
+}
+```
+
+输出打印的结果
+
+```go
+one
+two
+```
+
+#### select读取channel内容
+
+select关键字用于多个channel的结合，这些channel会通过类似于`are-you-ready polling`的机制来工作。  
+
+```go
+package main
+
+import (
+    "fmt"
+    "time"
+)
+
+func main() {
+
+    c1 := make(chan string)
+    c2 := make(chan string)
+
+    go func() {
+        time.Sleep(1 * time.Second)
+        c1 <- "one"
+    }()
+    go func() {
+        time.Sleep(2 * time.Second)
+        c2 <- "two"
+    }()
+
+    for i := 0; i < 2; i++ {
+        select {
+        case msg1 := <-c1:
+            fmt.Println("received", msg1)
+        case msg2 := <-c2:
+            fmt.Println("received", msg2)
+        }
+    }
+}
+```
+
+打印下输出的效果
+
+```go
+received one
+received two
+```
 
 
 ### 参考
@@ -906,3 +1019,5 @@ func main() {
 【《Go专家编程》Go channel实现原理剖析】https://my.oschina.net/renhc/blog/2246871  
 【深度解密Go语言之channel】https://www.cnblogs.com/qcrao-2018/p/11220651.html  
 【如何优雅地关闭Go channel】https://www.jianshu.com/p/d24dfbb33781  
+【Go by Example: Range over Channels】https://gobyexample.com/range-over-channels  
+【Go by Example: Select】https://gobyexample.com/select  
