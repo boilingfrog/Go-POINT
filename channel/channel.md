@@ -24,6 +24,7 @@
   - [range和select读取channel的内容区别](#range%E5%92%8Cselect%E8%AF%BB%E5%8F%96channel%E7%9A%84%E5%86%85%E5%AE%B9%E5%8C%BA%E5%88%AB)
     - [range读取channel内容](#range%E8%AF%BB%E5%8F%96channel%E5%86%85%E5%AE%B9)
     - [select读取channel内容](#select%E8%AF%BB%E5%8F%96channel%E5%86%85%E5%AE%B9)
+  - [需要注意的点](#%E9%9C%80%E8%A6%81%E6%B3%A8%E6%84%8F%E7%9A%84%E7%82%B9)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -1007,6 +1008,16 @@ func main() {
 received one
 received two
 ```
+
+### 需要注意的点
+
+|    操作       |    nil channel   |      closed channel        |     not nil ,not closed                |
+| ------------ | -----------------| -------------------------- | -------------------------------         |
+| close        |    panic         |  panic                     |  正常关闭                                |
+| 读<-ch       |    阻塞           |里面的内容读完了，之后获取到的是类型的零值| 阻塞或正常读取数据。缓冲型 channel 为空或非缓冲型 channel 没有等待发送者时会阻塞|
+| 写ch<-       |    阻塞           |  panic                      |阻塞或正常写入数据。非缓冲型 channel 没有等待接收者或缓冲型 channel buf 满时会被阻塞|
+
+
 
 
 ### 参考
