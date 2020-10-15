@@ -3,19 +3,28 @@
 
 ### docker安装
 
+docker 安装
 ```go
 // 安装
 yum -y install docker
 
 // 设置开机启动
 sudo systemctl enable docker
+
+// 启动docker 
+ sudo systemctl start docker
 ```
 
-docker-compose
+docker-compose安装  
 
 ```go
-curl -L https://github.com/docker/compose/releases/download/1.23.2/docker-compose-`uname -s`-`uname -m` -o /usr/bin/docker-compose
+sudo curl -L "https://github.com/docker/compose/releases/download/1.27.4/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
 
+// 将可执行权限应用于二进制文件
+sudo chmod +x /usr/local/bin/docker-compose
+
+// 创建软连接
+sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
 ```
 
 
