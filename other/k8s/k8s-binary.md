@@ -31,8 +31,6 @@ sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
 ### 部署的命令
 
 
-
-
 192.168.56.101 kube-master
 
 192.168.56.102 kube-node1
@@ -98,6 +96,83 @@ bash /opt/k8s/script/kubectl_environment.sh 192.168.56.101 192.168.56.102 192.16
 
 
 
+
+#### 部署etcd
+
+etcd 是基于 Raft 的分布式 key-value 存储系统，由 CoreOS 开发，常用于服务发现、共享配置以及并发控制（如 leader 选举、分布式锁等）。
+kubernetes 使用 etcd 存储所有运行数据。  
+
+本文档介绍部署一个三节点高可用 etcd 集群的步骤：  
+
+① 下载和分发 etcd 二进制文件  
+
+② 创建 etcd 集群各节点的 x509 证书，用于加密客户端(如 etcdctl) 与 etcd 集群、etcd 集群之间的数据流；  
+
+③ 创建 etcd 的 systemd unit 文件，配置服务参数；  
+
+④ 检查集群工作状态；  
+
+
+##### 下载etcd二进制文件
+
+```
+[root@kube-master ~]# wget https://github.com/coreos/etcd/releases/download/v3.3.7/etcd-v3.3.7-linux-amd64.tar.gz
+[root@kube-master ~]# tar -xvf etcd-v3.3.7-linux-amd64.tar.gz
+```
+
+#### 创建etcd证书和密匙
+
+创建证书签名请求
+
+````
+
+````
+NODE_IPS=("192.168.56.102" "192.168.56.102" "192.168.56.103")
+for node_ip in ${NODE_IPS[@]};do
+        echo ">>> ${node_ip}"
+        scp /root/etcd-v3.3.7-linux-amd64/etcd* k8s@${node_ip}:/opt/k8s/bin
+        ssh k8s@${node_ip} "chmod +x /opt/k8s/bin/*"
+        ssh root@${node_ip} "mkdir -p /opt/etcd/cert && chown -R k8s /opt/etcd/cert"
+        scp /opt/etcd/cert/etcd*.pem k8s@${node_ip}:/opt/etcd/cert/
+done
+
+
+
+NODE_NAMES=("etcd0" "etcd1" "etcd2")
+NODE_IPS=("192.168.56.101" "192.168.56.102" "192.168.56.103")
+#替换模板文件中的变量，为各节点创建 systemd unit 文件
+for (( i=0; i < 3; i++ ));do
+        sed -e "s/##NODE_NAME##/${NODE_NAMES[i]}/g" -e "s/##NODE_IP##/${NODE_IPS[i]}/g" /opt/etcd/etcd.service.template > /opt/etcd/etcd-${NODE_IPS[i]}.service
+done
+#分发生成的 systemd unit 和etcd的配置文件：
+for node_ip in ${NODE_IPS[@]};do
+        echo ">>> ${node_ip}"
+        ssh root@${node_ip} "mkdir -p /opt/lib/etcd && chown -R k8s /opt/lib/etcd"
+        scp /opt/etcd/etcd-${node_ip}.service root@${node_ip}:/etc/systemd/system/etcd.service
+done
+
+
+
+NODE_IPS=("192.168.56.101" "192.168.56.102" "192.168.56.103")
+#启动 etcd 服务
+for node_ip in ${NODE_IPS[@]};do
+        echo ">>> ${node_ip}"
+        ssh root@${node_ip} "systemctl daemon-reload && systemctl enable etcd && systemctl start etcd"
+done
+#检查启动结果,确保状态为 active (running)
+for node_ip in ${NODE_IPS[@]};do
+        echo ">>> ${node_ip}"
+        ssh k8s@${node_ip} "systemctl status etcd|grep Active"
+done
+#验证服务状态,输出均为healthy 时表示集群服务正常
+for node_ip in ${NODE_IPS[@]};do
+        echo ">>> ${node_ip}"
+        ETCDCTL_API=3 /opt/k8s/bin/etcdctl \
+--endpoints=https://${node_ip}:2379 \
+--cacert=/opt/k8s/cert/ca.pem \
+--cert=/opt/etcd/cert/etcd.pem \
+--key=/opt/etcd/cert/etcd-key.pem endpoint health
+done 
 
 
 
