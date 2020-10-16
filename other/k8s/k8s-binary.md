@@ -176,6 +176,47 @@ done
 
 
 
+cat > /opt/etcd/etcd.service.template <<EOF
+
+[Unit]
+Description=Etcd Server
+After=network.target
+After=network-online.target
+Wants=network-online.target
+Documentation=https://github.com/coreos
+[Service]
+User=k8s
+Type=notify
+WorkingDirectory=/opt/lib/etcd/
+ExecStart=/opt/k8s/bin/etcd \
+    --data-dir=/opt/lib/etcd \
+    --name ##NODE_NAME## \
+    --cert-file=/opt/etcd/cert/etcd.pem \
+    --key-file=/opt/etcd/cert/etcd-key.pem \
+    --trusted-ca-file=/opt/k8s/cert/ca.pem \
+    --peer-cert-file=/opt/etcd/cert/etcd.pem \
+    --peer-key-file=/opt/etcd/cert/etcd-key.pem \
+    --peer-trusted-ca-file=/opt/k8s/cert/ca.pem \
+    --peer-client-cert-auth \
+    --client-cert-auth \
+    --listen-peer-urls=https://##NODE_IP##:2380 \
+    --initial-advertise-peer-urls=https://##NODE_IP##:2380 \
+    --listen-client-urls=https://##NODE_IP##:2379,http://127.0.0.1:2379\
+    --advertise-client-urls=https://##NODE_IP##:2379 \
+    --initial-cluster-token=etcd-cluster-0 \
+    --initial-cluster=etcd0=https://192.168.56.101:2380,etcd1=https://192.168.56.102:2380,etcd2=https://192.168.56.103:2380 \
+    --initial-cluster-state=new
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=65536
+[Install]
+WantedBy=multi-user.target
+EOF
+
+
+
+
+
 
 ### 参考
 【二进制安装部署kubernetes集群---超详细教程】https://www.cnblogs.com/along21/p/10044931.html
