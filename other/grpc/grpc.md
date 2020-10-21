@@ -326,7 +326,138 @@ func main() {
 }
 ```
 
-### 发布和订阅模式
+### 证书认证
+
+gRPC建立在HTTP/2协议之上，对TLS提供了很好的支持。
+
+创建`cert.conf`  
+
+```go
+[ req ]
+default_bits = 2048
+prompt = no
+default_md = sha256
+req_extensions = req_ext
+distinguished_name = dn
+ 
+[ dn ]
+C = UK
+ST = London
+L = London
+O = liz Ltd.
+OU = Information Technologies
+emailAddress = email@email.com
+CN = localhost
+ 
+[ req_ext ]
+subjectAltName = @alt_names
+ 
+[ alt_names ]
+DNS.1 = localhost
+```
+
+生成`private key`
+
+```go
+$ openssl genrsa -out cert/server.key 2048
+ 
+$ openssl req -nodes -new -x509 -sha256 -days 1825 -config cert/cert.conf -extensions 'req_ext' -key cert/server.key -out cert/server.crt
+```
+
+启动gRPC服务端的时候传入证书的参数选项  
+
+```go
+package main
+
+import (
+	"context"
+	"daily-test/gRPC_advanced"
+	"fmt"
+	"log"
+
+	"google.golang.org/grpc/credentials"
+
+	"google.golang.org/grpc"
+)
+
+func main() {
+	// 带入证书的信息
+	creds, err := credentials.NewClientTLSFromFile(
+		"/Users/yj/goWork/daily-test/gRPC_advanced/cert/server.crt", "localhost",
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	conn, err := grpc.Dial("localhost:1234",
+		grpc.WithTransportCredentials(creds),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+
+	client := gRPC_advanced.NewHelloServiceClient(conn)
+	reply, err := client.Hello(context.Background(), &gRPC_advanced.String{Value: "hello"})
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(reply.GetValue())
+}
+```
+
+credentials.NewServerTLSFromFile函数是从文件为服务器构造证书对象，然后通过grpc.Creds(creds)函数将证书包装为选项后作为参数传入grpc.NewServer函数。  
+
+客户端基于服务端的证书和服务端名字进行对服务端的认证校验  
+
+```go
+package main
+
+import (
+	"context"
+	"daily-test/gRPC_advanced"
+	"fmt"
+	"log"
+
+	"google.golang.org/grpc/credentials"
+
+	"google.golang.org/grpc"
+)
+
+func main() {
+	// 带入证书的信息
+	creds, err := credentials.NewClientTLSFromFile(
+		"/Users/yj/goWork/daily-test/gRPC_advanced/cert/server.crt", "localhost",
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	conn, err := grpc.Dial("localhost:1234",
+		grpc.WithTransportCredentials(creds),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+
+	client := gRPC_advanced.NewHelloServiceClient(conn)
+	reply, err := client.Hello(context.Background(), &gRPC_advanced.String{Value: "hello"})
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(reply.GetValue())
+}
+```
+
+这种需要讲服务端的证书进行下发，这样客户在交互的时候每次都需要带过来，但是这样是不安全的。在传输的过程中证书存在被
+监听和替换的可能性。  
+
+可以引入根证书，通过对服务端和客户端来进行签名，来保证安全。  
+
+
+
+
 
 ### 参考
 
@@ -334,3 +465,4 @@ func main() {
 【gRPC 官方文档中文版】https://doc.oschina.net/grpc?t=60133    
 【HTTP和RPC的优缺点】https://cloud.tencent.com/developer/article/1353110  
 【gRPC入门】https://chai2010.gitbooks.io/advanced-go-programming-book/content/ch4-rpc/ch4-04-grpc.html  
+【Using TLS/SSL certificates for gRPC client and server communications in Golang - Updated】http://www.inanzzz.com/index.php/post/jo4y/using-tls-ssl-certificates-for-grpc-client-and-server-communications-in-golang-updated  
