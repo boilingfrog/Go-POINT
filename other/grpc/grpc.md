@@ -573,7 +573,135 @@ openssl req -new -key client.key -out client.csr
 openssl x509 -req -sha256 -CA ca.pem -CAkey ca.key -CAcreateserial -days 3650 -in client.csr -out client.pem
 ```
 
-到此完成证书的生成  
+到此完成证书的生成   
+
+server端的代码  
+
+```go
+package main
+
+import (
+	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"daily-test/gRPC_cert_ca"
+	"io/ioutil"
+	"log"
+	"net"
+
+	"google.golang.org/grpc/credentials"
+
+	"google.golang.org/grpc"
+)
+
+type HelloServiceImpl struct{}
+
+func (p *HelloServiceImpl) Hello(
+	ctx context.Context, args *gRPC_cert_ca.String,
+) (*gRPC_cert_ca.String, error) {
+	reply := &gRPC_cert_ca.String{Value: "hello:" + args.GetValue()}
+	return reply, nil
+}
+
+func main() {
+
+	cert, err := tls.LoadX509KeyPair("./gRPC_cert_ca/cert/server/server.pem", "./gRPC_cert_ca/cert/server/server.key")
+	if err != nil {
+		log.Fatalf("tls.LoadX509KeyPair err: %v", err)
+	}
+
+	certPool := x509.NewCertPool()
+	ca, err := ioutil.ReadFile("./gRPC_cert_ca/cert/ca.pem")
+	if err != nil {
+		log.Fatalf("ioutil.ReadFile err: %v", err)
+	}
+
+	if ok := certPool.AppendCertsFromPEM(ca); !ok {
+		log.Fatalf("certPool.AppendCertsFromPEM err")
+	}
+
+	c := credentials.NewTLS(&tls.Config{
+		Certificates: []tls.Certificate{cert},
+		ClientAuth:   tls.RequireAndVerifyClientCert,
+		ClientCAs:    certPool,
+	})
+
+	grpcServer := grpc.NewServer(grpc.Creds(c))
+	gRPC_cert_ca.RegisterHelloServiceServer(grpcServer, new(HelloServiceImpl))
+
+	lis, err := net.Listen("tcp", ":1234")
+	if err != nil {
+		log.Fatal(err)
+	}
+	grpcServer.Serve(lis)
+}
+```
+
+服务器端使用credentials.NewTLS函数生成证书，通过ClientCAs选择CA根证书，并通过ClientAuth选项启用对客户端进行验证。  
+
+客户端代码  
+
+```go
+package main
+
+import (
+	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"daily-test/gRPC_cert_ca"
+	"fmt"
+	"io/ioutil"
+	"log"
+
+	"google.golang.org/grpc/credentials"
+
+	"google.golang.org/grpc"
+)
+
+func main() {
+	cert, err := tls.LoadX509KeyPair("./gRPC_cert_ca/cert/client/client.pem", "./gRPC_cert_ca/cert/client/client.key")
+	if err != nil {
+		log.Fatalf("tls.LoadX509KeyPair err: %v", err)
+	}
+
+	certPool := x509.NewCertPool()
+	ca, err := ioutil.ReadFile("./gRPC_cert_ca/cert/ca.pem")
+	if err != nil {
+		log.Fatalf("ioutil.ReadFile err: %v", err)
+	}
+
+	if ok := certPool.AppendCertsFromPEM(ca); !ok {
+		log.Fatalf("certPool.AppendCertsFromPEM err")
+	}
+
+	c := credentials.NewTLS(&tls.Config{
+		Certificates: []tls.Certificate{cert},
+		ServerName:   "localhost",
+		RootCAs:      certPool,
+	})
+
+	conn, err := grpc.Dial(":1234",
+		grpc.WithTransportCredentials(c),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+
+	client := gRPC_cert_ca.NewHelloServiceClient(conn)
+	reply, err := client.Hello(context.Background(), &gRPC_cert_ca.String{Value: "hello"})
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(reply.GetValue())
+
+}
+```
+
+在`credentials.NewTLS`函数调用中，客户端通过引入一个CA根证书和服务器的名字来实现对服务器进行验证。客户端在链接服务器时会首先请求服务器的证书，
+然后使用CA根证书对收到的服务器端证书进行验证。  
+
+ca认证的demo`https://github.com/boilingfrog/daily-test/tree/master/gRPC_cert_ca`
 
 
 ### 参考
