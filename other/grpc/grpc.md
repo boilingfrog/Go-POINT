@@ -10,7 +10,8 @@
     - [性能消耗](#%E6%80%A7%E8%83%BD%E6%B6%88%E8%80%97)
   - [gRPC入门](#grpc%E5%85%A5%E9%97%A8)
   - [gRPC流](#grpc%E6%B5%81)
-  - [发布和订阅模式](#%E5%8F%91%E5%B8%83%E5%92%8C%E8%AE%A2%E9%98%85%E6%A8%A1%E5%BC%8F)
+  - [证书认证](#%E8%AF%81%E4%B9%A6%E8%AE%A4%E8%AF%81)
+    - [使用根证书](#%E4%BD%BF%E7%94%A8%E6%A0%B9%E8%AF%81%E4%B9%A6)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -455,8 +456,124 @@ func main() {
 
 可以引入根证书，通过对服务端和客户端来进行签名，来保证安全。  
 
+#### 使用根证书
 
+为了避免证书的传递过程中被篡改，可以通过一个安全可靠的根证书分别对服务器和客户端的证书进行签名。这样客户端或服务器在收到对方的证书后可以通过根
+证书进行验证证书的有效性。  
 
+首先看下我的项目目录  
+
+```go
+gRPC_cert_ca
+├── cert
+│   ├── ca.key
+│   ├── ca.pem
+│   ├── cert.conf
+│   ├── client
+│   │   ├── client.csr
+│   │   ├── client.key
+│   │   └── client.pem
+│   ├── server
+│   │   ├── server.csr
+│   │   ├── server.key
+│   │   └── server.pem
+│   ├── server.crt
+│   └── server.key
+├── client
+│   └── main.go
+├── hello.pb.go
+├── hello.proto
+└── server
+    └── main.go
+```
+
+**生成根证书**  
+
+公钥
+
+````
+openssl genrsa -out ca.key 2048
+````
+
+秘钥
+
+```go
+openssl req -new -x509 -days 7200 -key ca.key -out ca.pem
+```
+
+生成秘钥的时候需要填写信息  
+
+```go
+Country Name (2 letter code) []:
+State or Province Name (full name) []:
+Locality Name (eg, city) []:
+Organization Name (eg, company) []:
+Organizational Unit Name (eg, section) []:
+Common Name (eg, fully qualified host name) []:localhost
+Email Address []:
+```
+
+`Common Name`这个我们需要注意下，这个是主机名，测试的我就放了`localhost`  
+
+**server端**
+
+生成 Key  
+
+```go
+openssl ecparam -genkey -name secp384r1 -out server.key
+```
+
+生成CSR
+
+```go
+openssl req -new -key server.key -out server.csr
+```
+
+需要填写信息
+
+```go
+Country Name (2 letter code) []:
+State or Province Name (full name) []:
+Locality Name (eg, city) []:
+Organization Name (eg, company) []:
+Organizational Unit Name (eg, section) []:
+Common Name (eg, fully qualified host name) []:localhost
+Email Address []:
+
+Please enter the following 'extra' attributes
+to be sent with your certificate request
+A challenge password []:
+```
+
+使用ca进行证书的签发
+
+```go
+openssl x509 -req -sha256 -CA ca.pem -CAkey ca.key -CAcreateserial -days 3650 -in server.csr -out server.pem
+```
+
+注意下自己的ca公钥秘钥的路径问题  
+
+**client**
+
+生成key
+
+```go
+openssl ecparam -genkey -name secp384r1 -out client.key
+```
+
+生成csr
+
+```go
+openssl req -new -key client.key -out client.csr
+```
+
+使用ca进行证书的签发  
+
+```go
+openssl x509 -req -sha256 -CA ca.pem -CAkey ca.key -CAcreateserial -days 3650 -in client.csr -out client.pem
+```
+
+到此完成证书的生成  
 
 
 ### 参考
