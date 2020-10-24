@@ -329,7 +329,23 @@ func main() {
 
 ### 证书认证
 
-gRPC建立在HTTP/2协议之上，对TLS提供了很好的支持。
+gRPC建立在HTTP/2协议之上，对TLS提供了很好的支持。我们使用公钥，私钥，实现最近本的token认证  
+
+首先看下代码目录结构
+
+```go
+gRPC_cert
+├── cert
+│   ├── cert.conf
+│   ├── server.crt
+│   └── server.key
+├── client
+│   └── main.go
+├── hello.pb.go
+├── hello.proto
+└── server
+    └── main.go
+```
 
 创建`cert.conf`  
 
@@ -372,38 +388,39 @@ package main
 
 import (
 	"context"
-	"daily-test/gRPC_advanced"
-	"fmt"
+	"daily-test/gRPC_cert"
 	"log"
+	"net"
 
 	"google.golang.org/grpc/credentials"
 
 	"google.golang.org/grpc"
 )
 
+type HelloServiceImpl struct{}
+
+func (p *HelloServiceImpl) Hello(
+	ctx context.Context, args *gRPC_cert.String,
+) (*gRPC_cert.String, error) {
+	reply := &gRPC_cert.String{Value: "hello:" + args.GetValue()}
+	return reply, nil
+}
+
 func main() {
-	// 带入证书的信息
-	creds, err := credentials.NewClientTLSFromFile(
-		"/Users/yj/goWork/daily-test/gRPC_advanced/cert/server.crt", "localhost",
-	)
+
+	creds, err := credentials.NewServerTLSFromFile("./gRPC_cert/cert/server.crt", "./gRPC_cert/cert/server.key")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	conn, err := grpc.Dial("localhost:1234",
-		grpc.WithTransportCredentials(creds),
-	)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer conn.Close()
+	grpcServer := grpc.NewServer(grpc.Creds(creds))
+	gRPC_cert.RegisterHelloServiceServer(grpcServer, new(HelloServiceImpl))
 
-	client := gRPC_advanced.NewHelloServiceClient(conn)
-	reply, err := client.Hello(context.Background(), &gRPC_advanced.String{Value: "hello"})
+	lis, err := net.Listen("tcp", ":1234")
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(reply.GetValue())
+	grpcServer.Serve(lis)
 }
 ```
 
@@ -416,7 +433,7 @@ package main
 
 import (
 	"context"
-	"daily-test/gRPC_advanced"
+	"daily-test/gRPC_cert"
 	"fmt"
 	"log"
 
@@ -428,7 +445,7 @@ import (
 func main() {
 	// 带入证书的信息
 	creds, err := credentials.NewClientTLSFromFile(
-		"/Users/yj/goWork/daily-test/gRPC_advanced/cert/server.crt", "localhost",
+		"./gRPC_cert/cert/server.crt", "localhost",
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -442,14 +459,16 @@ func main() {
 	}
 	defer conn.Close()
 
-	client := gRPC_advanced.NewHelloServiceClient(conn)
-	reply, err := client.Hello(context.Background(), &gRPC_advanced.String{Value: "hello"})
+	client := gRPC_cert.NewHelloServiceClient(conn)
+	reply, err := client.Hello(context.Background(), &gRPC_cert.String{Value: "hello"})
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println(reply.GetValue())
 }
 ```
+
+demo地址`https://github.com/boilingfrog/daily-test/tree/master/gRPC_cert`  
 
 这种需要讲服务端的证书进行下发，这样客户在交互的时候每次都需要带过来，但是这样是不安全的。在传输的过程中证书存在被
 监听和替换的可能性。  
