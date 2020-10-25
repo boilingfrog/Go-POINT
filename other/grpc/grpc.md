@@ -79,7 +79,7 @@ package main
 
 import (
 	"context"
-	"daily-test/gRPC"
+	"daily-test/gRPC/gRPC_base"
 	"log"
 	"net"
 
@@ -89,16 +89,16 @@ import (
 type HelloServiceImpl struct{}
 
 func (p *HelloServiceImpl) Hello(
-	ctx context.Context, args *gRPC.String,
-) (*gRPC.String, error) {
-	reply := &gRPC.String{Value: "hello:" + args.GetValue()}
+	ctx context.Context, args *gRPC_base.String,
+) (*gRPC_base.String, error) {
+	reply := &gRPC_base.String{Value: "hello:" + args.GetValue()}
 	return reply, nil
 }
 
 func main() {
 
 	grpcServer := grpc.NewServer()
-	gRPC.RegisterHelloServiceServer(grpcServer, new(HelloServiceImpl))
+	gRPC_base.RegisterHelloServiceServer(grpcServer, new(HelloServiceImpl))
 
 	lis, err := net.Listen("tcp", ":1234")
 	if err != nil {
@@ -117,7 +117,7 @@ package main
 
 import (
 	"context"
-	"daily-test/gRPC"
+	"daily-test/gRPC/gRPC_base"
 	"fmt"
 	"log"
 
@@ -131,8 +131,8 @@ func main() {
 	}
 	defer conn.Close()
 
-	client := gRPC.NewHelloServiceClient(conn)
-	reply, err := client.Hello(context.Background(), &gRPC.String{Value: "hello"})
+	client := gRPC_base.NewHelloServiceClient(conn)
+	reply, err := client.Hello(context.Background(), &gRPC_base.String{Value: "hello"})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -222,7 +222,7 @@ package main
 
 import (
 	"context"
-	"daily-test/gRPC_stream"
+	"daily-test/gRPC/gRPC_stream"
 	"io"
 	"log"
 	"net"
@@ -279,7 +279,7 @@ package main
 
 import (
 	"context"
-	"daily-test/gRPC_stream"
+	"daily-test/gRPC/gRPC_stream"
 	"fmt"
 	"io"
 	"log"
@@ -329,7 +329,7 @@ func main() {
 
 ### 证书认证
 
-gRPC建立在HTTP/2协议之上，对TLS提供了很好的支持。我们使用公钥，私钥，实现最近本的token认证  
+gRPC建立在HTTP/2协议之上，对TLS提供了很好的支持。我们使用公钥，私钥，实现一个基本的认证   
 
 首先看下代码目录结构
 
@@ -388,7 +388,7 @@ package main
 
 import (
 	"context"
-	"daily-test/gRPC_cert"
+	"daily-test/gRPC/gRPC_cert"
 	"log"
 	"net"
 
@@ -408,7 +408,7 @@ func (p *HelloServiceImpl) Hello(
 
 func main() {
 
-	creds, err := credentials.NewServerTLSFromFile("./gRPC_cert/cert/server.crt", "./gRPC_cert/cert/server.key")
+	creds, err := credentials.NewServerTLSFromFile("./gRPC/gRPC_cert/cert/server.crt", "./gRPC/gRPC_cert/cert/server.key")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -433,7 +433,7 @@ package main
 
 import (
 	"context"
-	"daily-test/gRPC_cert"
+	"daily-test/gRPC/gRPC_cert"
 	"fmt"
 	"log"
 
@@ -445,7 +445,7 @@ import (
 func main() {
 	// 带入证书的信息
 	creds, err := credentials.NewClientTLSFromFile(
-		"./gRPC_cert/cert/server.crt", "localhost",
+		"./gRPC/gRPC_cert/cert/server.crt", "localhost",
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -468,7 +468,7 @@ func main() {
 }
 ```
 
-demo地址`https://github.com/boilingfrog/daily-test/tree/master/gRPC_cert`  
+demo地址`https://github.com/boilingfrog/daily-test/tree/master/gRPC/gRPC_cert`  
 
 这种需要讲服务端的证书进行下发，这样客户在交互的时候每次都需要带过来，但是这样是不安全的。在传输的过程中证书存在被
 监听和替换的可能性。  
@@ -603,7 +603,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"daily-test/gRPC_cert_ca"
+	"daily-test/gRPC/gRPC_cert_ca"
 	"io/ioutil"
 	"log"
 	"net"
@@ -624,13 +624,13 @@ func (p *HelloServiceImpl) Hello(
 
 func main() {
 
-	cert, err := tls.LoadX509KeyPair("./gRPC_cert_ca/cert/server/server.pem", "./gRPC_cert_ca/cert/server/server.key")
+	cert, err := tls.LoadX509KeyPair("./gRPC/gRPC_cert_ca/cert/server/server.pem", "./gRPC/gRPC_cert_ca/cert/server/server.key")
 	if err != nil {
 		log.Fatalf("tls.LoadX509KeyPair err: %v", err)
 	}
 
 	certPool := x509.NewCertPool()
-	ca, err := ioutil.ReadFile("./gRPC_cert_ca/cert/ca.pem")
+	ca, err := ioutil.ReadFile("./gRPC/gRPC_cert_ca/cert/ca.pem")
 	if err != nil {
 		log.Fatalf("ioutil.ReadFile err: %v", err)
 	}
@@ -667,7 +667,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"daily-test/gRPC_cert_ca"
+	"daily-test/gRPC/gRPC_cert_ca"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -678,13 +678,13 @@ import (
 )
 
 func main() {
-	cert, err := tls.LoadX509KeyPair("./gRPC_cert_ca/cert/client/client.pem", "./gRPC_cert_ca/cert/client/client.key")
+	cert, err := tls.LoadX509KeyPair("./gRPC/gRPC_cert_ca/cert/client/client.pem", "./gRPC/gRPC_cert_ca/cert/client/client.key")
 	if err != nil {
 		log.Fatalf("tls.LoadX509KeyPair err: %v", err)
 	}
 
 	certPool := x509.NewCertPool()
-	ca, err := ioutil.ReadFile("./gRPC_cert_ca/cert/ca.pem")
+	ca, err := ioutil.ReadFile("./gRPC/gRPC_cert_ca/cert/ca.pem")
 	if err != nil {
 		log.Fatalf("ioutil.ReadFile err: %v", err)
 	}
@@ -720,8 +720,196 @@ func main() {
 在`credentials.NewTLS`函数调用中，客户端通过引入一个CA根证书和服务器的名字来实现对服务器进行验证。客户端在链接服务器时会首先请求服务器的证书，
 然后使用CA根证书对收到的服务器端证书进行验证。  
 
-ca认证的demo`https://github.com/boilingfrog/daily-test/tree/master/gRPC_cert_ca`
+ca认证的demo`https://github.com/boilingfrog/daily-test/tree/master/gRPC/gRPC_cert_ca`
 
+### gRPC实现token认证
+
+对于每个gRPC请求我们还会用到token的认证  
+
+要实现对每个gRPC方法进行认证，需要实现`grpc.PerRPCCredentials`接口：  
+
+```go
+type PerRPCCredentials interface {
+    // GetRequestMetadata gets the current request metadata, refreshing
+    // tokens if required. This should be called by the transport layer on
+    // each request, and the data should be populated in headers or other
+    // context. If a status code is returned, it will be used as the status
+    // for the RPC. uri is the URI of the entry point for the request.
+    // When supported by the underlying implementation, ctx can be used for
+    // timeout and cancellation.
+    // TODO(zhaoq): Define the set of the qualified keys instead of leaving
+    // it as an arbitrary string.
+    GetRequestMetadata(ctx context.Context, uri ...string) (
+        map[string]string,    error,
+    )
+    // RequireTransportSecurity indicates whether the credentials requires
+    // transport security.
+    RequireTransportSecurity() bool
+}
+```
+
+在`GetRequestMetadata`方法中返回认证需要的必要信息。`RequireTransportSecurity`方法表示是否要求底层使用安全链接。在真实的环境中建议必须要求
+底层启用安全的链接，否则认证信息有泄露和被篡改的风险。  
+
+看下代码结构  
+
+```go
+gRPC_token
+├── client
+│   └── main.go
+├── hello.pb.go
+├── hello.proto
+└── server
+    └── main.go
+```
+
+服务端代码  
+
+```go
+package main
+
+import (
+	"context"
+	"daily-test/gRPC/gRPC_token"
+	"fmt"
+	"log"
+	"net"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
+
+	"google.golang.org/grpc"
+)
+
+type Authentication struct {
+	User     string
+	Password string
+}
+
+type grpcServer struct {
+	auth *Authentication
+}
+
+func (p *grpcServer) Hello(
+	ctx context.Context, args *gRPC_token.String,
+) (*gRPC_token.String, error) {
+	// 初始化信息，测试用的
+	p.Init()
+	// 检验
+	if err := p.auth.Auth(ctx); err != nil {
+		return nil, err
+	}
+
+	reply := &gRPC_token.String{Value: "hello:" + args.GetValue()}
+	return reply, nil
+}
+
+// 测试使用
+func (p *grpcServer) Init() {
+	p.auth = &Authentication{
+		User:     "liz",
+		Password: "123456",
+	}
+}
+
+// 认证
+func (a *Authentication) Auth(ctx context.Context) error {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return fmt.Errorf("missing credentials")
+	}
+
+	var appid string
+	var appkey string
+
+	if val, ok := md["user"]; ok {
+		appid = val[0]
+	}
+	if val, ok := md["password"]; ok {
+		appkey = val[0]
+	}
+
+	if appid != a.User || appkey != a.Password {
+		return grpc.Errorf(codes.Unauthenticated, "invalid token")
+	}
+
+	return nil
+}
+
+func main() {
+
+	grpcServer1 := grpc.NewServer()
+	gRPC_token.RegisterHelloServiceServer(grpcServer1, new(grpcServer))
+
+	lis, err := net.Listen("tcp", ":1234")
+	if err != nil {
+		log.Fatal(err)
+	}
+	grpcServer1.Serve(lis)
+}
+```
+
+主要通过`Authentication.Auth()`实现了对token信息的校验，通过`metadata.FromIncomingContext(ctx)`获取请求中的认证信息，然后进行匹配校验。  
+
+
+客户端代码  
+
+```go
+package main
+
+import (
+	"context"
+	"daily-test/gRPC/gRPC_token"
+	"fmt"
+	"log"
+
+	"google.golang.org/grpc"
+)
+
+type Authentication struct {
+	User     string
+	Password string
+}
+
+// 返回认证需要的必要信息
+func (a *Authentication) GetRequestMetadata(context.Context, ...string) (
+	map[string]string, error,
+) {
+	return map[string]string{"user": a.User, "password": a.Password}, nil
+}
+
+// 表示是否要求底层使用安全链接,测试的代码就是使用了false
+func (a *Authentication) RequireTransportSecurity() bool {
+	return false
+}
+
+func main() {
+	// 初始化账户，密码
+	auth := Authentication{
+		User:     "liz",
+		Password: "123456",
+	}
+
+	conn, err := grpc.Dial("localhost:1234", grpc.WithInsecure(),
+		grpc.WithPerRPCCredentials(&auth),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+
+	client := gRPC_token.NewHelloServiceClient(conn)
+	reply, err := client.Hello(context.Background(), &gRPC_token.String{Value: "hello"})
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(reply.GetValue())
+}
+```
+
+通过`grpc.WithPerRPCCredentials`函数将`Authentication`对象转为`grpc.Dial`参数。测试的代码，使用`grpc.WithInsecure()`忽略证书认证。  
+
+代码的demo`https://github.com/boilingfrog/daily-test/tree/master/gRPC/gRPC_token`
 
 ### 参考
 
