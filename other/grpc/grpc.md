@@ -12,6 +12,8 @@
   - [gRPC流](#grpc%E6%B5%81)
   - [证书认证](#%E8%AF%81%E4%B9%A6%E8%AE%A4%E8%AF%81)
     - [使用根证书](#%E4%BD%BF%E7%94%A8%E6%A0%B9%E8%AF%81%E4%B9%A6)
+  - [gRPC实现token认证](#grpc%E5%AE%9E%E7%8E%B0token%E8%AE%A4%E8%AF%81)
+  - [和Web服务共存](#%E5%92%8Cweb%E6%9C%8D%E5%8A%A1%E5%85%B1%E5%AD%98)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -910,6 +912,184 @@ func main() {
 通过`grpc.WithPerRPCCredentials`函数将`Authentication`对象转为`grpc.Dial`参数。测试的代码，使用`grpc.WithInsecure()`忽略证书认证。  
 
 代码的demo`https://github.com/boilingfrog/daily-test/tree/master/gRPC/gRPC_token`
+
+### 和Web服务共存
+
+gRPC构建在HTTP/2协议之上，因此我们可以将gRPC服务和普通的Web服务架设在同一个端口之上。  
+
+代码在之前的ca认证的demo基础之上，加入web服务  
+
+我的目录结构  
+
+```go
+gRPC_web
+├── cert
+│   ├── ca.key
+│   ├── ca.pem
+│   ├── client
+│   │   ├── client.csr
+│   │   ├── client.key
+│   │   └── client.pem
+│   └── server
+│       ├── server.csr
+│       ├── server.key
+│       └── server.pem
+├── client
+│   └── main.go
+├── hello.pb.go
+├── hello.proto
+└── server
+    └── main.go
+```
+
+服务端代码
+
+```go
+package main
+
+import (
+	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"daily-test/gRPC/gRPC_web"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"strings"
+
+	"google.golang.org/grpc/credentials"
+
+	"google.golang.org/grpc"
+)
+
+type HelloServiceImpl struct{}
+
+func (p *HelloServiceImpl) Hello(
+	ctx context.Context, args *gRPC_web.String,
+) (*gRPC_web.String, error) {
+	reply := &gRPC_web.String{Value: "hello:" + args.GetValue()}
+	return reply, nil
+}
+
+func main() {
+
+	cert, err := tls.LoadX509KeyPair("./gRPC/gRPC_web/cert/server/server.pem", "./gRPC/gRPC_web/cert/server/server.key")
+	if err != nil {
+		log.Fatalf("tls.LoadX509KeyPair err: %v", err)
+	}
+
+	certPool := x509.NewCertPool()
+	ca, err := ioutil.ReadFile("./gRPC/gRPC_web/cert/ca.pem")
+	if err != nil {
+		log.Fatalf("ioutil.ReadFile err: %v", err)
+	}
+
+	if ok := certPool.AppendCertsFromPEM(ca); !ok {
+		log.Fatalf("certPool.AppendCertsFromPEM err")
+	}
+
+	c := credentials.NewTLS(&tls.Config{
+		Certificates: []tls.Certificate{cert},
+		ClientAuth:   tls.RequireAndVerifyClientCert,
+		ClientCAs:    certPool,
+	})
+
+	grpcServer := grpc.NewServer(grpc.Creds(c))
+
+	gRPC_web.RegisterHelloServiceServer(grpcServer, new(HelloServiceImpl))
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
+		w.Write([]byte("hello"))
+	})
+
+	http.ListenAndServeTLS(":1234", "./gRPC/gRPC_web/cert/server/server.pem", "./gRPC/gRPC_web/cert/server/server.key",
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.ProtoMajor != 2 {
+				mux.ServeHTTP(w, r)
+				return
+			}
+			if strings.Contains(
+				r.Header.Get("Content-Type"), "application/grpc",
+			) {
+				grpcServer.ServeHTTP(w, r)
+				return
+			}
+
+			mux.ServeHTTP(w, r)
+			return
+		}),
+	)
+}
+```
+
+因为gRPC服务已经实现了ServeHTTP方法，可以直接作为Web路由处理对象。如果将gRPC和Web服务放在一起，会导致gRPC和Web路径的冲突，在处理时我们需要区分两类服务。  
+
+客户端实现  
+
+```go
+package main
+
+import (
+	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"daily-test/gRPC/gRPC_web"
+	"fmt"
+	"io/ioutil"
+	"log"
+
+	"google.golang.org/grpc/credentials"
+
+	"google.golang.org/grpc"
+)
+
+func main() {
+	cert, err := tls.LoadX509KeyPair("./gRPC/gRPC_web/cert/client/client.pem", "./gRPC/gRPC_web/cert/client/client.key")
+	if err != nil {
+		log.Fatalf("tls.LoadX509KeyPair err: %v", err)
+	}
+
+	certPool := x509.NewCertPool()
+	ca, err := ioutil.ReadFile("./gRPC/gRPC_web/cert/ca.pem")
+	if err != nil {
+		log.Fatalf("ioutil.ReadFile err: %v", err)
+	}
+
+	if ok := certPool.AppendCertsFromPEM(ca); !ok {
+		log.Fatalf("certPool.AppendCertsFromPEM err")
+	}
+
+	c := credentials.NewTLS(&tls.Config{
+		Certificates: []tls.Certificate{cert},
+		ServerName:   "localhost",
+		RootCAs:      certPool,
+	})
+
+	conn, err := grpc.Dial(":1234",
+		grpc.WithTransportCredentials(c),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+
+	client := gRPC_web.NewHelloServiceClient(conn)
+	reply, err := client.Hello(context.Background(), &gRPC_web.String{Value: "hello"})
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(reply.GetValue())
+
+}
+```
+
+当然除了grpc可以调用之外，我们同样可以请求web服务进行调用  
+
+![grpc](/img/grpc_web.jpg?raw=true)
+
+demo地址`https://github.com/boilingfrog/daily-test/tree/master/gRPC/gRPC_web`  
 
 ### 参考
 
