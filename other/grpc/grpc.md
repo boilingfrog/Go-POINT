@@ -1217,6 +1217,140 @@ grpc-gateway的工作原理如下图
 
 ![grpc](/img/grpc_gateway.png?raw=true)  
 
+通过在Protobuf文件中添加路由相关的元信息，通过自定义的代码插件生成路由相关的处理代码，最终将REST请求转给更后端的gRPC服务处理。  
+
+放上我的代码目录
+
+```go
+gRPC_restful
+├── client
+│   └── main.go
+├── hello.pb.go
+├── hello.pb.gw.go
+├── hello.proto
+├── httpServer
+│   └── main.go
+└── server
+    └── main.go
+```
+
+Protobuf代码
+
+```go
+syntax = "proto3";
+
+package gRPC_restful;
+
+import "google/api/annotations.proto";
+
+message StringMessage {
+  string value = 1;
+}
+
+service RestService {
+    rpc GetMes(StringMessage) returns (StringMessage) {
+        option (google.api.http) = {
+            get: "/mes/{value}"
+        };
+    }
+    rpc PostMes(StringMessage) returns (StringMessage) {
+        option (google.api.http) = {
+            post: "/mes"
+            body: "*"
+        };
+    }
+}
+```
+
+上面的GetMes和PostMes提供了rpc接口，然后下面定义了相应的restful接口  
+
+我们需要安装下`protoc-gen-grpc-gateway`插件  
+
+```go
+go get -u github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway
+```
+
+然后生成代码
+
+```go
+protoc --proto_path=. --proto_path=$GOPATH/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis --grpc-gateway_out=. --go_out=plugins=grpc:. hello.proto
+```
+
+proto_path的patch需要注意下  
+
+grpc的server
+
+```go
+package main
+
+import (
+	"context"
+	"daily-test/gRPC/gRPC_restful"
+	"log"
+	"net"
+
+	"google.golang.org/grpc"
+)
+
+type HelloServiceImpl struct{}
+
+func (p *HelloServiceImpl) GetMes(ctx context.Context, args *gRPC_restful.StringMessage) (*gRPC_restful.StringMessage, error) {
+	reply := &gRPC_restful.StringMessage{Value: args.Value}
+	return reply, nil
+}
+
+func (p *HelloServiceImpl) PostMes(ctx context.Context, args *gRPC_restful.StringMessage) (*gRPC_restful.StringMessage, error) {
+	reply := &gRPC_restful.StringMessage{Value: args.Value + "post"}
+	return reply, nil
+}
+
+func main() {
+	grpcServer := grpc.NewServer()
+	gRPC_restful.RegisterRestServiceServer(grpcServer, new(HelloServiceImpl))
+
+	lis, err := net.Listen("tcp", ":1234")
+	if err != nil {
+		log.Fatal(err)
+	}
+	grpcServer.Serve(lis)
+}
+```
+
+http的server  
+
+```go
+package main
+
+import (
+	"context"
+	"daily-test/gRPC/gRPC_restful"
+	"log"
+	"net/http"
+
+	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"google.golang.org/grpc"
+)
+
+func main() {
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	mux := runtime.NewServeMux()
+
+	err := gRPC_restful.RegisterRestServiceHandlerFromEndpoint(
+		ctx, mux, "localhost:1234",
+		[]grpc.DialOption{grpc.WithInsecure()},
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	http.ListenAndServe(":8080", mux)
+}
+```
+
+demo地址：`https://github.com/boilingfrog/daily-test/tree/master/gRPC/gRPC_restful`  
 
 ### 参考
 
