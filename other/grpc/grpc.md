@@ -15,6 +15,7 @@
   - [gRPC实现token认证](#grpc%E5%AE%9E%E7%8E%B0token%E8%AE%A4%E8%AF%81)
   - [和Web服务共存](#%E5%92%8Cweb%E6%9C%8D%E5%8A%A1%E5%85%B1%E5%AD%98)
   - [验证器](#%E9%AA%8C%E8%AF%81%E5%99%A8)
+  - [REST接口](#rest%E6%8E%A5%E5%8F%A3)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -1207,6 +1208,14 @@ func (this *String) Validate() error {
 调用这个函数，实现对字段的校验  
 
 demo地址：`https://github.com/boilingfrog/daily-test/tree/master/gRPC/gRPC_validator`
+
+### REST接口
+
+开元社区中grpc-gateway项目就实现了将gRPC服务转为REST服务的能力。  
+
+grpc-gateway的工作原理如下图  
+
+![grpc](/img/grpc_gateway.png?raw=true)  
 
 
 ### 参考
