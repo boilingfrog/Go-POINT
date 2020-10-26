@@ -1146,7 +1146,7 @@ $ go get github.com/mwitkow/go-proto-validators/protoc-gen-govalidators
 使用新的插件生成代码
 
 ```go
-protoc --proto_path=. --proto_path=/Users/yj/Go/src/ --govalidators_out=. --go_out=plugins=grpc:. hello.proto
+$ protoc --proto_path=. --proto_path=${GOPATH}/src --govalidators_out=. --go_out=plugins=grpc:. hello.proto
 ```
 
 **注意**：
@@ -1158,7 +1158,7 @@ protoc --proto_path=. --proto_path=/Users/yj/Go/src/ --govalidators_out=. --go_o
 所以添加proto_path就可以了，指定两个地址，一个是import的地址，一个是要编译为.go的proto文件的地址  
 
 ```go
-protoc --proto_path=. --proto_path=/Users/yj/Go/src/ --govalidators_out=. --go_out=plugins=grpc:. hello.proto
+$ protoc --proto_path=. --proto_path=${GOPATH}/src --govalidators_out=. --go_out=plugins=grpc:. hello.proto
 ```
 
 需要注意下，要不会出现import找不到的错误  

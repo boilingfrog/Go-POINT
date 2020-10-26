@@ -49,5 +49,5 @@ hello.proto:5:1: Import "github.com/mwitkow/go-proto-validators/validator.proto"
 所以添加proto_path就可以了，指定两个地址，一个是import的地址，一个是要编译为.go的proto文件的地址  
 
 ```go
-protoc --proto_path=. --proto_path=/Users/yj/Go/src/ --govalidators_out=. --go_out=plugins=grpc:. hello.proto
+$ protoc --proto_path=. --proto_path=${GOPATH}/src --govalidators_out=. --go_out=plugins=grpc:. hello.proto
 ```
