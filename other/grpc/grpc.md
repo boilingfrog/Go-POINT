@@ -1091,6 +1091,10 @@ func main() {
 
 demo地址`https://github.com/boilingfrog/daily-test/tree/master/gRPC/gRPC_web`  
 
+###验证器
+
+
+
 ### 参考
 
 【https://www.cnblogs.com/yilezhu/p/10645804.html】https://www.cnblogs.com/yilezhu/p/10645804.html  
