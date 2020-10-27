@@ -16,6 +16,12 @@
   - [和Web服务共存](#%E5%92%8Cweb%E6%9C%8D%E5%8A%A1%E5%85%B1%E5%AD%98)
   - [验证器](#%E9%AA%8C%E8%AF%81%E5%99%A8)
   - [REST接口](#rest%E6%8E%A5%E5%8F%A3)
+  - [grpcurl工具](#grpcurl%E5%B7%A5%E5%85%B7)
+    - [查看服务列表](#%E6%9F%A5%E7%9C%8B%E6%9C%8D%E5%8A%A1%E5%88%97%E8%A1%A8)
+    - [查看某个服务的方法列表](#%E6%9F%A5%E7%9C%8B%E6%9F%90%E4%B8%AA%E6%9C%8D%E5%8A%A1%E7%9A%84%E6%96%B9%E6%B3%95%E5%88%97%E8%A1%A8)
+    - [查看某个服务的描述信息](#%E6%9F%A5%E7%9C%8B%E6%9F%90%E4%B8%AA%E6%9C%8D%E5%8A%A1%E7%9A%84%E6%8F%8F%E8%BF%B0%E4%BF%A1%E6%81%AF)
+    - [获取类型信息](#%E8%8E%B7%E5%8F%96%E7%B1%BB%E5%9E%8B%E4%BF%A1%E6%81%AF)
+    - [测试请求](#%E6%B5%8B%E8%AF%95%E8%AF%B7%E6%B1%82)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -1351,6 +1357,123 @@ func main() {
 ```
 
 demo地址：`https://github.com/boilingfrog/daily-test/tree/master/gRPC/gRPC_restful`  
+
+### grpcurl工具
+
+gRPC同样也提供了一个名为reflection的反射包，用于为gRPC服务提供查询。配合grpcurl一款使用go写，就能查询gRPC列表或调用gRPC方法。  
+
+启动反射服务  
+
+```go
+package main
+
+import (
+	"context"
+	"daily-test/gRPC/gRPC_grpcurl"
+	"log"
+	"net"
+
+	"google.golang.org/grpc/reflection"
+
+	"google.golang.org/grpc"
+)
+
+type HelloServiceImpl struct{}
+
+func (p *HelloServiceImpl) Hello(ctx context.Context, args *gRPC_grpcurl.String) (*gRPC_grpcurl.String, error) {
+	reply := &gRPC_grpcurl.String{Value: "hello:" + args.GetValue()}
+	return reply, nil
+}
+
+func main() {
+
+	grpcServer := grpc.NewServer()
+	gRPC_grpcurl.RegisterHelloServiceServer(grpcServer, new(HelloServiceImpl))
+
+	// Register reflection service on gRPC server.
+	reflection.Register(grpcServer)
+
+	lis, err := net.Listen("tcp", ":1234")
+	if err != nil {
+		log.Fatal(err)
+	}
+	grpcServer.Serve(lis)
+}
+```
+
+服务端的加入
+
+```go
+	reflection.Register(grpcServer)
+```
+
+将grpc.Server注册到反射服务中，下游就能进行反射的查看。  
+
+#### 查看服务列表
+
+首先手动安装grpcurl工具  
+
+```go
+$ go get github.com/fullstorydev/grpcurl
+$ go install github.com/fullstorydev/grpcurl/cmd/grpcurl
+```
+
+命令常用到的参数  
+
+- -plaintext 忽略tls证书的验证过程
+- -cert 配置公钥信息
+- -key 配置私钥信息  
+- list 获取端口上的grpc服务的列表
+- describe 查看服务的描述信息
+
+查看服务列表
+
+```go
+$ grpcurl -plaintext  localhost:1234 list
+gRPC_grpcurl.HelloService
+grpc.reflection.v1alpha.ServerReflection
+```
+
+#### 查看某个服务的方法列表
+
+```go
+$ grpcurl -plaintext  localhost:1234 list gRPC_grpcurl.HelloService
+gRPC_grpcurl.HelloService.Hello
+```
+
+#### 查看某个服务的描述信息
+
+```go
+$ grpcurl -plaintext  localhost:1234 describe  gRPC_grpcurl.HelloService
+gRPC_grpcurl.HelloService is a service:
+service HelloService {
+  rpc Hello ( .gRPC_grpcurl.String ) returns ( .gRPC_grpcurl.String );
+}
+```
+
+#### 获取类型信息
+
+```go
+$ grpcurl -plaintext  localhost:1234 describe  gRPC_grpcurl.String
+gRPC_grpcurl.String is a message:
+message String {
+  string value = 1;
+}
+```
+
+#### 测试请求  
+
+调用方法，可以使用grpcurl代替客户端进行访问请求  
+
+```go
+$ grpcurl -plaintext -d '{"value": "gopher"}' localhost:1234 gRPC_grpcurl.HelloService.Hello
+{
+  "value": "hello:gopher"
+}
+```
+-d后面跟的是请求的json数据  
+
+如果-d参数是@则表示从标准输入读取json输入参数，这一般用于比较输入复杂的json数据，也可以用于测试流方法。  
 
 ### 参考
 
