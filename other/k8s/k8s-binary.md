@@ -120,6 +120,50 @@ kubernetes 使用 etcd 存储所有运行数据。
 [root@kube-master ~]# tar -xvf etcd-v3.3.7-linux-amd64.tar.gz
 ```
 
+
+
+
+cat > etcd-csr.json <<EOF
+{
+    "CN": "etcd",
+    "hosts": [
+        "127.0.0.1",
+        "192.168.56.101",
+        "192.168.56.102",
+        "192.168.56.103"
+    ],
+    "key": {
+        "algo": "rsa",
+        "size": 2048
+    },
+    "names": [
+        {
+            "C": "CN",
+            "ST": "BeiJing",
+            "L": "BeiJing",
+            "O": "k8s",
+            "OU": "4Paradigm"
+        }
+    ]
+}
+EOF
+
+
+
+```go
+cfssl gencert -ca=/opt/k8s/cert/ca.pem \
+-ca-key=/opt/k8s/cert/ca-key.pem \
+-config=/opt/k8s/cert/ca-config.json \
+-profile=kubernetes etcd-csr.json | cfssljson -bare etcd
+```
+
+修改权限
+
+```go
+chown -R k8s /opt/etcd/cert/
+chmod +x -R /opt/etcd/cert/
+```
+
 #### 创建etcd证书和密匙
 
 创建证书签名请求
@@ -127,7 +171,7 @@ kubernetes 使用 etcd 存储所有运行数据。
 ````
 
 ````
-NODE_IPS=("192.168.56.102" "192.168.56.102" "192.168.56.103")
+NODE_IPS=("192.168.56.101" "192.168.56.102" "192.168.56.103")
 for node_ip in ${NODE_IPS[@]};do
         echo ">>> ${node_ip}"
         scp /root/etcd-v3.3.7-linux-amd64/etcd* k8s@${node_ip}:/opt/k8s/bin
@@ -213,10 +257,86 @@ LimitNOFILE=65536
 WantedBy=multi-user.target
 EOF
 
+flannel
+```go
+cfssl gencert -ca=/opt/k8s/cert/ca.pem \
+-ca-key=/opt/k8s/cert/ca-key.pem \
+-config=/opt/k8s/cert/ca-config.json \
+-profile=kubernetes flanneld-csr.json | cfssljson -bare flanneld
+```
+
+```go
+cat > /opt/k8s/script/scp_flannel.sh <<EOF
+
+NODE_IPS=("192.168.56.101" "192.168.56.102" "192.168.56.103")
+for node_ip in ${NODE_IPS[@]};do
+    echo ">>> ${node_ip}"
+    scp /root/flannel/{flanneld,mk-docker-opts.sh} k8s@${node_ip}:/opt/k8s/bin/
+    ssh k8s@${node_ip} "chmod +x /opt/k8s/bin/*"
+    ssh root@${node_ip} "mkdir -p /opt/flannel/cert && chown -R k8s /opt/flannel"
+    scp /opt/flannel/cert/flanneld*.pem k8s@${node_ip}:/opt/flannel/cert
+done
+EOF
+```
 
 
+````go
+etcdctl \
+--endpoints="https://192.168.56.101:2379,https://192.168.56.102:2379,https://192.168.56.103:2379" \
+--ca-file=/opt/k8s/cert/ca.pem \
+--cert-file=/opt/flannel/cert/flanneld.pem \
+--key-file=/opt/flannel/cert/flanneld-key.pem \
+set /atomic.io/network/config '{"Network":"10.30.0.0/16","SubnetLen": 24, "Backend": {"Type": "vxlan"}}'
+{"Network":"10.30.0.0/16","SubnetLen": 24, "Backend": {"Type": "vxlan"}}
+
+
+````
+
+
+cat > /opt/flannel/flanneld.service << EOF
+
+[Unit]
+Description=Flanneld overlay address etcd agent
+After=network.target
+After=network-online.target
+Wants=network-online.target
+After=etcd.service
+Before=docker.service
+
+[Service]
+Type=notify
+ExecStart=/opt/k8s/bin/flanneld \
+-etcd-cafile=/opt/k8s/cert/ca.pem \
+-etcd-certfile=/opt/flannel/cert/flanneld.pem \
+-etcd-keyfile=/opt/flannel/cert/flanneld-key.pem \
+-etcd-endpoints=https://192.168.156.101:2379,https://192.168.56.102:2379,https://192.168.56.103:2379 \
+-etcd-prefix=/atomic.io/network \
+-iface=eth1
+ExecStartPost=/opt/k8s/bin/mk-docker-opts.sh -k DOCKER_NETWORK_OPTIONS -d /run/flannel/docker
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+RequiredBy=docker.service
+EOF
+
+
+
+```go
+NODE_IPS=("192.168.56.101" "192.168.56.102" "192.168.56.103")
+for node_ip in ${NODE_IPS[@]};do
+    echo ">>> ${node_ip}"
+ #分发 flanneld systemd unit 文件到所有节点
+    scp /opt/flannel/flanneld.service root@${node_ip}:/etc/systemd/system/
+ #启动 flanneld 服务
+    ssh root@${node_ip} "systemctl daemon-reload && systemctl enable flanneld && systemctl restart flanneld"
+ #检查启动结果
+    ssh k8s@${node_ip} "systemctl status flanneld|grep Active"
+done
+```
 
 
 
 ### 参考
-【二进制安装部署kubernetes集群---超详细教程】https://www.cnblogs.com/along21/p/10044931.html
+【二进制安装部署kubernetes集群---超详细教程】https://www.cnblogs.com/along21/p/10044931.html  
+【etcd时间同步】https://bingohuang.com/etcd-operation-2/
