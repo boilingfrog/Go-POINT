@@ -1,6 +1,12 @@
 ## 二进制部署k8s
 
 
+### 秘钥免密码
+
+```go
+ssh-copy-id root@192.168.56.101
+```
+
 ### docker安装
 
 docker 安装
