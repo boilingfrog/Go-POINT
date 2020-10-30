@@ -341,7 +341,7 @@ for node_ip in ${NODE_IPS[@]};do
 done
 ```
 
-脚本
+脚本ceshi
 
 
 ### 参考
