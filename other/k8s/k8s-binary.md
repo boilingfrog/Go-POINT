@@ -43,10 +43,46 @@ sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
 
 192.168.56.103 kube-node2
 
+### 创建证书
 
 
 
+```
+{
+    "CN": "etcd",
+    "hosts": [
+    "192.168.56.101",
+    "192.168.56.102",
+    "192.168.56.103"
+    ],
+    "key": {
+        "algo": "rsa",
+        "size": 2048
+    },
+    "names": [
+        {
+            "C": "CN",
+            "L": "BeiJing",
+            "ST": "BeiJing"
+        }
+    ]
+}
+```
 
+```
+#[Member]
+ETCD_NAME="etcd01"
+ETCD_DATA_DIR="/var/lib/etcd/default.etcd"
+ETCD_LISTEN_PEER_URLS="https://192.168.56.101:2380"
+ETCD_LISTEN_CLIENT_URLS="https://192.168.56.101:2379"
+
+#[Clustering]
+ETCD_INITIAL_ADVERTISE_PEER_URLS="https://192.168.56.101:2380"
+ETCD_ADVERTISE_CLIENT_URLS="https://192.168.56.101:2379"
+ETCD_INITIAL_CLUSTER="etcd01=https://192.168.56.101:2380,etcd02=https://192.168.56.102:2380,etcd03=https://192.168.56.103:2380"
+ETCD_INITIAL_CLUSTER_TOKEN="etcd-cluster"
+ETCD_INITIAL_CLUSTER_STATE="new"
+```
 
 
 
