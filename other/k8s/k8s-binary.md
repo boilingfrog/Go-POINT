@@ -1,3 +1,18 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [二进制部署k8s](#%E4%BA%8C%E8%BF%9B%E5%88%B6%E9%83%A8%E7%BD%B2k8s)
+  - [秘钥免密码](#%E7%A7%98%E9%92%A5%E5%85%8D%E5%AF%86%E7%A0%81)
+  - [docker安装](#docker%E5%AE%89%E8%A3%85)
+  - [部署的命令](#%E9%83%A8%E7%BD%B2%E7%9A%84%E5%91%BD%E4%BB%A4)
+  - [安装etcd](#%E5%AE%89%E8%A3%85etcd)
+    - [创建证书](#%E5%88%9B%E5%BB%BA%E8%AF%81%E4%B9%A6)
+    - [生成证书](#%E7%94%9F%E6%88%90%E8%AF%81%E4%B9%A6)
+    - [部署Etcd](#%E9%83%A8%E7%BD%B2etcd)
+  - [参考](#%E5%8F%82%E8%80%83)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## 二进制部署k8s
 
 
@@ -206,4 +221,5 @@ ETCD_INITIAL_CLUSTER_STATE="new"
 
 ### 参考
 【二进制安装部署kubernetes集群---超详细教程】https://www.cnblogs.com/along21/p/10044931.html  
-【etcd时间同步】https://bingohuang.com/etcd-operation-2/
+【etcd时间同步】https://bingohuang.com/etcd-operation-2/  
+【Kubernetes v1.12/v1.13 二进制部署集群（HTTPS+RBAC）】https://blog.51cto.com/lizhenliang/2325770  
