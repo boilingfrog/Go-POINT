@@ -263,6 +263,19 @@ ETCD_INITIAL_CLUSTER_TOKEN="etcd-cluster"
 ETCD_INITIAL_CLUSTER_STATE="new"
 ```
 
+
+```
+--ca-file=ca.pem --cert-file=server.pem --key-file=server-key.pem \
+--endpoints="https://192.168.56.101:2379,https://192.168.56.102:2379,https://192.168.56.103:2379" \
+cluster-health
+
+
+
+--ca-file=/opt/etcd/ssl/ca.pem --cert-file=/opt/etcd/ssl/server.pem --key-file=/opt/etcd/ssl/server-key.pem \
+--endpoints="https://192.168.56.101:2379,https://192.168.56.102:2379,https://192.168.56.103:2379" \
+cluster-health
+```
+
 ### 参考
 【二进制安装部署kubernetes集群---超详细教程】https://www.cnblogs.com/along21/p/10044931.html  
 【etcd时间同步】https://bingohuang.com/etcd-operation-2/  
