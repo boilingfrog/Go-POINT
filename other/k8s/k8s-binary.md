@@ -1,7 +1,12 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+
 - [二进制部署k8s](#%E4%BA%8C%E8%BF%9B%E5%88%B6%E9%83%A8%E7%BD%B2k8s)
+  - [准备工作](#%E5%87%86%E5%A4%87%E5%B7%A5%E4%BD%9C)
+    - [关闭防火墙](#%E5%85%B3%E9%97%AD%E9%98%B2%E7%81%AB%E5%A2%99)
+    - [关闭 swap 分区](#%E5%85%B3%E9%97%AD-swap-%E5%88%86%E5%8C%BA)
+    - [关闭 SELinux](#%E5%85%B3%E9%97%AD-selinux)
   - [秘钥免密码](#%E7%A7%98%E9%92%A5%E5%85%8D%E5%AF%86%E7%A0%81)
   - [docker安装](#docker%E5%AE%89%E8%A3%85)
   - [部署的命令](#%E9%83%A8%E7%BD%B2%E7%9A%84%E5%91%BD%E4%BB%A4)
@@ -15,37 +20,86 @@
 
 ## 二进制部署k8s
 
+### 准备工作
+
+#### 关闭防火墙
+
+关闭服务，并设为开机不自启
+
+```
+$ sudo systemctl stop firewalld
+$ sudo systemctl disable firewalld
+```
+
+清空防火墙规则
+
+```
+$ sudo iptables -F && sudo iptables -X && sudo iptables -F -t nat && sudo iptables -X -t nat
+$ sudo iptables -P FORWARD ACCEPT
+```
+
+#### 关闭 swap 分区
+
+如果开启了 swap 分区，kubelet 会启动失败(可以通过将参数 --fail-swap-on 设置为false 来忽略 swap on)，故需要在每台机器上关闭 swap 分区：
+
+```
+$ sudo swapoff -a
+```
+
+为了防止开机自动挂载 swap 分区，可以注释 /etc/fstab 中相应的条目：
+
+```
+$ sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
+```
+
+#### 关闭 SELinux
+
+关闭 SELinux，否则后续 K8S 挂载目录时可能报错 Permission denied ：
+
+```
+$ sudo setenforce 0
+```
+
+修改配置文件，永久生效；
+
+```
+$ grep SELINUX /etc/selinux/config
+
+SELINUX=disabled
+```
+
+
 
 ### 秘钥免密码
 
-```go
-ssh-copy-id root@192.168.56.101
+```
+$ ssh-copy-id root@192.168.56.101
 ```
 
 ### docker安装
 
 docker 安装
-```go
+```
 // 安装
-yum -y install docker
+$ yum -y install docker
 
 // 设置开机启动
-sudo systemctl enable docker
+$ sudo systemctl enable docker
 
 // 启动docker 
- sudo systemctl start docker
+$ sudo systemctl start docker
 ```
 
 docker-compose安装  
 
-```go
-sudo curl -L "https://github.com/docker/compose/releases/download/1.27.4/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+```
+$ sudo curl -L "https://github.com/docker/compose/releases/download/1.27.4/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
 
 // 将可执行权限应用于二进制文件
-sudo chmod +x /usr/local/bin/docker-compose
+$ sudo chmod +x /usr/local/bin/docker-compose
 
 // 创建软连接
-sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
+$ sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
 ```
 
 
@@ -68,14 +122,14 @@ sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
 
 安装
 
-```go
-wget https://pkg.cfssl.org/R1.2/cfssl_linux-amd64
-wget https://pkg.cfssl.org/R1.2/cfssljson_linux-amd64
-wget https://pkg.cfssl.org/R1.2/cfssl-certinfo_linux-amd64
-chmod +x cfssl_linux-amd64 cfssljson_linux-amd64 cfssl-certinfo_linux-amd64
-mv cfssl_linux-amd64 /usr/local/bin/cfssl
-mv cfssljson_linux-amd64 /usr/local/bin/cfssljson
-mv cfssl-certinfo_linux-amd64 /usr/bin/cfssl-certinfo
+```
+$ wget https://pkg.cfssl.org/R1.2/cfssl_linux-amd64
+$ wget https://pkg.cfssl.org/R1.2/cfssljson_linux-amd64
+$ wget https://pkg.cfssl.org/R1.2/cfssl-certinfo_linux-amd64
+$ chmod +x cfssl_linux-amd64 cfssljson_linux-amd64 cfssl-certinfo_linux-amd64
+$ mv cfssl_linux-amd64 /usr/local/bin/cfssl
+$ mv cfssljson_linux-amd64 /usr/local/bin/cfssljson
+$ mv cfssl-certinfo_linux-amd64 /usr/bin/cfssl-certinfo
 ```
 
 #### 生成证书
@@ -142,32 +196,32 @@ mv cfssl-certinfo_linux-amd64 /usr/bin/cfssl-certinfo
 ```
 生成证书
 
-```go
-cfssl gencert -initca ca-csr.json | cfssljson -bare ca -
-cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=www server-csr.json | cfssljson -bare server
-# ls *pem
+```
+$ cfssl gencert -initca ca-csr.json | cfssljson -bare ca -
+$ cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=www server-csr.json | cfssljson -bare server
+$  ls *pem
 ca-key.pem  ca.pem  server-key.pem  server.pem
 ```
 
 移动证书文件
 
-```go
-cp ca*pem server*pem /opt/etcd/ssl
+```
+$ cp ca*pem server*pem /opt/etcd/ssl
 ```
 
 #### 部署Etcd
 
-```go
-wget https://github.com/etcd-io/etcd/releases/download/v3.2.12/etcd-v3.2.12-linux-amd64.tar.gz
+```
+$ wget https://github.com/etcd-io/etcd/releases/download/v3.2.12/etcd-v3.2.12-linux-amd64.tar.gz
 
-mkdir /opt/etcd/{bin,cfg,ssl} -p
-tar zxvf etcd-v3.2.12-linux-amd64.tar.gz
-mv etcd-v3.2.12-linux-amd64/{etcd,etcdctl} /opt/etcd/bin/
+$ mkdir /opt/etcd/{bin,cfg,ssl} -p
+$ tar zxvf etcd-v3.2.12-linux-amd64.tar.gz
+$ mv etcd-v3.2.12-linux-amd64/{etcd,etcdctl} /opt/etcd/bin/
 ```
 
 创建配置文件
 
-```go
+```
 # cat /opt/etcd/cfg/etcd   
 #[Member]
 ETCD_NAME="etcd01"
@@ -208,16 +262,6 @@ ETCD_INITIAL_CLUSTER="etcd01=https://192.168.56.101:2380,etcd02=https://192.168.
 ETCD_INITIAL_CLUSTER_TOKEN="etcd-cluster"
 ETCD_INITIAL_CLUSTER_STATE="new"
 ```
-
-
-
-
-
-
-
-
-
-
 
 ### 参考
 【二进制安装部署kubernetes集群---超详细教程】https://www.cnblogs.com/along21/p/10044931.html  
