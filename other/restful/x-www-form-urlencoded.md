@@ -9,5 +9,5 @@
 
 请求的时候，请求头中的Content-Type指明了主体部分的MIME类型，当类型是`application/x-www-form-urlencoded`  
 
-url中的请求信息  
+
 
