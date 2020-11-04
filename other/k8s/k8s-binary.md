@@ -276,6 +276,8 @@ cluster-health
 cluster-health
 ```
 
+
+
 ### 参考
 【二进制安装部署kubernetes集群---超详细教程】https://www.cnblogs.com/along21/p/10044931.html  
 【etcd时间同步】https://bingohuang.com/etcd-operation-2/  
