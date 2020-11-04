@@ -276,6 +276,11 @@ cluster-health
 cluster-health
 ```
 
+查看状态 
+
+```
+ journalctl -u etcd
+```
 
 
 ### 参考
