@@ -282,6 +282,11 @@ cluster-health
  journalctl -u etcd
 ```
 
+### Flannel网络
+
+
+
+
 
 ### 参考
 【二进制安装部署kubernetes集群---超详细教程】https://www.cnblogs.com/along21/p/10044931.html  
