@@ -302,6 +302,14 @@ FLANNEL_OPTIONS="--etcd-endpoints=https://192.168.56.101:2379,https://192.168.56
 systemd管理Flannel 
 
 
+重启flannel和docker：
+
+```
+# systemctl daemon-reload
+# systemctl start flanneld
+# systemctl enable flanneld
+# systemctl restart docker
+```
 
 
 ### 参考
