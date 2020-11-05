@@ -284,6 +284,22 @@ cluster-health
 
 ### Flannel网络
 
+每个节点都需要操作  
+
+```
+# wget https://github.com/coreos/flannel/releases/download/v0.10.0/flannel-v0.10.0-linux-amd64.tar.gz
+# tar zxvf flannel-v0.9.1-linux-amd64.tar.gz
+# mv flanneld mk-docker-opts.sh /opt/kubernetes/bin
+```
+
+配置Flannel
+
+```
+# cat /opt/kubernetes/cfg/flanneld
+FLANNEL_OPTIONS="--etcd-endpoints=https://192.168.56.101:2379,https://192.168.56.102:2379,https://192.168.56.103:2379 -etcd-cafile=/opt/etcd/ssl/ca.pem -etcd-certfile=/opt/etcd/ssl/server.pem -etcd-keyfile=/opt/etcd/ssl/server-key.pem"
+```
+
+systemd管理Flannel 
 
 
 
