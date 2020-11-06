@@ -7,6 +7,7 @@
     - [关闭防火墙](#%E5%85%B3%E9%97%AD%E9%98%B2%E7%81%AB%E5%A2%99)
     - [关闭 swap 分区](#%E5%85%B3%E9%97%AD-swap-%E5%88%86%E5%8C%BA)
     - [关闭 SELinux](#%E5%85%B3%E9%97%AD-selinux)
+    - [更新系统时间](#%E6%9B%B4%E6%96%B0%E7%B3%BB%E7%BB%9F%E6%97%B6%E9%97%B4)
   - [秘钥免密码](#%E7%A7%98%E9%92%A5%E5%85%8D%E5%AF%86%E7%A0%81)
   - [docker安装](#docker%E5%AE%89%E8%A3%85)
   - [部署的命令](#%E9%83%A8%E7%BD%B2%E7%9A%84%E5%91%BD%E4%BB%A4)
@@ -14,6 +15,7 @@
     - [创建证书](#%E5%88%9B%E5%BB%BA%E8%AF%81%E4%B9%A6)
     - [生成证书](#%E7%94%9F%E6%88%90%E8%AF%81%E4%B9%A6)
     - [部署Etcd](#%E9%83%A8%E7%BD%B2etcd)
+  - [Flannel网络](#flannel%E7%BD%91%E7%BB%9C)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -68,7 +70,33 @@ $ grep SELINUX /etc/selinux/config
 SELINUX=disabled
 ```
 
+#### 更新系统时间
 
+1、调整系统 TimeZone
+
+```
+$ sudo timedatectl set-timezone Asia/Shanghai
+```
+
+2、将当前的 UTC 时间写入硬件时钟
+
+```
+$ sudo timedatectl set-local-rtc 0
+```
+
+3、重启依赖于系统时间的服务
+
+```
+$ sudo systemctl restart rsyslog
+$ sudo systemctl restart crond
+```
+
+4、更新时间
+
+```
+$ yum -y install ntpdate
+$ sudo ntpdate cn.pool.ntp.org
+```
 
 ### 秘钥免密码
 
