@@ -276,10 +276,17 @@ cluster-health
 cluster-health
 ```
 
+启动
+
+```
+$ systemctl start etcd
+$ systemctl enable etcd
+```
+
 查看状态 
 
 ```
- journalctl -u etcd
+$ journalctl -u etcd
 ```
 
 ### Flannel网络
@@ -287,9 +294,9 @@ cluster-health
 每个节点都需要操作  
 
 ```
-# wget https://github.com/coreos/flannel/releases/download/v0.10.0/flannel-v0.10.0-linux-amd64.tar.gz
-# tar zxvf flannel-v0.9.1-linux-amd64.tar.gz
-# mv flanneld mk-docker-opts.sh /opt/kubernetes/bin
+$ wget https://github.com/coreos/flannel/releases/download/v0.10.0/flannel-v0.10.0-linux-amd64.tar.gz
+$ tar zxvf flannel-v0.9.1-linux-amd64.tar.gz
+$ mv flanneld mk-docker-opts.sh /opt/kubernetes/bin
 ```
 
 配置Flannel
