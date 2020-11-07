@@ -6,3 +6,5 @@
 基于域名访问  
 通过Ingress Controller实现Pod的负载均衡  
 支持TCP/UDP 4层和HTTP 7层  
+
+Ingress是一个规则
