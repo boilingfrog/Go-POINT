@@ -317,6 +317,21 @@ $ systemctl enable etcd
 $ journalctl -u etcd
 ```
 
+检查etcd集群状态  
+
+```go
+$ /opt/etcd/bin/etcdctl \
+  > --ca-file=/opt/etcd/ssl/ca.pem --cert-file=/opt/etcd/ssl/server.pem --key-file=/opt/etcd/ssl/server-key.pem \
+  > --endpoints="https://192.168.56.201:2379,https://192.168.56.202:2379,https://192.168.56.203:2379" \
+  > cluster-health
+
+  member 8c78d744f172cba9 is healthy: got healthy result from https://192.168.56.202:2379
+  member bdc976e03235ad9b is healthy: got healthy result from https://192.168.56.201:2379
+  member c6274de5e02a53ad is healthy: got healthy result from https://192.168.56.203:2379
+  cluster is healthy
+
+```
+
 ### Flannel网络
 
 每个节点都需要操作  
