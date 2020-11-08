@@ -321,9 +321,9 @@ $ journalctl -u etcd
 
 ```go
 $ /opt/etcd/bin/etcdctl \
-  > --ca-file=/opt/etcd/ssl/ca.pem --cert-file=/opt/etcd/ssl/server.pem --key-file=/opt/etcd/ssl/server-key.pem \
-  > --endpoints="https://192.168.56.201:2379,https://192.168.56.202:2379,https://192.168.56.203:2379" \
-  > cluster-health
+   --ca-file=/opt/etcd/ssl/ca.pem --cert-file=/opt/etcd/ssl/server.pem --key-file=/opt/etcd/ssl/server-key.pem \
+   --endpoints="https://192.168.56.201:2379,https://192.168.56.202:2379,https://192.168.56.203:2379" \
+   cluster-health
 
   member 8c78d744f172cba9 is healthy: got healthy result from https://192.168.56.202:2379
   member bdc976e03235ad9b is healthy: got healthy result from https://192.168.56.201:2379
