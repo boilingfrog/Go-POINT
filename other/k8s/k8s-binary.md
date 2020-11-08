@@ -334,6 +334,14 @@ $ /opt/etcd/bin/etcdctl \
 
 ### Flannel网络
 
+配置子网
+```go
+/opt/etcd/bin/etcdctl \
+--ca-file=/opt/etcd/ssl/ca.pem --cert-file=/opt/etcd/ssl/server.pem --key-file=/opt/etcd/ssl/server-key.pem \
+--endpoints="https://192.168.56.201:2379,https://192.168.56.202:2379,https://192.168.56.203:2379" \
+set /coreos.com/network/config  '{ "Network": "172.17.0.0/16", "Backend": {"Type": "vxlan"}}'
+```
+
 每个节点都需要操作  
 
 ```
