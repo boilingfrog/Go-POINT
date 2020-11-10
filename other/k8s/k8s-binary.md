@@ -467,6 +467,59 @@ PING 172.17.72.0 (172.17.72.0) 56(84) bytes of data.
 ```
 
 
+{
+    "CN": "kubernetes",
+    "hosts": [
+      "10.0.0.1",
+      "127.0.0.1",
+      "192.168.56.101",
+      "kubernetes",
+      "kubernetes.default",
+      "kubernetes.default.svc",
+      "kubernetes.default.svc.cluster",
+      "kubernetes.default.svc.cluster.local"
+    ],
+    "key": {
+        "algo": "rsa",
+        "size": 2048
+    },
+    "names": [
+        {
+            "C": "CN",
+            "L": "BeiJing",
+            "ST": "BeiJing",
+            "O": "k8s",
+            "OU": "System"
+        }
+    ]
+}
+
+
+
+
+KUBE_APISERVER_OPTS="--logtostderr=true \
+--v=4 \
+--etcd-servers=https://192.168.56.101:2379,https://192.168.31.65:2379,https://192.168.31.66:2379 \
+--bind-address=192.168.56.101 \
+--secure-port=6443 \
+--advertise-address=192.168.56.102 \
+--allow-privileged=true \
+--service-cluster-ip-range=10.0.0.0/24 \
+--enable-admission-plugins=NamespaceLifecycle,LimitRanger,SecurityContextDeny,ServiceAccount,ResourceQuota,NodeRestriction \
+--authorization-mode=RBAC,Node \
+--enable-bootstrap-token-auth \
+--token-auth-file=/opt/kubernetes/cfg/token.csv \
+--service-node-port-range=30000-50000 \
+--tls-cert-file=/opt/kubernetes/ssl/server.pem  \
+--tls-private-key-file=/opt/kubernetes/ssl/server-key.pem \
+--client-ca-file=/opt/kubernetes/ssl/ca.pem \
+--service-account-key-file=/opt/kubernetes/ssl/ca-key.pem \
+--etcd-cafile=/opt/etcd/ssl/ca.pem \
+--etcd-certfile=/opt/etcd/ssl/server.pem \
+--etcd-keyfile=/opt/etcd/ssl/server-key.pem"
+
+
+
 ### 参考
 【二进制安装部署kubernetes集群---超详细教程】https://www.cnblogs.com/along21/p/10044931.html  
 【etcd时间同步】https://bingohuang.com/etcd-operation-2/  
