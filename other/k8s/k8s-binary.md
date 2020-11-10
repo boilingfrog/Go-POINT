@@ -345,7 +345,7 @@ set /coreos.com/network/config  '{ "Network": "172.17.0.0/16", "Backend": {"Type
 每个节点都需要操作  
 
 ```
-$ wget https://github.com/coreos/flannel/releases/download/v0.10.0/flannel-v0.10.0-linux-amd64.tar.gz
+$ wget https://github.com/coreos/flannel/releases/download/v0.9.1/flannel-v0.9.1-linux-amd64.tar.gz
 $ tar zxvf flannel-v0.9.1-linux-amd64.tar.gz
 $ mv flanneld mk-docker-opts.sh /opt/kubernetes/bin
 ```
@@ -359,6 +359,60 @@ FLANNEL_OPTIONS="--etcd-endpoints=https://192.168.56.101:2379,https://192.168.56
 
 systemd管理Flannel 
 
+``
+# cat /usr/lib/systemd/system/flanneld.service
+[Unit]
+Description=Flanneld overlay address etcd agent
+After=network-online.target network.target
+Before=docker.service
+
+[Service]
+Type=notify
+EnvironmentFile=/opt/kubernetes/cfg/flanneld
+ExecStart=/opt/kubernetes/bin/flanneld --ip-masq $FLANNEL_OPTIONS
+ExecStartPost=/opt/kubernetes/bin/mk-docker-opts.sh -k DOCKER_NETWORK_OPTIONS -d /run/flannel/subnet.env
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+``
+
+配置Docker启动指定子网段
+
+```
+# cat /usr/lib/systemd/system/docker.service 
+
+[Unit]
+Description=Docker Application Container Engine
+Documentation=https://docs.docker.com
+After=network-online.target firewalld.service
+Wants=network-online.target
+
+[Service]
+Type=notify
+EnvironmentFile=/run/flannel/subnet.env
+ExecStart=/usr/bin/dockerd $DOCKER_NETWORK_OPTIONS
+ExecReload=/bin/kill -s HUP $MAINPID
+LimitNOFILE=infinity
+LimitNPROC=infinity
+LimitCORE=infinity
+TimeoutStartSec=0
+Delegate=yes
+KillMode=process
+Restart=on-failure
+StartLimitBurst=3
+StartLimitInterval=60s
+
+[Install]
+WantedBy=multi-user.target
+```
+
+这块主要加入flannel的配置
+
+```
+EnvironmentFile=/run/flannel/subnet.env
+ExecStart=/usr/bin/dockerd $DOCKER_NETWORK_OPTIONS
+```
 
 重启flannel和docker：
 
@@ -367,6 +421,49 @@ systemd管理Flannel
 # systemctl start flanneld
 # systemctl enable flanneld
 # systemctl restart docker
+```
+
+检查是否生效
+
+```
+# ps -ef |grep docker
+root      2859     1  0 18:13 ?        00:00:05 /usr/bin/dockerd-current --add-runtime docker-runc=/usr/libexec/docker/docker-runc-current --default-runtime=docker-runc --exec-opt native.cgroupdriver=systemd --userland-proxy-path=/usr/libexec/docker/docker-proxy-current --init-path=/usr/libexec/docker/docker-init-current --seccomp-profile=/etc/docker/seccomp.json --selinux-enabled --log-driver=journald --signature-verification=false --storage-driver overlay2 --bip=172.17.96.1/24 --ip-masq=false --mtu=1450
+root      2865  2859  0 18:13 ?        00:00:02 /usr/bin/docker-containerd-current -l unix:///var/run/docker/libcontainerd/docker-containerd.sock --metrics-interval=0 --start-timeout 2m --state-dir /var/run/docker/libcontainerd/containerd --shim docker-containerd-shim --runtime docker-runc --runtime-args --systemd-cgroup=true
+root      5799  1753  0 18:49 pts/0    00:00:00 grep --color=auto docker
+
+# ip addr
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+2: enp0s3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:73:3f:bf brd ff:ff:ff:ff:ff:ff
+    inet 10.0.2.7/24 brd 10.0.2.255 scope global noprefixroute dynamic enp0s3
+       valid_lft 416sec preferred_lft 416sec
+3: enp0s8: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:7b:1e:59 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.56.103/24 brd 192.168.56.255 scope global noprefixroute enp0s8
+       valid_lft forever preferred_lft forever
+4: flannel.1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1450 qdisc noqueue state UNKNOWN group default 
+    link/ether c6:65:64:77:fd:04 brd ff:ff:ff:ff:ff:ff
+    inet 172.17.96.0/32 scope global flannel.1
+       valid_lft forever preferred_lft forever
+5: docker0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default 
+    link/ether 02:42:9a:42:ae:5b brd ff:ff:ff:ff:ff:ff
+    inet 172.17.96.1/24 scope global docker0
+       valid_lft forever preferred_lft forever
+```
+
+测试不同节点互通，在当前节点访问另一个Node节点flannel网络  
+
+```
+# ping 172.17.72.0
+PING 172.17.72.0 (172.17.72.0) 56(84) bytes of data.
+64 bytes from 172.17.72.0: icmp_seq=1 ttl=64 time=1.25 ms
+64 bytes from 172.17.72.0: icmp_seq=2 ttl=64 time=0.507 ms
+64 bytes from 172.17.72.0: icmp_seq=3 ttl=64 time=1.17 ms
+64 bytes from 172.17.72.0: icmp_seq=4 ttl=64 time=1.84 ms
+64 bytes from 172.17.72.0: icmp_seq=5 ttl=64 time=0.426 ms
 ```
 
 
