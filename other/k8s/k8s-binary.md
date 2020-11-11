@@ -2,21 +2,24 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 
-- [二进制部署k8s](#%E4%BA%8C%E8%BF%9B%E5%88%B6%E9%83%A8%E7%BD%B2k8s)
-  - [准备工作](#%E5%87%86%E5%A4%87%E5%B7%A5%E4%BD%9C)
-    - [关闭防火墙](#%E5%85%B3%E9%97%AD%E9%98%B2%E7%81%AB%E5%A2%99)
-    - [关闭 swap 分区](#%E5%85%B3%E9%97%AD-swap-%E5%88%86%E5%8C%BA)
-    - [关闭 SELinux](#%E5%85%B3%E9%97%AD-selinux)
-    - [更新系统时间](#%E6%9B%B4%E6%96%B0%E7%B3%BB%E7%BB%9F%E6%97%B6%E9%97%B4)
-  - [秘钥免密码](#%E7%A7%98%E9%92%A5%E5%85%8D%E5%AF%86%E7%A0%81)
-  - [docker安装](#docker%E5%AE%89%E8%A3%85)
-  - [部署的命令](#%E9%83%A8%E7%BD%B2%E7%9A%84%E5%91%BD%E4%BB%A4)
-  - [安装etcd](#%E5%AE%89%E8%A3%85etcd)
-    - [创建证书](#%E5%88%9B%E5%BB%BA%E8%AF%81%E4%B9%A6)
-    - [生成证书](#%E7%94%9F%E6%88%90%E8%AF%81%E4%B9%A6)
-    - [部署Etcd](#%E9%83%A8%E7%BD%B2etcd)
-  - [Flannel网络](#flannel%E7%BD%91%E7%BB%9C)
-  - [参考](#%E5%8F%82%E8%80%83)
+  - [二进制部署k8s](#%E4%BA%8C%E8%BF%9B%E5%88%B6%E9%83%A8%E7%BD%B2k8s)
+    - [准备工作](#%E5%87%86%E5%A4%87%E5%B7%A5%E4%BD%9C)
+      - [关闭防火墙](#%E5%85%B3%E9%97%AD%E9%98%B2%E7%81%AB%E5%A2%99)
+      - [关闭 swap 分区](#%E5%85%B3%E9%97%AD-swap-%E5%88%86%E5%8C%BA)
+      - [关闭 SELinux](#%E5%85%B3%E9%97%AD-selinux)
+      - [更新系统时间](#%E6%9B%B4%E6%96%B0%E7%B3%BB%E7%BB%9F%E6%97%B6%E9%97%B4)
+    - [秘钥免密码](#%E7%A7%98%E9%92%A5%E5%85%8D%E5%AF%86%E7%A0%81)
+    - [docker安装](#docker%E5%AE%89%E8%A3%85)
+    - [部署的命令](#%E9%83%A8%E7%BD%B2%E7%9A%84%E5%91%BD%E4%BB%A4)
+    - [安装etcd](#%E5%AE%89%E8%A3%85etcd)
+      - [创建证书](#%E5%88%9B%E5%BB%BA%E8%AF%81%E4%B9%A6)
+      - [生成证书](#%E7%94%9F%E6%88%90%E8%AF%81%E4%B9%A6)
+      - [部署Etcd](#%E9%83%A8%E7%BD%B2etcd)
+    - [在Node安装Docker](#%E5%9C%A8node%E5%AE%89%E8%A3%85docker)
+    - [Flannel网络](#flannel%E7%BD%91%E7%BB%9C)
+- [cat /usr/lib/systemd/system/flanneld.service](#cat-usrlibsystemdsystemflanneldservice)
+    - [配置](#%E9%85%8D%E7%BD%AE)
+    - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -332,6 +335,19 @@ $ /opt/etcd/bin/etcdctl \
 
 ```
 
+### 在Node安装Docker
+
+```
+$ yum install -y yum-utils device-mapper-persistent-data lvm2
+$ yum-config-manager \
+    --add-repo \
+    https://download.docker.com/linux/centos/docker-ce.repo
+$ yum install docker-ce -y
+$ curl -sSL https://get.daocloud.io/daotools/set_mirror.sh | sh -s http://bc437cce.m.daocloud.io
+$ systemctl start docker
+$ systemctl enable docker
+```
+
 ### Flannel网络
 
 配置子网
@@ -466,6 +482,98 @@ PING 172.17.72.0 (172.17.72.0) 56(84) bytes of data.
 64 bytes from 172.17.72.0: icmp_seq=5 ttl=64 time=0.426 ms
 ```
 
+### 配置apiserver组件
+
+下载二进制安装包 `https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG-1.12.md`
+
+kubernetes-server-linux-amd64.tar.gz  
+
+```
+$ mkdir /opt/kubernetes/{bin,cfg,ssl} -p
+$ tar zxvf kubernetes-server-linux-amd64.tar.gz
+$ cd kubernetes/server/bin
+$ cp kube-apiserver kube-scheduler kube-controller-manager kubectl /opt/kubernetes/bin
+```
+
+创建token 
+
+```
+$ cat /opt/kubernetes/cfg/token.csv
+674c457d4dcf2eefe4920d7dbb6b0ddc,kubelet-bootstrap,10001,"system:kubelet-bootstrap"
+```
+
+第一列：随机字符串，自己可生成  
+第二列：用户名  
+第三列：UID  
+第四列：用户组  
+
+创建apiserver配置文件：  
+
+```
+KUBE_APISERVER_OPTS="--logtostderr=true \
+--v=4 \
+--etcd-servers=https://192.168.56.101:2379,https://192.168.56.102:2379,https://192.168.56.103:2379 \
+--bind-address=192.168.56.101 \
+--secure-port=6443 \
+--advertise-address=192.168.56.101 \
+--allow-privileged=true \
+--service-cluster-ip-range=10.0.0.0/24 \
+--enable-admission-plugins=NamespaceLifecycle,LimitRanger,SecurityContextDeny,ServiceAccount,ResourceQuota,NodeRestriction \
+--authorization-mode=RBAC,Node \
+--enable-bootstrap-token-auth \
+--token-auth-file=/opt/kubernetes/cfg/token.csv \
+--service-node-port-range=30000-50000 \
+--tls-cert-file=/opt/kubernetes/ssl/server.pem  \
+--tls-private-key-file=/opt/kubernetes/ssl/server-key.pem \
+--client-ca-file=/opt/kubernetes/ssl/ca.pem \
+--service-account-key-file=/opt/kubernetes/ssl/ca-key.pem \
+--etcd-cafile=/opt/etcd/ssl/ca.pem \
+--etcd-certfile=/opt/etcd/ssl/server.pem \
+--etcd-keyfile=/opt/etcd/ssl/server-key.pem"
+```
+
+配置好前面生成的证书，确保能连接etcd。  
+
+参数说明：
+
+- --logtostderr 启用日志
+- --v 日志等级
+- --etcd-servers etcd集群地址
+- --bind-address 监听地址
+- --secure-port https安全端口
+- --advertise-address 集群通告地址
+- --allow-privileged 启用授权
+- --service-cluster-ip-range Service虚拟IP地址段
+- --enable-admission-plugins 准入控制模块
+- --authorization-mode 认证授权，启用RBAC授权和节点自管理
+- --enable-bootstrap-token-auth 启用TLS bootstrap功能，后面会讲到
+- --token-auth-file token文件
+- --service-node-port-range Service Node类型默认分配端口范围
+
+systemd管理apiserver：  
+
+```
+$ cat /usr/lib/systemd/system/kube-apiserver.service 
+[Unit]
+Description=Kubernetes API Server
+Documentation=https://github.com/kubernetes/kubernetes
+
+[Service]
+EnvironmentFile=-/opt/kubernetes/cfg/kube-apiserver
+ExecStart=/opt/kubernetes/bin/kube-apiserver $KUBE_APISERVER_OPTS
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+启动  
+
+```
+$ systemctl daemon-reload
+$ systemctl enable kube-apiserver
+$ systemctl restart kube-apiserver
+```
 
 {
     "CN": "kubernetes",
@@ -497,26 +605,6 @@ PING 172.17.72.0 (172.17.72.0) 56(84) bytes of data.
 
 
 
-KUBE_APISERVER_OPTS="--logtostderr=true \
---v=4 \
---etcd-servers=https://192.168.56.101:2379,https://192.168.31.65:2379,https://192.168.31.66:2379 \
---bind-address=192.168.56.101 \
---secure-port=6443 \
---advertise-address=192.168.56.102 \
---allow-privileged=true \
---service-cluster-ip-range=10.0.0.0/24 \
---enable-admission-plugins=NamespaceLifecycle,LimitRanger,SecurityContextDeny,ServiceAccount,ResourceQuota,NodeRestriction \
---authorization-mode=RBAC,Node \
---enable-bootstrap-token-auth \
---token-auth-file=/opt/kubernetes/cfg/token.csv \
---service-node-port-range=30000-50000 \
---tls-cert-file=/opt/kubernetes/ssl/server.pem  \
---tls-private-key-file=/opt/kubernetes/ssl/server-key.pem \
---client-ca-file=/opt/kubernetes/ssl/ca.pem \
---service-account-key-file=/opt/kubernetes/ssl/ca-key.pem \
---etcd-cafile=/opt/etcd/ssl/ca.pem \
---etcd-certfile=/opt/etcd/ssl/server.pem \
---etcd-keyfile=/opt/etcd/ssl/server-key.pem"
 
 
 
