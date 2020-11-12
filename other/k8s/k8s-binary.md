@@ -575,6 +575,8 @@ $ systemctl enable kube-apiserver
 $ systemctl restart kube-apiserver
 ```
 
+
+```
 {
     "CN": "kubernetes",
     "hosts": [
@@ -601,6 +603,8 @@ $ systemctl restart kube-apiserver
         }
     ]
 }
+```
+
 
 
 
