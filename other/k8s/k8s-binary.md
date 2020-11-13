@@ -610,7 +610,7 @@ $ systemctl restart kube-apiserver
 ```
 KUBELET_OPTS="--logtostderr=true \
 --v=4 \
---hostname-override=192.168.56.103 \
+--hostname-override=192.168.56.102 \
 --kubeconfig=/opt/kubernetes/cfg/kubelet.kubeconfig \
 --bootstrap-kubeconfig=/opt/kubernetes/cfg/bootstrap.kubeconfig \
 --config=/opt/kubernetes/cfg/kubelet.config \
@@ -632,7 +632,7 @@ $ cat /opt/kubernetes/cfg/kubelet.config
 
 kind: KubeletConfiguration
 apiVersion: kubelet.config.k8s.io/v1beta1
-address: 192.168.56.103
+address: 192.168.56.102
 port: 10250
 readOnlyPort: 10255
 cgroupDriver: cgroupfs
@@ -646,6 +646,14 @@ authentication:
 /opt/kubernetes/cfg/kubelet.config
 
 
+
+```
+KUBE_PROXY_OPTS="--logtostderr=true \
+--v=4 \
+--hostname-override=192.168.56.102 \
+--cluster-cidr=10.0.0.0/24 \
+--kubeconfig=/opt/kubernetes/cfg/kube-proxy.kubeconfig"
+```
 
 
 
