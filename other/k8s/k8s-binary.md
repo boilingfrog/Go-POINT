@@ -618,6 +618,14 @@ KUBELET_OPTS="--logtostderr=true \
 --pod-infra-container-image=registry.cn-hangzhou.aliyuncs.com/google-containers/pause-amd64:3.0"
 ```
 
+参数说明：
+
+- --hostname-override 在集群中显示的主机名
+- --kubeconfig 指定kubeconfig文件位置，会自动生成
+- --bootstrap-kubeconfig 指定刚才生成的bootstrap.kubeconfig文件
+- --cert-dir 颁发证书存放位置
+- --pod-infra-container-image 管理Pod网络的镜像
+
 `kubelet.config`配置  
 ```
 $ cat /opt/kubernetes/cfg/kubelet.config
