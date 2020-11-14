@@ -104,7 +104,7 @@ $ sudo ntpdate cn.pool.ntp.org
 ### 秘钥免密码
 
 ```
-$ ssh-copy-id root@192.168.56.101
+$ ssh-copy-id root@192.168.56.201
 ```
 
 ### docker安装
@@ -137,11 +137,11 @@ $ sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
 ### 部署的命令
 
 
-192.168.56.101 kube-master
+192.168.56.201 kube-master
 
-192.168.56.102 kube-node1
+192.168.56.202 kube-node1
 
-192.168.56.103 kube-node2
+192.168.56.203 kube-node2
 
 ### 安装etcd
 
@@ -208,9 +208,9 @@ $ mv cfssl-certinfo_linux-amd64 /usr/bin/cfssl-certinfo
 {
     "CN": "etcd",
     "hosts": [
-    "192.168.56.101",
-    "192.168.56.102",
-    "192.168.56.103"
+    "192.168.56.201",
+    "192.168.56.202",
+    "192.168.56.203"
     ],
     "key": {
         "algo": "rsa",
@@ -257,13 +257,13 @@ $ mv etcd-v3.2.12-linux-amd64/{etcd,etcdctl} /opt/etcd/bin/
 #[Member]
 ETCD_NAME="etcd01"
 ETCD_DATA_DIR="/var/lib/etcd/default.etcd"
-ETCD_LISTEN_PEER_URLS="https://192.168.56.101:2380"
-ETCD_LISTEN_CLIENT_URLS="https://192.168.56.101:2379"
+ETCD_LISTEN_PEER_URLS="https://192.168.56.201:2380"
+ETCD_LISTEN_CLIENT_URLS="https://192.168.56.201:2379"
 
 #[Clustering]
-ETCD_INITIAL_ADVERTISE_PEER_URLS="https://192.168.56.101:2380"
-ETCD_ADVERTISE_CLIENT_URLS="https://192.168.56.101:2379"
-ETCD_INITIAL_CLUSTER="etcd01=https://192.168.56.101:2380,etcd02=https://192.168.56.102:2380,etcd03=https://192.168.56.103:2380"
+ETCD_INITIAL_ADVERTISE_PEER_URLS="https://192.168.56.201:2380"
+ETCD_ADVERTISE_CLIENT_URLS="https://192.168.56.201:2379"
+ETCD_INITIAL_CLUSTER="etcd01=https://192.168.56.201:2380,etcd02=https://192.168.56.202:2380,etcd03=https://192.168.56.203:2380"
 ETCD_INITIAL_CLUSTER_TOKEN="etcd-cluster"
 ETCD_INITIAL_CLUSTER_STATE="new"
 ```
@@ -283,13 +283,13 @@ ETCD_INITIAL_CLUSTER_STATE="new"
 #[Member]
 ETCD_NAME="etcd01"
 ETCD_DATA_DIR="/var/lib/etcd/default.etcd"
-ETCD_LISTEN_PEER_URLS="https://192.168.56.101:2380"
-ETCD_LISTEN_CLIENT_URLS="https://192.168.56.101:2379"
+ETCD_LISTEN_PEER_URLS="https://192.168.56.201:2380"
+ETCD_LISTEN_CLIENT_URLS="https://192.168.56.201:2379"
 
 #[Clustering]
-ETCD_INITIAL_ADVERTISE_PEER_URLS="https://192.168.56.101:2380"
-ETCD_ADVERTISE_CLIENT_URLS="https://192.168.56.101:2379"
-ETCD_INITIAL_CLUSTER="etcd01=https://192.168.56.101:2380,etcd02=https://192.168.56.102:2380,etcd03=https://192.168.56.103:2380"
+ETCD_INITIAL_ADVERTISE_PEER_URLS="https://192.168.56.201:2380"
+ETCD_ADVERTISE_CLIENT_URLS="https://192.168.56.201:2379"
+ETCD_INITIAL_CLUSTER="etcd01=https://192.168.56.201:2380,etcd02=https://192.168.56.202:2380,etcd03=https://192.168.56.203:2380"
 ETCD_INITIAL_CLUSTER_TOKEN="etcd-cluster"
 ETCD_INITIAL_CLUSTER_STATE="new"
 ```
@@ -297,13 +297,13 @@ ETCD_INITIAL_CLUSTER_STATE="new"
 
 ```
 --ca-file=ca.pem --cert-file=server.pem --key-file=server-key.pem \
---endpoints="https://192.168.56.101:2379,https://192.168.56.102:2379,https://192.168.56.103:2379" \
+--endpoints="https://192.168.56.201:2379,https://192.168.56.202:2379,https://192.168.56.203:2379" \
 cluster-health
 
 
 
 --ca-file=/opt/etcd/ssl/ca.pem --cert-file=/opt/etcd/ssl/server.pem --key-file=/opt/etcd/ssl/server-key.pem \
---endpoints="https://192.168.56.101:2379,https://192.168.56.102:2379,https://192.168.56.103:2379" \
+--endpoints="https://192.168.56.201:2379,https://192.168.56.202:2379,https://192.168.56.203:2379" \
 cluster-health
 ```
 
@@ -370,7 +370,7 @@ $ mv flanneld mk-docker-opts.sh /opt/kubernetes/bin
 
 ```
 # cat /opt/kubernetes/cfg/flanneld
-FLANNEL_OPTIONS="--etcd-endpoints=https://192.168.56.101:2379,https://192.168.56.102:2379,https://192.168.56.103:2379 -etcd-cafile=/opt/etcd/ssl/ca.pem -etcd-certfile=/opt/etcd/ssl/server.pem -etcd-keyfile=/opt/etcd/ssl/server-key.pem"
+FLANNEL_OPTIONS="--etcd-endpoints=https://192.168.56.201:2379,https://192.168.56.202:2379,https://192.168.56.203:2379 -etcd-cafile=/opt/etcd/ssl/ca.pem -etcd-certfile=/opt/etcd/ssl/server.pem -etcd-keyfile=/opt/etcd/ssl/server-key.pem"
 ```
 
 systemd管理Flannel 
@@ -458,7 +458,7 @@ root      5799  1753  0 18:49 pts/0    00:00:00 grep --color=auto docker
        valid_lft 416sec preferred_lft 416sec
 3: enp0s8: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
     link/ether 08:00:27:7b:1e:59 brd ff:ff:ff:ff:ff:ff
-    inet 192.168.56.103/24 brd 192.168.56.255 scope global noprefixroute enp0s8
+    inet 192.168.56.203/24 brd 192.168.56.255 scope global noprefixroute enp0s8
        valid_lft forever preferred_lft forever
 4: flannel.1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1450 qdisc noqueue state UNKNOWN group default 
     link/ether c6:65:64:77:fd:04 brd ff:ff:ff:ff:ff:ff
@@ -510,12 +510,14 @@ $ cat /opt/kubernetes/cfg/token.csv
 创建apiserver配置文件：  
 
 ```
+$ cat /opt/kubernetes/cfg/kube-apiserver 
+
 KUBE_APISERVER_OPTS="--logtostderr=true \
 --v=4 \
---etcd-servers=https://192.168.56.101:2379,https://192.168.56.102:2379,https://192.168.56.103:2379 \
---bind-address=192.168.56.101 \
+--etcd-servers=https://192.168.56.201:2379,https://192.168.56.202:2379,https://192.168.56.203:2379 \
+--bind-address=192.168.56.201 \
 --secure-port=6443 \
---advertise-address=192.168.56.101 \
+--advertise-address=192.168.56.201 \
 --allow-privileged=true \
 --service-cluster-ip-range=10.0.0.0/24 \
 --enable-admission-plugins=NamespaceLifecycle,LimitRanger,SecurityContextDeny,ServiceAccount,ResourceQuota,NodeRestriction \
@@ -582,7 +584,7 @@ $ systemctl restart kube-apiserver
     "hosts": [
       "10.0.0.1",
       "127.0.0.1",
-      "192.168.56.101",
+      "192.168.56.201",
       "kubernetes",
       "kubernetes.default",
       "kubernetes.default.svc",
@@ -605,12 +607,25 @@ $ systemctl restart kube-apiserver
 }
 ```
 
+
+KUBE_CONTROLLER_MANAGER_OPTS="--logtostderr=true \
+--v=4 \
+--master=127.0.0.1:8080 \
+--leader-elect=true \
+--address=127.0.0.1 \
+--service-cluster-ip-range=10.0.0.0/24 \
+--cluster-name=kubernetes \
+--cluster-signing-cert-file=/opt/kubernetes/ssl/ca.pem \
+--cluster-signing-key-file=/opt/kubernetes/ssl/ca-key.pem  \
+--root-ca-file=/opt/kubernetes/ssl/ca.pem \
+--service-account-private-key-file=/opt/kubernetes/ssl/ca-key.pem"
+
 创建kubelet配置文件：
 
 ```
 KUBELET_OPTS="--logtostderr=true \
 --v=4 \
---hostname-override=192.168.56.102 \
+--hostname-override=192.168.56.202 \
 --kubeconfig=/opt/kubernetes/cfg/kubelet.kubeconfig \
 --bootstrap-kubeconfig=/opt/kubernetes/cfg/bootstrap.kubeconfig \
 --config=/opt/kubernetes/cfg/kubelet.config \
@@ -632,9 +647,9 @@ $ cat /opt/kubernetes/cfg/kubelet.config
 
 kind: KubeletConfiguration
 apiVersion: kubelet.config.k8s.io/v1beta1
-address: 192.168.56.102
-port: 10250
-readOnlyPort: 10255
+address: 192.168.56.202
+port: 20250
+readOnlyPort: 20255
 cgroupDriver: cgroupfs
 clusterDNS: ["10.0.0.2"]
 clusterDomain: cluster.local.
@@ -650,7 +665,7 @@ authentication:
 ```
 KUBE_PROXY_OPTS="--logtostderr=true \
 --v=4 \
---hostname-override=192.168.56.102 \
+--hostname-override=192.168.56.202 \
 --cluster-cidr=10.0.0.0/24 \
 --kubeconfig=/opt/kubernetes/cfg/kube-proxy.kubeconfig"
 ```
