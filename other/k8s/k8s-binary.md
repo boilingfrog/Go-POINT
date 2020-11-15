@@ -2,24 +2,31 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 
-  - [二进制部署k8s](#%E4%BA%8C%E8%BF%9B%E5%88%B6%E9%83%A8%E7%BD%B2k8s)
-    - [准备工作](#%E5%87%86%E5%A4%87%E5%B7%A5%E4%BD%9C)
-      - [关闭防火墙](#%E5%85%B3%E9%97%AD%E9%98%B2%E7%81%AB%E5%A2%99)
-      - [关闭 swap 分区](#%E5%85%B3%E9%97%AD-swap-%E5%88%86%E5%8C%BA)
-      - [关闭 SELinux](#%E5%85%B3%E9%97%AD-selinux)
-      - [更新系统时间](#%E6%9B%B4%E6%96%B0%E7%B3%BB%E7%BB%9F%E6%97%B6%E9%97%B4)
-    - [秘钥免密码](#%E7%A7%98%E9%92%A5%E5%85%8D%E5%AF%86%E7%A0%81)
-    - [docker安装](#docker%E5%AE%89%E8%A3%85)
-    - [部署的命令](#%E9%83%A8%E7%BD%B2%E7%9A%84%E5%91%BD%E4%BB%A4)
-    - [安装etcd](#%E5%AE%89%E8%A3%85etcd)
-      - [创建证书](#%E5%88%9B%E5%BB%BA%E8%AF%81%E4%B9%A6)
-      - [生成证书](#%E7%94%9F%E6%88%90%E8%AF%81%E4%B9%A6)
-      - [部署Etcd](#%E9%83%A8%E7%BD%B2etcd)
-    - [在Node安装Docker](#%E5%9C%A8node%E5%AE%89%E8%A3%85docker)
-    - [Flannel网络](#flannel%E7%BD%91%E7%BB%9C)
-- [cat /usr/lib/systemd/system/flanneld.service](#cat-usrlibsystemdsystemflanneldservice)
-    - [配置](#%E9%85%8D%E7%BD%AE)
-    - [参考](#%E5%8F%82%E8%80%83)
+- [二进制部署k8s](#%E4%BA%8C%E8%BF%9B%E5%88%B6%E9%83%A8%E7%BD%B2k8s)
+  - [准备工作](#%E5%87%86%E5%A4%87%E5%B7%A5%E4%BD%9C)
+    - [关闭防火墙](#%E5%85%B3%E9%97%AD%E9%98%B2%E7%81%AB%E5%A2%99)
+    - [关闭 swap 分区](#%E5%85%B3%E9%97%AD-swap-%E5%88%86%E5%8C%BA)
+    - [关闭 SELinux](#%E5%85%B3%E9%97%AD-selinux)
+    - [更新系统时间](#%E6%9B%B4%E6%96%B0%E7%B3%BB%E7%BB%9F%E6%97%B6%E9%97%B4)
+  - [秘钥免密码](#%E7%A7%98%E9%92%A5%E5%85%8D%E5%AF%86%E7%A0%81)
+  - [设置主机名称](#%E8%AE%BE%E7%BD%AE%E4%B8%BB%E6%9C%BA%E5%90%8D%E7%A7%B0)
+  - [安装etcd](#%E5%AE%89%E8%A3%85etcd)
+    - [创建证书](#%E5%88%9B%E5%BB%BA%E8%AF%81%E4%B9%A6)
+    - [生成证书](#%E7%94%9F%E6%88%90%E8%AF%81%E4%B9%A6)
+    - [部署Etcd](#%E9%83%A8%E7%BD%B2etcd)
+  - [在Node安装Docker](#%E5%9C%A8node%E5%AE%89%E8%A3%85docker)
+  - [Flannel网络](#flannel%E7%BD%91%E7%BB%9C)
+  - [master节点部署组件](#master%E8%8A%82%E7%82%B9%E9%83%A8%E7%BD%B2%E7%BB%84%E4%BB%B6)
+    - [生成证书](#%E7%94%9F%E6%88%90%E8%AF%81%E4%B9%A6-1)
+    - [配置apiserver组件](#%E9%85%8D%E7%BD%AEapiserver%E7%BB%84%E4%BB%B6)
+    - [部署scheduler组件](#%E9%83%A8%E7%BD%B2scheduler%E7%BB%84%E4%BB%B6)
+    - [部署controller-manager组件](#%E9%83%A8%E7%BD%B2controller-manager%E7%BB%84%E4%BB%B6)
+  - [在Node节点部署组件](#%E5%9C%A8node%E8%8A%82%E7%82%B9%E9%83%A8%E7%BD%B2%E7%BB%84%E4%BB%B6)
+    - [创建kubeconfig文件](#%E5%88%9B%E5%BB%BAkubeconfig%E6%96%87%E4%BB%B6)
+    - [部署kubelet组件](#%E9%83%A8%E7%BD%B2kubelet%E7%BB%84%E4%BB%B6)
+    - [部署kube-proxy组件](#%E9%83%A8%E7%BD%B2kube-proxy%E7%BB%84%E4%BB%B6)
+  - [查看集群状态](#%E6%9F%A5%E7%9C%8B%E9%9B%86%E7%BE%A4%E7%8A%B6%E6%80%81)
+  - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -804,7 +811,7 @@ $ kubectl create clusterrolebinding kubelet-bootstrap \
 
 #### 创建kubeconfig文件
 
-在生成kubernetes证书的目录下执行以下命令生成kubeconfig文件  
+在生成kubernetes证书的目录下执行以下命令生成kubeconfig文件,在master节点生成`bootstrap.kubeconfig  kube-proxy.kubeconfig`然后scp到node节点  
 
 可以借助一个sh来实现,目录`/opt/kubernetes/cfg`
 ```
@@ -885,6 +892,8 @@ bootstrap.kubeconfig  kube-proxy.kubeconfig
 ```
 
 #### 部署kubelet组件
+
+需要在每个node节点部署  
 
 把前面在master节点下载的`kubernetes-server-linux-amd64.tar.gz`中的二进制包中的kubelet和kube-proxy拷贝到/opt/kubernetes/bin目录下。  
 
@@ -969,7 +978,7 @@ $ kubectl get node
 查看
 
 ```go
-# kubectl get csr
+$ kubectl get csr
 NAME                                                   AGE       REQUESTOR           CONDITION
 node-csr-gE0iy6gY71RqRlC1ZhGGnvLwKBjLGmnTNmEoFj51yU4   26s       kubelet-bootstrap   Pending
 node-csr-jFvVR_RBv-swHScxKEf_yDt_J72twIBTeslF8Bv18LQ   24s       kubelet-bootstrap   Pending
@@ -978,9 +987,65 @@ node-csr-jFvVR_RBv-swHScxKEf_yDt_J72twIBTeslF8Bv18LQ   24s       kubelet-bootstr
 Pending状态的需要approve
 
 ```go
-ubectl certificate approve node-csr-gE0iy6gY71RqRlC1ZhGGnvLwKBjLGmnTNmEoFj51yU4
+$ kubectl certificate approve node-csr-gE0iy6gY71RqRlC1ZhGGnvLwKBjLGmnTNmEoFj51yU4
 ```
 
+#### 部署kube-proxy组件
+
+每个node节点都需要执行  
+
+创建kube-proxy配置文件  
+
+```go
+$ vi /opt/kubernetes/cfg/kube-proxy
+KUBE_PROXY_OPTS="--logtostderr=true \
+--v=4 \
+--hostname-override=192.168.56.102 \
+--cluster-cidr=10.0.0.0/24 \
+--kubeconfig=/opt/kubernetes/cfg/kube-proxy.kubeconfig"
+```
+
+systemd管理kube-proxy组件  
+
+```
+$ vi /usr/lib/systemd/system/kube-proxy.service 
+[Unit]
+Description=Kubernetes Proxy
+After=network.target
+
+[Service]
+EnvironmentFile=-/opt/kubernetes/cfg/kube-proxy
+ExecStart=/opt/kubernetes/bin/kube-proxy $KUBE_PROXY_OPTS
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+启动
+
+```
+$ systemctl daemon-reload
+$ systemctl enable kube-proxy
+$ systemctl restart kube-proxy
+```
+
+### 查看集群状态
+
+```
+$ kubectl get node
+NAME             STATUS   ROLES    AGE    VERSION
+192.168.56.202   Ready    <none>   18h    v1.18.12
+192.168.56.203   Ready    <none>   171m   v1.18.12
+
+$ kubectl get cs
+NAME                 STATUS    MESSAGE              ERROR
+controller-manager   Healthy   ok                   
+scheduler            Healthy   ok                   
+etcd-0               Healthy   {"health": "true"}   
+etcd-2               Healthy   {"health": "true"}   
+etcd-1               Healthy   {"health": "true"}   
+```
 
 
 ### 参考
