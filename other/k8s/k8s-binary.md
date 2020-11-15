@@ -1047,6 +1047,64 @@ etcd-2               Healthy   {"health": "true"}
 etcd-1               Healthy   {"health": "true"}   
 ```
 
+### 测试
+
+创建测试文件  
+
+```
+$ vi /opt/kubernetes/demo/nginx-ds.yml 
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-ds
+  labels:
+    app: nginx-ds
+spec:
+  type: NodePort
+  selector:
+    app: nginx-ds
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+---
+
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: nginx-ds
+spec:
+  selector:
+    matchLabels:
+      app: nginx-ds
+  replicas: 3 # tells deployment to run 2 pods matching the template
+  template:
+    metadata:
+      labels:
+        app: nginx-ds
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+```
+
+运行
+
+```go
+
+```
+
+```go
+kubectl get pod
+NAME                                READY   STATUS              RESTARTS   AGE
+nginx-deployment-6b474476c4-gzmlh   0/1     ContainerCreating   0          89s
+nginx-deployment-6b474476c4-smfjz   0/1     ContainerCreating   0          16s
+nginx-deployment-6b474476c4-xjrxm   0/1     ContainerCreating   0          89s
+
+```
 
 ### 参考
 【二进制安装部署kubernetes集群---超详细教程】https://www.cnblogs.com/along21/p/10044931.html  
