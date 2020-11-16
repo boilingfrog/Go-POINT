@@ -1108,11 +1108,13 @@ spec:
 
 运行
 
-```go
+```
 $ kubectl apply -f nginx-ds.yml 
 ```
 
-```go
+结果
+
+```
 kubectl get pod
 NAME                        READY   STATUS              RESTARTS   AGE
 nginx-ds-76d6f5ffdd-2hds5   0/1     ContainerCreating   0          89s
