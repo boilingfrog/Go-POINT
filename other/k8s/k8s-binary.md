@@ -34,6 +34,10 @@
 
 ## 二进制部署k8s
 
+### 前言
+
+开始学习k8s吧，作为小白，先从手动搭建开始吧，然后在慢慢了解每个组件，本文经尝试能够成功部署成功。，本次尝试是看了阿良老师的视频，并且尝试了很多次，才成功的。阿良老师的博客地址，在下文有链接。  
+
 ### 准备工作
 
 #### 关闭防火墙
@@ -1099,22 +1103,64 @@ spec:
         image: nginx:1.14.2
         ports:
         - containerPort: 80
+
 ```
 
 运行
 
 ```go
-
+$ kubectl apply -f nginx-ds.yml 
 ```
 
 ```go
 kubectl get pod
-NAME                                READY   STATUS              RESTARTS   AGE
-nginx-deployment-6b474476c4-gzmlh   0/1     ContainerCreating   0          89s
-nginx-deployment-6b474476c4-smfjz   0/1     ContainerCreating   0          16s
-nginx-deployment-6b474476c4-xjrxm   0/1     ContainerCreating   0          89s
+NAME                        READY   STATUS              RESTARTS   AGE
+nginx-ds-76d6f5ffdd-2hds5   0/1     ContainerCreating   0          89s
+nginx-ds-76d6f5ffdd-gv87x   0/1     ContainerCreating   0          16s
+nginx-ds-76d6f5ffdd-m5dp5   0/1     ContainerCreating   0          89s
+```
+
+过一会就会自动创建成功
 
 ```
+$  kubectl get pods -o wide|grep nginx-ds
+nginx-ds-76d6f5ffdd-2hds5           1/1     Running   0          34m   172.17.21.4   192.168.56.203   <none>           <none>
+nginx-ds-76d6f5ffdd-gv87x           1/1     Running   0          34m   172.17.46.4   192.168.56.202   <none>           <none>
+nginx-ds-76d6f5ffdd-m5dp5           1/1     Running   0          34m   172.17.46.3   192.168.56.202   <none>           <none>
+
+$  kubectl get svc |grep nginx-ds
+nginx-ds     NodePort    10.0.0.112   <none>        80:41675/TCP   35m
+
+$ curl 192.168.56.203:41675/
+
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+    body {
+        width: 35em;
+        margin: 0 auto;
+        font-family: Tahoma, Verdana, Arial, sans-serif;
+    }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, the nginx web server is successfully installed and
+working. Further configuration is required.</p>
+
+<p>For online documentation and support please refer to
+<a href="http://nginx.org/">nginx.org</a>.<br/>
+Commercial support is available at
+<a href="http://nginx.com/">nginx.com</a>.</p>
+
+<p><em>Thank you for using nginx.</em></p>
+</body>
+</html>
+```
+
+已经可以访问了   
 
 ### 参考
 【二进制安装部署kubernetes集群---超详细教程】https://www.cnblogs.com/along21/p/10044931.html  
