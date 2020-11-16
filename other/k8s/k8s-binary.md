@@ -10,6 +10,7 @@
     - [更新系统时间](#%E6%9B%B4%E6%96%B0%E7%B3%BB%E7%BB%9F%E6%97%B6%E9%97%B4)
   - [秘钥免密码](#%E7%A7%98%E9%92%A5%E5%85%8D%E5%AF%86%E7%A0%81)
   - [设置主机名称](#%E8%AE%BE%E7%BD%AE%E4%B8%BB%E6%9C%BA%E5%90%8D%E7%A7%B0)
+  - [服务器角色](#%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%A7%92%E8%89%B2)
   - [安装etcd](#%E5%AE%89%E8%A3%85etcd)
     - [创建证书](#%E5%88%9B%E5%BB%BA%E8%AF%81%E4%B9%A6)
     - [生成证书](#%E7%94%9F%E6%88%90%E8%AF%81%E4%B9%A6)
@@ -26,6 +27,7 @@
     - [部署kubelet组件](#%E9%83%A8%E7%BD%B2kubelet%E7%BB%84%E4%BB%B6)
     - [部署kube-proxy组件](#%E9%83%A8%E7%BD%B2kube-proxy%E7%BB%84%E4%BB%B6)
   - [查看集群状态](#%E6%9F%A5%E7%9C%8B%E9%9B%86%E7%BE%A4%E7%8A%B6%E6%80%81)
+  - [测试](#%E6%B5%8B%E8%AF%95)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -135,10 +137,18 @@ $ sudo hostnamectl set-hostname kube-node2
 ```
 $ vim /etc/hosts
 
-192.168.10.108 kube-master
-192.168.10.109 kube-node1
-192.168.10.110 kube-node2
+192.168.56.201 kube-master
+192.168.56.202 kube-node1
+192.168.56.203 kube-node2
 ```
+
+### 服务器角色
+
+|  角色   | ip  | 组件  |
+|  ----  | ----  | ----  |
+| kube-master  | 192.168.56.201 | kube-apiserver，kube-controller-manager，kube-scheduler，etcd |
+| kube-node1  | 192.168.56.202 | kubelet，kube-proxy，docker，flannel，etcd |
+| kube-node2  | 192.168.56.203 | kubelet，kube-proxy，docker，flannel，etcd |
 
 ### 安装etcd
 
