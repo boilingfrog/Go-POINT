@@ -3,6 +3,7 @@
 
 
 - [二进制部署k8s](#%E4%BA%8C%E8%BF%9B%E5%88%B6%E9%83%A8%E7%BD%B2k8s)
+  - [前言](#%E5%89%8D%E8%A8%80)
   - [准备工作](#%E5%87%86%E5%A4%87%E5%B7%A5%E4%BD%9C)
     - [关闭防火墙](#%E5%85%B3%E9%97%AD%E9%98%B2%E7%81%AB%E5%A2%99)
     - [关闭 swap 分区](#%E5%85%B3%E9%97%AD-swap-%E5%88%86%E5%8C%BA)
@@ -456,12 +457,12 @@ ExecStart=/usr/bin/dockerd $DOCKER_NETWORK_OPTIONS
 检查是否生效
 
 ```
-# ps -ef |grep docker
+$ ps -ef |grep docker
 root      2859     1  0 18:13 ?        00:00:05 /usr/bin/dockerd-current --add-runtime docker-runc=/usr/libexec/docker/docker-runc-current --default-runtime=docker-runc --exec-opt native.cgroupdriver=systemd --userland-proxy-path=/usr/libexec/docker/docker-proxy-current --init-path=/usr/libexec/docker/docker-init-current --seccomp-profile=/etc/docker/seccomp.json --selinux-enabled --log-driver=journald --signature-verification=false --storage-driver overlay2 --bip=172.17.96.1/24 --ip-masq=false --mtu=1450
 root      2865  2859  0 18:13 ?        00:00:02 /usr/bin/docker-containerd-current -l unix:///var/run/docker/libcontainerd/docker-containerd.sock --metrics-interval=0 --start-timeout 2m --state-dir /var/run/docker/libcontainerd/containerd --shim docker-containerd-shim --runtime docker-runc --runtime-args --systemd-cgroup=true
 root      5799  1753  0 18:49 pts/0    00:00:00 grep --color=auto docker
 
-# ip addr
+$ ip addr
 1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
     link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
     inet 127.0.0.1/8 scope host lo
@@ -487,7 +488,7 @@ root      5799  1753  0 18:49 pts/0    00:00:00 grep --color=auto docker
 测试不同节点互通，在当前节点访问另一个Node节点flannel网络  
 
 ```
-# ping 172.17.72.0
+$ ping 172.17.72.0
 PING 172.17.72.0 (172.17.72.0) 56(84) bytes of data.
 64 bytes from 172.17.72.0: icmp_seq=1 ttl=64 time=1.25 ms
 64 bytes from 172.17.72.0: icmp_seq=2 ttl=64 time=0.507 ms
@@ -1113,7 +1114,7 @@ $ kubectl apply -f nginx-ds.yml
 结果
 
 ```
-kubectl get pod
+$  kubectl get pod
 NAME                        READY   STATUS              RESTARTS   AGE
 nginx-ds-76d6f5ffdd-2hds5   0/1     ContainerCreating   0          89s
 nginx-ds-76d6f5ffdd-gv87x   0/1     ContainerCreating   0          16s
