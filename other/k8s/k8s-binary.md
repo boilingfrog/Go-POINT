@@ -621,13 +621,13 @@ $ vi kube-proxy-csr.json
   ]
 }
 
-# cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=kubernetes kube-proxy-csr.json | cfssljson -bare kube-proxy
+$ cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=kubernetes kube-proxy-csr.json | cfssljson -bare kube-proxy
 ```
 
 最终生成以下证书文件 
 
 ```
-# ls *pem
+$ ls *pem
 ca-key.pem  ca.pem  kube-proxy-key.pem  kube-proxy.pem  server-key.pem  server.pem
 ```
 
@@ -647,7 +647,7 @@ $ cp kube-apiserver kube-scheduler kube-controller-manager kubectl /opt/kubernet
 创建token   
 
 ```
-$ cat /opt/kubernetes/cfg/token.csv
+$ vi /opt/kubernetes/cfg/token.csv
 674c457d4dcf2eefe4920d7dbb6b0ddc,kubelet-bootstrap,10001,"system:kubelet-bootstrap"
 ```
 
@@ -704,7 +704,7 @@ KUBE_APISERVER_OPTS="--logtostderr=true \
 systemd管理apiserver：  
 
 ```
-$ cat /usr/lib/systemd/system/kube-apiserver.service 
+$ vi /usr/lib/systemd/system/kube-apiserver.service 
 [Unit]
 Description=Kubernetes API Server
 Documentation=https://github.com/kubernetes/kubernetes
