@@ -290,33 +290,40 @@ ETCD_INITIAL_CLUSTER_STATE="new"
 - ETCD_INITIAL_CLUSTER_TOKEN 集群Token
 - ETCD_INITIAL_CLUSTER_STATE 加入集群的当前状态，new是新集群，existing表示加入已有集群
 
-
+systemd管理etcd
 ```
-#[Member]
-ETCD_NAME="etcd01"
-ETCD_DATA_DIR="/var/lib/etcd/default.etcd"
-ETCD_LISTEN_PEER_URLS="https://192.168.56.201:2380"
-ETCD_LISTEN_CLIENT_URLS="https://192.168.56.201:2379"
+$ vi /usr/lib/systemd/system/etcd.service 
 
-#[Clustering]
-ETCD_INITIAL_ADVERTISE_PEER_URLS="https://192.168.56.201:2380"
-ETCD_ADVERTISE_CLIENT_URLS="https://192.168.56.201:2379"
-ETCD_INITIAL_CLUSTER="etcd01=https://192.168.56.201:2380,etcd02=https://192.168.56.202:2380,etcd03=https://192.168.56.203:2380"
-ETCD_INITIAL_CLUSTER_TOKEN="etcd-cluster"
-ETCD_INITIAL_CLUSTER_STATE="new"
-```
+[Unit]
+Description=Etcd Server
+After=network.target
+After=network-online.target
+Wants=network-online.target
 
+[Service]
+Type=notify
+EnvironmentFile=/opt/etcd/cfg/etcd
+ExecStart=/opt/etcd/bin/etcd \
+--name=${ETCD_NAME} \
+--data-dir=${ETCD_DATA_DIR} \
+--listen-peer-urls=${ETCD_LISTEN_PEER_URLS} \
+--listen-client-urls=${ETCD_LISTEN_CLIENT_URLS},http://127.0.0.1:2379 \
+--advertise-client-urls=${ETCD_ADVERTISE_CLIENT_URLS} \
+--initial-advertise-peer-urls=${ETCD_INITIAL_ADVERTISE_PEER_URLS} \
+--initial-cluster=${ETCD_INITIAL_CLUSTER} \
+--initial-cluster-token=${ETCD_INITIAL_CLUSTER_TOKEN} \
+--initial-cluster-state=new \
+--cert-file=/opt/etcd/ssl/server.pem \
+--key-file=/opt/etcd/ssl/server-key.pem \
+--peer-cert-file=/opt/etcd/ssl/server.pem \
+--peer-key-file=/opt/etcd/ssl/server-key.pem \
+--trusted-ca-file=/opt/etcd/ssl/ca.pem \
+--peer-trusted-ca-file=/opt/etcd/ssl/ca.pem
+Restart=on-failure
+LimitNOFILE=65536
 
-```
---ca-file=ca.pem --cert-file=server.pem --key-file=server-key.pem \
---endpoints="https://192.168.56.201:2379,https://192.168.56.202:2379,https://192.168.56.203:2379" \
-cluster-health
-
-
-
---ca-file=/opt/etcd/ssl/ca.pem --cert-file=/opt/etcd/ssl/server.pem --key-file=/opt/etcd/ssl/server-key.pem \
---endpoints="https://192.168.56.201:2379,https://192.168.56.202:2379,https://192.168.56.203:2379" \
-cluster-health
+[Install]
+WantedBy=multi-user.target
 ```
 
 启动
