@@ -333,11 +333,17 @@ $ systemctl start etcd
 $ systemctl enable etcd
 ```
 
+只安装了一台机器，etcd是启动不起来的，我们需要把其他机器的都安装下  
+
+只需要把上面添加的文件，scp到目标机器，然后修改下ip即可  
+
 查看状态 
 
 ```
 $ journalctl -u etcd
 ```
+
+三台机器都安装完成之后查看状态  
 
 检查etcd集群状态  
 
