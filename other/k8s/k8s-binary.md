@@ -164,6 +164,8 @@ $ vim /etc/hosts
 
 安装
 
+wget工具安装`yum -y install wget`
+
 ```
 $ wget https://pkg.cfssl.org/R1.2/cfssl_linux-amd64
 $ wget https://pkg.cfssl.org/R1.2/cfssljson_linux-amd64
@@ -179,6 +181,8 @@ $ mv cfssl-certinfo_linux-amd64 /usr/bin/cfssl-certinfo
 证书一样，保证集群中使用的证书一致，在其中一台机器中生成需要的证书，然后scp到其他的机器中  
 
 创建需要的文件
+
+创建文件夹`/opt/etcd/ssl`，etcd的证书文件都放到这个文件夹中  
 
 ```
 $ vi ca-config.json
@@ -245,12 +249,6 @@ $ cfssl gencert -initca ca-csr.json | cfssljson -bare ca -
 $ cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=www server-csr.json | cfssljson -bare server
 $  ls *pem
 ca-key.pem  ca.pem  server-key.pem  server.pem
-```
-
-移动证书文件
-
-```
-$ cp ca*pem server*pem /opt/etcd/ssl
 ```
 
 #### 部署Etcd
