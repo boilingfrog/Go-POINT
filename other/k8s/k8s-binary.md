@@ -376,7 +376,9 @@ $ systemctl enable docker
 
 ### Flannel网络
 
-Flannel是部署在node中的，master节点需安装   
+![channel](/img/k8s_flannel_1.png?raw=true)
+
+Flannel是部署在node中的，每个node都需要安装，master节点无需安装   
 
 配置子网
 ```go
@@ -386,7 +388,7 @@ $ /opt/etcd/bin/etcdctl \
 set /coreos.com/network/config  '{ "Network": "172.17.0.0/16", "Backend": {"Type": "vxlan"}}'
 ```
 
-每个节点都需要操作  
+在一个node中安装，然后把配置的文件scp到其他node中  
 
 ```
 $ wget https://github.com/coreos/flannel/releases/download/v0.9.1/flannel-v0.9.1-linux-amd64.tar.gz
