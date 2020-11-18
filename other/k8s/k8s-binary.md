@@ -829,7 +829,7 @@ etcd-1               Healthy   {"health": "true"}
 
 ### 在Node节点部署组件
 
-将kubelet-bootstrap用户绑定到系统集群角色
+将master节点将kubelet-bootstrap用户绑定到系统集群角色
 
 ```
 $ kubectl create clusterrolebinding kubelet-bootstrap \
@@ -1028,7 +1028,7 @@ $ kubectl certificate approve node-csr-gE0iy6gY71RqRlC1ZhGGnvLwKBjLGmnTNmEoFj51y
 $ vi /opt/kubernetes/cfg/kube-proxy
 KUBE_PROXY_OPTS="--logtostderr=true \
 --v=4 \
---hostname-override=192.168.56.102 \
+--hostname-override=192.168.56.202 \
 --cluster-cidr=10.0.0.0/24 \
 --kubeconfig=/opt/kubernetes/cfg/kube-proxy.kubeconfig"
 ```
