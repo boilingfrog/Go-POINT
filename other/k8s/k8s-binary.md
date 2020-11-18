@@ -633,7 +633,7 @@ ca-key.pem  ca.pem  kube-proxy-key.pem  kube-proxy.pem  server-key.pem  server.p
 
 #### 配置apiserver组件
 
-下载二进制安装包 `https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG-1.12.md`
+下载二进制安装包 `https://github.com/kubernetes/kubernetes`，我下载的是`v1.18.12`  
 
 kubernetes-server-linux-amd64.tar.gz  
 
@@ -828,6 +828,13 @@ etcd-1               Healthy   {"health": "true"}
 出现Healthy表示组件都正常  
 
 ### 在Node节点部署组件
+
+`Master apiserver`启用TLS认证后，Node节点kubelet组件想要加入集群，必须使用CA签发的有效证书才能与apiserver通信，当Node节点很多时，签署证
+书是一件很繁琐的事情，因此有了`TLS Bootstrapping`机制，kubelet会以一个低权限用户自动向apiserver申请证书，kubelet的证书由apiserver动态签署。  
+
+认证大致工作流程如图所示：  
+
+![k8s](/img/k8s_apiserver_1.png?raw=true)
 
 将master节点将kubelet-bootstrap用户绑定到系统集群角色
 
