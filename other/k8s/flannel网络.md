@@ -1,10 +1,12 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+
 - [理解flannel网络](#%E7%90%86%E8%A7%A3flannel%E7%BD%91%E7%BB%9C)
   - [简介](#%E7%AE%80%E4%BB%8B)
   - [Kubernetes中的网络](#kubernetes%E4%B8%AD%E7%9A%84%E7%BD%91%E7%BB%9C)
   - [flannel](#flannel)
+  - [总结](#%E6%80%BB%E7%BB%93)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -66,6 +68,14 @@ Flannel是作为一个二进制文件的方式部署在每个node上，主要实
 - Node2 上 的 eth0 接收到上述 VXLAN 包，kernel 将识别出这是一个 VXLAN 包，于是拆包后将 packet 转给 Node 2 上的 flannel0。flannel0 再将这个数据包转到 docker0，继而由 docker0 传输到 Pod1 的某个容器里。  
 
 总的来说就是建立 VXLAN 隧道，通过 UDP 把 IP 封装一层直接送到对应的节点，实现了一个大的 VLAN。  
+
+### 总结
+
+数据从源容器中发出后，经由所在主机的docker0虚拟网卡转发到flannel0虚拟网卡，这是个P2P的虚拟网卡，flanneld服务监听在网卡的另外一端。  
+
+Flannel通过Etcd服务维护了一张节点间的路由表，详细记录了各节点子网网段 。  
+
+源主机的flanneld服务将原本的数据内容UDP封装后根据自己的路由表投递给目的节点的flanneld服务，数据到达以后被解包，然后直接进入目的节点的flannel0虚拟网卡，然后被转发到目的主机的docker0虚拟网卡，最后就像本机容器通信一下的有docker0路由到达目标容器。  
 
 ### 参考
 【Kubernetes中的网络解析——以flannel为例】https://jimmysong.io/kubernetes-handbook/concepts/flannel.html  
