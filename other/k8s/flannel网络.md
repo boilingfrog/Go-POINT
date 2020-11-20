@@ -57,11 +57,15 @@ Flannel是作为一个二进制文件的方式部署在每个node上，主要实
 
 ![channel](/img/k8s_flannel_1.png?raw=true)
 
+我们来分析这个图片的流程  
 
+- IP 为 10.1.15.2 的 Pod1 与另外一个 Node 上 IP 为 10.1.20.2 的 Pod1 进行通信；
+- 首先 Pod1 通过 veth 对把数据包发送到 docker0 虚拟网桥，网桥通过查找转发表发现 10.1.20.2 不在自己管理的网段，就会把数据包转发给默认路由（这里为 flannel0 网桥）；
+- flannel0 网桥是一个 VXLAN 设备，flannel0 收到数据包后，由于自己不是目的 IP 地址 10.1.20.2，也要尝试将数据包重新发送出去。数据包沿着网络协议栈向下流动，在二层时需要封二层以太包，填写目的 MAC 地址，这时一般应该发出 arp：”who is 10.1.20.2″。但 VXLAN 设备的特殊性就在于它并没有真正在二层发出这个 arp 包，而是由 linux kernel 引发一个”L3 MISS”事件并将 arp 请求发到用户空间的 Flannel 程序中；
+- Flannel 程序收到”L3 MISS”内核事件以及 arp 请求 (who is 10.1.20.2) 后，并不会向外网发送 arp request，而是尝试从 etcd 查找该地址匹配的子网的 vtep 信息，也就是会找到 目标Node1 上的 flannel0 的 MAC 地址信息。Flannel 将查询到的信息放入 Node1 host 的 arp cache 表中，flannel0 完成这项工作后，Linux kernel 就可以在 arp table 中找到 10.1.20.2 对应的 MAC 地址并封装二层以太包了
+- Node2 上 的 eth0 接收到上述 VXLAN 包，kernel 将识别出这是一个 VXLAN 包，于是拆包后将 packet 转给 Node 2 上的 flannel0。flannel0 再将这个数据包转到 docker0，继而由 docker0 传输到 Pod1 的某个容器里。  
 
-
-
-
+总的来说就是建立 VXLAN 隧道，通过 UDP 把 IP 封装一层直接送到对应的节点，实现了一个大的 VLAN。  
 
 ### 参考
 【Kubernetes中的网络解析——以flannel为例】https://jimmysong.io/kubernetes-handbook/concepts/flannel.html  
