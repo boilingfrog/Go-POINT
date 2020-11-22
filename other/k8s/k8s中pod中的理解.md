@@ -159,4 +159,37 @@ Kubelet定期执行LivenessProbe来检查容器的状态，一般有三种的实
 - HTTPGetAction:通过容器的IP地址、端口及路径调用HTTP Get方法，如果相应的状态码大于等于200且小于等于400，则认为
 容器是健康状态。 
 
+### 资源限制
+
+每个Pod都可以对其能使用的服务器上的计算资源设置限额，当前可以设置限额的计算资源有CPU和Memory两种，其中CPU的资源单位为CPU（Core）的数量，是一个绝对值。  
+
+对于容器来说一个CPU的配额已经是相当大的资源配额了，所以在Kubernetes里，通常以千分之一的CPU配额为最小单位，用m来表示。通常一个容器的CPU配额被
+定义为100-300m，即占用0.1-0.3个CPU。与CPU配额类似，Memory配额也是一个绝对值，它的单位是内存字节数。  
+
+对计算资源进行配额限定需要设定以下两个参数：  
+
+- Requests：该资源的最小申请量，系统必须满足要求。
+- Limits：该资源最大允许使用的量，不能超过这个使用限制，当容器试图使用超过这个量的资源时，可能会被Kubernetes Kill并重启。
+
+通常我们应该把Requests设置为一个比较小的数值，满足容器平时的工作负载情况下的资源需求，而把Limits设置为峰值负载情况下资源占用的最大量。下面是一个资源配额的简单定义：  
+
+```
+spec:
+  containers:
+  - name: db
+    image: mysql
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "250m"
+      limits:
+        memory: "128Mi"
+        cpu: "500m"
+```
+
+最小0.25个CPU及64MB内存，最大0.5个CPU及128MB内存。  
+
+### 参考
+
+【初识Kubernetes（K8s）：各种资源对象的理解和定义】https://blog.51cto.com/andyxu/2329257
 
