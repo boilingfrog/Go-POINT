@@ -135,14 +135,228 @@ pod的重启策略包括
 重启的时间，是以2n来算。比如1,2,4,8.....最长延迟５分钟，并且在成功重启后的10分钟重置这个时间。
 
 管理pod的重启策略是靠控制器来完成的  
+
+#### Replication Controller
+
+RC的作用是声明Pod的副本数量在任意时刻都符合某个预期值，所以RC的定义包括如下几个部分。  
+
+- Pod期待的副本数量（replicas）。
+- 用于筛选目标Pod的Label Selector。
+- 当Pod的副本数量小于预期数量时，用于创建新Pod的Pod模板（template）。
+
+下面是一个完整的RC定义的例子，即确保拥有tier=frontend标签的这个Pod（运行Tomcat容器）在整个Kubernetes集群中始终有三个副本  
+
+```
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: frontend
+spec:
+  replicas: 3
+  selector:
+    tier: frontend
+  template:
+    metadata:
+      labels:
+        app: app-demo
+        tier: frontend
+    spec:
+      containers:
+      - name: tomcat-demo
+        image: tomcat
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: GET_HOSTS_FROM
+          value: dns
+        ports:
+        - containerPort: 80
+```
+当我们定义了一个RC并提交到Kubernetes集群中后，Master节点上的Controller Manager组件就得到通知，定期巡检系统中当前存活的目标Pod，并确保目
+标Pod实例的数量刚好等于此RC的期望值。如果有过多的Pod副本在运行，系统就会停掉多余的Pod；如果运行的Pod副本少于期望值，即如果某个Pod挂掉，系统就
+会自动创建新的Pod以保证数量等于期望值。  
+
+通过RC，Kubernetes实现了用户应用集群的高可用性，并且大大减少了运维人员在传统IT环境中需要完成的许多手工运维工作（如主机监控脚本、应用监控脚本、故障恢复脚本等）。  
+
+#### Replica Set
+
+由于Replication Controller与Kubernetes代码中的模块Replication Controller同名，同时这个词也无法准确表达它的意思，所以从Kubernetes v1.2开
+始，它就升级成了另外一个新的对象——Replica Set，官方解释为“下一代的RC”。ReplicaSet和ReplicationController没有本质区别，只是名字名字不一样，
+并且ReplicaSet支持集合式的selector。虽然ReplicaSet可以独立使用，但一般还是建议使用Deployment来自动管理ReplicaSet。这样就无需担心跟其他机制不兼容
+的问题（比如ReplicaSet不支持roling-update但Deployment支持）。     
+
+```
+apiVersion: extensions/v1beta1
+kind: ReplicaSet
+metadata:
+  name: frontend
+spec:
+  selector:
+    matchLabels:
+      tier: frontend
+    matchExpressions:
+      - {key: tier, operator: In, values: [frontend]}
+  template:
+  …………
+```    
+
+RC和RS的特性与作用如下：  
+
+- 在大多情况下，我们通过定义一个RC实现Pod的创建过程及副本数量的自动控制。
+- RC里包括完整的Pod定义模板。
+- RC通过Label Selector机制实现对Pod副本的自动控制。
+- 通过改变RC里的Pod副本数量，可以实现Pod的扩容或缩容功能。
+- 通过改变RC里Pod模板中的镜像版本，可以实现Pod的滚动升级功能。
+
+#### Deployment
+
+Deployment相对于RC的最大区别是我们可以随时知道当前Pod“部署”的进度。一个Pod的创建、调度、绑定节点及在目标Node上启动对应的容器这一完整过程需要
+一定的时间，所以我们期待系统启动N个Pod副本的目标状态，实际上是一个连续变化的“部署过程”导致的最终状态。  
+
+Deployment的典型使用场景有以下几个：  
+
+- 创建一个Deployment对象来生成对应的Replica Set并完成Pod副本的创建过程。  
+- 检查Deployment的状态来看部署动作是否完成（Pod副本的数量是否达到预期的值）。  
+- 更新Deployment以创建新的Pod（比如镜像升级）。
+- 如果当前Deployment不稳定，则回滚到一个早先的Deployment版本。
+- 暂停Deployment以便于一次性修改多个Pod Template Spec的配置项，之后再恢复Deployment，进行新的发布。
+- 扩展Deployment以应对高负载。
+- 查看Deployment的状态，以此作为发布是否成功的指标。
+- 清理不再需要的旧版本ReplicaSet。
+
+Deployment的定义与Replica Set的定义类似，只是API声明与Kind类型不同。  
+
+```
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+```
+
+```
+apiVersion: v1
+kind: ReplicaSet
+metadata:
+  name: nginx-repset
+```
+
+下面是Deployment定义的一个完整例子  
+
+```
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      tier: frontend
+    matchExpressions:
+      - {key: tier, operator: In, values: [frontend]}
+  template:
+    metadata:
+      labels:
+        app: app-demo
+        tier: frontend
+    spec:
+      containers:
+      - name: tomcat-demo
+        image: tomcat
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+```
+
+可以通过命令kubectl get deployment来查看Deployment的信息，其中的几个参数解释如下：  
+
+- DESIRED:：Pod副本数量的期望值，即Deployment里定义的Replica。
+- CURRENT：当前Replica的值，如果小于DESIRED的期望值，会创建新的Pod，直到达成DESIRED为止。
+- UP-TO-DATE：最新版本的Pod的副本数量，用于指示在滚动升级的过程中，有多少个Pod副本已经成功升级。
+- AVAILABLE：当前集群中可用的Pod副本数量，即集群中当前存活的Pod数量。
+
+#### DaemonSet
+
+DaemonSet 确保全部（或者某些）节点上运行一个 Pod 的副本。 当有节点加入集群时， 也会为他们新增一个 Pod 。 当有节点从集群移除时，这些 Pod 也
+会被回收。删除 DaemonSet 将会删除它创建的所有 Pod。  
+
+DaemonSet 的一些典型用法：  
+
+- 在每个节点上运行集群守护进程
+- 在每个节点上运行日志收集守护进程
+- 在每个节点上运行监控守护进程
+
+一种简单的用法是为每种类型的守护进程在所有的节点上都启动一个 DaemonSet。 一个稍微复杂的用法是为同一种守护进程部署多个 DaemonSet；每个具有不
+同的标志， 并且对不同硬件类型具有不同的内存、CPU 要求。  
+
+```
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: fluentd-elasticsearch
+  namespace: kube-system
+  labels:
+    k8s-app: fluentd-logging
+spec:
+  selector:
+    matchLabels:
+      name: fluentd-elasticsearch
+  template:
+    metadata:
+      labels:
+        name: fluentd-elasticsearch
+    spec:
+      tolerations:
+      # this toleration is to have the daemonset runnable on master nodes
+      # remove it if your masters can't run pods
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      containers:
+      - name: fluentd-elasticsearch
+        image: quay.io/fluentd_elasticsearch/fluentd:v2.5.2
+        resources:
+          limits:
+            memory: 200Mi
+          requests:
+            cpu: 100m
+            memory: 200Mi
+        volumeMounts:
+        - name: varlog
+          mountPath: /var/log
+        - name: varlibdockercontainers
+          mountPath: /var/lib/docker/containers
+          readOnly: true
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: varlog
+        hostPath:
+          path: /var/log
+      - name: varlibdockercontainers
+        hostPath:
+          path: /var/lib/docker/containers
+```
+
+#### StatefulSet
+
+Pod的管理对象RC、Deployment、DaemonSet和Job都是面向无状态的服务，但实际中有很多服务是有状态的，比如Mysql集群、MongoDB集群、ZooKeeper集
+群等，可以使用StatefulSet来管理有状态的服务。  
+
+StatefulSet有如下一些特性：  
+
+- 稳定的、唯一的网络标识符。
+- 稳定的、持久的存储。通过PV/PVC来实现，删除Pod时默认不会删除与StatefulSet相关的存储卷（为了保证数据的安全）。  
+- 有序的、优雅的部署和缩放。操作第n个Pod时，前n-1个Pod已经是运行且准备好的状态。  
+- 有序的、自动的滚动更新。
+
+
+
+
+
 - ReplicationController
 ReplicationController用来确保容器应用副本数始终保持在用户定义的副本数，即如果有容器异常退出，会自动创建新的pod
 来代替；而如果异常多出来的容器也会自动回收。在新版本的k8s中建议使用ReplicaSet来取代ReplicationController。  
 - ReplicaSet
-ReplicaSet和ReplicationController没有本质区别，只是名字名字不一样，并且ReplicaSet支持集合式的selector  
 
-虽然ReplicaSet可以独立使用，单一般还是建议使用Deployment来自动管理ReplicaSet。这样就无需担心跟其他机制不兼容
-的问题（比如ReplicaSet不支持roling-update但Deployment支持）
+
 
 ### pod的健康检查
 对于pod的健康检查一般有两种探针来进行操作,果我们配置了合适的健康检查方法和规则，那么就不会出现服务未启动就被打入流量
