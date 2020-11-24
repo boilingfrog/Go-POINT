@@ -402,8 +402,34 @@ CPUUtilizationPercentage是一个算术平均值，即目标Pod所有副本自�
 
 一般会在CPUUtilizationPercentage超过80%的时候考虑进行动态扩容。  
 
+在CPUUtilizationPercentage计算过程中,我们通常取得是1分钟之内的p平均值，通常通过查询Heapster监控子系统来得到这个值。从1.7版本开始，Kubernetes自
+身孵化了一个基础性能数据采集监控框架——Kubernetes Monitoring Architecture，从 而更好地支持HPA和其他需要用到基础性能数据的功能模块。  
 
+下面是HPA定义的一个具体例子
 
+```
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: php-apache
+  namespace: default
+spec:
+  maxReplicas: 10
+  minReplicas: 2
+  scaleTargetRef:
+    kind: Deployment
+    name: php-apache
+  targetCPUUtilizationPercentage: 90
+```
+
+上面定义了一个目标对象为一个名为php-apache的Dep loyment里的Pod副本，当这些Pod副本的CPUUtilizationPercentage的值超过90%时会触发 自动动
+态扩容行为，在扩容或缩容时必须满足的一个约束条件是Pod的副本数为1～10。  
+
+当然也可以通过命令的方式来创建  
+
+```
+$ kubectl autoscale deployment php-apache --cpu-percent=90 --min=1 --max=10
+```
 
 
 ### pod的健康检查
