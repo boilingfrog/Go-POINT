@@ -39,3 +39,7 @@ spec:
 ```
 
 
+
+
+### 参考
+【K8S 安装 Ingress】https://www.jianshu.com/p/4370c00c040a  
