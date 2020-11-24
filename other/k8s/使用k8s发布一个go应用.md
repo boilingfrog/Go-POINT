@@ -6,3 +6,36 @@
 
 ### 部署
 
+#### 镜像打包
+
+之前已经打包过一个go的镜像了，这次就直接跳过了  
+
+#### 编写yaml文件
+
+```go
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: go-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: go-app
+  template:
+    metadata:
+      labels:
+        app: go-app
+    spec:
+      containers:
+        - name: go-app-container
+          image: liz2019/test-static
+          resources:
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+          ports:
+            - containerPort: 3000
+```
+
+
