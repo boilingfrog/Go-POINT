@@ -1,3 +1,26 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [k8s中pod的理解](#k8s%E4%B8%ADpod%E7%9A%84%E7%90%86%E8%A7%A3)
+    - [基本概念](#%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5)
+    - [pod存在的意义](#pod%E5%AD%98%E5%9C%A8%E7%9A%84%E6%84%8F%E4%B9%89)
+    - [pod容器分类与设计模式](#pod%E5%AE%B9%E5%99%A8%E5%88%86%E7%B1%BB%E4%B8%8E%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F)
+    - [实现机制](#%E5%AE%9E%E7%8E%B0%E6%9C%BA%E5%88%B6)
+      - [共享存储](#%E5%85%B1%E4%BA%AB%E5%AD%98%E5%82%A8)
+      - [共享网络](#%E5%85%B1%E4%BA%AB%E7%BD%91%E7%BB%9C)
+  - [pod的生命周期和重启策略](#pod%E7%9A%84%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F%E5%92%8C%E9%87%8D%E5%90%AF%E7%AD%96%E7%95%A5)
+    - [Replication Controller](#replication-controller)
+    - [Replica Set](#replica-set)
+    - [Deployment](#deployment)
+    - [DaemonSet](#daemonset)
+    - [StatefulSet](#statefulset)
+  - [Horizontal Pod Autoscaler](#horizontal-pod-autoscaler)
+  - [pod的健康检查](#pod%E7%9A%84%E5%81%A5%E5%BA%B7%E6%A3%80%E6%9F%A5)
+  - [资源限制](#%E8%B5%84%E6%BA%90%E9%99%90%E5%88%B6)
+  - [参考](#%E5%8F%82%E8%80%83)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## k8s中pod的理解  
 
 - [基本概念](#%e5%9f%ba%e6%9c%ac%e6%a6%82%e5%bf%b5)
@@ -347,14 +370,39 @@ StatefulSet有如下一些特性：
 - 有序的、优雅的部署和缩放。操作第n个Pod时，前n-1个Pod已经是运行且准备好的状态。  
 - 有序的、自动的滚动更新。
 
+StatefulSet除了要与PV卷捆绑使用以存储Pod的状态数据，还要与`Headless Service`配合使用，即在每个StatefulSet的定义中要声明它属于哪个`Headless Service`。
+`Headless Service`与普通Service的区别在于，它没有Cluster IP，如果解析`Headless Service`的DNS域名，则返回的是该Service对应的全部Pod的Endpoint列表。
+StatefulSet在`Headless Service`的基础上又为StatefulSet控制的每个Pod实例创建了一个DNS域名，这个域名的格式为：   
+
+```
+$(podname).$(headless service name)
+```
+
+比如一个3节点的kafka的StatefulSet集群，对应的Headless Service的名字为kafka，StatefulSet的名字为kafka，则StatefulSet里面的3个Pod的DNS
+名称分别为kafka-0.kafka、kafka-1.kafka、kafka-3.kafka，这些DNS名称可以直接在集群的配置文件中固定下来。  
+
+### Horizontal Pod Autoscaler
+
+在Kubernetes 1.1中首次发布重量级新特性—Horizontal Pod Autoscaling（Pod横向自 动扩容，HPA）,从1.6版 本开始，增强了根据应用自定义的指标进行
+自动扩容和缩容的功能，API版本为autoscali ng/v2alpha1，并不断演进。  
+
+HPA与之前的RC、Deployment一样，也属于一种Kubernetes资源对象。通过追踪分析 指定RC控制的所有目标Pod的负载变化情况，来确定是否需要有针对性地调
+整目标Pod的副 本数量，这是HPA的实现原理。当前，HPA有以下两种方式作为Pod负载的度量指标。  
+
+- CPUUtilizationPercentage。
+- 应用程序自定义的度量指标，比如服务在每秒内的相应请求数（TPS或QPS）。
+
+CPUUtilizationPercentage是一个算术平均值，即目标Pod所有副本自身的CPU利用率 的平均值。  
+
+如何计算的呢？  
+
+一个Pod自身的CPU利用率是该Pod当前CPU的使用量除以它的Pod Request的值。  
+
+举个例子：比如定义一个Pod的Pod Request为0.4，而当前Pod的CPU使用量为0.2，则它的CPU使用率 为50%，这样就可以算出一个RC控制的所有Pod副本的CPU利用率的算术平均值了。  
+
+一般会在CPUUtilizationPercentage超过80%的时候考虑进行动态扩容。  
 
 
-
-
-- ReplicationController
-ReplicationController用来确保容器应用副本数始终保持在用户定义的副本数，即如果有容器异常退出，会自动创建新的pod
-来代替；而如果异常多出来的容器也会自动回收。在新版本的k8s中建议使用ReplicaSet来取代ReplicationController。  
-- ReplicaSet
 
 
 
