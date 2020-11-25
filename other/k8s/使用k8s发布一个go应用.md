@@ -38,6 +38,36 @@ spec:
             - containerPort: 3000
 ```
 
+启动
+
+```
+$ kubectl apply -f kube-go.yaml
+
+NAME                                READY   STATUS              RESTARTS   AGE
+go-app-6498bff568-8n72g             0/1     ContainerCreating   0          62s
+go-app-6498bff568-ncrmf             0/1     ContainerCreating   0          62s
+```
+
+### 配置ingress
+
+配置ingress`https://raw.githubusercontent.com/kubernetes/ingress-nginx/nginx-0.18.0/deploy/mandatory.yaml`
+把 `extensions/v1beta1`修改成`apps/v1`
+
+创建
+
+```
+$ kubectl apply -f ./mandatory.yaml
+$ kubectl get pods -n ingress-nginx
+$ kubectl get service -n ingress-nginx
+```
+
+测试  
+
+```
+curl http://10.98.51.155  //ip来自上一步
+如果返回404则表示安装成功
+```
+
 
 
 
