@@ -48,6 +48,16 @@ go-app-6498bff568-8n72g             0/1     ContainerCreating   0          62s
 go-app-6498bff568-ncrmf             0/1     ContainerCreating   0          62s
 ```
 
+暴露应用
+
+```
+$ kubectl expose deployment go-app --type=NodePort --name=go-app-svc --target-port=3000
+```
+
+### 配置service
+
+
+
 ### 配置ingress
 
 配置ingress`https://raw.githubusercontent.com/kubernetes/ingress-nginx/nginx-0.18.0/deploy/mandatory.yaml`
@@ -67,6 +77,8 @@ $ kubectl get service -n ingress-nginx
 curl http://10.98.51.155  //ip来自上一步
 如果返回404则表示安装成功
 ```
+
+### 配置ingress转发策略
 
 
 
