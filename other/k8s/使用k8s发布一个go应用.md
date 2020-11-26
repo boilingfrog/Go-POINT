@@ -29,13 +29,13 @@ spec:
     spec:
       containers:
         - name: go-app-container
-          image: liz2019/test-static
+          image: liz2019/test-docker-go-hub
           resources:
             limits:
               memory: "128Mi"
               cpu: "500m"
           ports:
-            - containerPort: 3000
+            - containerPort: 8000
 ```
 
 启动
