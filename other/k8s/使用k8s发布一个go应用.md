@@ -1,3 +1,18 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [k8s发布go应用](#k8s%E5%8F%91%E5%B8%83go%E5%BA%94%E7%94%A8)
+  - [前言](#%E5%89%8D%E8%A8%80)
+  - [部署](#%E9%83%A8%E7%BD%B2)
+    - [镜像打包](#%E9%95%9C%E5%83%8F%E6%89%93%E5%8C%85)
+    - [编写yaml文件](#%E7%BC%96%E5%86%99yaml%E6%96%87%E4%BB%B6)
+  - [配置service](#%E9%85%8D%E7%BD%AEservice)
+  - [配置ingress](#%E9%85%8D%E7%BD%AEingress)
+  - [配置ingress转发策略](#%E9%85%8D%E7%BD%AEingress%E8%BD%AC%E5%8F%91%E7%AD%96%E7%95%A5)
+  - [参考](#%E5%8F%82%E8%80%83)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## k8s发布go应用
 
 ### 前言
