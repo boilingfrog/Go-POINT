@@ -66,7 +66,17 @@ go-app-6498bff568-ncrmf             0/1     ContainerCreating   0          62s
 暴露应用
 
 ```
-$ kubectl expose deployment go-app --type=NodePort --name=go-app-svc --target-port=3000
+$ kubectl expose deployment go-app --type=NodePort --name=go-app-svc --target-port=8000
+```
+查看
+
+```go
+$ kubectl get pods -o wide|grep go-app
+go-app-58c4ff7448-j9j6m             1/1     Running   0          106s   172.17.32.5   192.168.56.202   <none>           <none>
+go-app-58c4ff7448-p7xnj             1/1     Running   0          106s   172.17.65.4   192.168.56.203   <none>           <none>
+
+$ kubectl get svc|grep go-app
+go-app-svc   NodePort    10.0.0.247   <none>        8000:35100/TCP   93s
 ```
 
 ### 配置service
