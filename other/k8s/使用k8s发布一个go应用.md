@@ -17,6 +17,9 @@
 
 ### 前言
 
+
+
+
 搭建了一套K8s,尝试发布一个go应用
 
 ### 部署
@@ -87,6 +90,11 @@ go-app-svc   NodePort    10.0.0.247   <none>        8000:35100/TCP   93s
 
 配置ingress`https://raw.githubusercontent.com/kubernetes/ingress-nginx/nginx-0.18.0/deploy/mandatory.yaml`
 把 `extensions/v1beta1`修改成`apps/v1`
+
+        image: liz2019/google_containers-defaultbackend:1.4
+
+          image: liz2019/kubernetes-ingress-controller-nginx-ingress-controller:0.14.0
+
 
 创建
 
