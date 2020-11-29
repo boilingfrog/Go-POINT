@@ -119,3 +119,5 @@ curl http://10.98.51.155  //ip来自上一步
 ### 参考
 【K8S 安装 Ingress】https://www.jianshu.com/p/4370c00c040a  
 【k8s ingress原理及ingress-nginx部署测试】https://segmentfault.com/a/1190000019908991  
+【Kubernetes Deployment 故障排查常见方法[译]】https://www.qikqiak.com/post/troubleshooting-deployments/  
+【kubernetes部署-ingress】https://blog.csdn.net/u013726175/article/details/88177110  
