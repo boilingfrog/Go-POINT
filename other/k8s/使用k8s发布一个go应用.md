@@ -102,14 +102,34 @@ $ kubectl get pods -n ingress-nginx
 $ kubectl get service -n ingress-nginx
 ```
 
-测试  
-
-```
-curl http://10.98.51.155  //ip来自上一步
-如果返回404则表示安装成功
-```
-
 ### 配置ingress转发策略
+首先查看service
+
+```
+]# kubectl get svc
+NAME         TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)          AGE
+go-app-svc   NodePort    10.0.0.247   <none>        8000:35100/TCP   2d13h
+```
+
+配置ingress
+
+```
+$ cat ingress-go.yaml 
+
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: web-ingress
+spec:
+  rules:
+  - host: www.liz-test.com
+    http:
+      paths:
+      - backend:
+          serviceName: go-app-svc
+          servicePort: 8000
+```
+
 
 ### 添加本机的host
 
@@ -117,9 +137,10 @@ curl http://10.98.51.155  //ip来自上一步
 $ sudo vi /etc/hosts
 
 // 根据ingress部署的iP
-192.168.56.202 liz-test.com
+192.168.56.202 www.liz-test.com
 ```
 
+![channel](/img/ingress_6.png?raw=true)
 
 
 ### 参考
