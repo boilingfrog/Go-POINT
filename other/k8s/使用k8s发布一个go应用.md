@@ -82,19 +82,17 @@ $ kubectl get svc|grep go-app
 go-app-svc   NodePort    10.0.0.247   <none>        8000:35100/TCP   93s
 ```
 
-### 配置service
-
-
-
 ### 配置ingress
 
 配置ingress`https://raw.githubusercontent.com/kubernetes/ingress-nginx/nginx-0.18.0/deploy/mandatory.yaml`
-把 `extensions/v1beta1`修改成`apps/v1`
+把 `extensions/v1beta1`修改成`apps/v1`  
 
-        image: liz2019/google_containers-defaultbackend:1.4
+里面有两个镜像需要梯子  
 
-          image: liz2019/kubernetes-ingress-controller-nginx-ingress-controller:0.14.0
-
+```
+image: liz2019/google_containers-defaultbackend:1.4
+image: liz2019/nginx-ingress-controller:0.20.0
+```
 
 创建
 
@@ -113,6 +111,14 @@ curl http://10.98.51.155  //ip来自上一步
 
 ### 配置ingress转发策略
 
+### 添加本机的host
+
+```
+$ sudo vi /etc/hosts
+
+// 根据ingress部署的iP
+192.168.56.202 liz-test.com
+```
 
 
 
