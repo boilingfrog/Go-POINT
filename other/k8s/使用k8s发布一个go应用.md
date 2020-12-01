@@ -126,6 +126,18 @@ spec:
 
 ### 添加本机的host
 
+查看
+
+```
+$ kubectl get pod -n ingress-nginx -o wide
+NAME                                        READY   STATUS    RESTARTS   AGE   IP            NODE             NOMINATED NODE   READINESS GATES
+default-http-backend-649b76fd96-v8s9v       0/1     Error     0          14m   <none>        192.168.56.202   <none>           <none>
+nginx-ingress-controller-5b988cc9c6-kh2dg   0/1     Running   1          14m   172.17.32.5   192.168.56.202   <none>           <none>
+```
+
+nginx-ingress-controller是在192.168.56.202上面的，所以我们下面的host就配置到这个机器中。  
+
+
 ```
 $ sudo vi /etc/hosts
 
