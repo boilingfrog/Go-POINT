@@ -1,14 +1,15 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+
 - [k8s发布go应用](#k8s%E5%8F%91%E5%B8%83go%E5%BA%94%E7%94%A8)
   - [前言](#%E5%89%8D%E8%A8%80)
   - [部署](#%E9%83%A8%E7%BD%B2)
     - [镜像打包](#%E9%95%9C%E5%83%8F%E6%89%93%E5%8C%85)
     - [编写yaml文件](#%E7%BC%96%E5%86%99yaml%E6%96%87%E4%BB%B6)
-  - [配置service](#%E9%85%8D%E7%BD%AEservice)
   - [配置ingress](#%E9%85%8D%E7%BD%AEingress)
   - [配置ingress转发策略](#%E9%85%8D%E7%BD%AEingress%E8%BD%AC%E5%8F%91%E7%AD%96%E7%95%A5)
+  - [添加本机的host](#%E6%B7%BB%E5%8A%A0%E6%9C%AC%E6%9C%BA%E7%9A%84host)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -26,7 +27,7 @@
 
 #### 镜像打包
 
-之前已经打包过一个go的镜像了，这次就直接跳过了  
+之前已经打包过一个go的镜像了，这次就直接跳过了，打包记录`https://www.cnblogs.com/ricklz/p/12860434.html`  
 
 #### 编写yaml文件
 
@@ -84,15 +85,7 @@ go-app-svc   NodePort    10.0.0.247   <none>        8000:35100/TCP   93s
 
 ### 配置ingress
 
-配置ingress`https://raw.githubusercontent.com/kubernetes/ingress-nginx/nginx-0.18.0/deploy/mandatory.yaml`
-把 `extensions/v1beta1`修改成`apps/v1`  
-
-里面有两个镜像需要梯子  
-
-```
-image: liz2019/google_containers-defaultbackend:1.4
-image: liz2019/nginx-ingress-controller:0.20.0
-```
+mandatory.yaml地址`https://github.com/boilingfrog/daily-test/blob/master/k8s/ingress/mandatory.yaml`
 
 创建
 
@@ -139,6 +132,8 @@ $ sudo vi /etc/hosts
 // 根据ingress部署的iP
 192.168.56.202 www.liz-test.com
 ```
+
+访问结果
 
 ![channel](/img/ingress_6.png?raw=true)
 
