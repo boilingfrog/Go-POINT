@@ -18,9 +18,6 @@
 
 ### 前言
 
-
-
-
 搭建了一套K8s,尝试发布一个go应用
 
 ### 部署
@@ -80,10 +77,19 @@ go-app-58c4ff7448-j9j6m             1/1     Running   0          106s   172.17.3
 go-app-58c4ff7448-p7xnj             1/1     Running   0          106s   172.17.65.4   192.168.56.203   <none>           <none>
 
 $ kubectl get svc|grep go-app
-go-app-svc   NodePort    10.0.0.247   <none>        8000:35100/TCP   93s
+  go-app-svc   NodePort    10.0.0.16    <none>        8000:45366/TCP   43m
 ```
 
-### 配置ingress
+通过nodeIP加端口可以直接访问
+
+![channel](/img/ingress_8.jpg?raw=true)
+
+### 使用ingress
+
+#### 什么是ingress呢
+
+
+![channel](/img/ingress_7.jpg?raw=true)
 
 mandatory.yaml地址`https://github.com/boilingfrog/daily-test/blob/master/k8s/ingress/mandatory.yaml`
 
@@ -130,13 +136,12 @@ spec:
 
 ```
 $ kubectl get pod -n ingress-nginx -o wide
-NAME                                        READY   STATUS    RESTARTS   AGE   IP            NODE             NOMINATED NODE   READINESS GATES
-default-http-backend-649b76fd96-v8s9v       0/1     Error     0          14m   <none>        192.168.56.202   <none>           <none>
-nginx-ingress-controller-5b988cc9c6-kh2dg   0/1     Running   1          14m   172.17.32.5   192.168.56.202   <none>           <none>
+  NAME                             READY   STATUS    RESTARTS   AGE   IP               NODE             NOMINATED NODE   READINESS GATES
+  nginx-ingress-controller-495zq   1/1     Running   0          13m   192.168.56.202   192.168.56.202   <none>           <none>
+  nginx-ingress-controller-6nlrb   1/1     Running   0          13m   192.168.56.203   192.168.56.203   <none>           <none>
 ```
 
 nginx-ingress-controller是在192.168.56.202上面的，所以我们下面的host就配置到这个机器中。  
-
 
 ```
 $ sudo vi /etc/hosts
