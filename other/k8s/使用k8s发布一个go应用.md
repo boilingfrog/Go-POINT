@@ -7,7 +7,10 @@
   - [部署](#%E9%83%A8%E7%BD%B2)
     - [镜像打包](#%E9%95%9C%E5%83%8F%E6%89%93%E5%8C%85)
     - [编写yaml文件](#%E7%BC%96%E5%86%99yaml%E6%96%87%E4%BB%B6)
-  - [配置ingress](#%E9%85%8D%E7%BD%AEingress)
+  - [使用ingress](#%E4%BD%BF%E7%94%A8ingress)
+    - [什么是ingress呢](#%E4%BB%80%E4%B9%88%E6%98%AFingress%E5%91%A2)
+    - [ingress与ingress-controller](#ingress%E4%B8%8Eingress-controller)
+    - [ingress部署](#ingress%E9%83%A8%E7%BD%B2)
   - [配置ingress转发策略](#%E9%85%8D%E7%BD%AEingress%E8%BD%AC%E5%8F%91%E7%AD%96%E7%95%A5)
   - [添加本机的host](#%E6%B7%BB%E5%8A%A0%E6%9C%AC%E6%9C%BA%E7%9A%84host)
   - [参考](#%E5%8F%82%E8%80%83)
@@ -88,8 +91,38 @@ $ kubectl get svc|grep go-app
 
 #### 什么是ingress呢
 
+k8s 的服务(service)时说暴露了service的三种方式ClusterIP、NodePort与LoadBalance，这几种方式都是在service的维度提供的，service的作用体
+现在两个方面，对集群内部，它不断跟踪pod的变化，更新endpoint中对应pod的对象，提供了ip不断变化的pod的服务发现机制，对集群外部，他类似负载均衡器，
+可以在集群内外部对pod进行访问。但是，单独用service暴露服务的方式，在实际生产环境中不太合适：  
+
+- ClusterIP的方式只能在集群内部访问。
+- NodePort方式的话，测试环境使用还行，当有几十上百的服务在集群中运行时，NodePort的端口管理是灾难。
+- LoadBalance方式受限于云平台，且通常在云平台部署ELB还需要额外的费用。
+
+。ingress可以简单理解为service的service，他通过独立的ingress对象来制定请求转发的规则，把请求路由到一个或多个service中。这样就把服务与请求
+规则解耦了，可以从业务维度统一考虑业务的暴露，而不用为每个service单独考虑。  
 
 ![channel](/img/ingress_7.jpg?raw=true)
+
+ingress根据不同的请求规则，会把请求发送到不同的service。  
+
+#### ingress与ingress-controller
+
+- ingress对象：
+
+指的是k8s中的一个api对象，一般用yaml配置。作用是定义请求如何转发到service的规则，可以理解为配置模板。  
+
+- ingress-controller：  
+
+具体实现反向代理及负载均衡的程序，对ingress定义的规则进行解析，根据配置的规则来实现请求转发。  
+
+简单来说，ingress-controller才是负责具体转发的组件，通过各种方式将它暴露在集群入口，外部对集群的请求流量会先到ingress-controller，
+而ingress对象是用来告诉ingress-controller该如何转发请求，比如哪些域名哪些path要转发到哪些服务等等。  
+
+在Kubernetes中，Ingress Controller将以Pod的形式运行，监控API Server的/ingr ess接口后端的backend services，如果Service发生变化，
+则Ingress Controller应自动 更新其转发规则。  
+
+#### ingress部署
 
 mandatory.yaml地址`https://github.com/boilingfrog/daily-test/blob/master/k8s/ingress/mandatory.yaml`
 
