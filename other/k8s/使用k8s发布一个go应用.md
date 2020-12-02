@@ -100,7 +100,7 @@ k8s 的服务(service)时说暴露了service的三种方式ClusterIP、NodePort�
 - NodePort方式的话，测试环境使用还行，当有几十上百的服务在集群中运行时，NodePort的端口管理是灾难。
 - LoadBalance方式受限于云平台，且通常在云平台部署ELB还需要额外的费用。
 
-。ingress可以简单理解为service的service，他通过独立的ingress对象来制定请求转发的规则，把请求路由到一个或多个service中。这样就把服务与请求
+ingress可以简单理解为service的service，他通过独立的ingress对象来制定请求转发的规则，把请求路由到一个或多个service中。这样就把服务与请求
 规则解耦了，可以从业务维度统一考虑业务的暴露，而不用为每个service单独考虑。  
 
 ![channel](/img/ingress_7.jpg?raw=true)
