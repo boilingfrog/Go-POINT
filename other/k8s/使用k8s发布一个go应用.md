@@ -10,7 +10,8 @@
   - [使用ingress](#%E4%BD%BF%E7%94%A8ingress)
     - [什么是ingress呢](#%E4%BB%80%E4%B9%88%E6%98%AFingress%E5%91%A2)
     - [ingress与ingress-controller](#ingress%E4%B8%8Eingress-controller)
-    - [ingress部署](#ingress%E9%83%A8%E7%BD%B2)
+    - [ingress](#ingress)
+  - [部署ingress](#%E9%83%A8%E7%BD%B2ingress)
   - [配置ingress转发策略](#%E9%85%8D%E7%BD%AEingress%E8%BD%AC%E5%8F%91%E7%AD%96%E7%95%A5)
   - [添加本机的host](#%E6%B7%BB%E5%8A%A0%E6%9C%AC%E6%9C%BA%E7%9A%84host)
   - [参考](#%E5%8F%82%E8%80%83)
@@ -122,7 +123,33 @@ ingress根据不同的请求规则，会把请求发送到不同的service。
 在Kubernetes中，Ingress Controller将以Pod的形式运行，监控API Server的/ingr ess接口后端的backend services，如果Service发生变化，
 则Ingress Controller应自动 更新其转发规则。  
 
-#### ingress部署
+#### ingress
+
+ingress的部署，需要考虑两个方面：  
+
+1、ingress-controller是作为pod来运行的，以什么方式部署比较好  
+2、ingress解决了把如何请求路由到集群内部，那它自己怎么暴露给外部比较好  
+
+到目前为止，kubernetes主要有有三种暴露服务的方式
+
+**LoadBlancer Service**
+
+如果要把ingress部署在公有云，那用这种方式比较合适。用Deployment部署ingress-controller，创建一个type为LoadBalancer的service关联这组
+pod。大部分公有云，都会为LoadBalancer的service自动创建一个负载均衡器，通常还绑定了公网地址。只要把域名解析指向该地址，就实现了集群服务的对外暴露。  
+
+**NodePort Service**
+
+用deployment模式部署ingress-controller，并创建对应的服务，但是type为NodePort。这样，ingress就会暴露在集群节点ip的特定端口上。由
+于nodeport暴露的端口是随机端口，一般会在前面再搭建一套负载均衡器来转发请求。该方式一般用于宿主机是相对固定的环境ip地址不变的场景。
+NodePort方式暴露ingress虽然简单方便，但是NodePort多了一层NAT，在请求量级很大时可能对性能会有一定影响。  
+
+**HostNetwork Service**
+
+用DaemonSet结合nodeselector来部署ingress-controller到特定的node上，然后使用HostNetwork直接把该pod与宿主机node的网络打通，直接使用宿主
+机的80/433端口就能访问服务。这时，ingress-controller所在的node机器就很类似传统架构的边缘节点，比如机房入口的nginx服务器。该方式整个请求链路
+最简单，性能相对NodePort模式更好。缺点是由于直接利用宿主机节点的网络和端口，一个node只能部署一个ingress-controller pod。比较适合大并发的生产环境使用。  
+
+### 部署ingress
 
 mandatory.yaml地址`https://github.com/boilingfrog/daily-test/blob/master/k8s/ingress/mandatory.yaml`
 
@@ -138,7 +165,7 @@ $ kubectl get service -n ingress-nginx
 首先查看service
 
 ```
-]# kubectl get svc
+$ kubectl get svc
 NAME         TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)          AGE
 go-app-svc   NodePort    10.0.0.247   <none>        8000:35100/TCP   2d13h
 ```
