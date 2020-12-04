@@ -23,12 +23,6 @@
 
 ## k8s中pod的理解  
 
-- [基本概念](#%e5%9f%ba%e6%9c%ac%e6%a6%82%e5%bf%b5)
-- [pod存在的意义](#pod%e5%ad%98%e5%9c%a8%e7%9a%84%e6%84%8f%e4%b9%89)
-- [实现机制](#%e5%ae%9e%e7%8e%b0%e6%9c%ba%e5%88%b6)
-    - [共享存储](#%e5%85%b1%e4%ba%ab%e5%ad%98%e5%82%a8)
-    - [共享网络](#%e5%85%b1%e4%ba%ab%e7%bd%91%e7%bb%9c)
-
 #### 基本概念
 
 Pod 是 Kubernetes 集群中能够被创建和管理的最小部署单元,它是虚拟存在的。pod是一组容器的集合，并且部署在同一个pod里面
@@ -478,6 +472,6 @@ spec:
 最小0.25个CPU及64MB内存，最大0.5个CPU及128MB内存。  
 
 ### 参考
-
-【初识Kubernetes（K8s）：各种资源对象的理解和定义】https://blog.51cto.com/andyxu/2329257
+【初识Kubernetes（K8s）：各种资源对象的理解和定义】https://blog.51cto.com/andyxu/2329257  
+【Kubernetes系列学习文章 - Pod的深入理解（四）】https://cloud.tencent.com/developer/article/1443520  
 
