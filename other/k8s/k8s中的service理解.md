@@ -38,8 +38,21 @@ Kube-proxy是一个运行在每个节点上的go应用程序，支持三种工�
 
 该模式下，Kube-proxy充当了一个四层Load balancer的角色。由于kube-proxy运行在userspace中，在进行转发处理时会增加两次内核和用户空间之间的数据拷贝，效率较另外两种模式低一些；好处是当后端的Pod不可用时，kube-proxy可以重试其他Pod。  
 
-![channel](/img/service_6.jpg?raw=true)
+![service](/img/service_6.jpg?raw=true)
 
+**iptables**
+
+为了避免增加内核和用户空间的数据拷贝操作，提高转发效率，Kube-proxy提供了iptables模式。在该模式下，Kube-proxy为service后端的每个Pod创建对应的iptables规则，直接将发向Cluster IP的请求重定向到一个Pod IP。  
+
+该模式下Kube-proxy不承担四层代理的角色，只负责创建iptables规则。该模式的优点是较userspace模式效率更高，但不能提供灵活的LB策略，当后端Pod不可用时也无法进行重试。  
+
+![service](/img/service_7.jpg?raw=true)
+
+**ipvs**
+
+该模式和iptables类似，kube-proxy监控Pod的变化并创建相应的ipvs rules。ipvs也是在kernel模式下通过netfilter实现的，但采用了hash table来存储规则，因此在规则较多的情况下，Ipvs相对iptables转发效率更高。除此以外，ipvs支持更多的LB算法。如果要设置kube-proxy为ipvs模式，必须在操作系统中安装IPVS内核模块。  
+
+![service](/img/service_8.png?raw=true)
 
 
 ### 参考
@@ -47,3 +60,4 @@ Kube-proxy是一个运行在每个节点上的go应用程序，支持三种工�
 【kubernetes中常用对象service的详细介绍】https://zhuanlan.zhihu.com/p/103413341   
 【Istio 运维实战系列（2）：让人头大的『无头服务』-上】https://cloud.tencent.com/developer/article/1700748  
 【如何为服务网格选择入口网关？- Kubernetes Ingress, Istio Gateway还是API Gateway？】https://mp.weixin.qq.com/s?__biz=MzU3MjI5ODgxMA==&mid=2247483759&idx=1&sn=d44c3194810c02eba81d427292fab2d9&chksm=fcd2423acba5cb2c55e3d9952a74d06e6e5803e8a9755885e66630092e1687b57ad09154dc5f&scene=21#wechat_redirect  
+【iptables详解（1）：iptables概念】https://www.zsythink.net/archives/1199  
