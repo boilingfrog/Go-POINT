@@ -24,6 +24,24 @@
 - LoadBalance：使用云提供商的负载均衡器，可以向外部暴露服务，选择该值，外部的负载均衡器可以路由到NodePort服务和Cluster IP服务；  
 - ExternalName:通过返回 CNAME 和它的值，可以将服务映射到 externalName 字段的内容，没有任何类型代理被创建，可以用于访问集群内其他没有Labels的Pod，也可以访问其他NameSpace里的Service。  
 
+#### ClusterIP
+
+Kubernetes以Pod作为应用部署的最小单位。kubernetes会根据Pod的声明对其进行调度，包括创建、销毁、迁移、水平伸缩等，因此Pod 的IP地址不是固定的，不方便直接采用Pod IP对服务进行访问。  
+
+为解决该问题，Kubernetes提供了Service资源，Service对提供同一个服务的多个Pod进行聚合。一个Service提供一个虚拟的Cluster IP，后端对应一个或者多个提供服务的Pod。在集群中访问该Service时，采用Cluster IP即可，Kube-proxy负责将发送到Cluster IP的请求转发到后端的Pod上。  
+
+Kube-proxy是一个运行在每个节点上的go应用程序，支持三种工作模式：  
+
+**userspace**
+
+该模式下kube-proxy会为每一个Service创建一个监听端口。发向Cluster IP的请求被Iptables规则重定向到Kube-proxy监听的端口上，Kube-proxy根据LB算法选择一个提供服务的Pod并和其建立链接，以将请求转发到Pod上。  
+
+该模式下，Kube-proxy充当了一个四层Load balancer的角色。由于kube-proxy运行在userspace中，在进行转发处理时会增加两次内核和用户空间之间的数据拷贝，效率较另外两种模式低一些；好处是当后端的Pod不可用时，kube-proxy可以重试其他Pod。  
+
+![channel](/img/service_6.jpg?raw=true)
+
+
+
 ### 参考
 
 【kubernetes中常用对象service的详细介绍】https://zhuanlan.zhihu.com/p/103413341   
