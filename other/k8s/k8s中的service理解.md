@@ -1,3 +1,17 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [k8s中的service](#k8s%E4%B8%AD%E7%9A%84service)
+  - [service存在的意义](#service%E5%AD%98%E5%9C%A8%E7%9A%84%E6%84%8F%E4%B9%89)
+  - [Pod与Service的关系](#pod%E4%B8%8Eservice%E7%9A%84%E5%85%B3%E7%B3%BB)
+  - [Service几种类型](#service%E5%87%A0%E7%A7%8D%E7%B1%BB%E5%9E%8B)
+    - [ClusterIP](#clusterip)
+    - [NodePort](#nodeport)
+    - [LoadBalancer](#loadbalancer)
+  - [参考](#%E5%8F%82%E8%80%83)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## k8s中的service
 
 ### service存在的意义  
@@ -21,7 +35,7 @@
 
 - ClusterIP：分配一个内部集群IP地址，只能在集群内部访问（同Namespace内的Pod），默认ServiceType。ClusterIP 模式的 Service 为你提供的，就是一个 Pod 的稳定的 IP 地址，即 VIP。  
 - NodePort：就是Node的基本port。选择该值，这个servce就可以通过`NodeIP:NodePort`访问这个Service服务，NodePort会路由到Cluster IP服务，这个Cluster IP会通过请求自动创建；  
-- LoadBalance：使用云提供商的负载均衡器，可以向外部暴露服务，选择该值，外部的负载均衡器可以路由到NodePort服务和Cluster IP服务；  
+- LoadBalancer：使用云提供商的负载均衡器，可以向外部暴露服务，选择该值，外部的负载均衡器可以路由到NodePort服务和Cluster IP服务；  
 - ExternalName:通过返回 CNAME 和它的值，可以将服务映射到 externalName 字段的内容，没有任何类型代理被创建，可以用于访问集群内其他没有Labels的Pod，也可以访问其他NameSpace里的Service。  
 
 #### ClusterIP
@@ -54,6 +68,34 @@ Kube-proxy是一个运行在每个节点上的go应用程序，支持三种工�
 
 ![service](/img/service_8.png?raw=true)
 
+#### NodePort
+
+暴露端口到Node节点，可以通过Node节点访问容器。  
+
+如果设置 type 的值为 "NodePort"，Kubernetes master 将从给定的配置范围内（默认：30000-32767）分配端口，每个 Node 将从该端口（每个 Node 上的同一端口）代理到 Service。  
+
+需要注意的是，Service 将能够通过 <NodeIP>:spec.ports[*].nodePort 和 spec.clusterIp:spec.ports[*].port 而对外可见。  
+
+#### LoadBalancer
+
+NodePort提供了一种从外部网络访问Kubernetes集群内部Service的方法，但该方法存在下面一些限制，导致这种方式主要适用于程序开发，不适合用于产品部署。  
+
+- Kubernetes cluster host的IP必须是一个well-known IP，即客户端必须知道该IP。但Cluster中的host是被作为资源池看待的，可以增加删除，每个host的IP一般也是动态分配的，因此并不能认为host IP对客户端而言是well-known IP。  
+- 客户端访问某一个固定的host IP的方式存在单点故障。假如一台host宕机了，kubernetes cluster会把应用 reload到另一节点上，但客户端就无法通过该host的nodeport访问应用了。  
+- 通过一个主机节点作为网络入口，在网络流量较大时存在性能瓶颈。  
+
+LoadBalancer解决了这些问题，通过将Service定义为LoadBalancer类型，Kubernetes在主机节点的NodePort前提供了一个四层的负载均衡器。该四层负载均衡器负责将外部网络流量分发到后面的多个节点的NodePort端口上。  
+
+- 在多台服务器之间有效地分配客户端请求或网络负载
+- 通过仅向在线服务器发送请求来确保高可用性和可靠性
+- 提供根据需求指示添加或减少服务器的灵活性
+
+![service](/img/service_9.png?raw=true)
+
+>备注：LoadBalancer类型需要云服务提供商的支持，Service中的定义只是在Kubernetes配置文件中提出了一个要求，即为该Service创建Load Balancer，至于如何创建则是由Google Cloud或Amazon Cloud等云服务商提供的，创建的Load Balancer的过程不在Kubernetes Cluster的管理范围中。
+
+>目前WS, Azure, CloudStack, GCE 和 OpenStack 等主流的公有云和私有云提供商都可以为Kubernetes提供Load Balancer。一般来说，公有云提供商还会为Load Balancer提供一个External IP，以提供Internet接入。如果你的产品没有使用云提供商，而是自建Kubernetes Cluster，则需要自己提供LoadBalancer。
+
 
 ### 参考
 
@@ -61,3 +103,5 @@ Kube-proxy是一个运行在每个节点上的go应用程序，支持三种工�
 【Istio 运维实战系列（2）：让人头大的『无头服务』-上】https://cloud.tencent.com/developer/article/1700748  
 【如何为服务网格选择入口网关？- Kubernetes Ingress, Istio Gateway还是API Gateway？】https://mp.weixin.qq.com/s?__biz=MzU3MjI5ODgxMA==&mid=2247483759&idx=1&sn=d44c3194810c02eba81d427292fab2d9&chksm=fcd2423acba5cb2c55e3d9952a74d06e6e5803e8a9755885e66630092e1687b57ad09154dc5f&scene=21#wechat_redirect  
 【iptables详解（1）：iptables概念】https://www.zsythink.net/archives/1199  
+【Load Balancer】https://www.f5.com/services/resources/glossary/load-balancer#:~:text=A%20load%20balancer%20is%20a,users)%20and%20reliability%20of%20applications.  
+【What Is Load Balancing】https://www.nginx.com/resources/glossary/load-balancing/
