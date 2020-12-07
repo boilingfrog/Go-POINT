@@ -214,7 +214,6 @@ $ sudo vi /etc/hosts
 
 ![channel](/img/ingress_6.png?raw=true)
 
-
 ### 参考
 【K8S 安装 Ingress】https://www.jianshu.com/p/4370c00c040a  
 【k8s ingress原理及ingress-nginx部署测试】https://segmentfault.com/a/1190000019908991  
