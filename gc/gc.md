@@ -163,7 +163,7 @@ Yuasa 在 1990 年的论文 Real-time garbage collection on general-purpose mach
 
 删除屏障也是拦截写操作的，但是是通过保护灰色对象到白色对象的路径不会断来实现的。  
 
-![gc](/img/gc_C.png?raw=true)
+![gc](/img/gc_4.png?raw=true)
 
 
 
