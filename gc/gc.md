@@ -153,13 +153,20 @@ writePointer(slot, ptr):
 
 比如上面黑色A指向白色D，A在引用D的时候直接将D标记为灰色就可以了。   
 
-![gc](/img/gc_3.png?raw=true)
+<img src="/img/gc_3.png" width = "437" height = "500" alt="gc" align="center" />
 
 在Golang中，对栈上指针的写入添加写屏障的成本很高，所以Go选择仅对堆上的指针插入增加写屏障，这样就会出现在扫描结束后，栈上仍存在引用白色对象的情况，这时的栈是灰色的，不满足三色不变式，所以需要对栈进行重新扫描使其变黑，完成剩余对象的标记，这个过程需要STW。这期间会将所有goroutine挂起，当有大量应用程序时，时间可能会达到10～100ms。  
 
 ### 删除屏障
 
 Yuasa 在 1990 年的论文 Real-time garbage collection on general-purpose machines 中提出了删除写屏障，因为一旦该写屏障开始工作，它就会保证开启写屏障时堆上所有对象的可达，所以也被称作快照垃圾收集（Snapshot GC）。  
+
+```
+writePointer(slot, ptr):
+    if (isGery(slot) || isWhite(slot))
+        shade(*slot)
+    *slot = ptr
+```
 
 删除屏障也是拦截写操作的，但是是通过保护灰色对象到白色对象的路径不会断来实现的。也就是若三色不变式。     
 
