@@ -153,7 +153,7 @@ writePointer(slot, ptr):
 
 比如上面黑色A指向白色D，A在引用D的时候直接将D标记为灰色就可以了。   
 
-<img src="/img/gc_3.png" width = "437" height = "500" alt="gc" align="center" />
+<img src="/img/gc_3.png" width = "444" height = "500" alt="gc" align="center" />
 
 在Golang中，对栈上指针的写入添加写屏障的成本很高，所以Go选择仅对堆上的指针插入增加写屏障，这样就会出现在扫描结束后，栈上仍存在引用白色对象的情况，这时的栈是灰色的，不满足三色不变式，所以需要对栈进行重新扫描使其变黑，完成剩余对象的标记，这个过程需要STW。这期间会将所有goroutine挂起，当有大量应用程序时，时间可能会达到10～100ms。  
 
