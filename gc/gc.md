@@ -92,6 +92,8 @@ go中使用的是三色标记法
 
 在垃圾收集器开始工作时，程序中不存在任何的黑色对象，垃圾收集的根对象会被标记成灰色，垃圾收集器只会从灰色对象集合中取出对象开始扫描，当灰色集合中不存在任何对象时，标记阶段就会结束。  
 
+![gc](/img/gc_1.pngraw=true)
+
 三色标记垃圾收集器的工作原理很简单，我们可以将其归纳成以下几个步骤：  
 
 1、从灰色对象的集合中选择一个灰色对象并将其标记成黑色；  
@@ -150,3 +152,4 @@ STW的过程有明显的资源浪费，对所有的用户程序都有很大影�
 【】https://www.cnblogs.com/zkweb/p/7880099.html  
 【【golang】变量的stack/heap分配与逃逸分析不解之情】https://www.jianshu.com/p/8a80d50d2f9c  
 【golang的gc回收针对堆还是栈？变量内存分配在堆还是栈？】https://www.mscto.com/blockchain/264512.html  
+【写屏障技术】https://golang.design/under-the-hood/zh-cn/part2runtime/ch08gc/barrier/   
