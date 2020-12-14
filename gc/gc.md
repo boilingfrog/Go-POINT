@@ -234,6 +234,13 @@ Go 语言中对 GC 的触发时机存在两种形式：
 1、使用系统监控，当超过两分钟没有产生任何 GC 时，强制触发 GC。  
 2、使用步调（Pacing）算法，其核心思想是控制内存增长的比例。  
 
+例如：  
+
+- 内存大小阈值， 内存达到上次gc后的2倍
+- 达到定时时间 ，2m interval  
+
+阈值是由一个gc percent的变量控制的,当新分配的内存占已在使用中的内存的比例超过gcprecent时就会触发。比如一次回收完毕后，内存的使用量为5M，那么下次回收的时机则是内存分配达到10M的时候。也就是说，并不是内存分配越多，垃圾回收频率越高。 如果一直达不到内存大小的阈值呢？这个时候GC就会被定时时间触发，比如一直达不到10M，那就定时（默认2min触发一次）触发一次GC保证资源的回收。   
+
 
 
 
@@ -245,8 +252,10 @@ Go 语言中对 GC 的触发时机存在两种形式：
 【Garbage Collection In Go : Part I - Semantics】https://www.ardanlabs.com/blog/2018/12/garbage-collection-in-go-part1-semantics.html   
 【深入理解Go语言-GC与逃逸分析】https://zhuanlan.zhihu.com/p/103056375  
 【Go GC 20 问】https://zhuanlan.zhihu.com/p/109431787    
-【】https://www.cnblogs.com/zkweb/p/7880099.html  
+【Golang源码探索(三) GC的实现原理】https://www.cnblogs.com/zkweb/p/7880099.html  
 【【golang】变量的stack/heap分配与逃逸分析不解之情】https://www.jianshu.com/p/8a80d50d2f9c  
 【golang的gc回收针对堆还是栈？变量内存分配在堆还是栈？】https://www.mscto.com/blockchain/264512.html  
 【写屏障技术】https://golang.design/under-the-hood/zh-cn/part2runtime/ch08gc/barrier/   
 【Golang三色标记、混合写屏障GC模式图文全分析】https://mp.weixin.qq.com/s/G7id1bNt9QpAvLe7tmRAGw  
+【垃圾收集器】https://draveness.me/golang/docs/part3-runtime/ch07-memory/golang-garbage-collector/  
+【golang gc 简明过程（基于go 1.14）】https://zhuanlan.zhihu.com/p/92210761    
