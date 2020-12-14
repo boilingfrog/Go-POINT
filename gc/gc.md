@@ -191,7 +191,31 @@ writePointer(slot, ptr):
 
 上面的步骤2违反了强三色不变式，黑色对象直接指向了白色对象。接下来的步骤三违反了弱三色不变式，对象D没有一个直接或间接可达的灰色对象。通过对C重新着色，来保证C和D对象的安全。  
 
+#### 混合写屏障
 
+插入写屏障和删除写屏障的短板：  
+
+插入写屏障：结束时需要STW来重新扫描栈，标记栈上引用的白色对象的存活；  
+
+删除写屏障：回收精度低，GC开始时STW扫描堆栈来记录初始快照，这个过程会保护开始时刻的所有存活对象。  
+
+Go V1.8版本引入了混合写屏障机制（hybrid write barrier）,避免了对栈re-scan的过程，极大的减少了STW的时间。结合了两者的优点。  
+
+具体操作:   
+1、GC开始将栈上的对象全部扫描并标记为黑色(之后不再进行第二次重复扫描，无需STW);  
+2、GC期间，任何在栈上创建的新对象，均为黑色;  
+3、被删除的对象标记为灰色;  
+4、被添加的对象标记为灰色;  
+
+伪代码  
+
+```
+writePointer(slot, ptr):
+    shade(*slot)
+    if current stack is grey:
+        shade(ptr)
+    *slot = ptr
+```
 
 
 
@@ -208,3 +232,4 @@ writePointer(slot, ptr):
 【【golang】变量的stack/heap分配与逃逸分析不解之情】https://www.jianshu.com/p/8a80d50d2f9c  
 【golang的gc回收针对堆还是栈？变量内存分配在堆还是栈？】https://www.mscto.com/blockchain/264512.html  
 【写屏障技术】https://golang.design/under-the-hood/zh-cn/part2runtime/ch08gc/barrier/   
+【Golang三色标记、混合写屏障GC模式图文全分析】https://mp.weixin.qq.com/s/G7id1bNt9QpAvLe7tmRAGw  
