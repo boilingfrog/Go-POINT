@@ -274,6 +274,12 @@ Go 语言中对 GC 的触发时机存在两种形式：
 
 并发标记会设置一个标志，并在 mallocgc 调用时进行检查。当存在新的内存分配时，会暂停分配内存过快的那些 goroutine，并将其转去执行一些辅助标记（Mark Assist）的工作，从而达到放缓继续分配、辅助 GC 的标记工作的目的。  
 
+
+### 如何观察GC
+
+
+
+
 ### 参考
 【Golang垃圾回收 屏障技术】https://zhuanlan.zhihu.com/p/74853110    
 【Garbage Collection In Go : Part I - Semantics】https://www.ardanlabs.com/blog/2018/12/garbage-collection-in-go-part1-semantics.html   
