@@ -277,7 +277,43 @@ Go 语言中对 GC 的触发时机存在两种形式：
 
 ### 如何观察GC
 
+**1、使用`GODEBUG=gctrace=1`**
 
+```
+$ GODEBUG=gctrace=1  go run main.go
+```
+
+测试的代码片段
+
+```go
+package main
+
+import "sync"
+
+func main() {
+
+	wg := sync.WaitGroup{}
+	wg.Add(10)
+	for i := 0; i < 10; i++ {
+		go func(wg *sync.WaitGroup) {
+			var counter int
+			for i := 0; i < 1e10; i++ {
+				counter++
+			}
+			wg.Done()
+		}(&wg)
+	}
+
+	wg.Wait()
+
+}
+```
+
+来分析下结果
+
+````
+gc 1 @0.104s 0%: 0.021+0.79+0.004 ms clock, 0.084+0.57/0.062/1.7+0.016 ms cpu, 4->4->0 MB, 5 MB goal, 4 P
+````
 
 
 ### GC如何优化
