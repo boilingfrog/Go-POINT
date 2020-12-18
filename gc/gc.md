@@ -14,6 +14,9 @@
     - [混合写屏障](#%E6%B7%B7%E5%90%88%E5%86%99%E5%B1%8F%E9%9A%9C)
   - [GO中GC的流程](#go%E4%B8%ADgc%E7%9A%84%E6%B5%81%E7%A8%8B)
   - [GC的触发时机](#gc%E7%9A%84%E8%A7%A6%E5%8F%91%E6%97%B6%E6%9C%BA)
+  - [如果内存分配速度超过了标记清除的速度怎么办？](#%E5%A6%82%E6%9E%9C%E5%86%85%E5%AD%98%E5%88%86%E9%85%8D%E9%80%9F%E5%BA%A6%E8%B6%85%E8%BF%87%E4%BA%86%E6%A0%87%E8%AE%B0%E6%B8%85%E9%99%A4%E7%9A%84%E9%80%9F%E5%BA%A6%E6%80%8E%E4%B9%88%E5%8A%9E)
+  - [如何观察GC](#%E5%A6%82%E4%BD%95%E8%A7%82%E5%AF%9Fgc)
+  - [GC如何优化](#gc%E5%A6%82%E4%BD%95%E4%BC%98%E5%8C%96)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -329,16 +332,10 @@ gc 1 @0.054s 5%: 0.024+37+0.48 ms clock, 0.098+4.5/12/53+1.9 ms cpu, 4->4->3 MB,
 | 53         |  标记过程中，GC 空闲的时间（cpu time）        |
 | 1.9        |  标记终止时， STW 所花费的时间（cpu time）    |
 | 4          |  标记开始时，堆的大小的实际值                 |
-
-
-
-
-
-
-
-https://www.bookstack.cn/read/qcrao-Go-Questions/195663
-
-
+| 4          |  标记结束时，堆的大小的实际值                 |
+| 3          |  标记结束时，标记为存活的对象大小              |
+| 5          |  标记结束时，堆的大小的预测值                 |
+| 4          |  P 的数量                                 |
 
 ### GC如何优化
 
@@ -362,3 +359,4 @@ https://www.bookstack.cn/read/qcrao-Go-Questions/195663
 【Golang三色标记、混合写屏障GC模式图文全分析】https://mp.weixin.qq.com/s/G7id1bNt9QpAvLe7tmRAGw  
 【垃圾收集器】https://draveness.me/golang/docs/part3-runtime/ch07-memory/golang-garbage-collector/  
 【golang gc 简明过程（基于go 1.14）】https://zhuanlan.zhihu.com/p/92210761    
+【如何观察 Go GC】https://www.bookstack.cn/read/qcrao-Go-Questions/195663  
