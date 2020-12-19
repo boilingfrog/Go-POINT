@@ -28,6 +28,4 @@ func main() {
 	// 再次获取，会发现，已经是空的了，只能返回默认的值。
 	num = pool.Get()
 	fmt.Println("put之后再次取值", num)
-
-	fmt.Sprintf()
 }
