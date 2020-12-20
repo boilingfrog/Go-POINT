@@ -169,7 +169,86 @@ func (p *Pool) Put(x interface{}) {
 }
 ```
 
+#### pin
 
+```go
+// pin 会将当前的 goroutine 固定到 P 上，禁用抢占，并返回 localPool 池以及当前 P 的 pid。
+func (p *Pool) pin() (*poolLocal, int) {
+	// 返回当前 P.id
+	pid := runtime_procPin()
+	// In pinSlow we store to local and then to localSize, here we load in opposite order.
+	// Since we've disabled preemption, GC cannot happen in between.
+	// Thus here we must observe local at least as large localSize.
+	// We can observe a newer/larger local, it is fine (we must observe its zero-initialized-ness).
+	s := atomic.LoadUintptr(&p.localSize) // load-acquire
+	l := p.local                          // load-consume
+	// 因为可能存在动态的 P（运行时调整 P 的个数）procresize/GOMAXPROCS
+	// 如果 P.id 没有越界，则直接返回
+	if uintptr(pid) < s {
+		return indexLocal(l, pid), pid
+	}
+	return p.pinSlow()
+}
+```
+pin 的作用就是将当前 groutine 和 P 绑定在一起，禁止抢占。并且返回对应的 poolLocal 以及 P 的 id。  
+
+pin() 首先会调用运行时实现获得当前 P 的 id，将 P 设置为禁止抢占，达到固定当前 goroutine 的目的。  
+
+如果 G 被抢占，则 G 的状态从 running 变成 runnable，会被放回 P 的 localq 或 globaq，等待下一次调度。下次再执行时，就不一定是和现在的 P 相结合了。因为之后会用到 pid，如果被抢占了，有可能接下来使用的 pid 与所绑定的 P 并非同一个。  
+
+```go
+// src/runtime/proc.go
+
+func procPin() int {
+	_g_ := getg()
+	mp := _g_.m
+
+	mp.locks++
+	return int(mp.p.ptr().id)
+}
+```
+
+#### poolLocal
+
+```go
+var (
+	allPoolsMu Mutex
+	// allPools 是一组 pool 的集合，具有非空主缓存。
+	// 有两种形式来保护它的读写：1. allPoolsMu 锁; 2. STW.
+	allPools   []*Pool
+)
+
+func (p *Pool) pinSlow() (*poolLocal, int) {
+	// Retry under the mutex.
+	// Can not lock the mutex while pinned.
+	runtime_procUnpin()
+// 加锁
+	allPoolsMu.Lock()
+	defer allPoolsMu.Unlock()
+	// 当锁住后，再次固定 P 取其 id
+	pid := runtime_procPin()
+	// 因为 pinSlow 中途可能已经被其他的线程调用，因此这时候需要再次对 pid 进行检查。 如果 pid 在 p.local 大小范围内，则不用创建 poolLocal 切片，直接返回。
+	s := p.localSize
+	l := p.local
+	if uintptr(pid) < s {
+		return indexLocal(l, pid), pid
+	}
+
+	// 如果数组为空，新建
+	// 将其添加到 allPools，垃圾回收器从这里获取所有 Pool 实例
+	if p.local == nil {
+		allPools = append(allPools, p)
+	}
+	// 根据 P 数量创建 slice，如果 GOMAXPROCS 在 GC 间发生变化
+	// 我们重新分配此数组并丢弃旧的
+	size := runtime.GOMAXPROCS(0)
+	local := make([]poolLocal, size)
+	// 将底层数组起始指针保存到 p.local，并设置 p.localSize
+	atomic.StorePointer(&p.local, unsafe.Pointer(&local[0])) // store-release
+	atomic.StoreUintptr(&p.localSize, uintptr(size))         // store-release
+	return &local[pid], pid
+}
+```
 
 
 
