@@ -68,27 +68,25 @@ type Pool struct {
 ```
 
 ```go
-// Local per-P Pool appendix.
-type poolLocalInternal struct {
-    // private 存储一个 Put 的数据，pool.Put() 操作优先存入 private，如果private有信息，才会存入 shared
-    private interface{} // Can be used only by the respective P.
-    // 存储一个链表，用来维护 pool.Put() 操作加入的数据，每个 P 可以操作自己 shared 链表中的头部，而其他的 P 在用完自己的 shared 时，可能会来偷数据，从而操作链表的尾部
-    shared  poolChain   // Local P can pushHead/popHead; any P can popTail.
-}
-```
-
-```go
 // unsafe.Sizeof(poolLocal{})  // 128 byte(1byte = 8 bits)
 // unsafe.Sizeof(poolLocalInternal{})  // 32 byte(1byte = 8 bits)
 type poolLocal struct {
-    // 每个P对应的pool
-    poolLocalInternal
+	// 每个P对应的pool
+	poolLocalInternal
 
-     // 将 poolLocal 补齐至两个缓存行的倍数，防止 false sharing,
-    // 每个缓存行具有 64 bytes，即 512 bit
-    // 目前我们的处理器一般拥有 32 * 1024 / 64 = 512 条缓存行
-    // 伪共享，仅占位用，防止在 cache line 上分配多个 poolLocalInternal
-    pad [128 - unsafe.Sizeof(poolLocalInternal{})%128]byte
+	// 将 poolLocal 补齐至两个缓存行的倍数，防止 false sharing,
+	// 每个缓存行具有 64 bytes，即 512 bit
+	// 目前我们的处理器一般拥有 32 * 1024 / 64 = 512 条缓存行
+	// 伪共享，仅占位用，防止在 cache line 上分配多个 poolLocalInternal
+	pad [128 - unsafe.Sizeof(poolLocalInternal{})%128]byte
+}
+
+// Local per-P Pool appendix.
+type poolLocalInternal struct {
+	// private 存储一个 Put 的数据，pool.Put() 操作优先存入 private，如果private有信息，才会存入 shared
+	private interface{} // Can be used only by the respective P.
+	// 存储一个链表，用来维护 pool.Put() 操作加入的数据，每个 P 可以操作自己 shared 链表中的头部，而其他的 P 在用完自己的 shared 时，可能会来偷数据，从而操作链表的尾部
+	shared  poolChain   // Local P can pushHead/popHead; any P can popTail.
 }
 ```
 
@@ -135,40 +133,6 @@ func (p *Pool) Get() interface{} {
 }
 ```
 
-#### Put
-
-```go
-// Put adds x to the pool.
-func (p *Pool) Put(x interface{}) {
-	if x == nil {
-		return
-	}
-	if race.Enabled {
-		if fastrand()%4 == 0 {
-			// Randomly drop x on floor.
-			return
-		}
-		race.ReleaseMerge(poolRaceAddr(x))
-		race.Disable()
-	}
-	// 获得一个 localPool
-	l, _ := p.pin()
-	// 优先写入 private 变量
-	if l.private == nil {
-		l.private = x
-		x = nil
-	}
-	// 如果 private 有值，则写入 shared poolChain 链表
-	if x != nil {
-		l.shared.pushHead(x)
-	}
-	runtime_procUnpin()
-	if race.Enabled {
-		race.Enable()
-	}
-}
-```
-
 #### pin
 
 ```go
@@ -208,7 +172,7 @@ func procPin() int {
 }
 ```
 
-#### poolLocal
+#### pinSlow
 
 ```go
 var (
@@ -219,10 +183,9 @@ var (
 )
 
 func (p *Pool) pinSlow() (*poolLocal, int) {
-	// Retry under the mutex.
-	// Can not lock the mutex while pinned.
+	// 这时取消 P 的禁止抢占，因为使用 mutex 时候 P 必须可抢占
 	runtime_procUnpin()
-// 加锁
+	// 加锁
 	allPoolsMu.Lock()
 	defer allPoolsMu.Unlock()
 	// 当锁住后，再次固定 P 取其 id
@@ -247,6 +210,98 @@ func (p *Pool) pinSlow() (*poolLocal, int) {
 	atomic.StorePointer(&p.local, unsafe.Pointer(&local[0])) // store-release
 	atomic.StoreUintptr(&p.localSize, uintptr(size))         // store-release
 	return &local[pid], pid
+}
+```
+
+pinSlow() 会首先取消 P 的禁止抢占，这是因为使用 mutex 时 P 必须为可抢占的状态。 然后使用 allPoolsMu 进行加锁。 当完成加锁后，再重新固定 P 
+，取其 pid。注意，因为中途可能已经被其他的线程调用，因此这时候需要再次对 pid 进行检查。 如果 pid 在 p.local 大小范围内，则不再此时创建，直接返回。  
+
+如果 p.local 为空，则将 p 扔给 allPools 并在垃圾回收阶段回收所有 Pool 实例。 最后再完成对 p.local 的创建（彻底丢弃旧数组）  
+
+#### getSlow 
+
+在取对象的过程中，本地p中的private没有，并且shared没有，这时候就会调用`Pool.getSlow()`，尝试从其他的p中获取。  
+
+```go
+func (p *Pool) getSlow(pid int) interface{} {
+	// See the comment in pin regarding ordering of the loads.
+	size := atomic.LoadUintptr(&p.localSize) // load-acquire
+	locals := p.local                        // load-consume
+	// 尝试熊其他的p中偷取
+	for i := 0; i < int(size); i++ {
+		l := indexLocal(locals, (pid+i+1)%int(size))
+		if x, _ := l.shared.popTail(); x != nil {
+			return x
+		}
+	}
+
+	// 尝试从victim cache中取对象。这发生在尝试从其他 P 的 poolLocal 偷去失败后，
+	// 因为这样可以使 victim 中的对象更容易被回收。
+	size = atomic.LoadUintptr(&p.victimSize)
+	if uintptr(pid) >= size {
+		return nil
+	}
+	locals = p.victim
+	l := indexLocal(locals, pid)
+	if x := l.private; x != nil {
+		l.private = nil
+		return x
+	}
+	for i := 0; i < int(size); i++ {
+		l := indexLocal(locals, (pid+i)%int(size))
+		if x, _ := l.shared.popTail(); x != nil {
+			return x
+		}
+	}
+
+	// 清空 victim cache。下次就不用再从这里找了
+	atomic.StoreUintptr(&p.victimSize, 0)
+
+	return nil
+}
+```
+
+从索引 pid+1 的 poolLocal 处开始，尝试调用 shared.popTail() 获取缓存对象。如果没有找到就从victim去找。  
+
+如果没有找到，清空 victim cache。对于get来讲，如何其他的p也没找到，就new一个出来。   
+
+
+
+
+
+
+
+#### Put
+
+```go
+// Put adds x to the pool.
+func (p *Pool) Put(x interface{}) {
+	if x == nil {
+		return
+	}
+	if race.Enabled {
+		if fastrand()%4 == 0 {
+			// Randomly drop x on floor.
+			return
+		}
+		race.ReleaseMerge(poolRaceAddr(x))
+		race.Disable()
+	}
+	// 获得一个 localPool
+	l, _ := p.pin()
+	// 优先写入 private 变量
+	if l.private == nil {
+		l.private = x
+		x = nil
+	}
+	// 如果 private 有值，则写入 shared poolChain 链表
+	if x != nil {
+		l.shared.pushHead(x)
+	}
+	runtime_procUnpin()
+	if race.Enabled {
+		race.Enable()
+	}
 }
 ```
 
