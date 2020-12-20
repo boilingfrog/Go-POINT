@@ -4,6 +4,8 @@
 
 有时候我们为了优化GC的场景，减少并复用内存，我们可以使用 sync.Pool 来复用需要频繁创建临时对象。 
 
+`sync.Pool` 是一个临时对象池。一句话来概括，sync.Pool 管理了一组临时对象， 当需要时从池中获取，使用完毕后从再放回池中，以供他人使用。  
+
 #### 使用
 
 一个小demo
@@ -41,34 +43,6 @@ func main() {
 初始值 0
 put之后取值 1
 put之后再次取值 0
-```
-
-go本身也用到了sync.pool，例如`fmt.Printf`
-
-
-```
-// Sprintf formats according to a format specifier and returns the resulting string.
-func Sprintf(format string, a ...interface{}) string {
-	p := newPrinter()
-	p.doPrintf(format, a)
-	s := string(p.buf)
-	p.free()
-	return s
-}
-
-var ppFree = sync.Pool{
-	New: func() interface{} { return new(pp) },
-}
-
-// newPrinter allocates a new pp struct or grabs a cached one.
-func newPrinter() *pp {
-	p := ppFree.Get().(*pp)
-	p.panicking = false
-	p.erroring = false
-	p.wrapErrs = false
-	p.fmt.init(&p.buf)
-	return p
-}
 ```
 
 ### 源码解读
@@ -118,6 +92,117 @@ type poolLocal struct {
 }
 ```
 
+#### GET 
+
+当从池中获取对象时，会先从 per-P 的 poolLocal slice 中选取一个 poolLocal，选择策略遵循：  
+
+1、优先从 private 中选择对象  
+2、若取不到，则尝试从 shared 队列的队头进行读取  
+3、若取不到，则尝试从其他的 P 中进行偷取 getSlow  
+4、若还是取不到，则使用 New 方法新建  
+
+```go
+func (p *Pool) Get() interface{} {
+	if race.Enabled {
+		race.Disable()
+	}
+	// 获取一个 poolLocal
+	l, pid := p.pin()
+	// 先从 private 获取对象,有则立即返回
+	x := l.private
+	l.private = nil
+	if x == nil {
+		// 尝试从 localPool 的 shared 队列队头读取，
+		// 因为队头的内存局部性比队尾更好。
+		x, _ = l.shared.popHead()
+		if x == nil {
+			// 如果取不到，则获取新的缓存对象
+			x = p.getSlow(pid)
+		}
+	}
+	runtime_procUnpin()
+	if race.Enabled {
+		race.Enable()
+		if x != nil {
+			race.Acquire(poolRaceAddr(x))
+		}
+	}
+	// 如果取不到，则获取新的缓存对象
+	if x == nil && p.New != nil {
+		x = p.New()
+	}
+	return x
+}
+```
+
+#### Put
+
+```go
+// Put adds x to the pool.
+func (p *Pool) Put(x interface{}) {
+	if x == nil {
+		return
+	}
+	if race.Enabled {
+		if fastrand()%4 == 0 {
+			// Randomly drop x on floor.
+			return
+		}
+		race.ReleaseMerge(poolRaceAddr(x))
+		race.Disable()
+	}
+	// 获得一个 localPool
+	l, _ := p.pin()
+	// 优先写入 private 变量
+	if l.private == nil {
+		l.private = x
+		x = nil
+	}
+	// 如果 private 有值，则写入 shared poolChain 链表
+	if x != nil {
+		l.shared.pushHead(x)
+	}
+	runtime_procUnpin()
+	if race.Enabled {
+		race.Enable()
+	}
+}
+```
+
+
+
+
+
+
+
+go本身也用到了sync.pool，例如`fmt.Printf`
+
+
+```
+// Sprintf formats according to a format specifier and returns the resulting string.
+func Sprintf(format string, a ...interface{}) string {
+	p := newPrinter()
+	p.doPrintf(format, a)
+	s := string(p.buf)
+	p.free()
+	return s
+}
+
+var ppFree = sync.Pool{
+	New: func() interface{} { return new(pp) },
+}
+
+// newPrinter allocates a new pp struct or grabs a cached one.
+func newPrinter() *pp {
+	p := ppFree.Get().(*pp)
+	p.panicking = false
+	p.erroring = false
+	p.wrapErrs = false
+	p.fmt.init(&p.buf)
+	return p
+}
+```
+
 
 ### 参考
 【深入Golang之sync.Pool详解】https://www.cnblogs.com/sunsky303/p/9706210.html  
@@ -126,3 +211,4 @@ type poolLocal struct {
 【【Go夜读】sync.Pool 源码阅读及适用场景分析】https://www.jianshu.com/p/f61bfe89e473  
 【golang的对象池sync.pool源码解读】https://zhuanlan.zhihu.com/p/99710992  
 【15.5 缓存池】https://golang.design/under-the-hood/zh-cn/part4lib/ch15sync/pool/  
+【请问sync.Pool有什么缺点？】https://mp.weixin.qq.com/s?__biz=MzA4ODg0NDkzOA==&mid=2247487149&idx=1&sn=f38f2d72fd7112e19e97d5a2cd304430&source=41#wechat_redirect  
