@@ -164,6 +164,8 @@ pin() 首先会调用运行时实现获得当前 P 的 id，将 P 设置为禁�
 
 如果 G 被抢占，则 G 的状态从 running 变成 runnable，会被放回 P 的 localq 或 globaq，等待下一次调度。下次再执行时，就不一定是和现在的 P 相结合了。因为之后会用到 pid，如果被抢占了，有可能接下来使用的 pid 与所绑定的 P 并非同一个。  
 
+绑定是通过procPin实现的   
+
 ```go
 // src/runtime/proc.go
 
@@ -175,6 +177,11 @@ func procPin() int {
 	return int(mp.p.ptr().id)
 }
 ```
+
+procPin函数实际上就是先获取当前goroutine，然后对当前协程绑定的线程（即为m）加锁，即mp.locks++，然后返回m目前绑定的p的id。  
+
+
+
 
 #### pinSlow
 
