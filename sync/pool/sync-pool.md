@@ -86,6 +86,7 @@ type poolLocalInternal struct {
 	// private 存储一个 Put 的数据，pool.Put() 操作优先存入 private，如果private有信息，才会存入 shared
 	private interface{} // Can be used only by the respective P.
 	// 存储一个链表，用来维护 pool.Put() 操作加入的数据，每个 P 可以操作自己 shared 链表中的头部，而其他的 P 在用完自己的 shared 时，可能会来偷数据，从而操作链表的尾部
+	// 本地 P 可以 pushHead/popHead；其他 P 则只能 popTail
 	shared  poolChain   // Local P can pushHead/popHead; any P can popTail.
 }
 ```
@@ -107,6 +108,7 @@ func (p *Pool) Get() interface{} {
 	// 获取一个 poolLocal
 	l, pid := p.pin()
 	// 先从 private 获取对象,有则立即返回
+    // private只保存了一个对象
 	x := l.private
 	l.private = nil
 	if x == nil {
@@ -132,6 +134,9 @@ func (p *Pool) Get() interface{} {
 	return x
 }
 ```
+
+总结下get的流程
+
 
 #### pin
 
