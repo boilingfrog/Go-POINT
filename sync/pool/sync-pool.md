@@ -135,8 +135,7 @@ func (p *Pool) Get() interface{} {
 }
 ```
 
-总结下get的流程
-
+<img src="/img/pool_1.png" width = "565" height = "989" alt="gc" align="center" />
 
 #### pin
 
