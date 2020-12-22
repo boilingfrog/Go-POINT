@@ -1,3 +1,20 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [sync.pool](#syncpool)
+  - [sync.pool作用](#syncpool%E4%BD%9C%E7%94%A8)
+    - [使用](#%E4%BD%BF%E7%94%A8)
+  - [源码解读](#%E6%BA%90%E7%A0%81%E8%A7%A3%E8%AF%BB)
+    - [GET](#get)
+    - [pin](#pin)
+    - [pinSlow](#pinslow)
+    - [getSlow](#getslow)
+    - [Put](#put)
+  - [缓存的回收](#%E7%BC%93%E5%AD%98%E7%9A%84%E5%9B%9E%E6%94%B6)
+  - [参考](#%E5%8F%82%E8%80%83)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## sync.pool
 
 ### sync.pool作用
@@ -316,9 +333,13 @@ func (p *Pool) Put(x interface{}) {
 }
 ```
 
+总结下这个过程  
+
 <img src="/img/pool_2.png" width = "353" height = "465" alt="gc" align="center" />
 
+其实还有点疑惑，上面的victim是如何被保留下来的呢？来分析下pool的垃圾回收机制  
 
+### 缓存的回收
 
 go本身也用到了sync.pool，例如`fmt.Printf`
 
