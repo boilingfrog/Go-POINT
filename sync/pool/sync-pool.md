@@ -316,7 +316,7 @@ func (p *Pool) Put(x interface{}) {
 }
 ```
 
-
+<img src="/img/pool_2.png" width = "353" height = "465" alt="gc" align="center" />
 
 
 
