@@ -135,7 +135,7 @@ func (p *Pool) Get() interface{} {
 }
 ```
 
-<img src="/img/pool_1.png" width = "565" height = "989" alt="gc" align="center" />
+<img src="/img/pool_1.png" width = "537" height = "990" alt="gc" align="center" />
 
 #### pin
 
@@ -276,13 +276,13 @@ func (p *Pool) getSlow(pid int) interface{} {
 
 如果没有找到，清空 victim cache。对于get来讲，如何其他的p也没找到，就new一个出来。   
 
-
-
-
-
-
-
 #### Put
+
+Put的逻辑就相对简单了
+
+1、首先调用p.pin()抢占p  
+2、优先放归还到private中  
+3、如果private有值，则放到shared中  
 
 ```go
 // Put adds x to the pool.
