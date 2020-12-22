@@ -341,6 +341,84 @@ func (p *Pool) Put(x interface{}) {
 
 ### 缓存的回收
 
+```go
+// 将缓存清理函数注册到运行时 GC 时间段
+func init() {
+	runtime_registerPoolCleanup(poolCleanup)
+}
+
+// 由运行时实现
+func runtime_registerPoolCleanup(cleanup func())
+```
+
+在 src/runtime/mgc.go 中:  
+
+```go
+// 开始 GC
+func gcStart(trigger gcTrigger) {
+	...
+	clearpools()
+	...
+}
+
+// 实现缓存清理
+func clearpools() {
+	// clear sync.Pools
+	if poolcleanup != nil {
+		poolcleanup()
+	}
+	...
+}
+
+var poolcleanup func()
+
+// 利用编译器标志将 sync 包中的清理注册到运行时
+//go:linkname sync_runtime_registerPoolCleanup sync.runtime_registerPoolCleanup
+func sync_runtime_registerPoolCleanup(f func()) {
+	poolcleanup = f
+}
+```
+
+来看下具体的实现  
+
+```go
+var (
+	// allPools 是一组 pool 的集合，具有非空主缓存。
+	// 有两种形式来保护它的读写：1. allPoolsMu 锁; 2. STW.
+	allPools   []*Pool
+
+	// oldPools 是一组 pool 的集合，具有非空 victim 缓存。由 STW 保护
+	oldPools []*Pool
+)
+
+
+func poolCleanup() {
+	// 该函数会注册到运行时 GC 阶段(前)，此时为 STW 状态，不需要加锁
+	// 它必须不处理分配且不调用任何运行时函数。
+
+	// 由于此时是 STW，不存在用户态代码能尝试读取 localPool，进而所有的 P 都已固定（与 goroutine 绑定）
+
+	// 从所有的 oldPols 中删除 victim
+	for _, p := range oldPools {
+		p.victim = nil
+		p.victimSize = 0
+	}
+
+	// 将主缓存移动到 victim 缓存
+	for _, p := range allPools {
+		p.victim = p.local
+		p.victimSize = p.localSize
+
+		p.local = nil
+		p.localSize = 0
+	}
+
+	// 具有非空主缓存的池现在具有非空的 victim 缓存，并且没有任何 pool 具有主缓存。
+	oldPools, allPools = allPools, nil
+}
+```
+
+
 go本身也用到了sync.pool，例如`fmt.Printf`
 
 
