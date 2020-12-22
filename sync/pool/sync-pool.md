@@ -418,6 +418,31 @@ func poolCleanup() {
 }
 ```
 
+`poolCleanup` 会在stw阶段的时候被调用。主要是删除oldPools中内容，然后将allPools里面的内容放入到victim中。最后标记allPools为oldPools。这样把pool里内容回收了，有victim进行兜底。   
+
+### poolChain
+
+```go
+type poolChain struct {
+	// 只有生产者会 push to，不用加锁
+	head *poolChainElt
+
+	// 读写需要原子控制。 
+	tail *poolChainElt
+}
+
+type poolChainElt struct {
+	poolDequeue
+
+	// next 被 producer 写，consumer 读。所以只会从 nil 变成 non-nil
+	// prev 被 consumer 写，producer 读。所以只会从 non-nil 变成 nil
+	next, prev *poolChainElt
+}
+
+```
+
+
+
 
 go本身也用到了sync.pool，例如`fmt.Printf`
 
