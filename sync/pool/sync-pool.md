@@ -439,6 +439,53 @@ type poolChainElt struct {
 	next, prev *poolChainElt
 }
 
+// poolDequeue is a lock-free fixed-size single-producer,
+// multi-consumer queue. The single producer can both push and pop
+// from the head, and consumers can pop from the tail.
+//
+// It has the added feature that it nils out unused slots to avoid
+// unnecessary retention of objects. This is important for sync.Pool,
+// but not typically a property considered in the literature.
+type poolDequeue struct {
+	// headTail packs together a 32-bit head index and a 32-bit
+	// tail index. Both are indexes into vals modulo len(vals)-1.
+	// headTail  包含一个 32 位的 head 和一个 32 位的 tail 指针。这两个值都和 len(vals)-1 取模过。
+	//
+	// tail = index of oldest data in queue 
+	// 是队列中最老的数据
+	// head = index of next slot to fill 
+	// 指向下一个将要填充的 slot
+	//
+	// Slots in the range [tail, head) are owned by consumers. slots 
+	// Slots的有效范围是 [tail, head)，由 consumers 持有
+	// A consumer continues to own a slot outside this range until
+	// it nils the slot, at which point ownership passes to the
+	// producer.
+	//
+	// The head index is stored in the most-significant bits so
+	// that we can atomically add to it and the overflow is
+	// harmless.
+	headTail uint64
+
+	// vals is a ring buffer of interface{} values stored in this
+	// dequeue. The size of this must be a power of 2.
+	//
+	// vals[i].typ is nil if the slot is empty and non-nil
+	// otherwise. A slot is still in use until *both* the tail
+	// index has moved beyond it and typ has been set to nil. This
+	// is set to nil atomically by the consumer and read
+	// atomically by the producer.
+	// vals 是一个存储 interface{} 的环形队列，它的 size 必须是 2 的幂
+	// 如果 slot 为空，则 vals[i].typ 为空；否则，非空。
+	// 一个 slot 在这时宣告无效：tail 不指向它了，vals[i].typ 为 nil
+	// 由 consumer 设置成 nil，由 producer 读
+	vals []eface
+}
+
+type eface struct {
+	typ, val unsafe.Pointer
+}
+
 ```
 
 
