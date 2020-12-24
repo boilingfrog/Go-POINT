@@ -487,7 +487,9 @@ type eface struct {
 }
 ```
 
+`poolDequeue`被实现为单生产者、多消费者的固定大小的无锁（atomic 实现） Ring 式队列（底层存储使用数组，使用两个指针标记 head、tail）。生产者可以从 head 插入、head 删除，而消费者仅可从 tail 删除。  
 
+headTail 指向队列的头和尾，通过位运算将 head 和 tail 存入 headTail 变量中。  
 
 
 go本身也用到了sync.pool，例如`fmt.Printf`
