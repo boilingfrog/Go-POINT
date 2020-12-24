@@ -485,7 +485,6 @@ type poolDequeue struct {
 type eface struct {
 	typ, val unsafe.Pointer
 }
-
 ```
 
 
@@ -518,6 +517,12 @@ func newPrinter() *pp {
 	return p
 }
 ```
+
+
+#### 二进制的左移
+
+左移一位是0001 0000 0110，最高bai位不能去掉的，仔du细想一下，原理zhi很简单的，就比如一个十进制dao的数，例如2，左移一位，zhuan后面补0，就是20，,相当于乘以10，二进制的左移相当于乘以2，右移相当于除以2  
+
 
 
 ### 参考
