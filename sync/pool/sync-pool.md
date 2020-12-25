@@ -492,6 +492,29 @@ type eface struct {
 headTail 指向队列的头和尾，通过位运算将 head 和 tail 存入 headTail 变量中。  
 
 
+### popHead
+
+发生在从本地 shared 队列中消费并获取对象（消费者）  
+
+```go
+func (c *poolChain) popHead() (interface{}, bool) {
+	d := c.head
+	// d 是一个 poolDequeue，如果 d.popHead 是并发安全的，
+	// 那么这里取 val 也是并发安全的。若 d.popHead 失败，则
+	// 说明需要重新尝试。这个过程会持续到整个链表为空。
+	for d != nil {
+		if val, ok := d.popHead(); ok {
+			return val, ok
+		}
+		d = loadPoolChainElt(&d.prev)
+	}
+	return nil, false
+}
+```
+
+
+
+
 go本身也用到了sync.pool，例如`fmt.Printf`
 
 
