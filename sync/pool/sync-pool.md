@@ -1,6 +1,7 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+
 - [sync.pool](#syncpool)
   - [sync.pool作用](#syncpool%E4%BD%9C%E7%94%A8)
     - [使用](#%E4%BD%BF%E7%94%A8)
@@ -11,6 +12,9 @@
     - [getSlow](#getslow)
     - [Put](#put)
   - [缓存的回收](#%E7%BC%93%E5%AD%98%E7%9A%84%E5%9B%9E%E6%94%B6)
+  - [poolChain](#poolchain)
+  - [popHead](#pophead)
+    - [二进制的左移](#%E4%BA%8C%E8%BF%9B%E5%88%B6%E7%9A%84%E5%B7%A6%E7%A7%BB)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -511,6 +515,123 @@ func (c *poolChain) popHead() (interface{}, bool) {
 	return nil, false
 }
 ```
+
+拿到头结点：c.head，是一个 poolDequeue。如果过头结点不为空调用，poolDequeue的popHead方法。  
+
+```go
+// popHead removes and returns the element at the head of the queue.
+// It returns false if the queue is empty. It must only be called by a
+// single producer.
+func (d *poolDequeue) popHead() (interface{}, bool) {
+	var slot *eface
+	for {
+		ptrs := atomic.LoadUint64(&d.headTail)
+		head, tail := d.unpack(ptrs)
+		if tail == head {
+			// 队列是空的
+			return nil, false
+		}
+
+        // head 位置是队头的前一个位置，所以此处要先退一位。
+		// 在读出 slot 的 value 之前就把 head 值减 1，取消对这个 slot 的控制
+		head--
+		ptrs2 := d.pack(head, tail)
+		if atomic.CompareAndSwapUint64(&d.headTail, ptrs, ptrs2) {
+			// 拿到slot
+			slot = &d.vals[head&uint32(len(d.vals)-1)]
+			break
+		}
+	}
+
+	val := *(*interface{})(unsafe.Pointer(slot))
+	if val == dequeueNil(nil) {
+		val = nil
+	}
+// 重置 slot，typ 和 val 均为 nil
+	// 这里清空的方式与 popTail 不同，与 pushHead 没有竞争关系，所以不用太小心
+	*slot = eface{}
+	return val, true
+}
+```
+
+1、判断是否是空队列，通过unpack 函数分离出 head 和 tail 指针，如果 head 和 tail 相等，即首尾相等，那么这个队列就是空的，直接就返回 nil，false。  
+2、队列不为空，就循环队列直到拿到slot。  
+3、得到相应 slot 的元素后，经过类型转换并判断是否是 dequeueNil，如果是，说明没取到缓存的对象，返回 nil。  
+4、返回val，清空slot。  
+
+### pushHead
+
+再来看下pushHead  
+
+```go
+const (
+	dequeueBits  = 32
+	dequeueLimit = (1 << dequeueBits) / 4
+)
+
+func (c *poolChain) pushHead(val interface{}) {
+	d := c.head
+	// 如果链表为空，创建新的链表
+	if d == nil {
+		// 初始化链表
+		const initSize = 8
+		// 固定长度为 8，必须为 2 的指数
+		d = new(poolChainElt)
+		d.vals = make([]eface, initSize)
+		c.head = d
+		storePoolChainElt(&c.tail, d)
+	}
+
+	// 队列满了，pushHead就返回false
+	if d.pushHead(val) {
+		return
+	}
+
+	// 如果满了，就新创建一个是原来两倍大小的队列
+	newSize := len(d.vals) * 2
+	// 最大的限制
+	if newSize >= dequeueLimit {
+		// Can't make it any bigger.
+		newSize = dequeueLimit
+	}
+
+	d2 := &poolChainElt{prev: d}
+	d2.vals = make([]eface, newSize)
+	c.head = d2
+	storePoolChainElt(&d.next, d2)
+	d2.pushHead(val)
+}
+
+// 将 val 添加到双端队列头部。如果队列已满，则返回 false。此函数只能被一个生产者调用
+func (d *poolDequeue) pushHead(val interface{}) bool {
+	ptrs := atomic.LoadUint64(&d.headTail)
+	head, tail := d.unpack(ptrs)
+	if (tail+uint32(len(d.vals)))&(1<<dequeueBits-1) == head {
+		// 队列满了
+		return false
+	}
+	slot := &d.vals[head&uint32(len(d.vals)-1)]
+
+	// 检测这个 slot 是否被 popTail 释放
+	typ := atomic.LoadPointer(&slot.typ)
+	if typ != nil {
+		// 另一个 groutine 正在 popTail 这个 slot，说明队列仍然是满的
+		return false
+	}
+
+	// The head slot is free, so we own it.
+	if val == nil {
+		val = dequeueNil(nil)
+	}
+	*(*interface{})(unsafe.Pointer(slot)) = val
+
+	// Increment head. This passes ownership of slot to popTail
+	// and acts as a store barrier for writing the slot.
+	atomic.AddUint64(&d.headTail, 1<<dequeueBits)
+	return true
+}
+```
+
 
 
 
