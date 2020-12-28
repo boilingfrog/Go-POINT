@@ -561,7 +561,7 @@ func (d *poolDequeue) popHead() (interface{}, bool) {
 
 ### pushHead
 
-再来看下pushHead  
+发生在向本地 shared 队列中放置对象（生产者）  
 
 ```go
 const (
@@ -632,7 +632,79 @@ func (d *poolDequeue) pushHead(val interface{}) bool {
 }
 ```
 
+### popTail
 
+```go
+func (c *poolChain) popTail() (interface{}, bool) {
+	d := loadPoolChainElt(&c.tail)
+	if d == nil {
+		return nil, false
+	}
+
+	// 普通的 CAS 操作
+	for {
+		d2 := loadPoolChainElt(&d.next)
+		if val, ok := d.popTail(); ok {
+			return val, ok
+		}
+		if d2 == nil {
+			return nil, false
+		}
+		if atomic.CompareAndSwapPointer((*unsafe.Pointer)(unsafe.Pointer(&c.tail)), unsafe.Pointer(d), unsafe.Pointer(d2)) {
+			storePoolChainElt(&d2.prev, nil)
+		}
+		d = d2
+	}
+}
+```
+
+### pack/unpack
+
+实现对head和tail` 的读写  
+
+```go
+// 将 head 和 tail 指针从 d.headTail 中分离开来
+func (d *poolDequeue) unpack(ptrs uint64) (head, tail uint32) {
+	const mask = 1<<dequeueBits - 1
+	head = uint32((ptrs >> dequeueBits) & mask)
+	tail = uint32(ptrs & mask)
+	return
+}
+// 将 head 和 tail 指针打包到 d.headTail 一个 64bit 的变量中
+func (d *poolDequeue) pack(head, tail uint32) uint64 {
+	const mask = 1<<dequeueBits - 1
+	return (uint64(head) << dequeueBits) |
+		uint64(tail&mask)
+}
+
+func (d *poolDequeue) popTail() (interface{}, bool) {
+	var slot *eface
+	for {
+		ptrs := atomic.LoadUint64(&d.headTail)
+		head, tail := d.unpack(ptrs)
+		if tail == head {
+			return nil, false // 队列满
+		}
+		ptrs2 := d.pack(head, tail+1)
+		if atomic.CompareAndSwapUint64(&d.headTail, ptrs, ptrs2) {
+			slot = &d.vals[tail&uint32(len(d.vals)-1)]
+			break
+		}
+	}
+
+	val := *(*interface{})(unsafe.Pointer(slot))
+	if val == dequeueNil(nil) {
+		val = nil
+	}
+
+	// 注意：此处可能与 pushHead 发生竞争，解决方案是：
+	// 1. 让 pushHead 先读取 typ 的值，如果 typ 值不为 nil，则说明 popTail 尚未清理完 slot
+	// 2. 让 popTail 先清理掉 val 中的内容，在清理掉 typ，从而确保不会与 pushHead 对 slot 的写行为发生竞争
+	slot.val = nil
+	atomic.StorePointer(&slot.typ, nil)
+	return val, true
+}
+```
 
 
 
