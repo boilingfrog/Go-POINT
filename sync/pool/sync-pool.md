@@ -17,6 +17,7 @@
     - [pack/unpack](#packunpack)
     - [popTail](#poptail)
   - [缓存的回收](#%E7%BC%93%E5%AD%98%E7%9A%84%E5%9B%9E%E6%94%B6)
+  - [总结](#%E6%80%BB%E7%BB%93)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -716,7 +717,17 @@ func poolCleanup() {
 
 `poolCleanup` 会在stw阶段的时候被调用。主要是删除oldPools中内容，然后将allPools里面的内容放入到victim中。最后标记allPools为oldPools。这样把pool里内容回收了，有victim进行兜底。   
 
+### 总结
 
+`sync.pool`拿取缓存的过程  
+
+一个goroutine会抢占p，然后炒年糕当前p的private 中选择对象，如果里面没找到，然后尝试本地p的shared 队列的队头进行读取，若还是取不到，则尝试从其他 P 的 shared 队列队尾中偷取。 若偷不到，则尝试从上一个 GC 周期遗留到 victim 缓存中取，否则调用 New 创建一个新的对象。  
+
+对于回收而言，池中所有临时对象在一次 GC 后会被放入 victim 缓存中， 而前一个周期被放入 victim 的缓存则会被清理掉。  
+
+在加入 victim 机制前，sync.Pool 里对象的最⼤缓存时间是一个 GC 周期，当 GC 开始时，没有被引⽤的对象都会被清理掉；加入 victim 机制后，最大缓存时间为两个 GC 周期。  
+
+当get一个对象使用完成之后，调用put归还的时候，需要注意将里面的内容清除  
 
 ### 参考
 【深入Golang之sync.Pool详解】https://www.cnblogs.com/sunsky303/p/9706210.html  
