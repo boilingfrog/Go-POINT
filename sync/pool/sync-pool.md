@@ -5,6 +5,7 @@
 - [sync.pool](#syncpool)
   - [sync.pool作用](#syncpool%E4%BD%9C%E7%94%A8)
     - [使用](#%E4%BD%BF%E7%94%A8)
+  - [适用场景](#%E9%80%82%E7%94%A8%E5%9C%BA%E6%99%AF)
   - [源码解读](#%E6%BA%90%E7%A0%81%E8%A7%A3%E8%AF%BB)
     - [GET](#get)
     - [pin](#pin)
@@ -29,6 +30,8 @@
 有时候我们为了优化GC的场景，减少并复用内存，我们可以使用 sync.Pool 来复用需要频繁创建临时对象。 
 
 `sync.Pool` 是一个临时对象池。一句话来概括，sync.Pool 管理了一组临时对象， 当需要时从池中获取，使用完毕后从再放回池中，以供他人使用。  
+
+go版本`go version go1.13.15 darwin/amd64`   
 
 #### 使用
 
@@ -68,6 +71,18 @@ func main() {
 put之后取值 1
 put之后再次取值 0
 ```
+
+### 适用场景
+
+1、Pool 里对象的生命周期受 GC 影响，不适合于做连接池，因为连接池需要自己管理对象的生命周期  
+
+放入本地池中的值有可能会在任何时候被删除，但是不通知调用者,也有可能被其他的goroutine偷走  
+
+2、适用于储存一些会在goroutine间分享的临时对象。主要作用是减少GC，提高性能  
+
+3、适用于已经申请了内存，目前未使用，接下来会使用的内存，来缓解GC     
+ 
+4、一些生命周期比较短的不适合使用sync.pool来维护  
 
 ### 源码解读
 
@@ -729,6 +744,8 @@ func poolCleanup() {
 
 当get一个对象使用完成之后，调用put归还的时候，需要注意将里面的内容清除  
 
+Pool 不可以指定⼤⼩，⼤⼩只受制于 GC 临界值。
+
 ### 参考
 【深入Golang之sync.Pool详解】https://www.cnblogs.com/sunsky303/p/9706210.html  
 【由浅入深聊聊Golang的sync.Pool】https://juejin.cn/post/6844903903046320136   
@@ -737,3 +754,4 @@ func poolCleanup() {
 【golang的对象池sync.pool源码解读】https://zhuanlan.zhihu.com/p/99710992  
 【15.5 缓存池】https://golang.design/under-the-hood/zh-cn/part4lib/ch15sync/pool/  
 【请问sync.Pool有什么缺点？】https://mp.weixin.qq.com/s?__biz=MzA4ODg0NDkzOA==&mid=2247487149&idx=1&sn=f38f2d72fd7112e19e97d5a2cd304430&source=41#wechat_redirect  
+【七分钟读懂 Go 的临时对象池pool及其应用场景】https://segmentfault.com/a/1190000016987629    
