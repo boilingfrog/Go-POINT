@@ -84,6 +84,117 @@ put之后再次取值 0
  
 4、一些生命周期比较短的不适合使用sync.pool来维护  
 
+### 案例
+
+go中的fmt就是使用到了sync.pool
+
+```go
+
+// Use simple []byte instead of bytes.Buffer to avoid large dependency.
+type buffer []byte
+
+func (b *buffer) write(p []byte) {
+	*b = append(*b, p...)
+}
+
+func (b *buffer) writeString(s string) {
+	*b = append(*b, s...)
+}
+
+func (b *buffer) writeByte(c byte) {
+	*b = append(*b, c)
+}
+
+func (bp *buffer) writeRune(r rune) {
+	if r < utf8.RuneSelf {
+		*bp = append(*bp, byte(r))
+		return
+	}
+
+	b := *bp
+	n := len(b)
+	for n+utf8.UTFMax > cap(b) {
+		b = append(b, 0)
+	}
+	w := utf8.EncodeRune(b[n:n+utf8.UTFMax], r)
+	*bp = b[:n+w]
+}
+
+// pp对象
+// pp is used to store a printer's state and is reused with sync.Pool to avoid allocations.
+type pp struct {
+	buf buffer
+
+	// arg holds the current item, as an interface{}.
+	arg interface{}
+
+	// value is used instead of arg for reflect values.
+	value reflect.Value
+
+	// fmt is used to format basic items such as integers or strings.
+	fmt fmt
+
+	// reordered records whether the format string used argument reordering.
+	reordered bool
+	// goodArgNum records whether the most recent reordering directive was valid.
+	goodArgNum bool
+	// panicking is set by catchPanic to avoid infinite panic, recover, panic, ... recursion.
+	panicking bool
+	// erroring is set when printing an error string to guard against calling handleMethods.
+	erroring bool
+	// wrapErrs is set when the format string may contain a %w verb.
+	wrapErrs bool
+	// wrappedErr records the target of the %w verb.
+	wrappedErr error
+}
+
+// 定义sync.pool
+var ppFree = sync.Pool{
+	New: func() interface{} { return new(pp) },
+}
+
+// 在pool取出一个对象，然后初始化
+func newPrinter() *pp {
+	p := ppFree.Get().(*pp)
+	p.panicking = false
+	p.erroring = false
+	p.wrapErrs = false
+	p.fmt.init(&p.buf)
+	return p
+}
+
+// Sprintln formats using the default formats for its operands and returns the resulting string.
+// Spaces are always added between operands and a newline is appended.
+func Sprintln(a ...interface{}) string {
+	p := newPrinter()
+	p.doPrintln(a)
+	s := string(p.buf)
+	p.free()
+	return s
+}
+
+// 归还sync.pool
+func (p *pp) free() {
+	// Proper usage of a sync.Pool requires each entry to have approximately
+	// the same memory cost. To obtain this property when the stored type
+	// contains a variably-sized buffer, we add a hard limit on the maximum buffer
+	// to place back in the pool.
+	//
+	// See https://golang.org/issue/23199
+	if cap(p.buf) > 64<<10 {
+		return
+	}
+
+	p.buf = p.buf[:0]
+	p.arg = nil
+	p.value = reflect.Value{}
+	p.wrappedErr = nil
+	ppFree.Put(p)
+}
+```
+
+使用的时候在pool中取出一个pp，然后使用完毕之后，归还到的pool中。  
+
 ### 源码解读
 
 pool结构
@@ -129,6 +240,61 @@ type poolLocalInternal struct {
 	shared  poolChain   // Local P can pushHead/popHead; any P can popTail.
 }
 ```
+
+##### noCopy
+
+意思就是不让copy,是如何实现的呢？
+
+> Go中没有原生的禁止拷贝的方式，所以如果有的结构体，你希望使用者无法拷贝，只能指针传递保证全局唯一的话，可以这么干，定义 一个结构体叫 noCopy，实现如下的接口，然后嵌入到你想要禁止拷贝的结构体中，这样go vet就能检测出来。
+
+```go
+// noCopy may be embedded into structs which must not be copied
+// after the first use.
+//
+// See https://golang.org/issues/8005#issuecomment-190753527
+// for details.
+type noCopy struct{}
+
+// Lock is a no-op used by -copylocks checker from `go vet`.
+func (*noCopy) Lock()   {}
+func (*noCopy) Unlock() {}
+```
+
+测试下
+
+```go
+type noCopy struct{}
+
+func (*noCopy) Lock()   {}
+func (*noCopy) Unlock() {}
+
+type Person struct {
+	noCopy noCopy
+	name   string
+}
+
+// go中的函数传参都是值拷贝
+func test(person Person) {
+	fmt.Println(person)
+}
+
+func main() {
+	var person Person
+	test(person)
+}
+```
+
+go vet main.go
+
+```go
+$ go vet main.go
+# command-line-arguments
+./main.go:18:18: test passes lock by value: command-line-arguments.Person contains command-line-arguments.noCopy
+./main.go:19:14: call of fmt.Println copies lock value: command-line-arguments.Person contains command-line-arguments.noCopy
+./main.go:24:7: call of test copies lock value: command-line-arguments.Person contains command-line-arguments.noCopy
+```
+
+使用vet检测到了不能copy的错误  
 
 #### GET 
 
