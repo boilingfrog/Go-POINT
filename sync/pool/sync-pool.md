@@ -6,6 +6,7 @@
   - [sync.pool作用](#syncpool%E4%BD%9C%E7%94%A8)
     - [使用](#%E4%BD%BF%E7%94%A8)
   - [适用场景](#%E9%80%82%E7%94%A8%E5%9C%BA%E6%99%AF)
+  - [案例](#%E6%A1%88%E4%BE%8B)
   - [源码解读](#%E6%BA%90%E7%A0%81%E8%A7%A3%E8%AF%BB)
     - [GET](#get)
     - [pin](#pin)
@@ -197,7 +198,7 @@ func (p *pp) free() {
 
 ### 源码解读
 
-pool结构
+**pool结构**
 
 ```go
 type Pool struct {
@@ -241,7 +242,7 @@ type poolLocalInternal struct {
 }
 ```
 
-##### noCopy
+**noCopy**
 
 意思就是不让copy,是如何实现的呢？
 
@@ -295,6 +296,19 @@ $ go vet main.go
 ```
 
 使用vet检测到了不能copy的错误  
+
+**伪共享**
+
+```go
+[128 - unsafe.Sizeof(poolLocalInternal{})%128]byte
+```
+
+这是来处理伪共享  
+
+什么意思呢？  
+
+我们知道从处理访问到内存，中间有好几级缓存，而这些缓存的存储单位是cacheline，也就是说每次从内存中加载数据，是以cacheline为单位的，这样就会存在一个问题，如果代码中的变量A和B被分配在了一个cacheline，但是处理器a要修改变量A，处理器b要修改B变量。此时，这个cacheline会被分别加载到a处理器的cache和b处理器的cache，当a修改A时，缓存系统会强制使b处理器的cacheline置为无效，同样当b要修改B时，会强制使得a处理器的cacheline失效，这样会导致cacheline来回无效，来回从低级的缓存加载数据，影响性能。  
+
 
 #### GET 
 
@@ -921,3 +935,4 @@ Pool 不可以指定⼤⼩，⼤⼩只受制于 GC 临界值。
 【15.5 缓存池】https://golang.design/under-the-hood/zh-cn/part4lib/ch15sync/pool/  
 【请问sync.Pool有什么缺点？】https://mp.weixin.qq.com/s?__biz=MzA4ODg0NDkzOA==&mid=2247487149&idx=1&sn=f38f2d72fd7112e19e97d5a2cd304430&source=41#wechat_redirect  
 【七分钟读懂 Go 的临时对象池pool及其应用场景】https://segmentfault.com/a/1190000016987629    
+【伪共享(False Sharing)】http://ifeve.com/falsesharing/    
