@@ -309,6 +309,7 @@ $ go vet main.go
 
 我们知道从处理访问到内存，中间有好几级缓存，而这些缓存的存储单位是cacheline，也就是说每次从内存中加载数据，是以cacheline为单位的，这样就会存在一个问题，如果代码中的变量A和B被分配在了一个cacheline，但是处理器a要修改变量A，处理器b要修改B变量。此时，这个cacheline会被分别加载到a处理器的cache和b处理器的cache，当a修改A时，缓存系统会强制使b处理器的cacheline置为无效，同样当b要修改B时，会强制使得a处理器的cacheline失效，这样会导致cacheline来回无效，来回从低级的缓存加载数据，影响性能。  
 
+增加一个 pad，补齐缓存行，让相关的字段能独立地加载到缓存行就不会出现 false sharding 了。  
 
 #### GET 
 
