@@ -32,7 +32,7 @@
 
 `sync.Pool` 是一个临时对象池。一句话来概括，sync.Pool 管理了一组临时对象， 当需要时从池中获取，使用完毕后从再放回池中，以供他人使用。  
 
-go版本`go version go1.13.15 darwin/amd64`   
+本次探究的go版本`go version go1.13.15 darwin/amd64`   
 
 #### 使用
 
@@ -650,7 +650,7 @@ func (d *poolDequeue) popHead() (interface{}, bool) {
 			return nil, false
 		}
 
-        // head 位置是队头的前一个位置，所以此处要先退一位。
+		// head 位置是队头的前一个位置，所以此处要先退一位。
 		// 在读出 slot 的 value 之前就把 head 值减 1，取消对这个 slot 的控制
 		head--
 		ptrs2 := d.pack(head, tail)
@@ -665,7 +665,7 @@ func (d *poolDequeue) popHead() (interface{}, bool) {
 	if val == dequeueNil(nil) {
 		val = nil
 	}
-// 重置 slot，typ 和 val 均为 nil
+	// 重置 slot，typ 和 val 均为 nil
 	// 这里清空的方式与 popTail 不同，与 pushHead 没有竞争关系，所以不用太小心
 	*slot = eface{}
 	return val, true
