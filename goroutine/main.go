@@ -1,13 +1,77 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"math/rand"
+	"net/http"
+	_ "net/http/pprof"
+
+	"os"
 	"time"
 )
 
 func main() {
-	// case1()
-	case6()
+	// 开启pprof
+	go func() {
+		ip := "0.0.0.0:6060"
+		if err := http.ListenAndServe(ip, nil); err != nil {
+			fmt.Printf("start pprof failed on %s\n", ip)
+			os.Exit(1)
+		}
+	}()
+	outCh := make(chan int)
+	for i := 1; i <= 5; i++ {
+		go func() {
+			outCh <- 1
+		}()
+		time.Sleep(time.Second)
+	}
+
+	///value := <-outCh
+	//fmt.Println("value : ", value)
+	//time
+	time.Sleep(100 * time.Second)
+}
+
+func query() int {
+	n := rand.Intn(100)
+	time.Sleep(time.Duration(n) * time.Millisecond)
+	return n
+}
+
+func TimeoutCancelChannel() {
+	done := make(chan struct{}, 1)
+
+	go func() {
+		// 执行业务逻辑
+		done <- struct{}{}
+	}()
+
+	select {
+	case <-done:
+		fmt.Println("call successfully!!!")
+		return
+	case <-time.After(time.Duration(800 * time.Millisecond)):
+		fmt.Println("timeout!!!")
+		// 使用独立的协程处理超时，需求添加return退出协程，否则会导致当前协程被通知channel阻塞，进而导致内存泄露
+		return
+	}
+}
+
+func TimeoutCancelContext() {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(time.Millisecond*800))
+	go func() {
+		// 具体的业务逻辑
+		// 取消超时
+		defer cancel()
+	}()
+
+	select {
+	case <-ctx.Done():
+		fmt.Println("call successfully!!!")
+		return
+	}
 }
 
 func channelNoReceiver() {
