@@ -10,6 +10,22 @@ func main() {
 	case6()
 }
 
+func channelNoReceiver() {
+	ch := make(chan int)
+	go func() {
+		ch <- 1
+		fmt.Println(111)
+	}()
+}
+
+func channelNoProducer() {
+	ch := make(chan int, 1)
+	go func() {
+		<-ch
+		fmt.Println(111)
+	}()
+}
+
 func case6() {
 	names := []string{"小白", "小明", "小红", "小张"}
 	for _, name := range names {
