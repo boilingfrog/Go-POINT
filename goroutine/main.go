@@ -4,34 +4,13 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"net/http"
 	_ "net/http/pprof"
-
-	"os"
 	"time"
 )
 
 func main() {
-	// 开启pprof
-	go func() {
-		ip := "0.0.0.0:6060"
-		if err := http.ListenAndServe(ip, nil); err != nil {
-			fmt.Printf("start pprof failed on %s\n", ip)
-			os.Exit(1)
-		}
-	}()
-	outCh := make(chan int)
-	for i := 1; i <= 5; i++ {
-		go func() {
-			outCh <- 1
-		}()
-		time.Sleep(time.Second)
-	}
-
-	///value := <-outCh
-	//fmt.Println("value : ", value)
-	//time
-	time.Sleep(100 * time.Second)
+	var ch chan struct{}
+	ch <- struct{}{}
 }
 
 func query() int {
