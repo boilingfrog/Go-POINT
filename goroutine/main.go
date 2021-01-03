@@ -41,7 +41,7 @@ func main() {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	// goroutine泄露判断
+	// 接收端受到的channel为nil
 	ch := make(chan int, 1)
 	go func() {
 		<-ch
