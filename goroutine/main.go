@@ -44,8 +44,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	// 接收端收到的channel为nil
 	ch := make(chan int, 1)
 	go func() {
+		fmt.Println("test")
 		<-ch
-		fmt.Println(111)
 	}()
 }
 
