@@ -42,9 +42,12 @@ type SliceHeader struct {
 
 
 
+
+
 ### 参考
 
 【字符串】https://draveness.me/golang/docs/part2-foundation/ch03-datastructure/golang-string/  
 【字符串】https://chai2010.gitbooks.io/advanced-go-programming-book/content/ch1-basic/ch1-03-array-string-and-slice.html  
 【Golang中的string实现】https://erenming.com/2019/12/11/string-in-golang/    
 【字符串】https://gfw.go101.org/article/string.html  
+【Go string 实现原理剖析（你真的了解string吗）】https://my.oschina.net/renhc/blog/3019849    
