@@ -5,16 +5,9 @@
 - [go中string是如何实现的呢](#go%E4%B8%ADstring%E6%98%AF%E5%A6%82%E4%BD%95%E5%AE%9E%E7%8E%B0%E7%9A%84%E5%91%A2)
   - [前言](#%E5%89%8D%E8%A8%80)
   - [实现](#%E5%AE%9E%E7%8E%B0)
+  - [字符串的拼接](#%E5%AD%97%E7%AC%A6%E4%B8%B2%E7%9A%84%E6%8B%BC%E6%8E%A5)
+  - [字符串](#%E5%AD%97%E7%AC%A6%E4%B8%B2)
   - [字符类型](#%E5%AD%97%E7%AC%A6%E7%B1%BB%E5%9E%8B)
-    - [什么是字符集](#%E4%BB%80%E4%B9%88%E6%98%AF%E5%AD%97%E7%AC%A6%E9%9B%86)
-    - [字库表](#%E5%AD%97%E5%BA%93%E8%A1%A8)
-    - [编码字符集(字符集)](#%E7%BC%96%E7%A0%81%E5%AD%97%E7%AC%A6%E9%9B%86%E5%AD%97%E7%AC%A6%E9%9B%86)
-    - [字符编码(编码方式)](#%E5%AD%97%E7%AC%A6%E7%BC%96%E7%A0%81%E7%BC%96%E7%A0%81%E6%96%B9%E5%BC%8F)
-    - [ASCII 码](#ascii-%E7%A0%81)
-    - [Unicode](#unicode)
-    - [Unicode和ASCII的区别](#unicode%E5%92%8Cascii%E7%9A%84%E5%8C%BA%E5%88%AB)
-  - [UTF-8编码](#utf-8%E7%BC%96%E7%A0%81)
-    - [UTF-8和Unicode的关系](#utf-8%E5%92%8Cunicode%E7%9A%84%E5%85%B3%E7%B3%BB)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -63,10 +56,18 @@ type SliceHeader struct {
 
 ### 字符串的拼接
 
+
+
 ### 字符串
 
 
+### 字符类型
 
+我们在go中经常遇到rune和byte两种字符串类型，作为go中字符串的两种类型：  
+
+- byte 也叫 uint8。代表了 ASCII 码的一个字符。  
+
+- rune 等价于 int32 类型，代表一个 UTF-8 字符，当需要处理中文、日文或者其他复合字符时，则需要用到 rune 类型。  
 
 
 
@@ -77,10 +78,5 @@ type SliceHeader struct {
 【Golang中的string实现】https://erenming.com/2019/12/11/string-in-golang/    
 【字符串】https://gfw.go101.org/article/string.html  
 【Go string 实现原理剖析（你真的了解string吗）】https://my.oschina.net/renhc/blog/3019849    
-【十分钟搞清字符集和字符编码】http://cenalulu.github.io/linux/character-encoding/  
-【字符集和字符编码（Charset & Encoding）】https://www.cnblogs.com/skynet/archive/2011/05/03/2035105.html    
-【字符编码笔记：ASCII，Unicode 和 UTF-8】http://www.ruanyifeng.com/blog/2007/10/ascii_unicode_and_utf-8.html  
-【字符集和字符编码（Charset & Encoding）】https://cloud.tencent.com/developer/article/1347609   
-【你不知道的 字符集和编码（编码字符集与字符集编码）】https://developer.aliyun.com/article/263676  
-【字符集详解】https://blog.csdn.net/qq_42068856/article/details/83792174    
-【Unicode,ASCII,UTF-8的区别】https://www.jianshu.com/p/8c57d87a76c6    
+【Go语言字符串高效拼接（一）】https://cloud.tencent.com/developer/article/1367934    
+【Go语言字符类型（byte和rune）】http://c.biancheng.net/view/18.html    
