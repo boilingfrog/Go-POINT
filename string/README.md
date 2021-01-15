@@ -69,7 +69,16 @@ type SliceHeader struct {
 
 - rune 等价于 int32 类型，代表一个 UTF-8 字符，当需要处理中文、日文或者其他复合字符时，则需要用到 rune 类型。  
 
+```go
+// byte is an alias for uint8 and is equivalent to uint8 in all ways. It is
+// used, by convention, to distinguish byte values from 8-bit unsigned
+// integer values.
+type byte = uint8
 
+// rune is an alias for int32 and is equivalent to int32 in all ways. It is
+// used, by convention, to distinguish character values from integer values.
+type rune = int32
+```
 
 ### 参考
 
@@ -80,3 +89,4 @@ type SliceHeader struct {
 【Go string 实现原理剖析（你真的了解string吗）】https://my.oschina.net/renhc/blog/3019849    
 【Go语言字符串高效拼接（一）】https://cloud.tencent.com/developer/article/1367934    
 【Go语言字符类型（byte和rune）】http://c.biancheng.net/view/18.html    
+【go 的 [] rune 和 [] byte 区别】https://learnku.com/articles/23411/the-difference-between-rune-and-byte-of-go  
