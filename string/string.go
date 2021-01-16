@@ -2,34 +2,16 @@ package main
 
 import (
 	"fmt"
-	"sync"
 )
 
 func main() {
-	var (
-		jobsChan = make(chan int, 10)
-		rw       sync.RWMutex
-		num      int
-	)
+	var a byte = 65
+	// 8进制写法: var c byte = '\101'     其中 \ 是固定前缀
+	// 16进制写法: var c byte = '\x41'    其中 \x 是固定前缀
 
-	wg := sync.WaitGroup{}
-	wg.Add(3)
-	for i := 0; i < 3; i++ {
-		go func() {
-			defer wg.Done()
-			for redPacket := range jobsChan {
-				_ = redPacket
-				rw.Lock()
-				num++
-				rw.Unlock()
-			}
-		}()
-	}
+	var b uint8 = 66
+	fmt.Printf("a 的值: %c \nb 的值: %c", a, b)
 
-	for i := 0; i < 10; i++ {
-		jobsChan <- i + 1
-	}
-	close(jobsChan)
-	wg.Wait()
-	fmt.Println(num)
+	// 或者使用 string 函数
+	// fmt.Println("a 的值: ", string(a)," \nb 的值: ", string(b))
 }
