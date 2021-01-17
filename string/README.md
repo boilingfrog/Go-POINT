@@ -85,6 +85,11 @@ type rune = int32
 
 
 
+
+
+
+
+
 ### 参考
 
 【字符串】https://draveness.me/golang/docs/part2-foundation/ch03-datastructure/golang-string/  
@@ -96,3 +101,4 @@ type rune = int32
 【Go语言字符类型（byte和rune）】http://c.biancheng.net/view/18.html    
 【go 的 [] rune 和 [] byte 区别】https://learnku.com/articles/23411/the-difference-between-rune-and-byte-of-go  
 【go语言圣经】http://books.studygolang.com/gopl-zh/ch3/ch3-05.html  
+【【Go语言踩坑系列（二）】字符串】https://www.mdeditor.tw/pl/pCg8  
