@@ -16,7 +16,6 @@
 
 ## go中string是如何实现的呢
 
-
 ### 前言
 
 go中的string可谓是用到的最频繁的关键词之一了，如何实现，我们来探究下  
@@ -59,11 +58,7 @@ type SliceHeader struct {
 ### string和[]byte转换
 
 
-
-
-
 ### 字符串
-
 
 ### 字符类型
 
@@ -110,6 +105,8 @@ func main() {
 对于ASCII一个索引位表示一个字符（也就是英文）  
 
 对于非ASCII，索引更新的步长将超过1个字节，中文的是三个字节表示一个中文。  
+
+<img src="/img/string_6.jpg"  alt="string" align="center" />
 
 #### rune
 
