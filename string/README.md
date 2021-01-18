@@ -8,6 +8,8 @@
   - [string和[]byte转换](#string%E5%92%8Cbyte%E8%BD%AC%E6%8D%A2)
   - [字符串](#%E5%AD%97%E7%AC%A6%E4%B8%B2)
   - [字符类型](#%E5%AD%97%E7%AC%A6%E7%B1%BB%E5%9E%8B)
+    - [byte](#byte)
+    - [rune](#rune)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -67,7 +69,9 @@ type SliceHeader struct {
 
 我们在go中经常遇到rune和byte两种字符串类型，作为go中字符串的两种类型：  
 
-- byte 也叫 uint8。代表了 ASCII 码的一个字符。  
+#### byte
+
+byte 也叫 uint8。代表了 ASCII 码的一个字符。  
 
 对于英文，一个ASCII表示一个字符，根据[ASCII表](https://baike.baidu.com/item/ASCII?fr=aladdin#reference-[1]-15482-wrap)。我们知道
 A对应的十进制编码是`65`。我们看看byte打印的结果  
@@ -107,7 +111,28 @@ func main() {
 
 对于非ASCII，索引更新的步长将超过1个字节，中文的是三个字节表示一个中文。  
 
-- rune 等价于 int32 类型，UTF8编码的Unicode码点。  
+#### rune
+
+rune 等价于 int32 类型，UTF8编码的Unicode码点。  
+
+```go
+func main() {
+	s := "哈哈"
+	fmt.Println([]rune(s))
+
+	s1 := "A"
+	fmt.Println([]rune(s1))
+}
+```
+
+打印下结果
+
+```
+[21704 21704]
+[65]
+```
+
+我们可以看到里面对应的是UTF-8的十进制数字。对于英文来讲UTF-8的码点，就是对应的ASCII。  
 
 ```go
 // byte is an alias for uint8 and is equivalent to uint8 in all ways. It is
@@ -121,12 +146,6 @@ type rune = int32
 ```
 
 关于Unicode和UTF8的区别和联系，以及ASCII码的联系，参考[字符编码-字库表,字符集,字符编码](https://www.cnblogs.com/ricklz/p/14271477.html#utf-8%E5%92%8Cunicode%E7%9A%84%E5%85%B3%E7%B3%BB)
-
-
-
-
-
-
 
 ### 参考
 
