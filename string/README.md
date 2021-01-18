@@ -106,8 +106,6 @@ func main() {
 
 对于非ASCII，索引更新的步长将超过1个字节，中文的是三个字节表示一个中文。  
 
-<img src="/img/string_6.jpg"  alt="string" align="center" />
-
 #### rune
 
 rune 等价于 int32 类型，UTF8编码的Unicode码点。  
@@ -130,6 +128,8 @@ func main() {
 ```
 
 我们可以看到里面对应的是UTF-8的十进制数字。对于英文来讲UTF-8的码点，就是对应的ASCII。  
+
+<img src="/img/string_6.jpg"  alt="string" align="center" />
 
 ```go
 // byte is an alias for uint8 and is equivalent to uint8 in all ways. It is
