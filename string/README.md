@@ -5,7 +5,7 @@
 - [go中string是如何实现的呢](#go%E4%B8%ADstring%E6%98%AF%E5%A6%82%E4%BD%95%E5%AE%9E%E7%8E%B0%E7%9A%84%E5%91%A2)
   - [前言](#%E5%89%8D%E8%A8%80)
   - [实现](#%E5%AE%9E%E7%8E%B0)
-  - [字符串的拼接](#%E5%AD%97%E7%AC%A6%E4%B8%B2%E7%9A%84%E6%8B%BC%E6%8E%A5)
+  - [string和[]byte转换](#string%E5%92%8Cbyte%E8%BD%AC%E6%8D%A2)
   - [字符串](#%E5%AD%97%E7%AC%A6%E4%B8%B2)
   - [字符类型](#%E5%AD%97%E7%AC%A6%E7%B1%BB%E5%9E%8B)
   - [参考](#%E5%8F%82%E8%80%83)
@@ -54,7 +54,9 @@ type SliceHeader struct {
 
 3、string本身的切片是只读的，所以不会直接向字符串直接追加元素改变其本身的内存空间，所有在字符串上的写入操作都是通过拷贝实现的。  
 
-### 字符串的拼接
+### string和[]byte转换
+
+
 
 
 
@@ -66,6 +68,44 @@ type SliceHeader struct {
 我们在go中经常遇到rune和byte两种字符串类型，作为go中字符串的两种类型：  
 
 - byte 也叫 uint8。代表了 ASCII 码的一个字符。  
+
+对于英文，一个ASCII表示一个字符，根据[ASCII表](https://baike.baidu.com/item/ASCII?fr=aladdin#reference-[1]-15482-wrap)。我们知道
+A对应的十进制编码是`65`。我们看看byte打印的结果  
+
+```go
+func main() {
+	s := "A"
+	fmt.Print("打印下[]byte(s)，结果十进制：")
+	fmt.Println([]byte(s))
+
+	fmt.Print("打印下[]byte(s)中存储的类型，存储的是十六进制：")
+	fmt.Printf("%#v\n", []byte(s))
+
+	s1 := "世界"
+	fmt.Print("打印下[]byte(s1)，结果十进制：")
+	fmt.Println([]byte(s1))
+
+	fmt.Print("打印下[]byte(s1)中存储的类型，存储的是十六进制：")
+	fmt.Printf("%#v\n", []byte(s1))
+
+	fmt.Print("打印下s1的十六进制：")
+	fmt.Printf("%x\n", s1)
+}
+```
+
+结果
+
+```
+打印下[]byte(s)，结果十进制：[65]
+打印下[]byte(s)中存储的类型，存储的是十六进制：[]byte{0x41}
+打印下[]byte(s1)，结果十进制：[228 184 150 231 149 140]
+打印下[]byte(s1)中存储的类型，存储的是十六进制：[]byte{0xe4, 0xb8, 0x96, 0xe7, 0x95, 0x8c}
+打印下s1的十六进制：e4b896e7958c
+```
+
+对于ASCII一个索引位表示一个字符（也就是英文）  
+
+对于非ASCII，索引更新的步长将超过1个字节，中文的是三个字节表示一个中文。  
 
 - rune 等价于 int32 类型，UTF8编码的Unicode码点。  
 
@@ -81,8 +121,6 @@ type rune = int32
 ```
 
 关于Unicode和UTF8的区别和联系，以及ASCII码的联系，参考[字符编码-字库表,字符集,字符编码](https://www.cnblogs.com/ricklz/p/14271477.html#utf-8%E5%92%8Cunicode%E7%9A%84%E5%85%B3%E7%B3%BB)
-
-
 
 
 
