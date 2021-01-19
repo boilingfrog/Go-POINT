@@ -55,7 +55,45 @@ type SliceHeader struct {
 
 3、string本身的切片是只读的，所以不会直接向字符串直接追加元素改变其本身的内存空间，所有在字符串上的写入操作都是通过拷贝实现的。  
 
-### string和[]byte转换
+### []byte转string
+
+`src/runtime/string.go`
+```go
+type stringStruct struct {
+	str unsafe.Pointer
+	len int
+}
+
+func slicebytetostring(buf *tmpBuf, b []byte) (str string) {
+	l := len(b)
+	if l == 0 {
+		return ""
+	}
+	if l == 1 {
+		stringStructOf(&str).str = unsafe.Pointer(&staticbytes[b[0]])
+		stringStructOf(&str).len = 1
+		return
+	}
+	var p unsafe.Pointer
+	if buf != nil && len(b) <= len(buf) {
+		p = unsafe.Pointer(buf)
+	} else {
+		p = mallocgc(uintptr(len(b)), nil, false)
+	}
+	stringStructOf(&str).str = p
+	stringStructOf(&str).len = len(b)
+	memmove(p, (*(*slice)(unsafe.Pointer(&b))).array, uintptr(len(b)))
+	return
+}
+
+// 转换成
+func stringStructOf(sp *string) *stringStruct {
+	return (*stringStruct)(unsafe.Pointer(sp))
+}
+```
+
+
+
 
 
 ### 字符串
