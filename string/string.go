@@ -1,14 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 )
 
 func main() {
-	s := "哈哈"
-	fmt.Println([]rune(s))
-
-	s1 := "A"
-	fmt.Println([]rune(s1))
-	fmt.Println(string([]byte("222")))
+	var b bytes.Buffer
+	b.WriteString("hello")
+	b.WriteString("world")
+	fmt.Println(b.String())
 }

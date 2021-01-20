@@ -120,7 +120,7 @@ func stringtoslicebyte(buf *tmpBuf, s string) []byte {
 	return b
 }
 
-// rawbyteslice allocates a new byte slice. The byte slice is not zeroed.
+// 为[]byte重新分配一段内存
 func rawbyteslice(size int) (b []byte) {
 	cap := roundupsize(uintptr(size))
 	p := mallocgc(cap, nil, false)
@@ -137,7 +137,52 @@ func rawbyteslice(size int) (b []byte) {
 2、传入的缓存区的大小不够，调用 `runtime.rawbyteslice`创建指定大小的[]byte；  
 3、将string拷贝到切片；  
 
-### 字符串
+### 字符串的拼接
+
+#### +方式进行拼接
+
+```go
+func main() {
+	s := "hai~"
+	s += "hello world"
+	fmt.Println(s)
+}
+```
+
+#### fmt 拼接
+
+```go
+func main() {
+	s := fmt.Sprintf("%s%s%d", "hello", "world", 2021)
+	fmt.Println(s)
+}
+```
+
+fmt可以方便对各种类型的数据进行拼接，转换成string,具体详见[printf的用法](https://github.com/boilingfrog/Go-POINT/blob/master/printf/main.go)  
+
+#### Join 拼接
+
+```go
+func main() {
+	var s []string
+
+	s = append(s, "hello")
+	s = append(s, "world")
+
+	fmt.Println(strings.Join(s, ""))
+}
+```
+
+#### buffer 拼接
+
+```go
+func main() {
+	var b bytes.Buffer
+	b.WriteString("hello")
+	b.WriteString("world")
+	fmt.Println(b.String())
+}
+```
 
 ### 字符类型
 
