@@ -1,6 +1,8 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+)
 
 func main() {
 	s := "哈哈"
@@ -8,4 +10,5 @@ func main() {
 
 	s1 := "A"
 	fmt.Println([]rune(s1))
+	fmt.Println(string([]byte("222")))
 }

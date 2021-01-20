@@ -75,13 +75,18 @@ func slicebytetostring(buf *tmpBuf, b []byte) (str string) {
 		return
 	}
 	var p unsafe.Pointer
+	// 判断传入的缓冲区大小，决定是否重新分配内存
 	if buf != nil && len(b) <= len(buf) {
 		p = unsafe.Pointer(buf)
 	} else {
+		// 重新分配内存
 		p = mallocgc(uintptr(len(b)), nil, false)
 	}
+	// 将输出的str转化成stringStruct结构
+	// 并且赋值
 	stringStructOf(&str).str = p
 	stringStructOf(&str).len = len(b)
+	// 将[]byte中的内容，复制到内存空间p中
 	memmove(p, (*(*slice)(unsafe.Pointer(&b))).array, uintptr(len(b)))
 	return
 }
@@ -92,6 +97,13 @@ func stringStructOf(sp *string) *stringStruct {
 }
 ```
 
+总结下流程：  
+
+1、根据传入的内存大小，判断是否需要分配重新分配内存；  
+2、构建stringStruct，分类长度和内存空间;    
+3、赋值[]byte里面的数据到新构建stringStruct的内存空间中。
+
+### string转[]byte
 
 
 
