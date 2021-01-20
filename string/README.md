@@ -5,7 +5,8 @@
 - [go中string是如何实现的呢](#go%E4%B8%ADstring%E6%98%AF%E5%A6%82%E4%BD%95%E5%AE%9E%E7%8E%B0%E7%9A%84%E5%91%A2)
   - [前言](#%E5%89%8D%E8%A8%80)
   - [实现](#%E5%AE%9E%E7%8E%B0)
-  - [string和[]byte转换](#string%E5%92%8Cbyte%E8%BD%AC%E6%8D%A2)
+  - [[]byte转string](#byte%E8%BD%ACstring)
+  - [string转[]byte](#string%E8%BD%ACbyte)
   - [字符串](#%E5%AD%97%E7%AC%A6%E4%B8%B2)
   - [字符类型](#%E5%AD%97%E7%AC%A6%E7%B1%BB%E5%9E%8B)
     - [byte](#byte)
@@ -105,8 +106,36 @@ func stringStructOf(sp *string) *stringStruct {
 
 ### string转[]byte
 
+`src/runtime/string.go`
+```go
+func stringtoslicebyte(buf *tmpBuf, s string) []byte {
+	var b []byte
+	if buf != nil && len(s) <= len(buf) {
+		*buf = tmpBuf{}
+		b = buf[:len(s)]
+	} else {
+		b = rawbyteslice(len(s))
+	}
+	copy(b, s)
+	return b
+}
 
+// rawbyteslice allocates a new byte slice. The byte slice is not zeroed.
+func rawbyteslice(size int) (b []byte) {
+	cap := roundupsize(uintptr(size))
+	p := mallocgc(cap, nil, false)
+	if cap != uintptr(size) {
+		memclrNoHeapPointers(add(p, uintptr(size)), cap-uintptr(size))
+	}
 
+	*(*slice)(unsafe.Pointer(&b)) = slice{p, size, int(cap)}
+	return
+}
+```
+
+1、判断传入的缓存区大小，如果内存够用就使用传入的缓冲区存储 []byte；  
+2、传入的缓存区的大小不够，调用 `runtime.rawbyteslice`创建指定大小的[]byte；  
+3、将string拷贝到切片；  
 
 ### 字符串
 
