@@ -7,7 +7,13 @@
   - [实现](#%E5%AE%9E%E7%8E%B0)
   - [[]byte转string](#byte%E8%BD%ACstring)
   - [string转[]byte](#string%E8%BD%ACbyte)
-  - [字符串](#%E5%AD%97%E7%AC%A6%E4%B8%B2)
+  - [字符串的拼接](#%E5%AD%97%E7%AC%A6%E4%B8%B2%E7%9A%84%E6%8B%BC%E6%8E%A5)
+    - [+方式进行拼接](#%E6%96%B9%E5%BC%8F%E8%BF%9B%E8%A1%8C%E6%8B%BC%E6%8E%A5)
+    - [fmt 拼接](#fmt-%E6%8B%BC%E6%8E%A5)
+    - [Join 拼接](#join-%E6%8B%BC%E6%8E%A5)
+    - [buffer 拼接](#buffer-%E6%8B%BC%E6%8E%A5)
+    - [builder 拼接](#builder-%E6%8B%BC%E6%8E%A5)
+    - [测试下几种方法的性能](#%E6%B5%8B%E8%AF%95%E4%B8%8B%E5%87%A0%E7%A7%8D%E6%96%B9%E6%B3%95%E7%9A%84%E6%80%A7%E8%83%BD)
   - [字符类型](#%E5%AD%97%E7%AC%A6%E7%B1%BB%E5%9E%8B)
     - [byte](#byte)
     - [rune](#rune)
@@ -135,7 +141,7 @@ func rawbyteslice(size int) (b []byte) {
 
 1、判断传入的缓存区大小，如果内存够用就使用传入的缓冲区存储 []byte；  
 2、传入的缓存区的大小不够，调用 `runtime.rawbyteslice`创建指定大小的[]byte；  
-3、将string拷贝到切片；  
+3、将string拷贝到切片。  
 
 ### 字符串的拼接
 
@@ -183,6 +189,126 @@ func main() {
 	fmt.Println(b.String())
 }
 ```
+
+#### builder 拼接
+
+```go
+func main() {
+	var b bytes.Buffer
+	b.WriteString("hello")
+	b.WriteString("world")
+	fmt.Println(b.String())
+}
+```
+
+#### 测试下几种方法的性能
+
+压力测试
+
+```go
+package main
+
+import (
+	"bytes"
+	"fmt"
+	"strings"
+	"testing"
+)
+
+func String() string {
+	var s string
+	s += "hello" + "\n"
+	s += "world" + "\n"
+	s += "今天的天气很不错的"
+	return s
+}
+
+func BenchmarkString(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		String()
+	}
+}
+
+func StringFmt() string {
+	return fmt.Sprintf("%s %s %s", "hello", "world", "今天的天气很不错的")
+}
+
+func BenchmarkStringFmt(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		StringFmt()
+	}
+}
+
+func StringJoin() string {
+	var s []string
+	s = append(s, "hello ")
+	s = append(s, "world ")
+	s = append(s, "今天的天气很不错的 ")
+
+	return strings.Join(s, "")
+}
+
+func BenchmarkStringJoin(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		StringJoin()
+	}
+}
+
+func StringBuffer() string {
+	var s bytes.Buffer
+	s.WriteString("hello ")
+	s.WriteString("world ")
+	s.WriteString("今天的天气很不错的 ")
+
+	return s.String()
+}
+
+func BenchmarkStringBuffer(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		StringBuffer()
+	}
+}
+
+func StringBuilder() string {
+	var s strings.Builder
+	s.WriteString("hello ")
+	s.WriteString("world ")
+	s.WriteString("今天的天气很不错的 ")
+
+	return s.String()
+}
+
+func BenchmarkStringBuilder(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		StringBuilder()
+	}
+}
+```
+
+看下执行的结果
+
+```go
+$ go test string_test.go  -bench=. -benchmem -benchtime=3s
+goos: darwin
+goarch: amd64
+BenchmarkString-4               28862838               115 ns/op              64 B/op          2 allocs/op
+BenchmarkStringFmt-4            20697505               169 ns/op              48 B/op          1 allocs/op
+BenchmarkStringJoin-4           11304583               293 ns/op             160 B/op          4 allocs/op
+BenchmarkStringBuffer-4         31151836               104 ns/op             112 B/op          2 allocs/op
+BenchmarkStringBuilder-4        29142151               120 ns/op              72 B/op          3 allocs/op
+PASS
+ok      command-line-arguments  17.740s
+```
+
+`ns/op` 平均一次执行的时间
+`B/op` 平均一次真申请的内存大小
+`allocs/op` 平均一次，申请的内存次数  
+
+从上面我们就能直观的看出差距，不过差距不大，当然具体的性能信息要结合当前go版本，具体讨论。  
+
+看上去很low的+拼接方式，在性能上倒是还不错。  
+
+我的版本是`go version go1.13.15 darwin/amd64`  
 
 ### 字符类型
 
