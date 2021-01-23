@@ -8,10 +8,9 @@ func main() {
 	s := "212"
 	fmt.Println(&s)
 	fmt.Println(len(s))
-	s = "33hhhhhhhhhnihihfn你皇帝是滴是滴四十多"
+	s = "33hhhhhhhhhnihihfnHSIHISASIASJAISJAISJAISJAISJAISA"
 	fmt.Println(&s)
 	fmt.Println(len(s))
-
 }
 
 func f(s1 string) {

@@ -5,6 +5,7 @@
 - [go中string是如何实现的呢](#go%E4%B8%ADstring%E6%98%AF%E5%A6%82%E4%BD%95%E5%AE%9E%E7%8E%B0%E7%9A%84%E5%91%A2)
   - [前言](#%E5%89%8D%E8%A8%80)
   - [实现](#%E5%AE%9E%E7%8E%B0)
+  - [go语言中的string是不可变的](#go%E8%AF%AD%E8%A8%80%E4%B8%AD%E7%9A%84string%E6%98%AF%E4%B8%8D%E5%8F%AF%E5%8F%98%E7%9A%84)
   - [[]byte转string](#byte%E8%BD%ACstring)
   - [string转[]byte](#string%E8%BD%ACbyte)
   - [字符串的拼接](#%E5%AD%97%E7%AC%A6%E4%B8%B2%E7%9A%84%E6%8B%BC%E6%8E%A5)
@@ -64,6 +65,23 @@ type SliceHeader struct {
 2、可以把string当成一个只读的切片类型；  
 
 3、string本身的切片是只读的，所以不会直接向字符串直接追加元素改变其本身的内存空间，所有在字符串上的写入操作都是通过拷贝实现的。  
+
+### go语言中的string是不可变的  
+
+```go
+func main() {
+	s := "212"
+	fmt.Println(&s)
+	fmt.Println(len(s))
+	s = "33hhhhhhhhhnihihfnHSIHISASIASJAISJAISJAISJAISJAISA"
+	fmt.Println(&s)
+	fmt.Println(len(s))
+}
+```
+
+上面的例子，s发生了，两次赋值，里面的值发生了改变，好奇怪，明明是不可修改的  
+
+go中的字符串底层也是引用类型，类似切片，只是对比切片少了一个cap字段，也就是不能发生扩容。也包含一个指针，指向它引用的字节系列的数组`[]byte`,所以当改变一个字符串的值，原来指针指向的`[]byte`将被丢弃，字符串包含的指针，将指向一个新的值转换而来的字节数组。所以说字符串的值是不能被修改的，对于重新赋值，老的值没有被修改，只是被弃用了。  
 
 ### []byte转string
 
@@ -148,6 +166,8 @@ func rawbyteslice(size int) (b []byte) {
 
 ### 字符串的拼接
 
+
+
 #### +方式进行拼接
 
 ```go
@@ -157,6 +177,10 @@ func main() {
 	fmt.Println(s)
 }
 ```
+
+一个拼接语句的字符串编译时都会被存放到一个切片中，拼接过程需要遍历两次切片，第一次遍历获取总的字符串长度，据此申请内存，第二次遍历会把字符串逐个拷贝过去。  
+
+所以，这种方式拼接只要性能问题是在copy上，适合短小的、常量字符串（明确的，非变量）。  
 
 #### fmt 拼接
 
@@ -509,7 +533,7 @@ func main() {
 3、go中的[]byte存储的是十六进制的ascii码，对于英文一个ascii码表示一个字母，对于中文是三个ascii码表示一个字母；  
 4、对于[]rune来讲，里面存储的是`UTF8`编码的`Unicode`码点，关于`UTF8`和`Unicode`区别，`Unicode`是字符集，`UTF8`是字符集编码，是`Unicode`规则字库的一种实现形式；  
 5、字符串的不正确使用会发生内存泄露；  
-6、对于字符串的拼接，+拼接是一种看上去low，但是相对于固定字符串拼接，效率还不错的方法；  
+6、对于字符串的拼接，+拼接是一种看上去low，但是对于短小的、常量字符串（明确的，非变量），效率还不错的方法；    
 
 
 ### 参考
@@ -524,3 +548,4 @@ func main() {
 【go 的 [] rune 和 [] byte 区别】https://learnku.com/articles/23411/the-difference-between-rune-and-byte-of-go  
 【go语言圣经】http://books.studygolang.com/gopl-zh/ch3/ch3-05.html  
 【【Go语言踩坑系列（二）】字符串】https://www.mdeditor.tw/pl/pCg8  
+【为什么说go语言中的string是不可变的？】https://studygolang.com/topics/3727  
