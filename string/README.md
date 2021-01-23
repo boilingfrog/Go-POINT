@@ -1,6 +1,7 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+
 - [go中string是如何实现的呢](#go%E4%B8%ADstring%E6%98%AF%E5%A6%82%E4%BD%95%E5%AE%9E%E7%8E%B0%E7%9A%84%E5%91%A2)
   - [前言](#%E5%89%8D%E8%A8%80)
   - [实现](#%E5%AE%9E%E7%8E%B0)
@@ -16,6 +17,9 @@
   - [字符类型](#%E5%AD%97%E7%AC%A6%E7%B1%BB%E5%9E%8B)
     - [byte](#byte)
     - [rune](#rune)
+  - [内存泄露的场景](#%E5%86%85%E5%AD%98%E6%B3%84%E9%9C%B2%E7%9A%84%E5%9C%BA%E6%99%AF)
+  - [string和[]byte如何取舍](#string%E5%92%8Cbyte%E5%A6%82%E4%BD%95%E5%8F%96%E8%88%8D)
+  - [总结](#%E6%80%BB%E7%BB%93)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -307,6 +311,10 @@ ok      command-line-arguments  17.740s
 
 看上去很low的+拼接方式，在性能上倒是还不错。  
 
+go101中评论  
+
+> 标准编译器对使用+运算符的字符串衔接做了特别的优化。 所以，一般说来，在被衔接的字符串的数量是已知的情况下，使用+运算符进行字符串衔接是比较高效的。
+
 我的版本是`go version go1.13.15 darwin/amd64`  
 
 ### 字符类型
@@ -392,6 +400,117 @@ type rune = int32
 ```
 
 关于Unicode和UTF8的区别和联系，以及ASCII码的联系，参考[字符编码-字库表,字符集,字符编码](https://www.cnblogs.com/ricklz/p/14271477.html#utf-8%E5%92%8Cunicode%E7%9A%84%E5%85%B3%E7%B3%BB)
+
+### 内存泄露的场景
+
+不正确的使用会导致短暂的内存泄露  
+
+```go
+var s0 string // 一个包级变量
+
+func main() {
+	s := bigString() // 申请一个大string
+	// 如果f函数的执行链路很长，申请的大s的内存将得不到释放，直到f函数执行完成被gc
+	f(s)
+}
+
+func f(s1 string) {
+	s0 = s1[:50]
+	// 目前，s0和s1共享着承载它们的字节序列的同一个内存块。
+	// 虽然s1到这里已经不再被使用了，但是s0仍然在使用中，
+	// 所以它们共享的内存块将不会被回收。虽然此内存块中
+	// 只有50字节被真正使用，而其它字节却无法再被使用。
+}
+
+func bigString() string {
+	var buf []byte
+	for i := 0; i < 10; i++ {
+		buf = append(buf, make([]byte, 1024*1024)...)
+	}
+	return string(buf)
+}
+```
+
+上面的例子，一个大的变量s1，另一个字符串s0对这个变量进行了部分引用，新申请的变量s0和老的变量s1共用同一块内存。所以虽然大变量s1不用了，但是也不能马上被gc。   
+
+解决方法  
+
+思路是发生一次copy,类似go中闭包的解决方法  
+
+**strings.Builder**
+
+```go
+func f(s1 string) {
+	var b strings.Builder
+	b.Grow(50)
+	b.WriteString(s1[:50])
+	s0 = b.String()
+}
+```
+
+感觉有点繁琐，当前也可以使用`strings.Repeat`, 从Go 1.12开始，此函数也是用`strings.Builder`实现的。  
+
+```go
+func Repeat(s string, count int) string {
+	if count == 0 {
+		return ""
+	}
+
+	if count < 0 {
+		panic("strings: negative Repeat count")
+	} else if len(s)*count/count != len(s) {
+		panic("strings: Repeat count causes overflow")
+	}
+
+	n := len(s) * count
+	var b Builder
+	b.Grow(n)
+	b.WriteString(s)
+	for b.Len() < n {
+		if b.Len() <= n/2 {
+			b.WriteString(b.String())
+		} else {
+			b.WriteString(b.String()[:n-b.Len()])
+			break
+		}
+	}
+	return b.String()
+}
+```
+
+使用demo  
+
+```go
+func main() {
+	res := strings.Repeat("你好", 1)
+	fmt.Println(res)
+}
+```
+
+### string和[]byte如何取舍
+
+- string 擅长的场景：  
+
+需要字符串比较的场景；  
+不需要nil字符串的场景；  
+
+- []byte擅长的场景：
+
+修改字符串的场景，尤其是修改粒度为1个字节；  
+函数返回值，需要用nil表示含义的场景；  
+需要切片操作的场景；  
+
+所以底层实现会发现有很多`[]byte`
+
+### 总结 
+
+1、字符串不允许修改,string不包含内存空间，只有一个内存的指针，这样做的好处是string变得非常轻量，可以很方便的进行传递而不用担心内存拷贝；   
+2、我们阅读go源码，会发现很多地方使用`[]byte`，使用`[]byte`能更方便的修改字符串；  
+3、go中的[]byte存储的是十六进制的ascii码，对于英文一个ascii码表示一个字母，对于中文是三个ascii码表示一个字母；  
+4、对于[]rune来讲，里面存储的是`UTF8`编码的`Unicode`码点，关于`UTF8`和`Unicode`区别，`Unicode`是字符集，`UTF8`是字符集编码，是`Unicode`规则字库的一种实现形式；  
+5、字符串的不正确使用会发生内存泄露；  
+6、对于字符串的拼接，+拼接是一种看上去low，但是相对于固定字符串拼接，效率还不错的方法；  
+
 
 ### 参考
 
