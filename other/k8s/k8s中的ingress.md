@@ -8,8 +8,7 @@
 
 `Service`是基于四层TCP和UDP协议转发的，而`Ingress`可以基于七层的HTTP和HTTPS协议转发，可以通过域名和路径做到更细粒度的划分。  
 
-
-
+![ingress](/img/ingress_2.jpg?raw=true)
 
 
 ### Pod与Ingress的关系
