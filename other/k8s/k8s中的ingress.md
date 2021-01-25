@@ -8,8 +8,11 @@
 
 `Service`是基于四层TCP和UDP协议转发的，而`Ingress`可以基于七层的HTTP和HTTPS协议转发，可以通过域名和路径做到更细粒度的划分。  
 
-![ingress](/img/ingress_2.jpg?raw=true)
+![channel](/img/ingress_7.jpg?raw=true)
 
+### 理解Ingress 实现
+
+k8s 有一个贯穿始终的设计理念，即需求和供给的分离。`Ingress Controller`和 `Ingress` 的实现也很好的实践了这一点。 要理解k8s ，时刻记住 需求供给分离的设计理念。
 
 ### Pod与Ingress的关系
 
