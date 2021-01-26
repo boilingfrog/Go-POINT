@@ -35,7 +35,22 @@ k8s 有一个贯穿始终的设计理念，即需求和供给的分离。`Ingres
 
 #### 转发到单个后端服务上
 
-无需定义rule，
+无需定义rule,直接指定到需要转发的service上就好了。  
+
+```
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: web
+spec:
+  rules:
+  - host: liz-test.com
+    http:
+      paths:
+      - backend:
+          serviceName: go-app-svc
+          servicePort: 8000
+```
 
 
 
