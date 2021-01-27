@@ -9,7 +9,7 @@
     - [ClusterIP](#clusterip)
     - [NodePort](#nodeport)
     - [LoadBalancer](#loadbalancer)
-  - [port](#port)
+  - [Port](#port)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -32,6 +32,39 @@
 
 通过label-selector相关联  
 通过Service实现Pod的负载均衡（ TCP/UDP 4层）  
+
+### Port
+
+service中主要涉及到了三种port：  
+
+- port 
+
+这里的port表示service暴露在clusterIP上的端口，clusterIP:Port 是提供给集群内部访问kubernetes服务的入口。  
+
+- targetPort 
+
+targetPort是pod上的端口，从port和nodePort上到来的数据最终经过kube-proxy流入到后端pod的targetPort上进入容器。  
+
+- nodePort
+
+就是Node的基本port。选择该值，这个servce就可以通过NodeIP:NodePort访问这个Service服务，NodePort会路由到Cluster IP服务，这个Cluster IP会通过请求自动创建。    
+
+
+总的来说，port和nodePort都是service的端口，前者暴露给集群内客户访问服务，后者暴露给集群外客户访问服务。从这两个端口到来的数据都需要经过反向代理kube-proxy流入后端pod的targetPod，从而到达pod上的容器内。  
+
+### IP
+
+service会涉及到几种ip  
+
+#### Node IP  
+
+Node节点的IP地址，即物理网卡的IP地址。  
+可以是物理机的IP（也可能是虚拟机IP），每个`Service`都会在Node节点上开通一个端口，外部可以通过`NodeIP:NodePort`即可访问Service里的Pod,和我们访问服务器部署的项目一样，`IP:端口/项目名`。  
+
+#### Pod IP
+
+
+
 
 ### Service几种类型
 
@@ -98,24 +131,6 @@ LoadBalancer解决了这些问题，通过将Service定义为LoadBalancer类型�
 
 >目前WS, Azure, CloudStack, GCE 和 OpenStack 等主流的公有云和私有云提供商都可以为Kubernetes提供Load Balancer。一般来说，公有云提供商还会为Load Balancer提供一个External IP，以提供Internet接入。如果你的产品没有使用云提供商，而是自建Kubernetes Cluster，则需要自己提供LoadBalancer。
 
-### port
-
-service中主要涉及到了三种port：  
-
-- port 
-
-这里的port表示service暴露在clusterIP上的端口，clusterIP:Port 是提供给集群内部访问kubernetes服务的入口。  
-
-- targetPort 
-
-targetPort是pod上的端口，从port和nodePort上到来的数据最终经过kube-proxy流入到后端pod的targetPort上进入容器。  
-
-- nodePort
-
-就是Node的基本port。选择该值，这个servce就可以通过NodeIP:NodePort访问这个Service服务，NodePort会路由到Cluster IP服务，这个Cluster IP会通过请求自动创建。    
-
-
-总的来说，port和nodePort都是service的端口，前者暴露给集群内客户访问服务，后者暴露给集群外客户访问服务。从这两个端口到来的数据都需要经过反向代理kube-proxy流入后端pod的targetPod，从而到达pod上的容器内。  
 
 ### 参考
 
@@ -126,3 +141,4 @@ targetPort是pod上的端口，从port和nodePort上到来的数据最终经过k
 【Load Balancer】https://www.f5.com/services/resources/glossary/load-balancer#:~:text=A%20load%20balancer%20is%20a,users)%20and%20reliability%20of%20applications.  
 【What Is Load Balancing】https://www.nginx.com/resources/glossary/load-balancing/  
 【【K8S】Service服务详解，看这一篇就够了！！】https://www.cnblogs.com/binghe001/p/13166641.html  
+【k8s-集群里的三种IP（NodeIP、PodIP、ClusterIP）】https://blog.csdn.net/qq_21187515/article/details/101363521   
