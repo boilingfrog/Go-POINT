@@ -1,6 +1,7 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+
 - [k8s中的service](#k8s%E4%B8%AD%E7%9A%84service)
   - [service存在的意义](#service%E5%AD%98%E5%9C%A8%E7%9A%84%E6%84%8F%E4%B9%89)
   - [Pod与Service的关系](#pod%E4%B8%8Eservice%E7%9A%84%E5%85%B3%E7%B3%BB)
@@ -8,6 +9,7 @@
     - [ClusterIP](#clusterip)
     - [NodePort](#nodeport)
     - [LoadBalancer](#loadbalancer)
+  - [port](#port)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -96,6 +98,24 @@ LoadBalancer解决了这些问题，通过将Service定义为LoadBalancer类型�
 
 >目前WS, Azure, CloudStack, GCE 和 OpenStack 等主流的公有云和私有云提供商都可以为Kubernetes提供Load Balancer。一般来说，公有云提供商还会为Load Balancer提供一个External IP，以提供Internet接入。如果你的产品没有使用云提供商，而是自建Kubernetes Cluster，则需要自己提供LoadBalancer。
 
+### port
+
+service中主要涉及到了三种port：  
+
+- port 
+
+这里的port表示service暴露在clusterIP上的端口，clusterIP:Port 是提供给集群内部访问kubernetes服务的入口。  
+
+- targetPort 
+
+targetPort是pod上的端口，从port和nodePort上到来的数据最终经过kube-proxy流入到后端pod的targetPort上进入容器。  
+
+- nodePort
+
+就是Node的基本port。选择该值，这个servce就可以通过NodeIP:NodePort访问这个Service服务，NodePort会路由到Cluster IP服务，这个Cluster IP会通过请求自动创建。    
+
+
+总的来说，port和nodePort都是service的端口，前者暴露给集群内客户访问服务，后者暴露给集群外客户访问服务。从这两个端口到来的数据都需要经过反向代理kube-proxy流入后端pod的targetPod，从而到达pod上的容器内。  
 
 ### 参考
 
@@ -104,4 +124,5 @@ LoadBalancer解决了这些问题，通过将Service定义为LoadBalancer类型�
 【如何为服务网格选择入口网关？- Kubernetes Ingress, Istio Gateway还是API Gateway？】https://mp.weixin.qq.com/s?__biz=MzU3MjI5ODgxMA==&mid=2247483759&idx=1&sn=d44c3194810c02eba81d427292fab2d9&chksm=fcd2423acba5cb2c55e3d9952a74d06e6e5803e8a9755885e66630092e1687b57ad09154dc5f&scene=21#wechat_redirect  
 【iptables详解（1）：iptables概念】https://www.zsythink.net/archives/1199  
 【Load Balancer】https://www.f5.com/services/resources/glossary/load-balancer#:~:text=A%20load%20balancer%20is%20a,users)%20and%20reliability%20of%20applications.  
-【What Is Load Balancing】https://www.nginx.com/resources/glossary/load-balancing/
+【What Is Load Balancing】https://www.nginx.com/resources/glossary/load-balancing/  
+【【K8S】Service服务详解，看这一篇就够了！！】https://www.cnblogs.com/binghe001/p/13166641.html  
