@@ -63,6 +63,19 @@ Node节点的IP地址，即物理网卡的IP地址。
 
 #### Pod IP
 
+`Pod IP`是每个Pod的IP地址，他是`Docker Engine`根据docker网桥的IP地址段进行分配的，通常是一个虚拟的二层网络。  
+
+1、同Service下的pod可以直接根据PodIP相互通信；  
+
+2、不同Service下的pod在集群间pod通信要借助于 cluster ip； 
+ 
+3、pod和集群外通信，要借助于node ip。  
+
+#### Cluster IP
+
+Service的IP地址，此为虚拟IP地址。外部网络无法ping通，只有kubernetes集群内部访问使用。  
+
+
 
 
 
