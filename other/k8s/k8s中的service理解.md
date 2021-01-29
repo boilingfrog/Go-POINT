@@ -61,6 +61,23 @@ service会涉及到几种ip
 Node节点的IP地址，即物理网卡的IP地址。  
 可以是物理机的IP（也可能是虚拟机IP），每个`Service`都会在Node节点上开通一个端口，外部可以通过`NodeIP:NodePort`即可访问Service里的Pod,和我们访问服务器部署的项目一样，`IP:端口/项目名`。  
 
+在k8s中查看  
+
+```go
+$ kubectl get nodes
+NAME             STATUS   ROLES    AGE   VERSION
+192.168.56.202   Ready    <none>   71d   v1.19.4
+192.168.56.203   Ready    <none>   71d   v1.19.4
+```
+
+当然有的node是起了别名，就需要进去node中查看  
+
+```
+$ kubectl describe node nodeName
+```
+
+![service](/img/service_11.jpg?raw=true)
+
 #### Pod IP
 
 `Pod IP`是每个Pod的IP地址，他是`Docker Engine`根据docker网桥的IP地址段进行分配的，通常是一个虚拟的二层网络。  
@@ -70,6 +87,28 @@ Node节点的IP地址，即物理网卡的IP地址。
 2、不同Service下的pod在集群间pod通信要借助于 cluster ip； 
  
 3、pod和集群外通信，要借助于node ip。  
+
+在kubernetes查询`Pod IP`  
+
+查看已有的pod  
+
+```
+$ kubectl get pods
+NAME                       READY   STATUS    RESTARTS   AGE
+go-app-5d584885d7-2gf2b    1/1     Running   8          13d
+go-app-5d584885d7-jnm8g    1/1     Running   8          13d
+nginx-ds-695685c55-hcx82   1/1     Running   8          13d
+nginx-ds-695685c55-pvtv9   1/1     Running   8          13d
+nginx-ds-695685c55-rp5bb   1/1     Running   8          13d
+```
+
+查看某个pod的ip  
+
+```
+$ kubectl describe pod  go-app-5d584885d7-2gf2b
+```
+
+![service](/img/service_12.jpg?raw=true)
 
 #### Cluster IP
 
