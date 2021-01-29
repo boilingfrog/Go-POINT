@@ -115,6 +115,21 @@ $ kubectl describe pod  go-app-5d584885d7-2gf2b
 Service的IP地址，此为虚拟IP地址。外部网络无法ping通，只有kubernetes集群内部访问使用。  
 
 
+Cluster IP是一个虚拟的IP  
+
+1、`Cluster IP`仅仅作用于`Kubernetes Service`这个对象，并由`Kubernetes`管理和分配P地址；  
+
+2、`Cluster IP`无法被ping，他没有一个“实体网络对象”来响应；  
+
+3、`Cluster IP`只能结合`Service Port`组成一个具体的通信端口，单独的`Cluster IP`不具备通信的基础，并且他们属于`Kubernetes`集群这样一个封闭的空间；  
+
+4、在不同Service下的pod节点在集群间相互访问可以通过`Cluster IP`。  
+
+
+
+
+
+
 
 
 
