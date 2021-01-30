@@ -5,11 +5,19 @@
 - [k8s中的service](#k8s%E4%B8%AD%E7%9A%84service)
   - [service存在的意义](#service%E5%AD%98%E5%9C%A8%E7%9A%84%E6%84%8F%E4%B9%89)
   - [Pod与Service的关系](#pod%E4%B8%8Eservice%E7%9A%84%E5%85%B3%E7%B3%BB)
+  - [Port](#port)
+    - [port](#port)
+    - [targetPort](#targetport)
+    - [nodePort](#nodeport)
+  - [IP](#ip)
+    - [Node IP](#node-ip)
+    - [Pod IP](#pod-ip)
+    - [Cluster IP](#cluster-ip)
+    - [三种IP网络间的通信](#%E4%B8%89%E7%A7%8Dip%E7%BD%91%E7%BB%9C%E9%97%B4%E7%9A%84%E9%80%9A%E4%BF%A1)
   - [Service几种类型](#service%E5%87%A0%E7%A7%8D%E7%B1%BB%E5%9E%8B)
     - [ClusterIP](#clusterip)
     - [NodePort](#nodeport)
     - [LoadBalancer](#loadbalancer)
-  - [Port](#port)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -37,15 +45,15 @@
 
 service中主要涉及到了三种port：  
 
-- port 
+#### port 
 
 这里的port表示service暴露在clusterIP上的端口，clusterIP:Port 是提供给集群内部访问kubernetes服务的入口。  
 
-- targetPort 
+#### targetPort 
 
 targetPort是pod上的端口，从port和nodePort上到来的数据最终经过kube-proxy流入到后端pod的targetPort上进入容器。  
 
-- nodePort
+#### nodePort
 
 就是Node的基本port。选择该值，这个servce就可以通过NodeIP:NodePort访问这个Service服务，NodePort会路由到Cluster IP服务，这个Cluster IP会通过请求自动创建。    
 
@@ -114,7 +122,6 @@ $ kubectl describe pod  go-app-5d584885d7-2gf2b
 
 Service的IP地址，此为虚拟IP地址。外部网络无法ping通，只有kubernetes集群内部访问使用。  
 
-
 Cluster IP是一个虚拟的IP  
 
 1、`Cluster IP`仅仅作用于`Kubernetes Service`这个对象，并由`Kubernetes`管理和分配P地址；  
@@ -125,13 +132,35 @@ Cluster IP是一个虚拟的IP
 
 4、在不同Service下的pod节点在集群间相互访问可以通过`Cluster IP`。  
 
+查看 service的ip   
 
+```go
+$ kubectl describe svc go-app-svc
+Name:                     go-app-svc
+Namespace:                default
+Labels:                   <none>
+Annotations:              <none>
+Selector:                 app=go-app
+Type:                     NodePort
+IP:                       10.0.0.16
+Port:                     <unset>  8000/TCP
+TargetPort:               8000/TCP
+NodePort:                 <unset>  45366/TCP
+Endpoints:                172.17.10.4:8000,172.17.10.5:8000
+Session Affinity:         None
+External Traffic Policy:  Cluster
+Events:                   <none>
+```
 
+ip如上是`10.0.0.16`
 
+#### 三种IP网络间的通信
 
+service地址和pod地址在不同网段，service地址为虚拟地址，不配在pod上或主机上，外部访问时，先到Node节点网络，再转到service网络，最后代理给pod网络。  
 
+Kubernetes在其所有节点上开放一个端口给外部访问（所有节点上都使用相同的端口号）， 并将传入的连接转发给作为Service服务对象的pod。这样我们的pod就可以被外部请求访问到。   
 
-
+![service](/img/service_16.jpg?raw=true)
 
 ### Service几种类型
 
