@@ -1,6 +1,6 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
 
 - [k8s中的ingress](#k8s%E4%B8%AD%E7%9A%84ingress)
   - [什么是ingress](#%E4%BB%80%E4%B9%88%E6%98%AFingress)
@@ -11,7 +11,6 @@
     - [同一个域名，不同的URL路径被转发到不同的服务上](#%E5%90%8C%E4%B8%80%E4%B8%AA%E5%9F%9F%E5%90%8D%E4%B8%8D%E5%90%8C%E7%9A%84url%E8%B7%AF%E5%BE%84%E8%A2%AB%E8%BD%AC%E5%8F%91%E5%88%B0%E4%B8%8D%E5%90%8C%E7%9A%84%E6%9C%8D%E5%8A%A1%E4%B8%8A)
     - [不同的域名（虚拟主机名）被转发到不同的服务上](#%E4%B8%8D%E5%90%8C%E7%9A%84%E5%9F%9F%E5%90%8D%E8%99%9A%E6%8B%9F%E4%B8%BB%E6%9C%BA%E5%90%8D%E8%A2%AB%E8%BD%AC%E5%8F%91%E5%88%B0%E4%B8%8D%E5%90%8C%E7%9A%84%E6%9C%8D%E5%8A%A1%E4%B8%8A)
     - [不使用域名的转发规则](#%E4%B8%8D%E4%BD%BF%E7%94%A8%E5%9F%9F%E5%90%8D%E7%9A%84%E8%BD%AC%E5%8F%91%E8%A7%84%E5%88%99)
-  - [Pod与Ingress的关系](#pod%E4%B8%8Eingress%E7%9A%84%E5%85%B3%E7%B3%BB)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -50,6 +49,8 @@ k8s 有一个贯穿始终的设计理念，即需求和供给的分离。`Ingres
 4、Ingress 可以为多个命名空间服务。  
 
 ### 配置ingress规则
+
+关于ingress的部署可以参考另一篇文章[k8s发布go应用](https://www.cnblogs.com/ricklz/p/14071965.html)  
 
 #### 转发到单个后端服务上
 
@@ -167,24 +168,6 @@ spec:
           serviceName: go-app-svc
           servicePort: 8000
 ```
-
-
-
-
-### Pod与Ingress的关系
-
-通过Service关联Pod  
-基于域名访问  
-通过Ingress Controller实现Pod的负载均衡  
-支持TCP/UDP 4层和HTTP 7层  
-
-Ingress是一个规
-
-
-
-
-
-
 
 ### 参考
 【Kubernetes的Ingress是啥】https://www.cnblogs.com/chenqionghe/p/11726231.html  
