@@ -169,8 +169,15 @@ spec:
           servicePort: 8000
 ```
 
+### 四层、七层负载均衡的区别
+
+上面我们经常提到四层和七层的网络负载，不过到底是什么呢，已经他们之间的区别？  
+
+
+
 ### 参考
 【Kubernetes的Ingress是啥】https://www.cnblogs.com/chenqionghe/p/11726231.html  
 【理解k8s 的 Ingress】https://www.jianshu.com/p/189fab1845c5  
 【Ingress】https://www.huaweicloud.com/zhishi/Ingress.html 
+【四层、七层负载均衡的区别】https://cloud.tencent.com/developer/article/1082047  
 
