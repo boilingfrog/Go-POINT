@@ -30,5 +30,27 @@ tcp/ip的分层
 
 ![channel](/img/tcp-ip_2.jpg?raw=true)
 
+TCP传给IP的数据单元称作 TCP报文段或简称为 TCP段（TCP segment）。  
+
+IP传给网络接口层的数据单元称作 IP数据报(IP datagram)。  
+
+通过以太网传输的比特 流称作帧(Frame)。  
+
+由于TCP、UDP、ICMP和IGMP都要向IP传送数据，因此IP必须在生成的IP首部中加入某种标识，以表明数据属于哪一层。为此，IP在首部中存入一个长度为8bit的数值，称作协议域。  
+
+- 1表示为ICMP协议，
+- 2表示为IGMP协议，
+- 6表示为TCP协议， 
+- 17表示为UDP协议。  
+
+### 链路层
+
+链路层主要有三个目的：  
+1、为IP模块发送和 接收IP数据报；  
+2、为ARP模块发送ARP请求和接收ARP应答；  
+3、为RARP发送RARP请 求和接收RARP应答。   
 
 
+### IP
+
+IP是TCP/IP协议族中最为核心的协议。所有的 TCP、UDP、ICMP及IGMP数据都以IP数据 报格式传输。  
