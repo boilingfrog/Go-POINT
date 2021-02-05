@@ -22,13 +22,13 @@ tcp/ip的分层
 
 有时也称作数据链路层或网络接口层，通常包括操作系统中的设备驱动程序和计算机中对应的网络接口卡。它们一起处理与电缆（或其他任何传输媒介）的物理接口细节。  
 
-![channel](/img/tcp-ip_1.jpg?raw=true)
+![tcp-ip](/img/tcp-ip_1.jpg?raw=true)
 
 #### 数据的封装
 
 当程序使用tcp传输数据的时候，数据被送入协议栈，然后逐个通过每一层，最后被当成比特流送入网络。在通过每一层的时候，都会对数据增加一些头部信息或尾部信息，来封装请求的数据。  
 
-![channel](/img/tcp-ip_2.jpg?raw=true)
+![tcp-ip](/img/tcp-ip_2.jpg?raw=true)
 
 TCP传给IP的数据单元称作 TCP报文段或简称为 TCP段（TCP segment）。  
 
@@ -56,7 +56,7 @@ IP传给网络接口层的数据单元称作 IP数据报(IP datagram)。
 
 ### IP
 
-![channel](/img/tcp-ip_3.jpg?raw=true)
+![tcp-ip](/img/tcp-ip_3.jpg?raw=true)
 
 IP位于OSI参考模型中的d第三层-网络层。   
 
@@ -79,6 +79,15 @@ IP是TCP/IP协议族中最为核心的协议。所有的 TCP、UDP、ICMP及IGMP
 IP地址：是网络层和以上各层使用的地址，是一种逻辑地址。  
 
 <img src="/img/tcp-ip_4.jpg" width = "978" height = "322" alt="tcp-ip" align="center" />
+
+注意：在局域网中，由于硬件地址是固话在网卡上的ROM中，因此常常将硬件地址称为物理地址。因为在局域网中，MAC帧中的源地址和目标地址都是硬件地址，因此硬件地址又称为MAC地址。  
+
+在发送数据报时，数据从上高层下到低层，然后到通信链路层上传输。使用IP的数据报，一但交给数据链路层，就会被封装成MAC帧了。然后MAC帧在传送的时使用的源地址和目标地址都是硬件地址，这两个硬件地址都写在Mac帧的首部中。   
+
+对于MAC帧来讲，在不同局域网中的MAC地址可能不同，但是里面封装的IP地址源地址和目标地址是不变的，MAC帧经过几个不同的局域网，最后把IP数据包，送达到目标地址。  
+
+![tcp-ip](/img/tcp-ip_5.jpg?raw=true)
+
 
 
 
