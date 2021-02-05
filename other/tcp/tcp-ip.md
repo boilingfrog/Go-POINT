@@ -78,7 +78,7 @@ IP是TCP/IP协议族中最为核心的协议。所有的 TCP、UDP、ICMP及IGMP
 
 IP地址：是网络层和以上各层使用的地址，是一种逻辑地址。  
 
-![channel](/img/tcp-ip_4.jpg?raw=true)
+<img src="/img/ip_4.jpg" width = "978" height = "322" alt="tcp-ip" align="center" />
 
 
 
