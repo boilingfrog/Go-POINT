@@ -43,7 +43,8 @@ type Context interface {
 }
 ```
 
-`Deadline`返回Context被取消的时间
+`Deadline`返回Context被取消的时间,第一个返回式是截止时间，到了这个时间点，Context会自动发起取消请求；第二个返回值ok==false时表示没有设置截止时间，如果需要取消的话，需要调用取消函数进行取消。  
+`Done`返回一个只读的chan,类型为struct{}，
 
 
 
@@ -56,3 +57,4 @@ type Context interface {
 【深度解密Go语言之context】https://www.cnblogs.com/qcrao-2018/p/11007503.html   
 【深入理解Golang之context】https://juejin.cn/post/6844904070667321357  
 【上下文 Context】https://draveness.me/golang/docs/part3-runtime/ch06-concurrency/golang-context/  
+【Golang Context深入理解】https://juejin.cn/post/6844903555145400334  
