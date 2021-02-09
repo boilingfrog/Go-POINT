@@ -28,21 +28,22 @@ go在Go 1.7 标准库引入context，主要用来在goroutine之间传递上下�
 
 ```go
 type Context interface {
-// 返回context被取消的时间
-// 当没有设置Deadline时间，返回false
+	// 返回context被取消的时间
+	// 当没有设置Deadline时间，返回false
 	Deadline() (deadline time.Time, ok bool)
 
-
+	// 当context被关闭，返回一个被关闭的channel
 	Done() <-chan struct{}
 
-
+	// 在 channel Done 关闭后，返回 context 取消原因
 	Err() error
 
-
+	// 获取key对应的value
 	Value(key interface{}) interface{}
 }
 ```
 
+`Deadline`返回Context被取消的时间
 
 
 
