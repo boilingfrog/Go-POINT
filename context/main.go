@@ -7,9 +7,28 @@ import (
 )
 
 func main() {
+	var ch = make(chan int, 1)
 
-	fmt.Println("++++")
-	ExampleWithCancel()
+	//close(readCh<-)
+	ch <- 12
+	close(ch)
+
+	readChannel(ch)
+	readChannel(ch)
+
+}
+
+func readChannel(ch <-chan int) {
+	//for item := range ch {
+	//	fmt.Println("+++++++")
+	//	fmt.Println(item)
+	//	fmt.Println("+++++++")
+	//}
+
+	select {
+	case i1 := <-ch:
+		fmt.Println("received ", i1)
+	}
 }
 
 func ExampleWithCancel() {

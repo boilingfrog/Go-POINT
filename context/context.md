@@ -1,3 +1,16 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [context](#context)
+  - [前言](#%E5%89%8D%E8%A8%80)
+  - [什么是context](#%E4%BB%80%E4%B9%88%E6%98%AFcontext)
+    - [为什么需要context呢](#%E4%B8%BA%E4%BB%80%E4%B9%88%E9%9C%80%E8%A6%81context%E5%91%A2)
+  - [context底层设计](#context%E5%BA%95%E5%B1%82%E8%AE%BE%E8%AE%A1)
+    - [Context](#context)
+  - [参考](#%E5%8F%82%E8%80%83)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## context
 
 ### 前言
@@ -44,7 +57,15 @@ type Context interface {
 ```
 
 `Deadline`返回Context被取消的时间,第一个返回式是截止时间，到了这个时间点，Context会自动发起取消请求；第二个返回值ok==false时表示没有设置截止时间，如果需要取消的话，需要调用取消函数进行取消。  
-`Done`返回一个只读的chan,类型为struct{}，
+
+`Done`返回一个只读的channel,类型为struct{}，当该context被取消的时候，该channel会被关闭,同时对应的使用该context的routine也应该结束并返回。  
+
+`Err`返回context结束的原因，只有在context被关闭的时候才会返回非空的值。  
+
+1、如果context被取消，会返回Canceled错误；  
+2、如果context超时，会返回DeadlineExceeded错误；  
+
+`Value`获取之前存入key对应的value值。里面的值可以多次拿取。  
 
 
 
