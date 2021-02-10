@@ -10,8 +10,8 @@ func main() {
 	var ch = make(chan int, 1)
 
 	//close(readCh<-)
-	ch <- 12
-	close(ch)
+	//ch <- 12
+	//close(ch)
 
 	readChannel(ch)
 	readChannel(ch)
