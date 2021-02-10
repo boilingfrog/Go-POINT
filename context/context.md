@@ -258,18 +258,22 @@ func propagateCancel(parent Context, child canceler) {
 	// 找到可以取消的父 context
 	if p, ok := parentCancelCtx(parent); ok {
 		p.mu.Lock()
+		// 父节点取消了
 		if p.err != nil {
-			// 父节点已经取消了,子节点也取消
+			// 取消子节点
 			child.cancel(false, p.err)
+			// 父节点没有取消
 		} else {
-			// 父节点未取消
 			if p.children == nil {
 				p.children = make(map[canceler]struct{})
 			}
+			// 挂载
 			p.children[child] = struct{}{}
 		}
 		p.mu.Unlock()
+		// 没有找到父节点
 	} else {
+		// 启动一个新的节点监听父节点和子节点的取消信息
 		go func() {
 			select {
 			// 如果父节点取消了
