@@ -246,7 +246,7 @@ func removeChild(parent Context, child canceler) {
 
 这个函数的作用就是关闭channel，递归地取消它的所有子节点；从父节点从删除自己。达到的效果是通过关闭channel，将取消信号传递给了它的所有子节点。    
 
-对外暴露的`WithCancel`就是对`cancelCtx`的应用  
+再来看下`propagateCancel`  
 
 ```go
 // broadcastCancel安排在父级被取消时取消子级。
@@ -283,6 +283,31 @@ func propagateCancel(parent Context, child canceler) {
 			}
 		}()
 	}
+}
+```
+
+这个函数的作用是向上挂载父context,这样在某个节点发出cancel信息的时候，就能调用cancel层层取消当前节点的子节点。  
+
+对外暴露的`WithCancel`就是对`cancelCtx`的应用  
+
+```go
+// WithCancel returns a copy of parent with a new Done channel. The returned
+// context's Done channel is closed when the returned cancel function is called
+// or when the parent context's Done channel is closed, whichever happens first.
+//
+// Canceling this context releases resources associated with it, so code should
+// call cancel as soon as the operations running in this Context complete.
+func WithCancel(parent Context) (ctx Context, cancel CancelFunc) {
+// 初始化一个cancelCtx
+	c := newCancelCtx(parent)
+// 当亲
+	propagateCancel(parent, &c)
+	return &c, func() { c.cancel(true, Canceled) }
+}
+
+// newCancelCtx returns an initialized cancelCtx.
+func newCancelCtx(parent Context) cancelCtx {
+	return cancelCtx{Context: parent}
 }
 ```
 
