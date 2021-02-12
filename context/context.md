@@ -291,16 +291,10 @@ func propagateCancel(parent Context, child canceler) {
 对外暴露的`WithCancel`就是对`cancelCtx`的应用  
 
 ```go
-// WithCancel returns a copy of parent with a new Done channel. The returned
-// context's Done channel is closed when the returned cancel function is called
-// or when the parent context's Done channel is closed, whichever happens first.
-//
-// Canceling this context releases resources associated with it, so code should
-// call cancel as soon as the operations running in this Context complete.
 func WithCancel(parent Context) (ctx Context, cancel CancelFunc) {
-// 初始化一个cancelCtx
+	// 初始化一个cancelCtx
 	c := newCancelCtx(parent)
-// 当亲
+	// 向上挂载父context
 	propagateCancel(parent, &c)
 	return &c, func() { c.cancel(true, Canceled) }
 }

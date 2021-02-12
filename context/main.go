@@ -7,14 +7,10 @@ import (
 )
 
 func main() {
-	var ch = make(chan int, 1)
+	ctx, cancel := context.WithCancel(context.Background())
 
-	//close(readCh<-)
-	//ch <- 12
-	//close(ch)
-
-	readChannel(ch)
-	readChannel(ch)
+	fmt.Println(ctx)
+	fmt.Println()
 
 }
 
