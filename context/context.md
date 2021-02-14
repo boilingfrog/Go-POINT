@@ -286,15 +286,15 @@ func propagateCancel(parent Context, child canceler) {
 }
 ```
 
-这个函数的作用是向上挂载父context,这样在某个节点发出cancel信息的时候，就能调用cancel层层取消当前节点的子节点。  
+这个函数的作用是在`parent`和`child`之间同步取消和结束的信号，保证在`parent`被取消时child也会收到对应的信号，不会出现状态不一致的情况。  
 
 对外暴露的`WithCancel`就是对`cancelCtx`的应用  
 
 ```go
 func WithCancel(parent Context) (ctx Context, cancel CancelFunc) {
-	// 初始化一个cancelCtx
+	// 将传入的上下文包装成私有结构体 context.cancelCtx
 	c := newCancelCtx(parent)
-	// 向上挂载父context
+	// 构建父子上下文之间的关联
 	propagateCancel(parent, &c)
 	return &c, func() { c.cancel(true, Canceled) }
 }
@@ -305,7 +305,11 @@ func newCancelCtx(parent Context) cancelCtx {
 }
 ```
 
-使用`WithCancel`传入一个`context`，会对这个context进行重新包装，加入`cancel`，在父节点退出的时候依次退出子节点。   
+使用`WithCancel`传入一个`context`，会对这个context进行重新包装。   
+
+当`WithCancel`函数返回的`CancelFunc`被调用或者是父节点的`done channel`被关闭（父节点的 CancelFunc 被调用），此 context（子节点）的 `done channel` 也会被关闭。    
+
+
 
 
 
