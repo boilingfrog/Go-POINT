@@ -303,8 +303,11 @@ func WithCancel(parent Context) (ctx Context, cancel CancelFunc) {
 func newCancelCtx(parent Context) cancelCtx {
 	return cancelCtx{Context: parent}
 }
-
 ```
+
+使用`WithCancel`传入一个`context`，会对这个context进行重新包装，加入`cancel`，在父节点退出的时候依次退出子节点。   
+
+
 
 
 ### 参考

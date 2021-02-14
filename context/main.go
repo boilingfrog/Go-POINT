@@ -7,11 +7,6 @@ import (
 )
 
 func main() {
-	ctx, cancel := context.WithCancel(context.Background())
-
-	fmt.Println(ctx)
-	fmt.Println()
-
 }
 
 func readChannel(ch <-chan int) {
