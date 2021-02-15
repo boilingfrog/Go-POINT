@@ -7,6 +7,14 @@ import (
 )
 
 func main() {
+	key := "test"
+	ctx := context.Background()
+	context.WithValue(ctx, key, "xxxx1")
+	fmt.Println(ctx.Value(key))
+}
+
+func searchValue(ctx context.Context, key string) interface{} {
+	return ctx.Value(key)
 }
 
 func readChannel(ch <-chan int) {

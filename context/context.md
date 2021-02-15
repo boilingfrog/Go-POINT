@@ -11,6 +11,8 @@
   - [几种context](#%E5%87%A0%E7%A7%8Dcontext)
     - [emptyCtx](#emptyctx)
     - [cancelCtx](#cancelctx)
+    - [timerCtx](#timerctx)
+    - [valueCtx](#valuectx)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -309,9 +311,109 @@ func newCancelCtx(parent Context) cancelCtx {
 
 当`WithCancel`函数返回的`CancelFunc`被调用或者是父节点的`done channel`被关闭（父节点的 CancelFunc 被调用），此 context（子节点）的 `done channel` 也会被关闭。    
 
+#### timerCtx
 
+在来看下timerCtx
 
+```go
+type timerCtx struct {
+	cancelCtx
+	timer *time.Timer // Under cancelCtx.mu.
 
+	deadline time.Time
+}
+
+func (c *timerCtx) cancel(removeFromParent bool, err error) {
+	// 调用context.cancelCtx.cancel
+	c.cancelCtx.cancel(false, err)
+	if removeFromParent {
+		// Remove this timerCtx from its parent cancelCtx's children.
+		removeChild(c.cancelCtx.Context, c)
+	}
+	c.mu.Lock()
+	// 关掉定时器，减少资源浪费
+	if c.timer != nil {
+		c.timer.Stop()
+		c.timer = nil
+	}
+	c.mu.Unlock()
+}
+```
+
+在`cancelCtx`的基础之上多了个`timer`和`deadline`。它通过停止计时器来实现取消，然后通过`cancelCtx.cancel`，实现取消。    
+
+```go
+func WithTimeout(parent Context, timeout time.Duration) (Context, CancelFunc) {
+	// 调用WithDeadline，传入时间
+	return WithDeadline(parent, time.Now().Add(timeout))
+}
+
+func WithDeadline(parent Context, d time.Time) (Context, CancelFunc) {
+	// 判断结束时间，是否到了
+	if cur, ok := parent.Deadline(); ok && cur.Before(d) {
+		// The current deadline is already sooner than the new one.
+		return WithCancel(parent)
+	}
+	// 构建timerCtx
+	c := &timerCtx{
+		cancelCtx: newCancelCtx(parent),
+		deadline:  d,
+	}
+	// 构建父子上下文之间的关联
+	propagateCancel(parent, c)
+	// 计算当前距离 deadline 的时间
+	dur := time.Until(d)
+	if dur <= 0 {
+		c.cancel(true, DeadlineExceeded) // deadline has already passed
+		return c, func() { c.cancel(false, Canceled) }
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.err == nil {
+		// d 时间后，timer 会自动调用 cancel 函数。自动取消
+		c.timer = time.AfterFunc(dur, func() {
+			c.cancel(true, DeadlineExceeded)
+		})
+	}
+	return c, func() { c.cancel(true, Canceled) }
+}
+```
+
+`context.WithDeadline`在创建`context.timerCtx`的过程中判断了父上下文的截止日期与当前日期，并通过`time.AfterFunc`创建定时器，当时间超过了截止日期后会调用`context.timerCtx.cancel`同步取消信号。  
+
+#### valueCtx
+
+```go
+type valueCtx struct {
+	Context
+	key, val interface{}
+}
+
+func (c *valueCtx) Value(key interface{}) interface{} {
+	if c.key == key {
+		return c.val
+	}
+	return c.Context.Value(key)
+}
+
+func WithValue(parent Context, key, val interface{}) Context {
+	if key == nil {
+		panic("nil key")
+	}
+	if !reflectlite.TypeOf(key).Comparable() {
+		panic("key is not comparable")
+	}
+	return &valueCtx{parent, key, val}
+}
+```
+
+如果`context.valueCtx`中存储的键值对与`context.valueCtx.Value`方法中传入的参数不匹配，就会从父上下文中查找该键对应的值直到某个父上下文中返回`nil`或者查找到对应的值。   
+
+因为查找方向是往上走的，所以，父节点没法获取子节点存储的值，子节点却可以获取父节点的值。  
+
+context查找的时候是向上查找，
+
+ 
 
 
 ### 参考
