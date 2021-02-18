@@ -13,6 +13,7 @@
     - [cancelCtx](#cancelctx)
     - [timerCtx](#timerctx)
     - [valueCtx](#valuectx)
+  - [防止内存泄露](#%E9%98%B2%E6%AD%A2%E5%86%85%E5%AD%98%E6%B3%84%E9%9C%B2)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -419,9 +420,30 @@ context查找的时候是向上查找，找到离得最近的一个父节点里�
 
 ### 防止内存泄露
 
-goroutine是很轻量的，但是不合理的使用就会导致goroutine的泄露，也就是内存泄露  
+goroutine是很轻量的，但是不合理的使用就会导致goroutine的泄露，也就是内存泄露，具体的内存泄露可参考[go中内存泄露的发现与排查](https://www.cnblogs.com/ricklz/p/11262069.html)
 
+使用`context.WithTimeout`可以防止内存泄露  
 
+```go
+func TimeoutCancelContext() {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(time.Millisecond*800))
+	go func() {
+		// 具体的业务逻辑
+		// 取消超时
+		defer cancel()
+	}()
+
+	select {
+	case <-ctx.Done():
+		fmt.Println("time out!!!")
+		return
+	}
+}
+```
+
+1、通过context的WithTimeout设置一个有效时间为1000毫秒的context。  
+
+2、业务逻辑完成会调用cancel(),取消超时，如果在设定的超时时间内，业务阻塞没有完成，就会触发超时的退出。  
 
 ### 参考
 
