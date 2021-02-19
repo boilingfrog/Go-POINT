@@ -255,7 +255,6 @@ func removeChild(parent Context, child canceler) {
 ```go
 // broadcastCancel安排在父级被取消时取消子级。
 func propagateCancel(parent Context, child canceler) {
-	// done为nil说明只读的，没有发出取消的信息，所以直接返回
 	if parent.Done() == nil {
 		return // parent is never canceled
 	}
