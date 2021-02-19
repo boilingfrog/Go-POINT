@@ -6,11 +6,20 @@ import (
 	"time"
 )
 
+var closedchan = make(chan struct{})
+
+//func init() {
+//	close(closedchan)
+//}
 func main() {
-	key := "test"
-	ctx := context.Background()
-	context.WithValue(ctx, key, "xxxx1")
-	fmt.Println(ctx.Value(key))
+	//	close(closedchan)
+	fmt.Println(Done())
+	fmt.Println(closedchan == nil)
+
+}
+
+func Done() <-chan struct{} {
+	return closedchan
 }
 
 func searchValue(ctx context.Context, key string) interface{} {

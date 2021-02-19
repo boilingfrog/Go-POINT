@@ -7,13 +7,14 @@
   - [什么是context](#%E4%BB%80%E4%B9%88%E6%98%AFcontext)
     - [为什么需要context呢](#%E4%B8%BA%E4%BB%80%E4%B9%88%E9%9C%80%E8%A6%81context%E5%91%A2)
   - [context底层设计](#context%E5%BA%95%E5%B1%82%E8%AE%BE%E8%AE%A1)
-    - [Context](#context)
+    - [context的实现](#context%E7%9A%84%E5%AE%9E%E7%8E%B0)
   - [几种context](#%E5%87%A0%E7%A7%8Dcontext)
     - [emptyCtx](#emptyctx)
     - [cancelCtx](#cancelctx)
     - [timerCtx](#timerctx)
     - [valueCtx](#valuectx)
   - [防止内存泄露](#%E9%98%B2%E6%AD%A2%E5%86%85%E5%AD%98%E6%B3%84%E9%9C%B2)
+  - [总结](#%E6%80%BB%E7%BB%93)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -44,7 +45,7 @@ go在Go 1.7 标准库引入context，主要用来在goroutine之间传递上下�
 
 ### context底层设计
 
-#### Context
+#### context的实现
 
 ```go
 type Context interface {
@@ -254,7 +255,7 @@ func removeChild(parent Context, child canceler) {
 ```go
 // broadcastCancel安排在父级被取消时取消子级。
 func propagateCancel(parent Context, child canceler) {
-	// done为nil说明只读的
+	// done为nil说明只读的，没有发出取消的信息，所以直接返回
 	if parent.Done() == nil {
 		return // parent is never canceled
 	}
@@ -444,6 +445,16 @@ func TimeoutCancelContext() {
 1、通过context的WithTimeout设置一个有效时间为1000毫秒的context。  
 
 2、业务逻辑完成会调用cancel(),取消超时，如果在设定的超时时间内，业务阻塞没有完成，就会触发超时的退出。  
+
+### 总结
+
+1、context是并发安全的  
+
+2、context可以进行传值，但是在使用context进行传值的时候我们应该慎用，使用context传值是一个比较差的设计，比较常见的使用场景是传递请求对应用户的认证令牌以及用于进行分布式追踪的请求 ID。  
+
+3、对于context的传值查询，context查找的时候是向上查找，找到离得最近的一个父节点里面挂载的值，所以context在查找的时候会存在覆盖的情况，如果一个处理过程中，有若干个函数和若干个子协程。在不同的地方向里面塞值进去，对于取值可能取到的不是自己放进去的值。 
+
+4、当使用 context 作为函数参数时，直接把它放在第一个参数的位置，并且命名为 ctx。另外，不要把 context 嵌套在自定义的类型里。    
 
 ### 参考
 
