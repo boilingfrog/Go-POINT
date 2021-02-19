@@ -246,6 +246,13 @@ func removeChild(parent Context, child canceler) {
 	}
 	p.mu.Unlock()
 }
+
+// closedchan is a reusable closed channel.
+var closedchan = make(chan struct{})
+
+func init() {
+	close(closedchan)
+}
 ```
 
 这个函数的作用就是关闭channel，递归地取消它的所有子节点；从父节点从删除自己。达到的效果是通过关闭channel，将取消信号传递给了它的所有子节点。    
@@ -287,9 +294,28 @@ func propagateCancel(parent Context, child canceler) {
 		}()
 	}
 }
+
+func parentCancelCtx(parent Context) (*cancelCtx, bool) {
+	for {
+		switch c := parent.(type) {
+		case *cancelCtx:
+			return c, true
+		case *timerCtx:
+			return &c.cancelCtx, true
+		case *valueCtx:
+			parent = c.Context
+		default:
+			return nil, false
+		}
+	}
+}
 ```
 
 这个函数的作用是在`parent`和`child`之间同步取消和结束的信号，保证在`parent`被取消时child也会收到对应的信号，不会出现状态不一致的情况。  
+
+上面可以看到，对于指定的几种context是直接cancel方法递归地取消所有的子上下文这可以节省开启新goroutine监听父context是否结束的开销；     
+
+对于非指定的也就是自定义的context，运行时会通过启动goroutine来监听父Context是否结束，并在父context结束时取消自己，然而启动新的goroutine是相对昂贵的开销；  
 
 对外暴露的`WithCancel`就是对`cancelCtx`的应用  
 
