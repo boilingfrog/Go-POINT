@@ -12,9 +12,11 @@ var closedchan = make(chan struct{})
 //	close(closedchan)
 //}
 func main() {
-	//	close(closedchan)
+	close(closedchan)
+	//fmt.Println(Done())
+	d := <-closedchan
+	fmt.Println(d)
 	fmt.Println(Done())
-	fmt.Println(closedchan == nil)
 
 }
 
