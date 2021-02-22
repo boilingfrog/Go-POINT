@@ -10,7 +10,6 @@ func main() {
 }
 
 func waitGroup() {
-
 	var wg sync.WaitGroup
 
 	wg.Add(3)
@@ -29,13 +28,10 @@ func waitGroup() {
 
 	wg.Wait()
 	fmt.Println("1 2 3 4 end")
-
 }
 
 func channa() {
-
 	sign := make(chan int, 3)
-
 	go func() {
 		sign <- 2
 		fmt.Println(2)
