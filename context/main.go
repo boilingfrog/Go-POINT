@@ -14,9 +14,21 @@ var closedchan = make(chan struct{})
 func main() {
 	close(closedchan)
 	//fmt.Println(Done())
-	d := <-closedchan
-	fmt.Println(d)
-	fmt.Println(Done())
+	//d := <-closedchan
+	//fmt.Println(d)
+
+	//for {
+	//	select {
+	//	case <-closedchan:
+	//		fmt.Println(<-closedchan)
+	//		return
+	//	}
+	//}
+
+	for item := range closedchan {
+		fmt.Println(121)
+		fmt.Println(item)
+	}
 
 }
 

@@ -65,7 +65,7 @@ type Context interface {
 
 `Deadline`返回Context被取消的时间,第一个返回式是截止时间，到了这个时间点，Context会自动发起取消请求；第二个返回值ok==false时表示没有设置截止时间，如果需要取消的话，需要调用取消函数进行取消。  
 
-`Done`返回一个只读的channel,类型为struct{}，当该context被取消的时候，该channel会被关闭,同时对应的使用该context的routine也应该结束并返回。  
+`Done`返回一个只读的channel,类型为struct{}，当该context被取消的时候，该channel会被关闭,当channel被关闭的时候，才能通过select读出对应的零值，字协程监听这个channel,只要能读出值（对应的零值），就可以进行收尾工作了。    
 
 `Err`返回context结束的原因，只有在context被关闭的时候才会返回非空的值。  
 
