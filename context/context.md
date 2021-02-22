@@ -194,7 +194,6 @@ func (c *cancelCtx) Done() <-chan struct{} {
 
 这是个懒汉模式的函数，第一次调用的时候`c.done`才会被创建。  
 
-
 重点看下`cancel`  
 
 ```go
@@ -212,9 +211,12 @@ func (c *cancelCtx) cancel(removeFromParent bool, err error) {
 	}
 	c.err = err
 	// 关闭channel
+	// channel没有初始化
 	if c.done == nil {
+		// 赋值一个关闭的channel,closedchan
 		c.done = closedchan
 	} else {
+		// 初始化了channel，直接关闭
 		close(c.done)
 	}
 	// 递归子节点，一层层取消

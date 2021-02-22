@@ -11,24 +11,24 @@ var closedchan = make(chan struct{})
 //func init() {
 //	close(closedchan)
 //}
+
+type cancelCtx struct {
+	done chan struct{} // created lazily, closed by first cancel call
+
+	ddd string
+}
+
 func main() {
 	close(closedchan)
-	//fmt.Println(Done())
-	//d := <-closedchan
-	//fmt.Println(d)
-
-	//for {
-	//	select {
-	//	case <-closedchan:
-	//		fmt.Println(<-closedchan)
-	//		return
-	//	}
-	//}
 
 	for item := range closedchan {
 		fmt.Println(121)
 		fmt.Println(item)
 	}
+	var ff cancelCtx
+	ff.ddd = "123"
+	//close(ff.done)
+	fmt.Println(ff.done == nil)
 
 }
 
