@@ -8,26 +8,110 @@
 
 ### WaitGroup实现
 
+看一个小demo  
+
 ```go
-// A WaitGroup waits for a collection of goroutines to finish.
-// The main goroutine calls Add to set the number of
-// goroutines to wait for. Then each of the goroutines
-// runs and calls Done when finished. At the same time,
-// Wait can be used to block until all goroutines have finished.
-//
-// A WaitGroup must not be copied after first use.
+func waitGroup() {
+	var wg sync.WaitGroup
+
+	wg.Add(4)
+	go func() {
+		defer wg.Done()
+		fmt.Println(1)
+	}()
+
+	go func() {
+		defer wg.Done()
+		fmt.Println(2)
+	}()
+
+	go func() {
+		defer wg.Done()
+		fmt.Println(3)
+	}()
+
+	go func() {
+		defer wg.Done()
+		fmt.Println(4)
+	}()
+
+	wg.Wait()
+	fmt.Println("1 2 3 4 end")
+}
+```
+
+1、启动goroutine前将计数器通过`Add(4)`将计数器设置为待启动的`goroutine`个数。  
+2、启动`goroutine`后，使用`Wait()`方法阻塞主协程，等待计数器变为0。  
+3、每个`goroutine`执行结束通过`Done()`方法将计数器减1。  
+4、计数器变为0后，阻塞的`goroutine`被唤醒。   
+
+看下具体的实现  
+
+```go
+// WaitGroup 不能被copy
 type WaitGroup struct {
 	noCopy noCopy
 
-	// 64-bit value: high 32 bits are counter, low 32 bits are waiter count.
-	// 64-bit atomic operations require 64-bit alignment, but 32-bit
-	// compilers do not ensure it. So we allocate 12 bytes and then use
-	// the aligned 8 bytes in them as state, and the other 4 as storage
-	// for the sema.
 	state1 [3]uint32
 }
-
 ```
+
+**noCopy**
+
+意思就是不让copy,是如何实现的呢？
+
+> Go中没有原生的禁止拷贝的方式，所以如果有的结构体，你希望使用者无法拷贝，只能指针传递保证全局唯一的话，可以这么干，定义 一个结构体叫 noCopy，实现如下的接口，然后嵌入到你想要禁止拷贝的结构体中，这样go vet就能检测出来。
+
+```go
+// noCopy may be embedded into structs which must not be copied
+// after the first use.
+//
+// See https://golang.org/issues/8005#issuecomment-190753527
+// for details.
+type noCopy struct{}
+
+// Lock is a no-op used by -copylocks checker from `go vet`.
+func (*noCopy) Lock()   {}
+func (*noCopy) Unlock() {}
+```
+
+测试下
+
+```go
+type noCopy struct{}
+
+func (*noCopy) Lock()   {}
+func (*noCopy) Unlock() {}
+
+type Person struct {
+	noCopy noCopy
+	name   string
+}
+
+// go中的函数传参都是值拷贝
+func test(person Person) {
+	fmt.Println(person)
+}
+
+func main() {
+	var person Person
+	test(person)
+}
+```
+
+go vet main.go
+
+```go
+$ go vet main.go
+# command-line-arguments
+./main.go:18:18: test passes lock by value: command-line-arguments.Person contains command-line-arguments.noCopy
+./main.go:19:14: call of fmt.Println copies lock value: command-line-arguments.Person contains command-line-arguments.noCopy
+./main.go:24:7: call of test copies lock value: command-line-arguments.Person contains command-line-arguments.noCopy
+```
+
+使用vet检测到了不能copy的错误  
+
+**state1**
 
 
 

@@ -12,17 +12,24 @@ func main() {
 func waitGroup() {
 	var wg sync.WaitGroup
 
-	wg.Add(3)
+	wg.Add(4)
 	go func() {
-		wg.Done()
+		defer wg.Done()
+		fmt.Println(1)
+	}()
+
+	go func() {
+		defer wg.Done()
 		fmt.Println(2)
 	}()
+
 	go func() {
-		wg.Done()
+		defer wg.Done()
 		fmt.Println(3)
 	}()
+
 	go func() {
-		wg.Done()
+		defer wg.Done()
 		fmt.Println(4)
 	}()
 
