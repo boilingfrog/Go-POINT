@@ -114,6 +114,53 @@ $ go vet main.go
 **state1**
 
 
+#### Add
+
+```go
+func (wg *WaitGroup) Add(delta int) {
+	statep, semap := wg.state()
+	if race.Enabled {
+		_ = *statep // trigger nil deref early
+		if delta < 0 {
+			// Synchronize decrements with Wait.
+			race.ReleaseMerge(unsafe.Pointer(wg))
+		}
+		race.Disable()
+		defer race.Enable()
+	}
+	state := atomic.AddUint64(statep, uint64(delta)<<32)
+	v := int32(state >> 32)
+	w := uint32(state)
+	if race.Enabled && delta > 0 && v == int32(delta) {
+		// The first increment must be synchronized with Wait.
+		// Need to model this as a read, because there can be
+		// several concurrent wg.counter transitions from 0.
+		race.Read(unsafe.Pointer(semap))
+	}
+	if v < 0 {
+		panic("sync: negative WaitGroup counter")
+	}
+	if w != 0 && delta > 0 && v == int32(delta) {
+		panic("sync: WaitGroup misuse: Add called concurrently with Wait")
+	}
+	if v > 0 || w == 0 {
+		return
+	}
+	// This goroutine has set counter to 0 when waiters > 0.
+	// Now there can't be concurrent mutations of state:
+	// - Adds must not happen concurrently with Wait,
+	// - Wait does not increment waiters if it sees counter == 0.
+	// Still do a cheap sanity check to detect WaitGroup misuse.
+	if *statep != state {
+		panic("sync: WaitGroup misuse: Add called concurrently with Wait")
+	}
+	// Reset waiters count to 0.
+	*statep = 0
+	for ; w != 0; w-- {
+		runtime_Semrelease(semap, false, 0)
+	}
+}
+```
 
 
 
