@@ -8,7 +8,10 @@ import (
 
 type s struct {
 	Bool  bool
+	Byte  byte
+	In32  int32
 	Int64 int64
+	Int8  int8
 }
 
 func main() {
