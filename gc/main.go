@@ -7,9 +7,8 @@ import (
 )
 
 type s struct {
-	Bool   bool
-	Int64  int64
-	String string
+	Bool  bool
+	Int64 int64
 }
 
 func main() {
@@ -21,7 +20,6 @@ func main() {
 	fmt.Printf("string size: %d\n", unsafe.Sizeof("E"))
 
 	part1 := s{}
-
 	fmt.Printf("part1 size: %d, align: %d\n", unsafe.Sizeof(part1), unsafe.Alignof(part1))
 }
 
