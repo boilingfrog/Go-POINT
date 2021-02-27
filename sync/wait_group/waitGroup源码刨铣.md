@@ -169,3 +169,4 @@ func (wg *WaitGroup) Add(delta int) {
 ### 参考
 
 【《Go专家编程》Go WaitGroup实现原理】https://my.oschina.net/renhc/blog/2249061  
+【Go中由WaitGroup引发对内存对齐思考】https://cloud.tencent.com/developer/article/1776930  
