@@ -6,7 +6,11 @@ import (
 )
 
 func main() {
-	waitGroup()
+	// waitGroup()
+
+	a := 2
+
+	fmt.Println(a << 1)
 }
 
 func waitGroup() {
