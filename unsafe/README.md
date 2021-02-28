@@ -362,8 +362,8 @@ func Alignof(x ArbitraryType) uintptr
 通过`unsafe`相关函数，可以获取结构体私有成员的地址，进而对其做进一步的读写操作，突破Go的类型安全限制。  
 
 ### 参考
-- 【深度解密Go语言之unsafe】 https://mp.weixin.qq.com/s/OO-kwB4Fp_FnCaNXwGJoEw    
-- 【Go之unsafe.Pointer && uintptr类型】 https://my.oschina.net/xinxingegeya/blog/729673
+【深度解密Go语言之unsafe】 https://mp.weixin.qq.com/s/OO-kwB4Fp_FnCaNXwGJoEw    
+【Go之unsafe.Pointer && uintptr类型】 https://my.oschina.net/xinxingegeya/blog/729673
 
 
 
