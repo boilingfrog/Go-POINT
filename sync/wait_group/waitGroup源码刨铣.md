@@ -113,6 +113,23 @@ $ go vet main.go
 
 **state1**
 
+```go
+	// 64-bit value: high 32 bits are counter, low 32 bits are waiter count.
+	// 64-bit atomic operations require 64-bit alignment, but 32-bit
+	// compilers do not ensure it. So we allocate 12 bytes and then use
+	// the aligned 8 bytes in them as state, and the other 4 as storage
+	// for the sema.
+	state1 [3]uint32
+```
+
+这个设计很奇妙，通过内存对齐来处理`wait_group`中的waiter数、计数值、信号量。什么是内存对齐可参考[什么是内存对齐，go中内存对齐分析](https://www.cnblogs.com/ricklz/p/14455135.html)  
+
+来分析下`state1`是如何内存对齐来处理几个计数值的存储  
+
+
+
+
+
 
 #### Add
 
@@ -170,3 +187,4 @@ func (wg *WaitGroup) Add(delta int) {
 
 【《Go专家编程》Go WaitGroup实现原理】https://my.oschina.net/renhc/blog/2249061  
 【Go中由WaitGroup引发对内存对齐思考】https://cloud.tencent.com/developer/article/1776930  
+【Golang 之 WaitGroup 源码解析】https://www.linkinstar.wiki/2020/03/15/golang/source-code/sync-waitgroup-source-code/  
