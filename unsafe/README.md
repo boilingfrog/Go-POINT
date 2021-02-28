@@ -1,6 +1,7 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+
 - [unsafe](#unsafe)
   - [前言](#%E5%89%8D%E8%A8%80)
   - [指针类型](#%E6%8C%87%E9%92%88%E7%B1%BB%E5%9E%8B)
@@ -13,7 +14,7 @@
     - [uintptr](#uintptr)
       - [下面的这段代码是错误的](#%E4%B8%8B%E9%9D%A2%E7%9A%84%E8%BF%99%E6%AE%B5%E4%BB%A3%E7%A0%81%E6%98%AF%E9%94%99%E8%AF%AF%E7%9A%84)
   - [总结](#%E6%80%BB%E7%BB%93)
-    - [参考](#%E5%8F%82%E8%80%83)
+  - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -361,7 +362,8 @@ func Alignof(x ArbitraryType) uintptr
 
 通过`unsafe`相关函数，可以获取结构体私有成员的地址，进而对其做进一步的读写操作，突破Go的类型安全限制。  
 
-### 参考
+## 参考
+
 【深度解密Go语言之unsafe】 https://mp.weixin.qq.com/s/OO-kwB4Fp_FnCaNXwGJoEw    
 【Go之unsafe.Pointer && uintptr类型】 https://my.oschina.net/xinxingegeya/blog/729673
 
