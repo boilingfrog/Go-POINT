@@ -1,3 +1,19 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+
+- [unsafe](#unsafe)
+  - [前言](#%E5%89%8D%E8%A8%80)
+  - [什么是unsafe,为什么需要unsafe](#%E4%BB%80%E4%B9%88%E6%98%AFunsafe%E4%B8%BA%E4%BB%80%E4%B9%88%E9%9C%80%E8%A6%81unsafe)
+  - [unsafe实现原理](#unsafe%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86)
+- [unsafe.Pointer && uintptr类型](#unsafepointer--uintptr%E7%B1%BB%E5%9E%8B)
+  - [unsafe.Pointer](#unsafepointer)
+  - [uintptr](#uintptr)
+- [总结](#%E6%80%BB%E7%BB%93)
+- [参考](#%E5%8F%82%E8%80%83)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## unsafe
 
 ### 前言
@@ -101,8 +117,7 @@ func main() {
 大多数指针类型都会写成T，表示是“一个指向T类型变量的指针”。`unsafe.Pointer`是特别定义的一种指针类型，它可以包含任何类型变量的地址。当然，我们不可以直接通过*p来获取`unsafe.Pointer`指针指向的真是变量的值，因为我们并不知道变量的具体类型。和人普通指针一样，`unsafe.Pointer`指针是可以比较的，并且支持和nil常量比较判断是否为空指针。  
 
 ****
-一个普通的的T类型指针可以被转换成`unsafe.Pointer`类型指针，并且一个`unsafe.Pointer`类型指针也可以
-被转换成普通类型的指针，被转换回普通的指针类型并不需要和原始的T类型相同。
+一个普通的的T类型指针可以被转换成`unsafe.Pointer`类型指针，并且一个`unsafe.Pointer`类型指针也可以被转换成普通类型的指针，被转换回普通的指针类型并不需要和原始的T类型相同。
 ****
 
 通过将float64类型指针转化为uint64类型指针，我们可以查看一个浮点数变量的位模式。
@@ -141,11 +156,9 @@ func main() {
 }
 ````
 
-````
-当再次把 v2 的指针赋值给p时，会发生错误cannot use &v2 (type *int) as type *uint in assignment，也就是说类型不同，一个是*int，一个是*uint。
-````
+当再次把v2的指针赋值给p时，会发生错误`cannot use &v2 (type *int) as type *uint in assignment`，也就是说类型不同，一个是`*int`，一个是`*uint`。  
 
-可以使用unsafe.Pointer进行转换，如下，
+可以使用`unsafe.Pointer`进行转换，如下，
 
 ````go
 func main() {
@@ -214,7 +227,7 @@ func main() {
 
 上面的写法尽管很繁琐，但在这里并不是一件坏事，因为这些功能应该很谨慎地使用。不要试图引入一个`uintptr`类型的临时变量，因为它可能会破坏代码的安全性（注：这是真正可以体会`unsafe`包为何不安全的例子）。  
 
-#### 下面的这段代码是错误的
+`下面的这段代码是错误的`
 
 ````go
 // NOTE: subtly incorrect!
@@ -222,6 +235,7 @@ tmp := uintptr(unsafe.Pointer(&x)) + unsafe.Offsetof(x.b)
 pb := (*int16)(unsafe.Pointer(tmp))
 *pb = 42
 ````
+
 产生错误的原因很微妙。有时候垃圾回收器会移动一些变量以降低内存碎片等问题。这类垃圾回收器被称为移动GC。当一个变量被移动，所有的保存改变量旧地址的指针必须同时被更新为变量移动后的地址。从垃圾收集器的角度看，一个`unsafe.Pointer`是一个指向变量的指针，因此当变量被移动是对应的指针也必须被更新；但是`uintptr`类型的临时变量只是一个普通的数字，所以其值不应该被改变。上面错误的代码因引入一个非指针的临时变量`temp`，导致垃圾收集器无法正确识别这个是一个指向变量x的指针。当第二个语句执行是，变量X可能被转移，这时候临时变量tmp也就是不再是现在`&x.b`地址。第三个指向之前无效地址空间的赋值将摧毁整个系统。  
 
 ## 总结
