@@ -28,6 +28,9 @@ Go语言在设计的时候，为了编写方便、效率高以及降低复杂度
 unsafe主要包含下面三个函数  
 
 ```go
+// Arbitrary 是任意的意思，也就是说 Pointer 可以指向任意类型
+type ArbitraryType int
+type Pointer *ArbitraryType
 // 返回类型 x 所占据的字节数，但不包含 x 所指向的内容的大小。
 // 例如，对于一个指针，函数返回的大小为 8 字节（64位机上），一个 slice 的大小则为 slice header 的大小。
 func Sizeof(x ArbitraryType) uintptr
@@ -80,24 +83,6 @@ func main() {
 使用unsafe获取地址： 0xc00007c020
 ```
 
-综上，`unsafe`包提供了2点重要的能力：  
-
-````go
-1、任何类型的指针和unsafe.Point可以相互转换。
-2、uintptr类型和unsafe.Point可以相互转换
-````
-
-<img src="/img/unsafe_1.png" alt="gc" align="unsafe" />
-
-`pointer`不能直接进行数学运算，但可以把它转换成`uintptr`,对uintptr类型进行数学运算，在转换成pointer类型。  
-
-````go
-// uintptr 是一个整数类型，它足够大，可以存储
-type uintptr uintptr
-````
-
-还有一点需要注意的是，`uintptr`并没有指针的含义，意思是`uintptr`所指向的对象会被gc给回收掉。而`unsafe.Pointer`有指针语义，可以保护它所指向的对象在“有用”的时候不会被垃圾回收。  
-
 ## unsafe.Pointer && uintptr类型
 
 ### unsafe.Pointer
@@ -110,6 +95,8 @@ type uintptr uintptr
 （3）uintptr可以被转化为Pointer
 （4）Pointer可以被转化为uintptr
 ````
+
+<img src="/img/unsafe_1.png" alt="gc" align="unsafe" />
 
 大多数指针类型都会写成T，表示是“一个指向T类型变量的指针”。`unsafe.Pointer`是特别定义的一种指针类型，它可以包含任何类型变量的地址。当然，我们不可以直接通过*p来获取`unsafe.Pointer`指针指向的真是变量的值，因为我们并不知道变量的具体类型。和人普通指针一样，`unsafe.Pointer`指针是可以比较的，并且支持和nil常量比较判断是否为空指针。  
 
@@ -239,21 +226,13 @@ pb := (*int16)(unsafe.Pointer(tmp))
 
 ## 总结
 
-`unsafe`包绕过了GO的类型系统，达到直接操作内存的目的，使用它是有一定风险的。但是在某些场景下，使用`unsafe`包函数会提升代码的效率，GO源码中也是大量使用`unsafe`包。  
+1、`unsafe`包绕过了GO的类型系统，达到直接操作内存的目的，使用它是有一定风险的。但是在某些场景下，使用`unsafe`包函数会提升代码的效率，GO源码中也是大量使用`unsafe`包。  
 
-`unsafe`包定义了`Pointer`和三个函数：  
+2、`uintptr`可以和`unsafe.Pointer`进行相互的转换，`uintptr`可以进行数学运算。这样，通过`uintptr`和`unsafe.Pointer`的结合就解决了Go指针不能进行数学运算的限制。  
 
-````go
-func Sizeof(x ArbitraryType) uintptr
-func Offsetof(x ArbitraryType) uintptr
-func Alignof(x ArbitraryType) uintptr
-````
+3、通过`unsafe`相关函数，可以获取结构体私有成员的地址，进而对其做进一步的读写操作，突破Go的类型安全限制。  
 
-通过三个函数可以获取变量的大小，偏移，对齐等信息。  
-
-`uintptr`可以和`unsafe.Pointer`进行相互的转换，`uintptr`可以进行数学运算。这样，通过`uintptr`和`unsafe.Pointer`的结合就解决了Go指针不能进行数学运算的限制。  
-
-通过`unsafe`相关函数，可以获取结构体私有成员的地址，进而对其做进一步的读写操作，突破Go的类型安全限制。  
+4、`uintptr`并没有指针的含义，意思是`uintptr`所指向的对象会被gc给回收掉。而`unsafe.Pointer`有指针语义，可以保护它所指向的对象在“有用”的时候不会被垃圾回收。  
 
 ## 参考
 
