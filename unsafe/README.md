@@ -119,7 +119,7 @@ func main() {
 
 大多数指针类型都会写成T，表示是“一个指向T类型变量的指针”。`unsafe.Pointer`是特别定义的一种指针类型，它可以包含任何类型变量的地址。当然，我们不可以直接通过*p来获取`unsafe.Pointer`指针指向的真是变量的值，因为我们并不知道变量的具体类型。和人普通指针一样，`unsafe.Pointer`指针是可以比较的，并且支持和nil常量比较判断是否为空指针。  
 
-<img src="/img/unsafe_1.png" alt="gc" align="unsafe" />  
+<img src="../img/unsafe_2.png" width = "742.772" height = "87" alt="unsafe" align=center />
 
 **一个普通的的T类型指针可以被转换成`unsafe.Pointer`类型指针，并且一个`unsafe.Pointer`类型指针也可以被转换成普通类型的指针，被转换回普通的指针类型并不需要和原始的T类型相同。**
 
