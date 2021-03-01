@@ -50,6 +50,7 @@ unsafe主要包含下面三个函数
 // Arbitrary 是任意的意思，也就是说 Pointer 可以指向任意类型
 type ArbitraryType int
 type Pointer *ArbitraryType
+
 // 返回类型 x 所占据的字节数，但不包含 x 所指向的内容的大小。
 // 例如，对于一个指针，函数返回的大小为 8 字节（64位机上），一个 slice 的大小则为 slice header 的大小。
 func Sizeof(x ArbitraryType) uintptr
@@ -116,14 +117,11 @@ func main() {
 
 - 4、Pointer可以被转化为uintptr     
 
-
-<img src="/img/unsafe_1.png" alt="gc" align="unsafe" />
-
 大多数指针类型都会写成T，表示是“一个指向T类型变量的指针”。`unsafe.Pointer`是特别定义的一种指针类型，它可以包含任何类型变量的地址。当然，我们不可以直接通过*p来获取`unsafe.Pointer`指针指向的真是变量的值，因为我们并不知道变量的具体类型。和人普通指针一样，`unsafe.Pointer`指针是可以比较的，并且支持和nil常量比较判断是否为空指针。  
 
-****
-一个普通的的T类型指针可以被转换成`unsafe.Pointer`类型指针，并且一个`unsafe.Pointer`类型指针也可以被转换成普通类型的指针，被转换回普通的指针类型并不需要和原始的T类型相同。
-****
+<img src="/img/unsafe_1.png" alt="gc" align="unsafe" />  
+
+**一个普通的的T类型指针可以被转换成`unsafe.Pointer`类型指针，并且一个`unsafe.Pointer`类型指针也可以被转换成普通类型的指针，被转换回普通的指针类型并不需要和原始的T类型相同。**
 
 通过将float64类型指针转化为uint64类型指针，我们可以查看一个浮点数变量的位模式。
 
