@@ -3,14 +3,28 @@ package main
 import (
 	"fmt"
 	"sync"
+	"sync/atomic"
+	"unsafe"
 )
 
 func main() {
 	// waitGroup()
 
-	a := 2
+	fdg := [3]uint32{}
 
-	fmt.Println(a << 1)
+	fmt.Println((*uint32)(unsafe.Pointer(&fdg)))
+	fmt.Println((*uint32)(unsafe.Pointer(&fdg[0])))
+
+	fmt.Println((*uint32)(unsafe.Pointer(&fdg[1])))
+	fmt.Println((*uint32)(unsafe.Pointer(&fdg[2])))
+
+	state := atomic.AddUint64((*uint64)(unsafe.Pointer(&fdg)), uint64(1)<<32)
+	fmt.Println(state)
+	v := int32(state >> 32)
+	w := uint32(state)
+
+	fmt.Println(v)
+	fmt.Println(w)
 }
 
 func waitGroup() {

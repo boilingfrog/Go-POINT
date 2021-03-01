@@ -155,3 +155,5 @@ atomic包提供了底层的原子性内存原语，这对于同步算法的实�
 【sync/atomic - 原子操作】https://docs.kilvn.com/The-Golang-Standard-Library-by-Example/chapter16/16.02.html  
 【Go语言的原子操作和互斥锁的区别】https://studygolang.com/articles/29240  
 【Package atomic】https://go-zh.org/pkg/sync/atomic/  
+【Go 语言标准库中 atomic.Value 的前世今生】https://blog.betacat.io/post/golang-atomic-value-exploration/   
+【原子操作】https://golang.design/under-the-hood/zh-cn/part4lib/ch15sync/atomic/   
