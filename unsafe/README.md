@@ -186,6 +186,32 @@ func main() {
 }
 ````
 
+#### uintptr
+
+````go
+// uintptr is an integer type that is large enough to hold the bit pattern of
+// any pointer.
+type uintptr uintptr
+````
+
+uintptr 的底层实现如下，在`$GOROOT/src/pkg/runtime/runtime.h`中：  
+
+```go
+#ifdef _64BIT
+typedef uint64          uintptr;
+typedef int64           intptr;
+typedef int64           intgo; // Go's int
+typedef uint64          uintgo; // Go's uint
+#else
+typedef uint32          uintptr;
+typedef int32           intptr;
+typedef int32           intgo; // Go's int
+typedef uint32          uintgo; // Go's uint
+#endif
+```
+
+`uintptr`和`intptr`是无符号和有符号的指针类型，并且确保在64位平台上是8个字节，在32位平台上是4个字节，`uintptr`主要用于golang中的指针运算。  
+
 一个`unsafe.Pointer`指针也可以被转化成`uintptr`类型，然后保存到指针类型数值变量中（注：这只是和当前指针相同的一个数字值，并不是一个指针），然后用以做必要的指针数值运算。（uintptr是一个无符号的整型数，足以保存一个地址）这种转换虽然是可逆的，但是将`uintptr`转为`unsafe.Pointer`指针可能破坏类型系统，因为并不是所有的数字都是有效的内存地址。 
  
 许多将`unsafe.Pointer`指针转化成原生数字，然后再转换成`unsafe.Pointer`类型指针的操作也是不安全的。比如下面的例子需要将变量x的地址加上b字段地址偏移量转化为`*int16`类型指针，然后通过该指针更新`x.b`：  
@@ -226,32 +252,6 @@ pb := (*int16)(unsafe.Pointer(tmp))
 ````
 
 产生错误的原因很微妙。有时候垃圾回收器会移动一些变量以降低内存碎片等问题。这类垃圾回收器被称为移动GC。当一个变量被移动，所有的保存改变量旧地址的指针必须同时被更新为变量移动后的地址。从垃圾收集器的角度看，一个`unsafe.Pointer`是一个指向变量的指针，因此当变量被移动是对应的指针也必须被更新；但是`uintptr`类型的临时变量只是一个普通的数字，所以其值不应该被改变。上面错误的代码因引入一个非指针的临时变量`temp`，导致垃圾收集器无法正确识别这个是一个指向变量x的指针。当第二个语句执行是，变量X可能被转移，这时候临时变量tmp也就是不再是现在`&x.b`地址。第三个指向之前无效地址空间的赋值将摧毁整个系统。  
-
-#### uintptr
-
-````go
-// uintptr is an integer type that is large enough to hold the bit pattern of
-// any pointer.
-type uintptr uintptr
-````
-
-uintptr 的底层实现如下，在`$GOROOT/src/pkg/runtime/runtime.h`中：  
-
-```go
-#ifdef _64BIT
-typedef uint64          uintptr;
-typedef int64           intptr;
-typedef int64           intgo; // Go's int
-typedef uint64          uintgo; // Go's uint
-#else
-typedef uint32          uintptr;
-typedef int32           intptr;
-typedef int32           intgo; // Go's int
-typedef uint32          uintgo; // Go's uint
-#endif
-```
-
-`uintptr`和`intptr`是无符号和有符号的指针类型，并且确保在64位平台上是8个字节，在32位平台上是4个字节，`uintptr`主要用于golang中的指针运算。  
 
 uintptr 和 unsafe.Pointer 的互相转换  
 
