@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"reflect"
 	"unsafe"
 )
 
@@ -10,21 +11,14 @@ type People struct {
 	name string
 }
 
+func Float64bits(f float64) uint64 {
+	fmt.Println(reflect.TypeOf(unsafe.Pointer(&f)))            //unsafe.Pointer
+	fmt.Println(reflect.TypeOf((*uint64)(unsafe.Pointer(&f)))) //*uint64
+	return *(*uint64)(unsafe.Pointer(&f))
+}
+
 func main() {
-	h := People{
-		30,
-		"xiaobai",
-	}
+	fmt.Printf("%#016x\n", float64(1.0)) // "0x3ff0000000000000"
 
-	i := unsafe.Sizeof(h)
-	j := unsafe.Alignof(h)
-	k := unsafe.Offsetof(h.name)
-	fmt.Println("字节大小：", i)
-	fmt.Println("对齐系数：", j)
-	fmt.Println("偏移量：", k)
-	fmt.Printf("直接获取地址：%p\n", &h)
-
-	var p unsafe.Pointer
-	p = unsafe.Pointer(&h)
-	fmt.Println("使用unsafe获取地址：", p)
+	fmt.Printf("%#016x\n", Float64bits(1.0)) // "0x3ff0000000000000"
 }

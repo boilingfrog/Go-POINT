@@ -6,11 +6,11 @@
   - [前言](#%E5%89%8D%E8%A8%80)
   - [什么是unsafe,为什么需要unsafe](#%E4%BB%80%E4%B9%88%E6%98%AFunsafe%E4%B8%BA%E4%BB%80%E4%B9%88%E9%9C%80%E8%A6%81unsafe)
   - [unsafe实现原理](#unsafe%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86)
-- [unsafe.Pointer && uintptr类型](#unsafepointer--uintptr%E7%B1%BB%E5%9E%8B)
-  - [unsafe.Pointer](#unsafepointer)
-  - [uintptr](#uintptr)
-- [总结](#%E6%80%BB%E7%BB%93)
-- [参考](#%E5%8F%82%E8%80%83)
+  - [unsafe.Pointer && uintptr类型](#unsafepointer--uintptr%E7%B1%BB%E5%9E%8B)
+    - [unsafe.Pointer](#unsafepointer)
+    - [uintptr](#uintptr)
+  - [总结](#%E6%80%BB%E7%BB%93)
+  - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -103,9 +103,9 @@ func main() {
 使用unsafe获取地址： 0xc00007c020
 ```
 
-## unsafe.Pointer && uintptr类型
+### unsafe.Pointer && uintptr类型
 
-### unsafe.Pointer
+#### unsafe.Pointer
 
 这个类型比较重要，它是实现定位欲读写的内存的基础。官方文档对该类型有四个重要描述：
 
@@ -123,7 +123,9 @@ func main() {
 
 **一个普通的的T类型指针可以被转换成`unsafe.Pointer`类型指针，并且一个`unsafe.Pointer`类型指针也可以被转换成普通类型的指针，被转换回普通的指针类型并不需要和原始的T类型相同。**
 
-通过将float64类型指针转化为uint64类型指针，我们可以查看一个浮点数变量的位模式。
+举几个栗子来分析下  
+
+通过将float64类型指针转化为uint64类型指针，我们可以查看一个浮点数变量的位模式。  
 
 ````go
 func Float64bits(f float64) uint64 {
@@ -184,24 +186,8 @@ func main() {
 }
 ````
 
-### uintptr
-
-````go
-// uintptr is an integer type that is large enough to hold the bit pattern of
-// any pointer.
-type uintptr uintptr
-````
-
-`uintptr`是golang的内置类型，是能存储指针的整型，在64位平台上底层的数据类型是，
-
-````go
-typedef unsigned long long int  uint64;
-typedef uint64          uintptr;
-````
-
 一个`unsafe.Pointer`指针也可以被转化成`uintptr`类型，然后保存到指针类型数值变量中（注：这只是和当前指针相同的一个数字值，并不是一个指针），然后用以做必要的指针数值运算。（uintptr是一个无符号的整型数，足以保存一个地址）这种转换虽然是可逆的，但是将`uintptr`转为`unsafe.Pointer`指针可能破坏类型系统，因为并不是所有的数字都是有效的内存地址。 
  
-
 许多将`unsafe.Pointer`指针转化成原生数字，然后再转换成`unsafe.Pointer`类型指针的操作也是不安全的。比如下面的例子需要将变量x的地址加上b字段地址偏移量转化为`*int16`类型指针，然后通过该指针更新`x.b`：  
 
 ````go
@@ -241,7 +227,48 @@ pb := (*int16)(unsafe.Pointer(tmp))
 
 产生错误的原因很微妙。有时候垃圾回收器会移动一些变量以降低内存碎片等问题。这类垃圾回收器被称为移动GC。当一个变量被移动，所有的保存改变量旧地址的指针必须同时被更新为变量移动后的地址。从垃圾收集器的角度看，一个`unsafe.Pointer`是一个指向变量的指针，因此当变量被移动是对应的指针也必须被更新；但是`uintptr`类型的临时变量只是一个普通的数字，所以其值不应该被改变。上面错误的代码因引入一个非指针的临时变量`temp`，导致垃圾收集器无法正确识别这个是一个指向变量x的指针。当第二个语句执行是，变量X可能被转移，这时候临时变量tmp也就是不再是现在`&x.b`地址。第三个指向之前无效地址空间的赋值将摧毁整个系统。  
 
-## 总结
+#### uintptr
+
+````go
+// uintptr is an integer type that is large enough to hold the bit pattern of
+// any pointer.
+type uintptr uintptr
+````
+
+uintptr 的底层实现如下，在`$GOROOT/src/pkg/runtime/runtime.h`中：  
+
+```go
+#ifdef _64BIT
+typedef uint64          uintptr;
+typedef int64           intptr;
+typedef int64           intgo; // Go's int
+typedef uint64          uintgo; // Go's uint
+#else
+typedef uint32          uintptr;
+typedef int32           intptr;
+typedef int32           intgo; // Go's int
+typedef uint32          uintgo; // Go's uint
+#endif
+```
+
+`uintptr`和`intptr`是无符号和有符号的指针类型，并且确保在64位平台上是8个字节，在32位平台上是4个字节，`uintptr`主要用于golang中的指针运算。  
+
+uintptr 和 unsafe.Pointer 的互相转换  
+
+```go
+func main() {
+	a := [4]int{0, 1, 2, 3}
+	p := &a[1] // 内存地址
+	p1 := unsafe.Pointer(p) 
+	p2 := uintptr(p1)
+	p3 := unsafe.Pointer(p2)
+	fmt.Println(p1) // 0xc420014208
+	fmt.Println(p2) // 842350543368
+	fmt.Println(p3) // 0xc420014208
+}
+```
+
+### 总结
 
 1、`unsafe`包绕过了GO的类型系统，达到直接操作内存的目的，使用它是有一定风险的。但是在某些场景下，使用`unsafe`包函数会提升代码的效率，GO源码中也是大量使用`unsafe`包。  
 
@@ -251,7 +278,7 @@ pb := (*int16)(unsafe.Pointer(tmp))
 
 4、`uintptr`并没有指针的含义，意思是`uintptr`所指向的对象会被gc给回收掉。而`unsafe.Pointer`有指针语义，可以保护它所指向的对象在“有用”的时候不会被垃圾回收。  
 
-## 参考
+### 参考
 
 【Go之unsafe.Pointer && uintptr类型】 https://my.oschina.net/xinxingegeya/blog/729673   
 【Go unsafe包】https://my.oschina.net/xinxingegeya/blog/841058  
