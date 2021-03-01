@@ -1,191 +1,84 @@
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+## unsafe
 
+### 前言
 
-- [unsafe](#unsafe)
-  - [前言](#%E5%89%8D%E8%A8%80)
-  - [指针类型](#%E6%8C%87%E9%92%88%E7%B1%BB%E5%9E%8B)
-    - [我们知道slice 和 map 包含指向底层数据的指针](#%E6%88%91%E4%BB%AC%E7%9F%A5%E9%81%93slice-%E5%92%8C-map-%E5%8C%85%E5%90%AB%E6%8C%87%E5%90%91%E5%BA%95%E5%B1%82%E6%95%B0%E6%8D%AE%E7%9A%84%E6%8C%87%E9%92%88)
-  - [什么是 unsafe](#%E4%BB%80%E4%B9%88%E6%98%AF-unsafe)
-  - [为什么会有unsafe](#%E4%B8%BA%E4%BB%80%E4%B9%88%E4%BC%9A%E6%9C%89unsafe)
-  - [unsafe实现原理](#unsafe%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86)
-  - [unsafe.Pointer && uintptr类型](#unsafepointer--uintptr%E7%B1%BB%E5%9E%8B)
-    - [unsafe.Pointer](#unsafepointer)
-    - [uintptr](#uintptr)
-      - [下面的这段代码是错误的](#%E4%B8%8B%E9%9D%A2%E7%9A%84%E8%BF%99%E6%AE%B5%E4%BB%A3%E7%A0%81%E6%98%AF%E9%94%99%E8%AF%AF%E7%9A%84)
-  - [总结](#%E6%80%BB%E7%BB%93)
-  - [参考](#%E5%8F%82%E8%80%83)
+在阅读go源码的时候，发现很多地方使用了`unsafe.Pointer`来处理指针类型的转换，这次来深入的探究下。   
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+### 什么是unsafe,为什么需要unsafe
 
-# unsafe
+Go语言在设计的时候，为了编写方便、效率高以及降低复杂度，被设计成为一门强类型的静态语言。强类型意味着一旦定义了，它的类型就不能改变了；静态意味着类型检查在运行前就做了。  
 
-## 前言
+例如go中的指针存在的使用限制  
 
-最近关注了一个大佬的文章，文章写的非常好，大家可以去关注下。  
-微信公众号【码农桃花源】  
+1、Go指针不支持算术运算  
+2、一个指针类型的值不能被随意转换为另一个指针类型  
+3、一个指针值不能和其它任一指针类型的值进行比较  
+4、一个指针值不能被赋值给其它任意类型的指针值  
 
-## 指针类型
+`unsafe`可以打破这些限制  
 
-首先我们先来了解下，`GO`里面的指针类型。
+> Package unsafe contains operations that step around the type safety of Go programs.
 
-为什么需要指针类型呢？参考文献 `go101.org` 里举了这样一个例子：
+`unsafe`可以绕过go类型的安全检查，直接操控内存，我们可以写出高效的代码。  
 
-````
-func double(x int) {
-	fmt.Println(x)
-	x += x
-	fmt.Println(x)
-}
+但是正如他的名字一样`unsafe`，不安全。我们应该尽可能少的使用它，比如内存的操纵，这是绕过Go本身设计的安全机制的，不当的操作，可能会破坏一块内存，而且这种问题非常不好定位。   
 
-func main() {
-	var a = 3
-	double(a)
-	fmt.Println(a)
+### unsafe实现原理
 
-}
-````
+unsafe主要包含下面三个函数  
 
-`double`函数的作用是将3翻倍，但是实际上却没有做到，为什么呢？  
-
-因为go语言的函数操作都是值传递。`double`函数里面的`x`只是`a`的一个拷贝，在函数内部对x的操作不能反馈到实参`a`。  
-
-其实在实际的编写代码的过程中我们会使用一个指针进行解决。  
-
-````go
-func double1(x *int) {
-	*x += *x
-	x = nil
-}
-
-func main() {
-	var a = 3
-	double1(&a)
-
-	fmt.Println(a)
-
-	p := &a
-
-	double1(p)
-
-	fmt.Println(*p)
-
-}
-````
-
-其中有一个操作
-
-````go
-x=nil
-````
-
-这个操作没有对我们的结果产生丝毫的影响。其实也是很好理解的，因为我们知道go里面的函数中使用的都是值传递`x=nil`，只是对`&a`的一个拷贝。  
-
-### 我们知道slice 和 map 包含指向底层数据的指针
-
-我们对它们的操作是会影响到，原参数的值。  
-
-````go
-func change(sl []int64) {
-	sl[0] = 2
-}
-
-func main() {
-
-	var sl = make([]int64, 2)
-	change(sl)
-	fmt.Println(sl)  // [2 0]
-}
-````
-
-我们而已看到输出的值已经是`[2 0]`
-
-这时候我们可以使用一个copy来操作
-
-````go
-func change(sl []int64) {
-	sl[0] = 2
-}
-
-func changeNo(sl []int64) {
-	s2 := make([]int64, 2)
-	copy(sl, s2)
-	s2[0] = 2
-}
-
-func main() {
-
-	var sl = make([]int64, 2)
-	change(sl)
-	fmt.Println(sl)
-
-	changeNo(sl)
-	fmt.Println(sl)
-}
-````
-
-限制一：GO里面的指针不能进行数学的运算
-
-````go
-错误
-a := 5
-p := &a
-
-p++
-p = &a + 3
-````
-
-限制二：不同类型的指针不能互相转换
-
-````go
-错误的
-func main(){
-   a:=int(100)
-   var f *float64
-
-    f=&a
-}
-````
-限制三：不同类型的指针不能使用==或!=比较。
-
-限制四：不能类型的指针变量不能相互赋值。
-
-## 什么是 unsafe
-
-前面讨论的指针是类型安全的，但它有很多的限制。go还有非类型安全的指针，就是`unsafe`包提供的`unsafe.Pointer`。在某些情况下，它会使代码更高效，当然，也更危险。  
-
-`unsafe` 包用于Go编译器，在编译阶段使用。从名字就可以看出来，它是不安全的，官方并不建议使用。它可以绕过Go语言的类型系统，直接操作内存。  
-
-## 为什么会有unsafe
-
-Go 语言类型系统是为了安全和效率设计的,有时,安全会导致效率低下。有了`unsafe`包，高阶的程序员就可以利用它绕过类型系统的低效。因此，它就有了存在的意义，阅读Go源码，会发现有大量使用`unsafe`包的例子。  
-
-## unsafe实现原理
-
-我们来看源码：
-
-````go
-type ArbitraryType int
-type Pointer *ArbitraryType
-````
-
-从命名来看，`Arbitrary`是任意的意思，也就是说`Pointer`可以指向任意类型，实际上它类似于C语言里的`void*`。  
-
-`unsafe`包还有其他三个函数：  
-
-````go
+```go
+// 返回类型 x 所占据的字节数，但不包含 x 所指向的内容的大小。
+// 例如，对于一个指针，函数返回的大小为 8 字节（64位机上），一个 slice 的大小则为 slice header 的大小。
 func Sizeof(x ArbitraryType) uintptr
+
+// 返回结构体中某个field的偏移量
+// 所传参数必须是结构体的成员
 func Offsetof(x ArbitraryType) uintptr
+
+// 对应参数的内存对齐系数
 func Alignof(x ArbitraryType) uintptr
-````
+```
 
-`size`返回类型x所占的字节数，单不包含x所指向的内容的大小。例如，对于一个指针，函数返回的大小为8字节（64位机器上），一个slice的大小则为`slice header`的大小。  
+什么是内存对齐，可参考[什么是内存对齐，go中内存对齐分析](https://www.cnblogs.com/ricklz/p/14455135.html)  
 
-`offsetof`返回结构体在内存中的位置离结构体起始处的字节数，所传参数必须是结构体的成员。  
+来个简单的例子看下  
 
-`Alignof` 返回m,m是指当类型进行内存对齐时，它分配到的内存地址能整除m。  
+```go
+type People struct {
+	age  uint8
+	name string
+}
 
-上面三个函数的返回结果都是`uintptr`类型，这和`unsafe.Pointer`可以相互转换。三个函数都是在编译期间执行，它们的结果可以直接赋给`const`型变量。另外，因为三个函数执行的结果和操作系统、编译器相关，所以是不可可移值的。
+func main() {
+	h := People{
+		30,
+		"xiaobai",
+	}
+
+	i := unsafe.Sizeof(h)
+	j := unsafe.Alignof(h)
+	k := unsafe.Offsetof(h.name)
+	fmt.Println("字节大小：", i)
+	fmt.Println("对齐系数：", j)
+	fmt.Println("偏移量：", k)
+	fmt.Printf("直接获取地址：%p\n", &h)
+
+	var p unsafe.Pointer
+	p = unsafe.Pointer(&h)
+	fmt.Println("使用unsafe获取地址：", p)
+}
+```
+
+简单看下输出  
+
+```
+字节大小： 24
+对齐系数： 8
+偏移量： 8
+直接获取地址：0xc00007c020
+使用unsafe获取地址： 0xc00007c020
+```
 
 综上，`unsafe`包提供了2点重要的能力：  
 
@@ -364,53 +257,12 @@ func Alignof(x ArbitraryType) uintptr
 
 ## 参考
 
-【深度解密Go语言之unsafe】 https://mp.weixin.qq.com/s/OO-kwB4Fp_FnCaNXwGJoEw    
-【Go之unsafe.Pointer && uintptr类型】 https://my.oschina.net/xinxingegeya/blog/729673
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+【Go之unsafe.Pointer && uintptr类型】 https://my.oschina.net/xinxingegeya/blog/729673   
+【Go unsafe包】https://my.oschina.net/xinxingegeya/blog/841058  
+【unsafe包】https://wizardforcel.gitbooks.io/go42/content/content/42_28_unsafe.html  
+【非类型安全指针】https://gfw.go101.org/article/unsafe.html  
+【Go unsafe 包的使用】https://segmentfault.com/a/1190000021625500   
+【Go unsafe Pointer】https://www.flysnow.org/2017/07/06/go-in-action-unsafe-pointer.html   
+【指针】https://gfw.go101.org/article/pointer.html  
+【深度解密Go语言之unsafe】 https://mp.weixin.qq.com/s/OO-kwB4Fp_FnCaNXwGJoEw     
+【golang中的unsafe详解】https://studygolang.com/articles/18436   
