@@ -8,12 +8,11 @@ import (
 var value int32 = 1
 
 func main() {
-	fmt.Println("======old value=======")
-	fmt.Println(value)
-	addValue(10)
-	fmt.Println("======New value=======")
-	fmt.Println(value)
-
+	var a, b int32 = 13, 13
+	var c int32
+	res := atomic.CompareAndSwapInt32(&a, b, c)
+	fmt.Println(res)
+	fmt.Println(c)
 }
 
 //不断地尝试原子地更新value的值,直到操作成功为止

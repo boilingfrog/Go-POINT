@@ -33,10 +33,9 @@ Go语言的`sync/atomic`提供了对原子操作的支持，用于同步访问�
 
 #### CAS
 
-go中的Cas操作，是借用了CPU提供的原子性指令来实现。CAS操作修改共享变量时候不需要对共享变量加锁，而是通过类似乐观锁的方式进行检查，本质还是不
-断的占用CPU 资源换取加锁带来的开销（比如上下文切换开销）。  
+go中的Cas操作，是借用了CPU提供的原子性指令来实现。CAS操作修改共享变量时候不需要对共享变量加锁，而是通过类似乐观锁的方式进行检查，本质还是不断的占用CPU 资源换取加锁带来的开销（比如上下文切换开销）。    
 
-原子操作中的CAS(Compare And Swap),在`sync/atomic`包中，这类原子操作由名称以CompareAndSwap为前缀的若干个函数提供  
+原子操作中的CAS(Compare And Swap),在`sync/atomic`包中，这类原子操作由名称以`CompareAndSwap`为前缀的若干个函数提供    
 
 ```go
 func CompareAndSwapInt32(addr *int32, old, new int32) (swapped bool)
@@ -47,12 +46,11 @@ func CompareAndSwapUint64(addr *uint64, old, new uint64) (swapped bool)
 func CompareAndSwapUintptr(addr *uintptr, old, new uintptr) (swapped bool)
 ```
 
-调用函数后，`CompareAndSwap`函数会先判断参数addr指向的操作值与参数old的值是否相等，仅当此判断得到的结果是true之后，才会用参数new代表的新
-值替换掉原先的旧值，否则操作就会被忽略。  
 
-我们使用的`mutex`互斥锁类似悲观锁，总是假设会有并发的操作要修改被操作的值，所以使用锁将相关操作放入到临界区加以保存。而CAS操作做法趋于乐观锁，
-总是假设被操作的值未曾改变（即与旧值相等），并一旦确认这个假设的真实性就立即进行值替换。在被操作值被频繁变更的情况下，CAS操作并不那么容易成功
-所以需要不断进行尝试，直到成功为止。  
+
+调用函数后，`CompareAndSwap`函数会先判断参数addr指向的操作值与参数old的值是否相等，仅当此判断得到的结果是true之后，才会用参数new代表的新值替换掉原先的旧值，否则操作就会被忽略。  
+
+我们使用的`mutex`互斥锁类似悲观锁，总是假设会有并发的操作要修改被操作的值，所以使用锁将相关操作放入到临界区加以保存。而CAS操作做法趋于乐观锁，总是假设被操作的值未曾改变（即与旧值相等），并一旦确认这个假设的真实性就立即进行值替换。在被操作值被频繁变更的情况下，`CAS`操作并不那么容易成功所以需要不断进行尝试，直到成功为止。    
 
 举个栗子  
 
@@ -157,3 +155,5 @@ atomic包提供了底层的原子性内存原语，这对于同步算法的实�
 【Package atomic】https://go-zh.org/pkg/sync/atomic/  
 【Go 语言标准库中 atomic.Value 的前世今生】https://blog.betacat.io/post/golang-atomic-value-exploration/   
 【原子操作】https://golang.design/under-the-hood/zh-cn/part4lib/ch15sync/atomic/   
+【关于Go语言中的go:linkname】https://blog.csdn.net/IT_DREAM_ER/article/details/103590944  
+【原子操作使用】https://www.kancloud.cn/digest/batu-go/153537   
