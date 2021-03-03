@@ -61,7 +61,7 @@ TEXT ·CompareAndSwapUint32(SB),NOSPLIT,$0
 	JMP	runtime∕internal∕atomic·Cas(SB)
 ```
 
-Cas
+看下汇编的`Cas`  
 
 ```cgo
 // bool Cas(int32 *val, int32 old, int32 new)
@@ -71,17 +71,39 @@ Cas
 //		return 1;
 //	} else
 //		return 0;
+// $0-17表示的意思是这个TEXT block运行的时候，需要开辟的栈帧大小是 0 ，
+// 而17 = 8 + 4 + 4 + 1 = sizeof(pointer of int32) + sizeof(int32) + sizeof(int32) + sizeof(bool) （返回值是 bool ，占据 1 个字节
 TEXT runtime∕internal∕atomic·Cas(SB),NOSPLIT,$0-17
+// 首先将 ptr 的值放入 BX
 	MOVQ	ptr+0(FP), BX
+// 将假设的旧值放入 AX
 	MOVL	old+8(FP), AX
+// 需要比较的新值放入到CX
 	MOVL	new+12(FP), CX
 	LOCK
 	CMPXCHGL	CX, 0(BX)
 	SETEQ	ret+16(FP)
 	RET
 ```
+> MOV 指令有有好几种后缀 MOVB MOVW MOVL MOVQ 分别对应的是 1 字节 、2 字节 、4 字节、8 字节
 
-举个栗子  
+`FP`，是伪寄存器(pseudo) ，里边存的是 `Frame Pointer`, `FP`配合偏移 可以指向函数调用参数或者临时变量  
+
+`MOVQ ptr+0(FP) BX` 这一句话是指把函数的第一个参数`ptr+0(FP)`移动到`BX`寄存器中  
+
+`MOVQ代`表移动的是8个字节,Q 代表`64bit` ，参数的引用是 参数名称+偏移(FP),可以看到这里名称用了`ptr`,并不是v`al`,变量名对汇编不会有什么影响，但是语法上是必须带上的，可读性也会更好些。  
+
+`LOCK`并不是指令，而是一个指令的前缀`(instruction prefix)`，是用来修饰`CMPXCHGL CX,0(BX)` 的  
+
+> The LOCK prefix ensures that the CPU has exclusive ownership of the appropriate cache line for the duration of the operation, and provides certain additional ordering guarantees. This may be achieved by asserting a bus lock, but the CPU will avoid this where possible. If the bus is locked then it is only for the duration of the locked instruction
+
+`CMPXCHGL` 有两个操作数，`CX 和 0(BX)`,`0(BX)`代表的是`val`的地址。  
+
+`CMPXCHGL`指令做的事情，首先会把`0(BX)`里的值和`AX`寄存器里存的值做比较，如果一样的话会把`CX`里边存的值保存到`0(BX)`这块地址里 (虽然这条指令里并没有出现`AX`，但是还是用到了，汇编里还是有不少这样的情况)   
+
+`SETEQ` 会在`AX`和`CX`相等的时候把1写进 `ret+16(FP)`(否则写 0）
+
+看下如何使用  
 
 ```go
 func main() {
@@ -248,3 +270,4 @@ atomic包提供了底层的原子性内存原语，这对于同步算法的实�
 【关于Go语言中的go:linkname】https://blog.csdn.net/IT_DREAM_ER/article/details/103590944  
 【原子操作使用】https://www.kancloud.cn/digest/batu-go/153537   
 【Go源码解析之atomic】https://amazingao.com/posts/2020/11/go-src/sync/atomic/  
+【Plan 9 汇编语言】https://golang.design/under-the-hood/zh-cn/part1basic/ch01basic/asm/  
