@@ -50,6 +50,12 @@ func CompareAndSwapUint64(addr *uint64, old, new uint64) (swapped bool)
 func CompareAndSwapUintptr(addr *uintptr, old, new uintptr) (swapped bool)
 ```
 
+查看下源码  
+
+```
+
+```
+
 `CompareAndSwap`函数会先判断参数addr指向的操作值与参数old的值是否相等，仅当此判断得到的结果是true之后，才会用参数new代表的新值替换掉原先的旧值，否则操作就会被忽略。  
 
 举个栗子  
@@ -141,6 +147,25 @@ func AddInt64(addr *int64, delta int64) (new int64)
 func AddUint32(addr *uint32, delta uint32) (new uint32)
 func AddUint64(addr *uint64, delta uint64) (new uint64)
 func AddUintptr(addr *uintptr, delta uintptr) (new uintptr)
+```
+
+举个栗子  
+
+```go
+func main() {
+	var a int32 = 13
+	addValue := atomic.AddInt32(&a, 1)
+	fmt.Println("增加之后:", addValue)
+	delValue := atomic.AddInt32(&a, -4)
+	fmt.Println("减少之后:", delValue)
+}
+```
+
+查看下输出  
+
+```go
+增加之后: 14
+减少之后: 10
 ```
 
 #### Store(读取或写入)
