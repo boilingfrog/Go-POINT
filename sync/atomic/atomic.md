@@ -50,13 +50,36 @@ func CompareAndSwapUint64(addr *uint64, old, new uint64) (swapped bool)
 func CompareAndSwapUintptr(addr *uintptr, old, new uintptr) (swapped bool)
 ```
 
-查看下源码  
-
-```
-
-```
-
 `CompareAndSwap`函数会先判断参数addr指向的操作值与参数old的值是否相等，仅当此判断得到的结果是true之后，才会用参数new代表的新值替换掉原先的旧值，否则操作就会被忽略。  
+
+查看下源码，这几个代码差不多，以`CompareAndSwapUint32`为例子,golang主要还是依赖汇编来来实现的原子操作，不同的CPU架构是有对应不同的.s汇编文件的。  
+
+`/usr/local/go/src/sync/atomic/asm.s`
+
+```cgo
+TEXT ·CompareAndSwapUint32(SB),NOSPLIT,$0
+	JMP	runtime∕internal∕atomic·Cas(SB)
+```
+
+Cas
+
+```cgo
+// bool Cas(int32 *val, int32 old, int32 new)
+// Atomically:
+//	if(*val == old){
+//		*val = new;
+//		return 1;
+//	} else
+//		return 0;
+TEXT runtime∕internal∕atomic·Cas(SB),NOSPLIT,$0-17
+	MOVQ	ptr+0(FP), BX
+	MOVL	old+8(FP), AX
+	MOVL	new+12(FP), CX
+	LOCK
+	CMPXCHGL	CX, 0(BX)
+	SETEQ	ret+16(FP)
+	RET
+```
 
 举个栗子  
 
@@ -224,3 +247,4 @@ atomic包提供了底层的原子性内存原语，这对于同步算法的实�
 【原子操作】https://golang.design/under-the-hood/zh-cn/part4lib/ch15sync/atomic/   
 【关于Go语言中的go:linkname】https://blog.csdn.net/IT_DREAM_ER/article/details/103590944  
 【原子操作使用】https://www.kancloud.cn/digest/batu-go/153537   
+【Go源码解析之atomic】https://amazingao.com/posts/2020/11/go-src/sync/atomic/  
