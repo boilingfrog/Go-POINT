@@ -64,28 +64,28 @@ TEXT ·CompareAndSwapUint32(SB),NOSPLIT,$0
 看下汇编的`Cas`  
 
 ```cgo
-// bool Cas(int32 *val, int32 old, int32 new)
+// bool Casp1(void **val, void *old, void *new)
 // Atomically:
 //	if(*val == old){
 //		*val = new;
 //		return 1;
 //	} else
 //		return 0;
-// $0-17表示的意思是这个TEXT block运行的时候，需要开辟的栈帧大小是 0 ，
-// 而17 = 8 + 4 + 4 + 1 = sizeof(pointer of int32) + sizeof(int32) + sizeof(int32) + sizeof(bool) （返回值是 bool ，占据 1 个字节
-TEXT runtime∕internal∕atomic·Cas(SB),NOSPLIT,$0-17
-// 首先将 ptr 的值放入 BX
+TEXT runtime∕internal∕atomic·Casp1(SB), NOSPLIT, $0-25
+        // 首先将 ptr 的值放入 BX
 	MOVQ	ptr+0(FP), BX
-// 将假设的旧值放入 AX
-	MOVL	old+8(FP), AX
-// 需要比较的新值放入到CX
-	MOVL	new+12(FP), CX
+        // 将假设的旧值放入 AX
+	MOVQ	old+8(FP), AX
+        // 需要比较的新值放入到CX
+	MOVQ	new+16(FP), CX
 	LOCK
-	CMPXCHGL	CX, 0(BX)
-	SETEQ	ret+16(FP)
+	CMPXCHGQ	CX, 0(BX)
+	SETEQ	ret+24(FP)
 	RET
 ```
 > MOV 指令有有好几种后缀 MOVB MOVW MOVL MOVQ 分别对应的是 1 字节 、2 字节 、4 字节、8 字节
+
+`TEXT runtime∕internal∕atomic·Cas(SB),NOSPLIT,$0-17`，`$0-17`表示的意思是这个`TEXT block`运行的时候，需要开辟的栈帧大小是0，而`17 = 8 + 4 + 4 + 1 = sizeof(pointer of int32) + sizeof(int32) + sizeof(int32) + sizeof(bool)`（返回值是 bool ，占据 1 个字节）  
 
 `FP`，是伪寄存器(pseudo) ，里边存的是 `Frame Pointer`, `FP`配合偏移 可以指向函数调用参数或者临时变量  
 
