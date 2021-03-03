@@ -1,17 +1,15 @@
 package main
 
 import (
+	"fmt"
 	"sync/atomic"
-	"unsafe"
 )
 
 var value int32 = 1
 
 func main() {
-	var p unsafe.Pointer
-	newP := 42
-	atomic.CompareAndSwapPointer(&p, nil, unsafe.Pointer(&newP))
+	var p int32 = 1
+	res := atomic.LoadInt32(&p)
 
-	v := (*int)(p)
-	println(*v)
+	fmt.Println(res)
 }

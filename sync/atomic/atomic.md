@@ -8,8 +8,10 @@
     - [CompareAndSwap(CAS)](#compareandswapcas)
     - [Swap(交换)](#swap%E4%BA%A4%E6%8D%A2)
     - [Add(增加或减少)](#add%E5%A2%9E%E5%8A%A0%E6%88%96%E5%87%8F%E5%B0%91)
-    - [Store(读取或写入)](#store%E8%AF%BB%E5%8F%96%E6%88%96%E5%86%99%E5%85%A5)
+    - [Load(原子读取)](#load%E5%8E%9F%E5%AD%90%E8%AF%BB%E5%8F%96)
+    - [Store(原子写入)](#store%E5%8E%9F%E5%AD%90%E5%86%99%E5%85%A5)
   - [原子操作与互斥锁的区别](#%E5%8E%9F%E5%AD%90%E6%93%8D%E4%BD%9C%E4%B8%8E%E4%BA%92%E6%96%A5%E9%94%81%E7%9A%84%E5%8C%BA%E5%88%AB)
+  - [atomic.Value](#atomicvalue)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -234,7 +236,7 @@ func main() {
 减少之后: 10
 ```
 
-#### Store(读取或写入)
+#### Load(原子读取)
 
 当我们要读取一个变量的时候，很有可能这个变量正在被写入，这个时候，我们就很有可能读取到写到一半的数据。 所以读取操作是需要一个原子行为的。
 在atomic包中就是Load开头的函数群。  
@@ -247,6 +249,8 @@ func LoadUint32(addr *uint32) (val uint32)
 func LoadUint64(addr *uint64) (val uint64)
 func LoadUintptr(addr *uintptr) (val uintptr)
 ```
+
+#### Store(原子写入)
 
 读取是有原子性的操作的，同样写入atomic包也提供了相关的操作包。
 
@@ -277,6 +281,12 @@ func StoreUintptr(addr *uintptr, val uintptr)
 针对`atomic`包的观点在Google的邮件组里也有很多讨论，其中一个结论解释是：  
 
 > 应避免使用该包装。或者，阅读C ++ 11标准的“原子操作”一章；如果您了解如何在C ++中安全地使用这些操作，那么你才能有安全地使用Go的sync/atomic包的能力。
+
+### atomic.Value
+
+
+
+
 
 ### 参考
 【Go并发编程之美-CAS操作】https://zhuanlan.zhihu.com/p/56733484  
