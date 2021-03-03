@@ -12,4 +12,6 @@ func main() {
 	res := atomic.LoadInt32(&p)
 
 	fmt.Println(res)
+
+	fmt.Println(^uintptr(0))
 }
