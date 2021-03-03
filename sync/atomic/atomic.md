@@ -1,12 +1,14 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+
 - [atomic](#atomic)
   - [原子操作](#%E5%8E%9F%E5%AD%90%E6%93%8D%E4%BD%9C)
   - [Go中原子操作的支持](#go%E4%B8%AD%E5%8E%9F%E5%AD%90%E6%93%8D%E4%BD%9C%E7%9A%84%E6%94%AF%E6%8C%81)
-    - [CAS](#cas)
-    - [增加或减少](#%E5%A2%9E%E5%8A%A0%E6%88%96%E5%87%8F%E5%B0%91)
-    - [读取或写入](#%E8%AF%BB%E5%8F%96%E6%88%96%E5%86%99%E5%85%A5)
+    - [CompareAndSwap(CAS)](#compareandswapcas)
+    - [Swap(交换)](#swap%E4%BA%A4%E6%8D%A2)
+    - [Add(增加或减少)](#add%E5%A2%9E%E5%8A%A0%E6%88%96%E5%87%8F%E5%B0%91)
+    - [Store(读取或写入)](#store%E8%AF%BB%E5%8F%96%E6%88%96%E5%86%99%E5%85%A5)
   - [原子操作与互斥锁的区别](#%E5%8E%9F%E5%AD%90%E6%93%8D%E4%BD%9C%E4%B8%8E%E4%BA%92%E6%96%A5%E9%94%81%E7%9A%84%E5%8C%BA%E5%88%AB)
   - [参考](#%E5%8F%82%E8%80%83)
 
@@ -31,7 +33,9 @@ Go语言的`sync/atomic`提供了对原子操作的支持，用于同步访问�
 - Go语言提供的原子操作都是非入侵式的
 - 原子操作支持的类型包括`int32、int64、uint32、uint64、uintptr、unsafe.Pointer`。  
 
-#### CAS
+竞争条件是由于异步的访问共享资源，并试图同时读写该资源而导致的，使用互斥锁和通道的思路都是在线程获得到访问权后阻塞其他线程对共享内存的访问，而使用原子操作解决数据竞争问题则是利用了其不可被打断的特性。  
+
+#### CompareAndSwap(CAS)
 
 go中的Cas操作，是借用了CPU提供的原子性指令来实现。CAS操作修改共享变量时候不需要对共享变量加锁，而是通过类似乐观锁的方式进行检查，本质还是不断的占用CPU 资源换取加锁带来的开销（比如上下文切换开销）。    
 
@@ -46,9 +50,30 @@ func CompareAndSwapUint64(addr *uint64, old, new uint64) (swapped bool)
 func CompareAndSwapUintptr(addr *uintptr, old, new uintptr) (swapped bool)
 ```
 
+`CompareAndSwap`函数会先判断参数addr指向的操作值与参数old的值是否相等，仅当此判断得到的结果是true之后，才会用参数new代表的新值替换掉原先的旧值，否则操作就会被忽略。  
 
+举个栗子  
 
-调用函数后，`CompareAndSwap`函数会先判断参数addr指向的操作值与参数old的值是否相等，仅当此判断得到的结果是true之后，才会用参数new代表的新值替换掉原先的旧值，否则操作就会被忽略。  
+```go
+func main() {
+	var a, b int32 = 13, 13
+	var c int32 = 9
+	res := atomic.CompareAndSwapInt32(&a, b, c)
+	fmt.Println("swapped:", res)
+	fmt.Println("替换的值:", c)
+	fmt.Println("替换之后a的值:", a)
+}
+```
+
+查看下输出  
+
+```go
+swapped: true
+替换的值: 9
+替换之后a的值: 9
+```
+
+`a`值和`b`值作比较，当`a`和`b`相等时，会用`c`的值替换掉`a`的值  
 
 我们使用的`mutex`互斥锁类似悲观锁，总是假设会有并发的操作要修改被操作的值，所以使用锁将相关操作放入到临界区加以保存。而CAS操作做法趋于乐观锁，总是假设被操作的值未曾改变（即与旧值相等），并一旦确认这个假设的真实性就立即进行值替换。在被操作值被频繁变更的情况下，`CAS`操作并不那么容易成功所以需要不断进行尝试，直到成功为止。    
 
@@ -75,7 +100,9 @@ func addValue(delta int32) {
 }
 ```
 
-这一系列的函数需要比较后再进行交换，也有不需要进行比较就进行交换的原子操作。  
+#### Swap(交换)
+
+上面的`CompareAndSwap`系列的函数需要比较后再进行交换，也有不需要进行比较就进行交换的原子操作。  
 
 ```go
 func SwapInt32(addr *int32, new int32) (old int32)
@@ -86,10 +113,25 @@ func SwapUint64(addr *uint64, new uint64) (old uint64)
 func SwapUintptr(addr *uintptr, new uintptr) (old uintptr)
 ```
 
-竞争条件是由于异步的访问共享资源，并试图同时读写该资源而导致的，使用互斥锁和通道的思路都是在线程获得到访问权后阻塞其他线程对共享内存的访问，
-而使用原子操作解决数据竞争问题则是利用了其不可被打断的特性。
+举个栗子  
 
-#### 增加或减少
+```go
+func main() {
+	var a, b int32 = 13, 12
+	old := atomic.SwapInt32(&a, b)
+	fmt.Println("old的值:", old)
+	fmt.Println("替换之后a的值", a)
+}
+```
+
+查看下输出  
+
+```go
+old的值: 13
+替换之后a的值 12
+```
+
+#### Add(增加或减少)
 
 对一个数值进行增加或者减少的行为也需要保证是原子的，它对应于atomic包的函数就是
 
@@ -101,7 +143,7 @@ func AddUint64(addr *uint64, delta uint64) (new uint64)
 func AddUintptr(addr *uintptr, delta uintptr) (new uintptr)
 ```
 
-#### 读取或写入
+#### Store(读取或写入)
 
 当我们要读取一个变量的时候，很有可能这个变量正在被写入，这个时候，我们就很有可能读取到写到一半的数据。 所以读取操作是需要一个原子行为的。
 在atomic包中就是Load开头的函数群。  
