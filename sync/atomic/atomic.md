@@ -164,6 +164,27 @@ func SwapUint64(addr *uint64, new uint64) (old uint64)
 func SwapUintptr(addr *uintptr, new uintptr) (old uintptr)
 ```
 
+几个差不多，来看下`SwapInt32`的源码，也是通过汇编来实现的  
+
+`/usr/local/go/src/sync/atomic/asm.s`
+
+```cgo
+TEXT ·SwapUint32(SB),NOSPLIT,$0
+	JMP	runtime∕internal∕atomic·Xchg(SB)
+```
+
+看下汇编的`Xchg`
+
+```cgo
+TEXT runtime∕internal∕atomic·Xchg(SB), NOSPLIT, $0-20
+	MOVQ	ptr+0(FP), BX
+	MOVL	new+8(FP), AX
+        // 原子操作, 把_value的值和newValue交换, 且返回_value原来的值
+	XCHGL	AX, 0(BX)
+	MOVL	AX, ret+16(FP)
+	RET
+```
+
 举个栗子  
 
 ```go
@@ -242,9 +263,7 @@ func StoreUintptr(addr *uintptr, val uintptr)
 
 首先atomic操作的优势是更轻量，比如CAS可以在不形成临界区和创建互斥量的情况下完成并发安全的值替换操作。这可以大大的减少同步对程序性能的损耗。  
 
-原子操作也有劣势。还是以CAS操作为例，使用CAS操作的做法趋于乐观，总是假设被操作值未曾被改变（即与旧值相等），并一旦确认这个假设的真实性就立即
-进行值替换，那么在被操作值被频繁变更的情况下，CAS操作并不那么容易成功。而使用互斥锁的做法则趋于悲观，我们总假设会有并发的操作要修改被操作的值，
-并使用锁将相关操作放入临界区中加以保护。  
+原子操作也有劣势。还是以CAS操作为例，使用CAS操作的做法趋于乐观，总是假设被操作值未曾被改变（即与旧值相等），并一旦确认这个假设的真实性就立即进行值替换，那么在被操作值被频繁变更的情况下，CAS操作并不那么容易成功。而使用互斥锁的做法则趋于悲观，我们总假设会有并发的操作要修改被操作的值，并使用锁将相关操作放入临界区中加以保护。    
 
 下面是几点区别：  
 
@@ -253,10 +272,9 @@ func StoreUintptr(addr *uintptr, val uintptr)
 - 原子操作中的cas趋于乐观锁，CAS操作并不那么容易成功，需要判断，然后尝试处理
 - 可以把互斥锁理解为悲观锁，共享资源每次只给一个线程使用，其它线程阻塞，用完后再把资源转让给其它线程  
 
-atomic包提供了底层的原子性内存原语，这对于同步算法的实现很有用。这些函数一定要非常小心地使用，使用不当反而会增加系统资源的开销，对于应用层
-来说，最好使用通道或sync包中提供的功能来完成同步操作。  
+`atomic`包提供了底层的原子性内存原语，这对于同步算法的实现很有用。这些函数一定要非常小心地使用，使用不当反而会增加系统资源的开销，对于应用层来说，最好使用通道或sync包中提供的功能来完成同步操作。    
 
-针对atomic包的观点在Google的邮件组里也有很多讨论，其中一个结论解释是：  
+针对`atomic`包的观点在Google的邮件组里也有很多讨论，其中一个结论解释是：  
 
 > 应避免使用该包装。或者，阅读C ++ 11标准的“原子操作”一章；如果您了解如何在C ++中安全地使用这些操作，那么你才能有安全地使用Go的sync/atomic包的能力。
 
