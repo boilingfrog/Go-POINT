@@ -14,6 +14,7 @@
   - [atomic.Value](#atomicvalue)
     - [Load](#load)
     - [Store](#store)
+  - [总结](#%E6%80%BB%E7%BB%93)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -417,8 +418,15 @@ func (v *Value) Store(x interface{}) {
 
 注意：其中使用了`runtime_procPin()`方法，它可以将一个`goroutine`死死占用当前使用的`P(P-M-G中的processor)`，不允许其它`goroutine/M`抢占,这样就能保证存储顺利完成，不必担心竞争的问题。释放pin的方法是`runtime_procUnpin`。  
 
-<img src="/img/atomic_store_1.png" width = "584" height = "586" alt="atomic" align=center />
+<img src="/img/atomic_store_2.png" width = "584" height = "586" alt="atomic" align=center />
 
+### 总结
+
+1、atomic中的操作是原子性的；  
+
+2、原子操作由底层硬件支持，而锁则由操作系统的调度器实现。锁应当用来保护一段逻辑，对于一个变量更新的保护，原子操作通常会更有效率，并且更能利用计算机多核的优势，如果要更新的是一个复合对象，则应当使用`atomic.Value`封装好的实现。  
+
+3、atomic中的代码，主要还是依赖汇编来来实现的原子操作。  
 
 ### 参考
 【Go并发编程之美-CAS操作】https://zhuanlan.zhihu.com/p/56733484  
