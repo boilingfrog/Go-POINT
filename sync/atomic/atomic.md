@@ -417,6 +417,9 @@ func (v *Value) Store(x interface{}) {
 
 注意：其中使用了`runtime_procPin()`方法，它可以将一个`goroutine`死死占用当前使用的`P(P-M-G中的processor)`，不允许其它`goroutine/M`抢占,这样就能保证存储顺利完成，不必担心竞争的问题。释放pin的方法是`runtime_procUnpin`。  
 
+<img src="./img/atomic_store_1.png" width = "584" height = "586" alt="atomic" align=center />
+
+
 ### 参考
 【Go并发编程之美-CAS操作】https://zhuanlan.zhihu.com/p/56733484  
 【sync/atomic - 原子操作】https://docs.kilvn.com/The-Golang-Standard-Library-by-Example/chapter16/16.02.html  
