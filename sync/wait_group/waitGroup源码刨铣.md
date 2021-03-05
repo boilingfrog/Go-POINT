@@ -1,3 +1,17 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+
+- [waitGroup源码刨铣](#waitgroup%E6%BA%90%E7%A0%81%E5%88%A8%E9%93%A3)
+  - [前言](#%E5%89%8D%E8%A8%80)
+  - [WaitGroup实现](#waitgroup%E5%AE%9E%E7%8E%B0)
+    - [noCopy](#nocopy)
+    - [state1](#state1)
+  - [Add](#add)
+  - [参考](#%E5%8F%82%E8%80%83)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## waitGroup源码刨铣
 
 ### 前言
@@ -56,7 +70,7 @@ type WaitGroup struct {
 }
 ```
 
-**noCopy**
+#### noCopy
 
 意思就是不让copy,是如何实现的呢？
 
@@ -111,7 +125,7 @@ $ go vet main.go
 
 使用vet检测到了不能copy的错误  
 
-**state1**
+#### state1
 
 ```go
 	// 64 位值: 高 32 位用于计数，低 32 位用于等待计数
@@ -150,8 +164,12 @@ $ go vet main.go
 
 |          | state [0] | state [1] | state [2] |
 | :------: | :------:  | :------:  | :------:  |
-| 32位     | count     | wait      | semaphore |
-| 32位     | semaphore | count     | wait      |
+| 32位     | waiter    | counter   | semaphore |
+| 32位     | semaphore | waiter    | counter     |
+
+counter位于高地址位，waiter位于地址位  
+
+<img src="/img/waitgroup_state1_1.png" width = "455" height = "375.5" alt="waitgroup" align=center />
 
 下面是state的代码  
 ```go
@@ -174,7 +192,21 @@ func (wg *WaitGroup) state() (statep *uint64, semap *uint32) {
 	w := uint32(state)  // wait
 ```
 
-#### Add
+这里面也用到了信号量  
+
+信号量是Unix系统提供的一种保护共享资源的机制，用于防止多个线程同时访问某个资源。  
+
+可简单理解为信号量为一个数值：  
+
+- 当信号量>0时，表示资源可用，获取信号量时系统自动将信号量减1；  
+
+- 当信号量==0时，表示资源暂不可用，获取信号量时，当前线程会进入睡眠，当信号量为正时被唤醒。
+
+`WaitGroup`中的实现就用到了这个，在下面的代码实现就能看到  
+
+
+
+### Add
 
 ```go
 func (wg *WaitGroup) Add(delta int) {

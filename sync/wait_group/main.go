@@ -8,33 +8,15 @@ import (
 )
 
 func main() {
-	// waitGroup()
-
 	fdg := [2]uint32{}
 
-	fmt.Println((*uint32)(unsafe.Pointer(&fdg)))
-	fmt.Println((*uint32)(unsafe.Pointer(&fdg[0])))
-	//
-	//fmt.Println((*uint32)(unsafe.Pointer(&fdg[1])))
-	//fmt.Println((*uint32)(unsafe.Pointer(&fdg[2])))
-	// fmt.Printf("uint64 size: %d\n", unsafe.Sizeof(uint64(0)))
-
-	state := atomic.AddUint64((*uint64)(unsafe.Pointer(&fdg)), uint64(1))
-	fmt.Println(state)
-	v := int32(state >> 32)
-	w := uint32(state)
-	fmt.Println(v)
-	fmt.Println(w)
-
-	//state = atomic.AddUint64((*uint64)(unsafe.Pointer(&fdg)), uint64(int(-1))<<32)
-	//
-	//fmt.Println(state)
-	//v = int32(state >> 32)
-	//w = uint32(state)
-	//fmt.Println(v)
-	//fmt.Println(w)
-
-	//	fmt.Println(uint64(-1))
+	state := atomic.AddUint64((*uint64)(unsafe.Pointer(&fdg)), uint64(1)<<32)
+	fmt.Println("wait:", fdg[0])
+	fmt.Println("count:", fdg[1])
+	count := int32(state >> 32)
+	wait := uint32(state)
+	fmt.Println("count:", count)
+	fmt.Println("wait:", wait)
 }
 
 func waitGroup() {
