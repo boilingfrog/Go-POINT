@@ -114,25 +114,65 @@ $ go vet main.go
 **state1**
 
 ```go
-	// 64-bit value: high 32 bits are counter, low 32 bits are waiter count.
-	// 64-bit atomic operations require 64-bit alignment, but 32-bit
-	// compilers do not ensure it. So we allocate 12 bytes and then use
-	// the aligned 8 bytes in them as state, and the other 4 as storage
-	// for the sema.
+	// 64 位值: 高 32 位用于计数，低 32 位用于等待计数
+	// 64 位的原子操作要求 64 位对齐，但 32 位编译器无法保证这个要求
+	// 因此分配 12 字节然后将他们对齐，其中 8 字节作为状态，其他 4 字节用于存储原语
 	state1 [3]uint32
 ```
+
+这点是`wait_group`很巧妙的一点，大神写代码的思路就是惊奇  
 
 这个设计很奇妙，通过内存对齐来处理`wait_group`中的waiter数、计数值、信号量。什么是内存对齐可参考[什么是内存对齐，go中内存对齐分析](https://www.cnblogs.com/ricklz/p/14455135.html)  
 
 来分析下`state1`是如何内存对齐来处理几个计数值的存储  
 
-对于
+计算机为了加快内存的访问速度，会对内存进行对齐处理，CPU把内存当作一块一块的，块的大小可以是2、4、8、16字节大小，因此CPU读取内存是一块一块读取的。  
 
+合理的内存对齐可以提高内存读写的性能，并且便于实现变量操作的原子性。  
 
+在不同平台上的编译器都有自己默认的 “对齐系数”，可通过预编译命令#pragma pack(n)进行变更，n就是代指 “对齐系数”。  
 
+一般来讲，我们常用的平台的系数如下：  
 
+- 32 位：4
 
+- 64 位：8
 
+`state1`这块就兼容了两种平台的对齐系数  
+
+对于64未系统来讲。内存访问的步长是8。也就是cpu一次访问8位偏移量的内存空间。当时对于32未的系统，内存的对齐系数是4，也就是访问的步长是4个偏移量。  
+
+所以为了兼容这两种模式，这里采用了`uint32`结构的数组，保证在不同类型的机器上都是`12`个字节，一个`uint32`是4字节。这样对于32位的4步长访问是没有问题了，64位的好像也没有解决，8步长的访问会一次读入两个`uint32`的长度。  
+
+所以，下面的读取也进行了操作，将两个`uint32`的内存放到一个`uint64`中返回，这样就同时解决了32位和64位访问步长的问题。  
+
+所以，64位系统和32位系统，`state1`中`counter，waiter，semaphore`的内存布局是不一样的。  
+
+|          | state [0] | state [1] | state [2] |
+| :------: | :------:  | :------:  | :------:  |
+| 32位     | count     | wait      | semaphore |
+| 32位     | semaphore | count     | wait      |
+
+下面是state的代码  
+```go
+func (wg *WaitGroup) state() (statep *uint64, semap *uint32) {
+	// 判断是否是64位
+	if uintptr(unsafe.Pointer(&wg.state1))%8 == 0 {
+		return (*uint64)(unsafe.Pointer(&wg.state1)), &wg.state1[2]
+	} else {
+		return (*uint64)(unsafe.Pointer(&wg.state1[1])), &wg.state1[0]
+	}
+}
+```
+
+对于count和wait在高低地址位的体现，在add中的代码可体现
+
+```go
+        // // 将 delta 加到 statep 的前 32 位上，即加到计数器上
+	state := atomic.AddUint64(statep, uint64(delta)<<32)
+	v := int32(state >> 32) // count
+	w := uint32(state)  // wait
+```
 
 #### Add
 

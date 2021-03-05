@@ -19,14 +19,12 @@ func main() {
 	//fmt.Println((*uint32)(unsafe.Pointer(&fdg[2])))
 	// fmt.Printf("uint64 size: %d\n", unsafe.Sizeof(uint64(0)))
 
-	state := atomic.AddUint64((*uint64)(unsafe.Pointer(&fdg)), uint64(10)<<32)
+	state := atomic.AddUint64((*uint64)(unsafe.Pointer(&fdg)), uint64(1))
 	fmt.Println(state)
 	v := int32(state >> 32)
 	w := uint32(state)
 	fmt.Println(v)
 	fmt.Println(w)
-	fmt.Println(fmt.Printf("%b\n", 1)) // 1110
-	fmt.Printf("%b\n", v)              // 1110
 
 	//state = atomic.AddUint64((*uint64)(unsafe.Pointer(&fdg)), uint64(int(-1))<<32)
 	//
