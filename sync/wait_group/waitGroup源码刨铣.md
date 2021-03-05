@@ -204,12 +204,11 @@ func (wg *WaitGroup) state() (statep *uint64, semap *uint32) {
 
 `WaitGroup`中的实现就用到了这个，在下面的代码实现就能看到  
 
-
-
 ### Add
 
 ```go
 func (wg *WaitGroup) Add(delta int) {
+	// 获取counter,waiter,以及semaphore对应的指针
 	statep, semap := wg.state()
 	if race.Enabled {
 		_ = *statep // trigger nil deref early
@@ -220,8 +219,11 @@ func (wg *WaitGroup) Add(delta int) {
 		race.Disable()
 		defer race.Enable()
 	}
+	// 将 delta 加到 statep 的前 32 位上，即加到计数器上
 	state := atomic.AddUint64(statep, uint64(delta)<<32)
+	// 高地址位counter
 	v := int32(state >> 32)
+	// 低地址为waiter
 	w := uint32(state)
 	if race.Enabled && delta > 0 && v == int32(delta) {
 		// The first increment must be synchronized with Wait.
@@ -229,27 +231,81 @@ func (wg *WaitGroup) Add(delta int) {
 		// several concurrent wg.counter transitions from 0.
 		race.Read(unsafe.Pointer(semap))
 	}
+	// 计数器不允许为负数
 	if v < 0 {
 		panic("sync: negative WaitGroup counter")
 	}
+	// wait不等于0说明已经执行了Wait，此时不容许Add
 	if w != 0 && delta > 0 && v == int32(delta) {
 		panic("sync: WaitGroup misuse: Add called concurrently with Wait")
 	}
+	// 计数器的值大于或者没有waiter在等待,直接返回
 	if v > 0 || w == 0 {
 		return
 	}
-	// This goroutine has set counter to 0 when waiters > 0.
-	// Now there can't be concurrent mutations of state:
-	// - Adds must not happen concurrently with Wait,
-	// - Wait does not increment waiters if it sees counter == 0.
-	// Still do a cheap sanity check to detect WaitGroup misuse.
+	// 这时 Goroutine 已经将计数器清零，且等待器大于零（并发调用导致）
+	// 这时不允许出现并发使用导致的状态突变，否则就应该 panic
+	// - Add 不能与 Wait 并发调用
+	// - Wait 在计数器已经归零的情况下，不能再继续增加等待器了
+	// 仍然检查来保证 WaitGroup 不会被滥用
 	if *statep != state {
 		panic("sync: WaitGroup misuse: Add called concurrently with Wait")
 	}
-	// Reset waiters count to 0.
+	// 结束后将等待器清零
 	*statep = 0
 	for ; w != 0; w-- {
 		runtime_Semrelease(semap, false, 0)
+	}
+}
+```
+
+### Wait
+
+```go
+// Wait blocks until the WaitGroup counter is zero.
+func (wg *WaitGroup) Wait() {
+	// 获取counter,waiter,以及semaphore对应的指针
+	statep, semap := wg.state()
+	if race.Enabled {
+		_ = *statep // trigger nil deref early
+		race.Disable()
+	}
+	for {
+		// 获取对应的counter和waiter数量
+		state := atomic.LoadUint64(statep)
+		v := int32(state >> 32)
+		w := uint32(state)
+		// Counter为0，不需要等待
+		if v == 0 {
+			if race.Enabled {
+				race.Enable()
+				race.Acquire(unsafe.Pointer(wg))
+			}
+			return
+		}
+		// 原子（cas）增加waiter的数量
+		if atomic.CompareAndSwapUint64(statep, state, state+1) {
+			if race.Enabled && w == 0 {
+				// Wait must be synchronized with the first Add.
+				// Need to model this is as a write to race with the read in Add.
+				// As a consequence, can do the write only for the first waiter,
+				// otherwise concurrent Waits will race with each other.
+				race.Write(unsafe.Pointer(semap))
+			}
+			// 这块用到了，我们上文讲的那个信号量
+			// 会阻塞到存储原语是否 > 0（即睡眠），如果 *semap > 0 则会减 1，因此最终的 semap 理论为 0
+			runtime_Semacquire(semap)
+
+			// 在这种情况下，如果 *statep 不等于 0 ，则说明使用失误，直接 panic
+			if *statep != 0 {
+				panic("sync: WaitGroup is reused before previous Wait has returned")
+			}
+			if race.Enabled {
+				race.Enable()
+				race.Acquire(unsafe.Pointer(wg))
+			}
+			return
+		}
 	}
 }
 ```
