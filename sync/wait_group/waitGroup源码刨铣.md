@@ -347,7 +347,15 @@ func (wg *WaitGroup) Wait() {
 
 1、`state1`的处理，保证内存对齐，设置高低位内存来存储不同的值，同时32位和64位平台的处理方式还不同；  
 
-2、信号量的阻塞退出，这块最后一个Done退出的时候，才会触发阻塞信号量，退出Wait()，然后结束整个waitGroup,再此之前，当Wait()在成功将waiter变量+1操作之后，就会被runtime_Semacquire阻塞，直到最后一个Done，信号的发出。  
+2、信号量的阻塞退出，这块最后一个`Done`退出的时候，才会触发阻塞信号量，退出`Wait()`，然后结束整个`waitGroup`。再此之前，当Wait()在成功将waiter变量+1操作之后，就会被`runtime_Semacquire`阻塞，直到最后一个`Done`，信号的发出。  
+
+对于`WaitGroup`的使用  
+
+1、计数器的值不能为负数，可能是`Add(-1)`触发的，也可能是`Done()`触发的，否则会panic;  
+
+2、`Add`数量的添加，要发生在`Wait()`之前；  
+
+3、`WaitGroup`是可以重用的，但是需要等上一批的`goroutine` 都调用`Wait`完毕后才能继续重用`WaitGroup`。  
 
 ### 参考
 
