@@ -8,6 +8,8 @@
     - [noCopy](#nocopy)
     - [state1](#state1)
   - [Add](#add)
+  - [Wait](#wait)
+  - [总结](#%E6%80%BB%E7%BB%93)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -238,18 +240,23 @@ func (wg *WaitGroup) Add(delta int) {
 	if v > 0 || w == 0 {
 		return
 	}
+// 运行到这里只有一种情况 v == 0 && w != 0
+
 	// 这时 Goroutine 已经将计数器清零，且等待器大于零（并发调用导致）
 	// 这时不允许出现并发使用导致的状态突变，否则就应该 panic
 	// - Add 不能与 Wait 并发调用
 	// - Wait 在计数器已经归零的情况下，不能再继续增加等待器了
 	// 仍然检查来保证 WaitGroup 不会被滥用
+
+// 这一点很重要，这段代码同时也保证了这是最后的一个需要等待阻塞的goroutine
+// 然后在下面通过runtime_Semrelease，唤醒被信号量semap阻塞的waiter
 	if *statep != state {
 		panic("sync: WaitGroup misuse: Add called concurrently with Wait")
 	}
 	// 结束后将等待器清零
 	*statep = 0
 	for ; w != 0; w-- {
-		// 释放信号量，唤醒runtime_Semacquire被阻塞的goroutine，
+		// 释放信号量，通过runtime_Semacquire唤醒被阻塞的waiter
 		runtime_Semrelease(semap, false, 0)
 	}
 }
@@ -265,7 +272,16 @@ func (wg *WaitGroup) Add(delta int) {
 
 4、同样也会判断，已经的执行`wait`之后，不能在增加`counter`;  
 
-5、最后，如果有`waiter`,释放信号量，唤醒被`runtime_Semacquire`阻塞的`waiter`。  
+5、（这点很重要，我自己看了好久才明白）计数器的值大于或者没有waiter在等待,直接返回  
+
+```go
+	// 计数器的值大于或者没有waiter在等待,直接返回
+	if v > 0 || w == 0 {
+		return
+	}
+```
+
+因为waiter的值只会被执行一次+1操作，所以这段代码保证了只有在`v == 0 && w != 0`，也就是最后一个Done操作的时候，走到下面的代码，释放信号量，唤醒被信号量阻塞的`waiter`，结束整个WaitGroup。   
 
 ### Wait
 
@@ -288,7 +304,7 @@ func (wg *WaitGroup) Wait() {
 			}
 			return
 		}
-		// 原子（cas）增加waiter的数量
+		// 原子（cas）增加waiter的数量（只会被+1操作一次）
 		if atomic.CompareAndSwapUint64(statep, state, state+1) {
 			...
 			// 这块用到了，我们上文讲的那个信号量
@@ -309,10 +325,27 @@ func (wg *WaitGroup) Wait() {
 
 梳理下流程  
 
+1、首先获取存储在`state1`中对应的几个变量的指针；  
 
+2、一个for循环，来阻塞等待所有的goroutine退出；  
 
+3、如果counter为0，不需要等待，直接退出即可；  
 
+4、原子（cas）增加waiter的数量（只会被+1操作一次）；  
 
+5、整个Waiter会被runtime_Semacquire阻塞，直到等到退出的信号量；  
+
+6、Done会在最后一次的时候通过runtime_Semrelease发出取消阻塞的信号，然后被runtime_Semacquire阻塞的Waiter就可以退出了；  
+
+7、整个waitGroup执行成功。  
+
+### 总结
+
+代码中我感到设计比较巧妙的有两个部分：  
+
+1、`state1`的处理，保证内存对齐，设置高低位内存来存储不同的值，同时32位和64位平台的处理方式还不同；  
+
+2、信号量的阻塞退出，这块最后一个Done退出的时候，才会触发阻塞信号量，退出Wait()，然后结束整个waitGroup,再此之前，当Wait()在成功将waiter变量+1操作之后，就会被runtime_Semacquire阻塞，直到最后一个Done，信号的发出。  
 
 ### 参考
 

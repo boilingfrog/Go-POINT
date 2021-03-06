@@ -20,7 +20,13 @@ func main() {
 	//fmt.Println("count:", count)
 	//fmt.Println("wait:", wait)
 
-	semaphoreTest()
+	//semaphoreTest()
+
+	for {
+		fmt.Println(12)
+
+		return
+	}
 
 }
 
