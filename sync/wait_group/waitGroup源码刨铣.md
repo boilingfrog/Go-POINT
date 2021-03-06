@@ -257,9 +257,15 @@ func (wg *WaitGroup) Add(delta int) {
 
 梳理下流程  
 
-1、首先
+1、首先获取存储在`state1`中对应的几个变量的指针；  
 
+2、`counter`存储在高位，增加的时候需要左移32位；   
 
+3、counter的数量不能小于0，小于0抛出panic;  
+
+4、同样也会判断，已经的执行`wait`之后，不能在增加`counter`;  
+
+5、最后，如果有`waiter`,释放信号量，唤醒被`runtime_Semacquire`阻塞的`waiter`。  
 
 ### Wait
 
@@ -268,10 +274,7 @@ func (wg *WaitGroup) Add(delta int) {
 func (wg *WaitGroup) Wait() {
 	// 获取counter,waiter,以及semaphore对应的指针
 	statep, semap := wg.state()
-	if race.Enabled {
-		_ = *statep // trigger nil deref early
-		race.Disable()
-	}
+	...
 	for {
 		// 获取对应的counter和waiter数量
 		state := atomic.LoadUint64(statep)
@@ -287,30 +290,25 @@ func (wg *WaitGroup) Wait() {
 		}
 		// 原子（cas）增加waiter的数量
 		if atomic.CompareAndSwapUint64(statep, state, state+1) {
-			if race.Enabled && w == 0 {
-				// Wait must be synchronized with the first Add.
-				// Need to model this is as a write to race with the read in Add.
-				// As a consequence, can do the write only for the first waiter,
-				// otherwise concurrent Waits will race with each other.
-				race.Write(unsafe.Pointer(semap))
-			}
+			...
 			// 这块用到了，我们上文讲的那个信号量
-			// 会阻塞到存储原语是否 > 0（即睡眠），如果 *semap > 0 则会减 1，因此最终的 semap 理论为 0
+			// 等待被runtime_Semrelease释放的信号量唤醒
+			// 如果 *semap > 0 则会减 1,等于0则被阻塞
 			runtime_Semacquire(semap)
 
 			// 在这种情况下，如果 *statep 不等于 0 ，则说明使用失误，直接 panic
 			if *statep != 0 {
 				panic("sync: WaitGroup is reused before previous Wait has returned")
 			}
-			if race.Enabled {
-				race.Enable()
-				race.Acquire(unsafe.Pointer(wg))
-			}
+			...
 			return
 		}
 	}
 }
 ```
+
+梳理下流程  
+
 
 
 
