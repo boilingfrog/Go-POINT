@@ -240,7 +240,7 @@ func (wg *WaitGroup) Add(delta int) {
 	if v > 0 || w == 0 {
 		return
 	}
-// 运行到这里只有一种情况 v == 0 && w != 0
+	// 运行到这里只有一种情况 v == 0 && w != 0
 
 	// 这时 Goroutine 已经将计数器清零，且等待器大于零（并发调用导致）
 	// 这时不允许出现并发使用导致的状态突变，否则就应该 panic
@@ -248,8 +248,8 @@ func (wg *WaitGroup) Add(delta int) {
 	// - Wait 在计数器已经归零的情况下，不能再继续增加等待器了
 	// 仍然检查来保证 WaitGroup 不会被滥用
 
-// 这一点很重要，这段代码同时也保证了这是最后的一个需要等待阻塞的goroutine
-// 然后在下面通过runtime_Semrelease，唤醒被信号量semap阻塞的waiter
+	// 这一点很重要，这段代码同时也保证了这是最后的一个需要等待阻塞的goroutine
+	// 然后在下面通过runtime_Semrelease，唤醒被信号量semap阻塞的waiter
 	if *statep != state {
 		panic("sync: WaitGroup misuse: Add called concurrently with Wait")
 	}
