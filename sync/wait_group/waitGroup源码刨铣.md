@@ -169,7 +169,7 @@ $ go vet main.go
 | 32位     | waiter    | counter   | semaphore |
 | 32位     | semaphore | waiter    | counter     |
 
-counter位于高地址位，waiter位于地址位  
+`counter`位于高地址位，`waiter`位于地址位  
 
 <img src="/img/waitgroup_state1_1.png" width = "455" height = "375.5" alt="waitgroup" align=center />
 
@@ -272,7 +272,7 @@ func (wg *WaitGroup) Add(delta int) {
 
 4、同样也会判断，已经的执行`wait`之后，不能在增加`counter`;  
 
-5、（这点很重要，我自己看了好久才明白）计数器的值大于或者没有waiter在等待,直接返回  
+5、（这点很重要，我自己看了好久才明白）计数器的值大于或者没有`waiter`在等待,直接返回  
 
 ```go
 	// 计数器的值大于或者没有waiter在等待,直接返回
@@ -281,7 +281,7 @@ func (wg *WaitGroup) Add(delta int) {
 	}
 ```
 
-因为waiter的值只会被执行一次+1操作，所以这段代码保证了只有在`v == 0 && w != 0`，也就是最后一个Done操作的时候，走到下面的代码，释放信号量，唤醒被信号量阻塞的`waiter`，结束整个WaitGroup。   
+因为`waiter`的值只会被执行一次+1操作，所以这段代码保证了只有在`v == 0 && w != 0`，也就是最后一个`Done()`操作的时候，走到下面的代码，释放信号量，唤醒被信号量阻塞的`waiter`，结束整个`WaitGroup`。   
 
 ### Wait
 
@@ -327,17 +327,17 @@ func (wg *WaitGroup) Wait() {
 
 1、首先获取存储在`state1`中对应的几个变量的指针；  
 
-2、一个for循环，来阻塞等待所有的goroutine退出；  
+2、一个for循环，来阻塞等待所有的`goroutine`退出；  
 
-3、如果counter为0，不需要等待，直接退出即可；  
+3、如果`counter`为0，不需要等待，直接退出即可；  
 
-4、原子（cas）增加waiter的数量（只会被+1操作一次）；  
+4、原子（cas）增加`waiter`的数量（只会被+1操作一次）；  
 
-5、整个Waiter会被runtime_Semacquire阻塞，直到等到退出的信号量；  
+5、整个`Wait()`会被`runtime_Semacquire`阻塞，直到等到退出的信号量；  
 
-6、Done会在最后一次的时候通过runtime_Semrelease发出取消阻塞的信号，然后被runtime_Semacquire阻塞的Waiter就可以退出了；  
+6、`Done()`会在最后一次的时候通过`runtime_Semrelease`发出取消阻塞的信号，然后被`runtime_Semacquire`阻塞的`Wait()`就可以退出了；  
 
-7、整个waitGroup执行成功。  
+7、整个`WaitGroup`执行成功。  
 
 <img src="/img/waitgroup_all_1.png" width = "501" height = "438" alt="waitgroup" align=center />
 
