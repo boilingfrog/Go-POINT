@@ -207,30 +207,25 @@ func (wg *WaitGroup) state() (statep *uint64, semap *uint32) {
 ### Add
 
 ```go
+// Add将增量（可能为负）添加到WaitGroup计数器中。
+// 如果计数器为零，则释放等待时阻塞的所有goroutine。
+// 如果计数器变为负数，请添加恐慌。
+//
+// 请注意，当计数器为 0 时发生的带有正的 delta 的调用必须在 Wait 之前。
+// 当计数器大于 0 时，带有负 delta 的调用或带有正 delta 调用可能在任何时候发生。
+// 通常，这意味着对Add的调用应在语句之前执行创建要等待的goroutine或其他事件。
+// 如果将WaitGroup重用于等待几个独立的事件集，新的Add调用必须在所有先前的Wait调用返回之后发生。
 func (wg *WaitGroup) Add(delta int) {
 	// 获取counter,waiter,以及semaphore对应的指针
 	statep, semap := wg.state()
-	if race.Enabled {
-		_ = *statep // trigger nil deref early
-		if delta < 0 {
-			// Synchronize decrements with Wait.
-			race.ReleaseMerge(unsafe.Pointer(wg))
-		}
-		race.Disable()
-		defer race.Enable()
-	}
+	...
 	// 将 delta 加到 statep 的前 32 位上，即加到计数器上
 	state := atomic.AddUint64(statep, uint64(delta)<<32)
 	// 高地址位counter
 	v := int32(state >> 32)
 	// 低地址为waiter
 	w := uint32(state)
-	if race.Enabled && delta > 0 && v == int32(delta) {
-		// The first increment must be synchronized with Wait.
-		// Need to model this as a read, because there can be
-		// several concurrent wg.counter transitions from 0.
-		race.Read(unsafe.Pointer(semap))
-	}
+	...
 	// 计数器不允许为负数
 	if v < 0 {
 		panic("sync: negative WaitGroup counter")
@@ -254,10 +249,17 @@ func (wg *WaitGroup) Add(delta int) {
 	// 结束后将等待器清零
 	*statep = 0
 	for ; w != 0; w-- {
+		// 释放信号量，唤醒runtime_Semacquire被阻塞的goroutine，
 		runtime_Semrelease(semap, false, 0)
 	}
 }
 ```
+
+梳理下流程  
+
+1、首先
+
+
 
 ### Wait
 
