@@ -339,6 +339,8 @@ func (wg *WaitGroup) Wait() {
 
 7、整个waitGroup执行成功。  
 
+<img src="/img/waitgroup_all_1.png" width = "501" height = "438" alt="waitgroup" align=center />
+
 ### 总结
 
 代码中我感到设计比较巧妙的有两个部分：  
