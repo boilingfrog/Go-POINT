@@ -244,7 +244,7 @@ uint32(state)：      0000 0000 0000 0000 0000 0000 0000 0000
 
 `WaitGroup`中的实现就用到了这个，在下面的代码实现就能看到  
 
-### Add
+### Add(Done)
 
 ```go
 // Add将增量（可能为负）添加到WaitGroup计数器中。
@@ -320,6 +320,14 @@ func (wg *WaitGroup) Add(delta int) {
 ```
 
 因为`waiter`的值只会被执行一次+1操作，所以这段代码保证了只有在`v == 0 && w != 0`，也就是最后一个`Done()`操作的时候，走到下面的代码，释放信号量，唤醒被信号量阻塞的`Wait()`，结束整个`WaitGroup`。   
+
+`Done()`也是调用了`Add`  
+
+```go
+func (wg *WaitGroup) Done() {
+	wg.Add(-1)
+}
+```
 
 ### Wait
 
