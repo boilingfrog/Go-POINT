@@ -4,29 +4,27 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
+	"unsafe"
 
 	"golang.org/x/sync/semaphore"
 )
 
 func main() {
-	//fdg := [2]uint32{}
-	//
-	//state := atomic.AddUint64((*uint64)(unsafe.Pointer(&fdg)), uint64(1)<<32)
-	//fmt.Println("wait:", fdg[0])
-	//fmt.Println("count:", fdg[1])
-	//count := int32(state >> 32)
-	//wait := uint32(state)
-	//fmt.Println("count:", count)
-	//fmt.Println("wait:", wait)
+	fdg := [3]uint32{
+		2, 2, 1,
+	}
+
+	state := atomic.AddUint64((*uint64)(unsafe.Pointer(&fdg)), uint64(-1)<<32)
+	fmt.Println("wait:", fdg[0])
+	fmt.Println("count:", fdg[1])
+	count := int32(state >> 32)
+	wait := uint32(state)
+	fmt.Println("count:", count)
+	fmt.Println("wait:", wait)
 
 	//semaphoreTest()
-
-	for {
-		fmt.Println(12)
-
-		return
-	}
 
 }
 
