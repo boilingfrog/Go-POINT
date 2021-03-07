@@ -232,7 +232,7 @@ uint32(state)：      0000 0000 0000 0000 0000 0000 0000 0000
 
 关于补码的操作可参考[原码, 反码, 补码 详解](https://www.cnblogs.com/zhangziqiu/archive/2011/03/30/computercode.html)  
 
-这里面也用到了信号量  
+**信号量(semaphore)**  
 
 信号量是Unix系统提供的一种保护共享资源的机制，用于防止多个线程同时访问某个资源。  
 
