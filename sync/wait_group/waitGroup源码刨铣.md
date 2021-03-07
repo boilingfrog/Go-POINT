@@ -57,8 +57,11 @@ func waitGroup() {
 ```
 
 1、启动goroutine前将计数器通过`Add(4)`将计数器设置为待启动的`goroutine`个数。  
+
 2、启动`goroutine`后，使用`Wait()`方法阻塞主协程，等待计数器变为0。  
+
 3、每个`goroutine`执行结束通过`Done()`方法将计数器减1。  
+
 4、计数器变为0后，阻塞的`goroutine`被唤醒。   
 
 看下具体的实现  
@@ -171,7 +174,7 @@ $ go vet main.go
 
 `counter`位于高地址位，`waiter`位于地址位  
 
-<img src="/img/waitgroup_state1_1.png" width = "558" height = "304" alt="waitgroup" align=center />
+<img src="/img/waitgroup_state1_1.png" width = "558" height = "237" alt="waitgroup" align=center />
 
 下面是state的代码  
 ```go
