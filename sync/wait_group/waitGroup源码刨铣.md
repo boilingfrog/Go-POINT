@@ -166,7 +166,7 @@ $ go vet main.go
 
 |          | state [0] | state [1] | state [2] |
 | :------: | :------:  | :------:  | :------:  |
-| 32位     | waiter    | counter   | semaphore |
+| 64位     | waiter    | counter   | semaphore |
 | 32位     | semaphore | waiter    | counter     |
 
 `counter`位于高地址位，`waiter`位于地址位  
