@@ -58,7 +58,7 @@ func (o *Once) doSlow(f func()) {
 	defer o.m.Unlock()
 	// 判断done变量为0表示还没执行第一次
 	if o.done == 0 {
-		// 机器数器原子的加一
+		// 计数器原子的加一
 		defer atomic.StoreUint32(&o.done, 1)
 		// 执行传入的函数
 		f()
