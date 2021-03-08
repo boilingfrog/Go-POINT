@@ -9,6 +9,7 @@
   - [WithContext](#withcontext)
   - [Go](#go)
   - [Wait](#wait)
+  - [错误的使用](#%E9%94%99%E8%AF%AF%E7%9A%84%E4%BD%BF%E7%94%A8)
   - [总结](#%E6%80%BB%E7%BB%93)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -96,11 +97,6 @@ type Group struct {
 ### WithContext
 
 ```go
-// WithContext returns a new Group and an associated Context derived from ctx.
-//
-// The derived Context is canceled the first time a function passed to Go
-// returns a non-nil error or the first time Wait returns, whichever occurs
-// first.
 // 返回一个被context.WithCancel重新包装的ctx
 
 func WithContext(ctx context.Context) (*Group, context.Context) {
@@ -170,11 +166,7 @@ func (g *Group) Wait() error {
 
 3、抛出第一个出错的`goroutine`的错误信息。  
 
-### 总结
-
-`errgroup`相比比较简单，不过需要先弄明白`waitgroup`,`context`以及`sync.Once`,主要是借助这几个组件来实现的。  
-
-`errgroup`可以带携带`context`,如果包装了`context`，会使用`context.WithCancel`进行超时，取消或者一些异常的情况  
+### 错误的使用
 
 不过工作中发现一个`errgroup`错误使用的例子  
 
@@ -215,3 +207,9 @@ Write at 0x00c0000801f0 by goroutine 8:
       /Users/yj/Go/src/Go-POINT/sync/errgroup/main.go:23 +0x97
 ...
 ```
+
+### 总结
+
+`errgroup`相比比较简单，不过需要先弄明白`waitgroup`,`context`以及`sync.Once`,主要是借助这几个组件来实现的。  
+
+`errgroup`可以带携带`context`,如果包装了`context`，会使用`context.WithCancel`进行超时，取消或者一些异常的情况  
