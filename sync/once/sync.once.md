@@ -1,16 +1,17 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [sync.once](#synconce)
-  - [sync.once的作用](#synconce%E7%9A%84%E4%BD%9C%E7%94%A8)
+
+- [sync.Once](#synconce)
+  - [sync.Once的作用](#synconce%E7%9A%84%E4%BD%9C%E7%94%A8)
   - [实现原理](#%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86)
   - [总结](#%E6%80%BB%E7%BB%93)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-## sync.once
+## sync.Once
 
-### sync.once的作用
+### sync.Once的作用
 
 根据名字就大致能猜到这个函数的作用，就是使用`sync.once`的对象只能执行一次。  
 
