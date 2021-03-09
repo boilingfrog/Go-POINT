@@ -6,44 +6,42 @@ import (
 	"time"
 )
 
-var sharedRsc = false
+var (
+	locker = new(sync.Mutex)
+	cond   = sync.NewCond(locker)
+)
+
+func listen(x int) {
+	// 获取锁
+	cond.L.Lock()
+	// 等待通知  暂时阻塞
+	cond.Wait()
+	fmt.Println(x)
+	// 释放锁
+	cond.L.Unlock()
+}
 
 func main() {
-	var wg sync.WaitGroup
-	wg.Add(2)
-	m := sync.Mutex{}
-	c := sync.NewCond(&m)
-	go func() {
-		// this go routine wait for changes to the sharedRsc
-		c.L.Lock()
-		for sharedRsc == false {
-			fmt.Println("goroutine1 wait")
-			c.Wait()
-		}
-		fmt.Println("goroutine1", sharedRsc)
-		c.L.Unlock()
-		wg.Done()
-	}()
+	// 启动40个阻塞的县城
+	for i := 1; i <= 40; i++ {
+		go listen(i)
+	}
 
-	go func() {
-		// this go routine wait for changes to the sharedRsc
-		c.L.Lock()
-		for sharedRsc == false {
-			fmt.Println("goroutine2 wait")
-			c.Wait()
-		}
-		fmt.Println("goroutine2", sharedRsc)
-		c.L.Unlock()
-		wg.Done()
-	}()
+	fmt.Println("start all")
 
-	// this one writes changes to sharedRsc
-	time.Sleep(2 * time.Second)
-	c.L.Lock()
-	fmt.Println("main goroutine ready")
-	sharedRsc = true
-	c.Broadcast()
-	fmt.Println("main goroutine broadcast")
-	c.L.Unlock()
-	wg.Wait()
+	// 3秒之后 下发一个通知给已经获取锁的goroutine	time.Sleep(time.Second * 3)
+	fmt.Println("++++++++++++++++++++one Signal")
+	cond.Signal()
+
+	// 3秒之后 下发一个通知给已经获取锁的goroutine
+	time.Sleep(time.Second * 3)
+	fmt.Println("++++++++++++++++++++one Signal")
+	cond.Signal()
+
+	// 3秒之后 下发广播给所有等待的goroutine
+	time.Sleep(time.Second * 3)
+	fmt.Println("++++++++++++++++++++begin broadcast")
+	cond.Broadcast()
+	// 阻塞直到所有的全部输出
+	time.Sleep(time.Second * 60)
 }
