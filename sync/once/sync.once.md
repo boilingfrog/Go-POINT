@@ -3,6 +3,7 @@
 
 
 - [sync.Once](#synconce)
+  - [前言](#%E5%89%8D%E8%A8%80)
   - [sync.Once的作用](#synconce%E7%9A%84%E4%BD%9C%E7%94%A8)
   - [实现原理](#%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86)
   - [总结](#%E6%80%BB%E7%BB%93)
@@ -10,6 +11,10 @@
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## sync.Once
+
+### 前言
+
+本次的代码是基于`go version go1.13.15 darwin/amd64` 
 
 ### sync.Once的作用
 
