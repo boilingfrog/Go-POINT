@@ -195,6 +195,8 @@ func notifyListWait(l *notifyList, t uint32) {
 
 3、然后调用`runtime_notifyListWait`把当前的`wait`封装成链表的一个节点，插入到`notifyList`维护的链表的尾部。  
 
+<img src="/img/sync_cond_wait.png" width = "299" height = "314" alt="sync_cond" align=center />
+
 #### Signal
 
 ```go
@@ -270,6 +272,8 @@ func notifyListNotifyOne(l *notifyList) {
 
 4、掉起`goroutine`，完成通知。  
 
+<img src="/img/sync_cond_sin.png" width = "299" height = "314" alt="sync_cond" align=center />
+
 #### Broadcast
 
 ```go
@@ -317,6 +321,8 @@ func notifyListNotifyAll(l *notifyList) {
 3、`notifyListNotifyAll`，就相对简单了，直接将`notify`的值置为`wait`，标注这个已经全部通知了；  
 
 4、循环链表，一个个唤醒`goroutine`。  
+
+<img src="/img/sync_cond_bro.png" width = "312" height = "298" alt="sync_cond" align=center />
 
 ### 总结
 
