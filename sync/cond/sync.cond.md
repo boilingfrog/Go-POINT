@@ -68,8 +68,9 @@ func main() {
 
 上面是个简单的例子，我们启动了60个线程，然后都被`cond`阻塞，主函数通过`Signal()`通知一个`goroutine`接触阻塞，通过`Broadcast()`通知所有被阻塞的全部解除阻塞。  
 
-### 看下源码
+<img src="/img/sync_cond_1.png" width = "446" height = "246" alt="sync_cond" align=center />
 
+### 看下源码
 
 ```go
 type Cond struct {
