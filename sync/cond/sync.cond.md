@@ -336,7 +336,7 @@ func notifyListNotifyAll(l *notifyList) {
 
 4、循环链表，一个个唤醒`goroutine`。  
 
-<img src="/img/sync_cond_pro.png" width = "408" height = "434" alt="sync_cond" align=center />
+<img src="/img/sync_cond_bro.png" width = "408" height = "434" alt="sync_cond" align=center />
 
 ### 总结
 
