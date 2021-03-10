@@ -166,7 +166,7 @@ func notifyListAdd(l *notifyList) uint32 {
 func notifyListWait(l *notifyList, t uint32) {
 	lock(&l.lock)
 
-	// 当t小于notifyList中的notifyList，说明当前节点已经被通知了  
+	// 当t小于notifyList中的notify，说明当前节点已经被通知了  
 	if less(t, l.notify) {
 		unlock(&l.lock)
 		return
@@ -286,7 +286,7 @@ func notifyListNotifyOne(l *notifyList) {
 
 4、掉起`goroutine`，完成通知。  
 
-<img src="/img/sync_cond_sin.png" width = "299" height = "314" alt="sync_cond" align=center />
+<img src="/img/sync_cond_sin.png" width = "299" height = "413" alt="sync_cond" align=center />
 
 #### Broadcast
 
@@ -336,7 +336,7 @@ func notifyListNotifyAll(l *notifyList) {
 
 4、循环链表，一个个唤醒`goroutine`。  
 
-<img src="/img/sync_cond_bro.png" width = "312" height = "298" alt="sync_cond" align=center />
+<img src="/img/sync_cond_bro.png" width = "408" height = "434" alt="sync_cond" align=center />
 
 ### 总结
 
