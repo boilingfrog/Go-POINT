@@ -96,7 +96,7 @@ type Mutex struct {
 
 - starvationThresholdNs 值为1e6纳秒，也就是1毫秒，当等待队列中队首g`oroutine`等待时间超过`starvationThresholdNs`也就是1毫秒，mutex进入饥饿模式。  
 
-<img src="/img/sync_mutex_state.png" width = "568" height = "140" alt="sync_mutex" align=center />
+<img src="/img/sync_mutex_state.png" width = "568" height = "173" alt="sync_mutex" align=center />
 
 ### Lock
 
