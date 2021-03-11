@@ -1,249 +1,217 @@
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+## 互斥锁
 
+### 前言
 
-- [读写锁](#%E8%AF%BB%E5%86%99%E9%94%81)
-  - [基本结构](#%E5%9F%BA%E6%9C%AC%E7%BB%93%E6%9E%84)
-  - [RLock](#rlock)
-  - [RUnlock](#runlock)
-  - [Lock](#lock)
-  - [Unlock](#unlock)
-  - [问题要论](#%E9%97%AE%E9%A2%98%E8%A6%81%E8%AE%BA)
-    - [写操作是如何阻止写操作的](#%E5%86%99%E6%93%8D%E4%BD%9C%E6%98%AF%E5%A6%82%E4%BD%95%E9%98%BB%E6%AD%A2%E5%86%99%E6%93%8D%E4%BD%9C%E7%9A%84)
-    - [写操作是如何阻止读操作的](#%E5%86%99%E6%93%8D%E4%BD%9C%E6%98%AF%E5%A6%82%E4%BD%95%E9%98%BB%E6%AD%A2%E8%AF%BB%E6%93%8D%E4%BD%9C%E7%9A%84)
-    - [读操作是如何阻止写操作的](#%E8%AF%BB%E6%93%8D%E4%BD%9C%E6%98%AF%E5%A6%82%E4%BD%95%E9%98%BB%E6%AD%A2%E5%86%99%E6%93%8D%E4%BD%9C%E7%9A%84)
-    - [为什么写锁定不会被饿死](#%E4%B8%BA%E4%BB%80%E4%B9%88%E5%86%99%E9%94%81%E5%AE%9A%E4%B8%8D%E4%BC%9A%E8%A2%AB%E9%A5%BF%E6%AD%BB)
-  - [参考](#%E5%8F%82%E8%80%83)
+本次的代码是基于`go version go1.13.15 darwin/amd64`   
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+### 什么是sync.Mutex
 
-## 读写锁
-
-### 基本结构
-
-写锁需要阻塞写锁：一个协程拥有写锁时，其他协程写锁定需要阻塞  
-写锁需要阻塞读锁：一个协程拥有写锁时，其他协程读锁定需要阻塞  
-读锁需要阻塞写锁：一个协程拥有读锁时，其他协程写锁定需要阻塞   
-读锁不能阻塞读锁：一个协程拥有读锁时，其他协程也可以拥有读锁  
-
-RWMutex提供4个简单的接口来提供服务：  
+`sync.Mutex`是Go标准库中常用的一个排外锁。当一个`goroutine`获得了这个锁的拥有权后， 其它请求锁的`goroutine`就会阻塞在`Lock`方法的调用上，直到锁被释放。  
 
 ```go
-RLock()：读锁定
-RUnlock()：解除读锁定
-Lock(): 写锁定，与Mutex完全一致
-Unlock()：解除写锁定，与Mutex完全一致
-```
-看下具体的实现  
+var (
+	mu      sync.Mutex
+	balance int
+)
 
-````go
-type RWMutex struct {
-	w           Mutex  // 用于控制多个写锁，获得写锁首先要获取该锁，如果有一个写锁在进行，那么再到来的写锁将会阻塞于此
-	writerSem   uint32 // 写阻塞等待的信号量，最后一个读者释放锁时会释放信号量
-	readerSem   uint32 // 读阻塞的协程等待的信号量，持有写锁的协程释放锁后会释放信号量
-	readerCount int32  // 记录读者个数
-	readerWait  int32  // 记录写阻塞时读者个数
+func main() {
+	Deposit(1)
+	fmt.Println(Balance())
 }
-````
 
-### RLock
+func Deposit(amount int) {
+	mu.Lock()
+	balance = balance + amount
+	mu.Unlock()
+}
 
-```go
-// 读加锁
-// 增加读操作计数，即readerCount++
-// 阻塞等待写操作结束(如果有的话)
-func (rw *RWMutex) RLock() {
-    // 竞态检测
-	if race.Enabled {
-		_ = rw.w.state
-		race.Disable()
-	}
-    // 首先通过atomic的原子性使readerCount+1
-    // 1、如果readerCount<0。说明写锁已经获取了，那么这个读锁需要等待写锁的完成
-    // 2、如果readerCount>=0。当前读直接获取锁
-	if atomic.AddInt32(&rw.readerCount, 1) < 0 {
-		// 当前有个写锁, 读操作阻塞等待写锁释放
-		runtime_SemacquireMutex(&rw.readerSem, false, 0)
-	}
-    // 是否开启检测race
-	if race.Enabled {
-		race.Enable()
-		race.Acquire(unsafe.Pointer(&rw.readerSem))
-	}
+func Balance() int {
+	mu.Lock()
+	b := balance
+	mu.Unlock()
+	return b
 }
 ```
 
-![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/rlock.jpg?raw=true)
+使用起来很简单，对需要锁定的资源，前面加`Lock()`锁定,完成的时候加`Unlock()`解锁就好了。  
 
-上面的通过判断readerCount，来判断是否有写锁，为什么呢？  
-
-**写操作是如何阻止读操作的**  
-
-这个是读写锁实现中最精华的技巧。  
-
-我们知道`RWMutex.readerCount`是个整型值，用于表示读者数量，不考虑写操作的情况下，每次读锁定将该值+1，每次解除读锁定将该值-1，
-所以`readerCount`取值为[0, N]，N为读者个数，实际上最大可支持2^30个并发读者。  
-
-当写锁定进行时，会先将`readerCount`减去2^30，从而`readerCount`变成了负值，此时再有读锁定到来时检测到readerCount为负值，便知道有写操作
-在进行，只好阻塞等待。而真实的读操作个数并不会丢失，只需要将`readerCount`加上2^30即可获得。  
-
-写操作通过readerCount的操作来阻止读操作的  
-
-### RUnlock
+### 分下源码
 
 ```go
-// 减少读操作计数，即readerCount--
-// 唤醒等待写操作的协程（如果有的话）
-func (rw *RWMutex) RUnlock() {
-    // 是否开启检测race
-	if race.Enabled {
-		_ = rw.w.state
-		race.ReleaseMerge(unsafe.Pointer(&rw.writerSem))
-		race.Disable()
-	}
-    // 首先通过atomic的原子性使readerCount-1
-    // 1.若readerCount大于0, 证明当前还有读锁, 直接结束本次操作
-    // 2.若readerCount小于等于0, 证明已经没有读锁, 可以唤醒写锁(若有)
-	if r := atomic.AddInt32(&rw.readerCount, -1); r < 0 {
-		// 将goroutine排到G队列的后面,挂起goroutine
-		rw.rUnlockSlow(r)
-	}
-    // 是否开启检测race
-	if race.Enabled {
-		race.Enable()
-	}
-}
+const (
+   // mutex is locked
+// 是否加锁的标识
+	mutexLocked = 1 << iota 
+	mutexWoken
+	mutexStarving
+	mutexWaiterShift = iota
 
-func (rw *RWMutex) rUnlockSlow(r int32) {
-	if r+1 == 0 || r+1 == -rwmutexMaxReaders {
-		race.Enable()
-		throw("sync: RUnlock of unlocked RWMutex")
-	}
-	// readerWait--操作，如果有写锁，推出在写锁之前产生的读锁
-	if atomic.AddInt32(&rw.readerWait, -1) == 0 {
-		// The last reader unblocks the writer.
-		runtime_Semrelease(&rw.writerSem, false, 1)
-	}
+// 公平锁
+//
+// 锁有两种模式：正常模式和饥饿模式。
+// 在正常模式下，所有的等待锁的goroutine都会存在一个先进先出的队列中（轮流被唤醒）
+// 但是一个被唤醒的goroutine并不是直接获得锁，而是仍然需要和那些新请求锁的（new arrivial）
+// 的goroutine竞争，而这其实是不公平的，因为新请求锁的goroutine有一个优势——它们正在CPU上
+// 运行，并且数量可能会很多。所以一个被唤醒的goroutine拿到锁的概率是很小的。在这种情况下，
+// 这个被唤醒的goroutine会加入到队列的头部。如果一个等待的goroutine有超过1ms（写死在代码中）
+// 都没获取到锁，那么就会把锁转变为饥饿模式。
+//
+// 在饥饿模式中，锁的所有权会直接从释放锁(unlock)的goroutine转交给队列头的goroutine，
+// 新请求锁的goroutine就算锁是空闲状态也不会去获取锁，并且也不会尝试自旋。它们只是排到队列的尾部。
+//
+// 如果一个goroutine获取到了锁之后，它会判断以下两种情况：
+// 1. 它是队列中最后一个goroutine；
+// 2. 它拿到锁所花的时间小于1ms；
+// 以上只要有一个成立，它就会把锁转变回正常模式。
+
+// 正常模式会有比较好的性能，因为即使有很多阻塞的等待锁的goroutine，
+// 一个goroutine也可以尝试请求多次锁。
+// 饥饿模式对于防止尾部延迟来说非常的重要。
+	starvationThresholdNs = 1e6
+)
+
+// A Mutex is a mutual exclusion lock.
+// The zero value for a Mutex is an unlocked mutex.
+//
+// A Mutex must not be copied after first use.
+type Mutex struct {
+// mutex锁当前的状态
+	state int32
+// 信号量，用于唤醒goroutine
+	sema  uint32
 }
 ```
 
-![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/runlock.jpg?raw=true)
+重点开看下`state`的几种状态：  
 
-上面的读操作解锁，其中当没有读锁的时候，是回去唤醒写锁的，那么读锁是如何阻塞写锁的呢？  
+大神写代码的思路就是惊奇，这里`state`又运用到了位移的操作  
 
-读锁定会先将`RWMutext.readerCount`加1，此时写操作到来时发现读者数量不为0，会阻塞等待所有读操作结束。  
+- mutexLocked 对应右边低位第一个bit 1 代表锁被占用  0代表锁空闲  
 
-也就是说，读操作通过`readerCount`来将来阻止写操作的。  
+- mutexWoken 对应右边低位第二个bit 1 表示已唤醒  0表示未唤醒  
+
+- mutexStarving 对应右边低位第三个bit 1 代表锁处于饥饿模式  0代表锁处于正常模式
+
+- mutexWaiterShift 值为3，根据 `mutex.state >> mutexWaiterShift` 得到当前阻塞的`goroutine`数目，最多可以阻塞`2^29`个`goroutine`。
+
+- starvationThresholdNs 值为1e6纳秒，也就是1毫秒，当等待队列中队首g`oroutine`等待时间超过`starvationThresholdNs`也就是1毫秒，mutex进入饥饿模式。  
+
+<img src="/img/sync_mutex_state.png" width = "568" height = "140" alt="sync_mutex" align=center />
 
 ### Lock
 
 ```go
-// 获取互斥锁
-// 阻塞等待所有读操作结束（如果有的话）
-func (rw *RWMutex) Lock() {
-	if race.Enabled {
-		_ = rw.w.state
-		race.Disable()
+// Lock locks m.
+// 如果锁正在使用中，新的goroutine请求，将被阻塞，直到锁被释放
+func (m *Mutex) Lock() {
+	// 原子的(cas)来判断是否加锁
+// 未加锁，直接加锁，返回
+	if atomic.CompareAndSwapInt32(&m.state, 0, mutexLocked) {
+		if race.Enabled {
+			race.Acquire(unsafe.Pointer(m))
+		}
+		return
 	}
-	// 获取互斥锁
-	rw.w.Lock()
-    // readerCount-rwmutexMaxReaders小于0, 再加回rwmutexMaxReaders
-	// 若r仍然不为0, 代表当前还有读锁
-	r := atomic.AddInt32(&rw.readerCount, -rwmutexMaxReaders) + rwmutexMaxReaders
-	// 等待写锁前面的读锁释放, 所以若不为0就阻塞写锁, 等待rUnlockSlow-rUnlockSlow的readerWait-1直至0倍唤醒写锁
-	if r != 0 && atomic.AddInt32(&rw.readerWait, r) != 0 {
-        // 阻塞写锁
-		runtime_SemacquireMutex(&rw.writerSem, false, 0)
+    // 这把锁，已经被别的goroutine持有
+	m.lockSlow()
+}
+
+func (m *Mutex) lockSlow() {
+	var waitStartTime int64
+	starving := false
+	awoke := false
+	iter := 0
+	old := m.state
+	for {
+// 在饥饿模式下，锁不需要自旋了
+// 锁的所有权会直接转交给队列头的goroutine
+// TODO
+		if old&(mutexLocked|mutexStarving) == mutexLocked && runtime_canSpin(iter) {
+        // 主动旋转是有意义的。
+        // 尝试设置MutexWoken标志来通知解锁
+        // 不唤醒其他被阻止的goroutine。
+			if !awoke && old&mutexWoken == 0 && old>>mutexWaiterShift != 0 &&
+				atomic.CompareAndSwapInt32(&m.state, old, old|mutexWoken) {
+				awoke = true
+			}
+// 主动自旋
+			runtime_doSpin()
+			iter++
+			old = m.state
+			continue
+		}
+		new := old
+		// 不要试图获取饥饿的互斥体，新的goroutine必须排队
+
+		if old&mutexStarving == 0 {
+			new |= mutexLocked
+		}
+		if old&(mutexLocked|mutexStarving) != 0 {
+			new += 1 << mutexWaiterShift
+		}
+		// The current goroutine switches mutex to starvation mode.
+		// But if the mutex is currently unlocked, don't do the switch.
+		// Unlock expects that starving mutex has waiters, which will not
+		// be true in this case.
+		if starving && old&mutexLocked != 0 {
+			new |= mutexStarving
+		}
+		if awoke {
+			// The goroutine has been woken from sleep,
+			// so we need to reset the flag in either case.
+			if new&mutexWoken == 0 {
+				throw("sync: inconsistent mutex state")
+			}
+			new &^= mutexWoken
+		}
+		if atomic.CompareAndSwapInt32(&m.state, old, new) {
+			if old&(mutexLocked|mutexStarving) == 0 {
+				break // locked the mutex with CAS
+			}
+			// If we were already waiting before, queue at the front of the queue.
+			queueLifo := waitStartTime != 0
+			if waitStartTime == 0 {
+				waitStartTime = runtime_nanotime()
+			}
+			runtime_SemacquireMutex(&m.sema, queueLifo, 1)
+			starving = starving || runtime_nanotime()-waitStartTime > starvationThresholdNs
+			old = m.state
+			if old&mutexStarving != 0 {
+				// If this goroutine was woken and mutex is in starvation mode,
+				// ownership was handed off to us but mutex is in somewhat
+				// inconsistent state: mutexLocked is not set and we are still
+				// accounted as waiter. Fix that.
+				if old&(mutexLocked|mutexWoken) != 0 || old>>mutexWaiterShift == 0 {
+					throw("sync: inconsistent mutex state")
+				}
+				delta := int32(mutexLocked - 1<<mutexWaiterShift)
+				if !starving || old>>mutexWaiterShift == 1 {
+					// Exit starvation mode.
+					// Critical to do it here and consider wait time.
+					// Starvation mode is so inefficient, that two goroutines
+					// can go lock-step infinitely once they switch mutex
+					// to starvation mode.
+					delta -= mutexStarving
+				}
+				atomic.AddInt32(&m.state, delta)
+				break
+			}
+			awoke = true
+			iter = 0
+		} else {
+			old = m.state
+		}
 	}
+
 	if race.Enabled {
-		race.Enable()
-		race.Acquire(unsafe.Pointer(&rw.readerSem))
-		race.Acquire(unsafe.Pointer(&rw.writerSem))
+		race.Acquire(unsafe.Pointer(m))
 	}
 }
 ```
 
-![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/lock.jpg?raw=true)
 
-`RWMutex.readerWait`的作用  
-
-我们知道，写操作要等待读操作结束后才可以获得锁，写操作等待期间可能还有新的读操作持续到来，如果写操作等待所有读操作结束，很可能被饿死。然而，
-通过`RWMutex.readerWait`可完美解决这个问题。  
-
-写操作到来时，会把`RWMutex.readerCount`值拷贝到`RWMutex.readerWait`中，用于标记排在写操作前面的读者个数。 
-
-前面的读操作结束后，除了会递减`RWMutex.readerCount`，还会递减`RWMutex.readerWait`值，当`RWMutex.readerWait`值变为0时唤醒写操作。  
-
-写操作之后产生的读操作就会加入到`readerCount`，阻塞知道写锁释放。  
-
-
-### Unlock
-
-```go
-// 唤醒因读锁定而被阻塞的协程（如果有的话）
-// 解除互斥锁
-func (rw *RWMutex) Unlock() {
-	if race.Enabled {
-		_ = rw.w.state
-		race.Release(unsafe.Pointer(&rw.readerSem))
-		race.Disable()
-	}
-
-	// 增加readerCount, 若超过读锁的最大限制, 触发panic
-	r := atomic.AddInt32(&rw.readerCount, rwmutexMaxReaders)
-	if r >= rwmutexMaxReaders {
-		race.Enable()
-		throw("sync: Unlock of unlocked RWMutex")
-	}
-	//解除阻塞的读锁(若有)
-	for i := 0; i < int(r); i++ {
-		runtime_Semrelease(&rw.readerSem, false, 0)
-	}
-	// 释放互斥锁
-	rw.w.Unlock()
-	if race.Enabled {
-		race.Enable()
-	}
-}
-```
-
-![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/unlock.jpg?raw=true)
-
-### 问题要论
-
-#### 写操作是如何阻止写操作的
-
-读写锁包含一个互斥锁(Mutex)，写锁定必须要先获取该互斥锁，如果互斥锁已被协程A获取（或者协程A在阻塞等待读结束），意味着协程A获取了互斥锁，那么协程B只能阻塞等待该互斥锁。  
-
-所以，写操作依赖互斥锁阻止其他的写操作。  
-
-#### 写操作是如何阻止读操作的
-
-我们知道`RWMutex.readerCount`是个整型值，用于表示读者数量，不考虑写操作的情况下，每次读锁定将该值+1，每次解除读锁定将该值-1，所以readerCount取值为[0, N]，N为读者个数，实际上最大可支持2^30个并发读者。  
-
-当写锁定进行时，会先将readerCount减去2^30，从而readerCount变成了负值，此时再有读锁定到来时检测到readerCount为负值，便知道有写操作在进行，只好阻塞等待。而真实的读操作个数并不会丢失，只需要将readerCount加上2^30即可获得。  
-
-所以，写操作将readerCount变成负值来阻止读操作的。  
-
-#### 读操作是如何阻止写操作的
-
-写操作到来时，会把`RWMutex.readerCount`值拷贝到`RWMutex.readerWait`中，用于标记排在写操作前面的读者个数。 
-
-前面的读操作结束后，除了会递减`RWMutex.readerCount`，还会递减`RWMutex.readerWait`值，当`RWMutex.readerWait`值变为0时唤醒写操作。 
-
-#### 为什么写锁定不会被饿死
-
-我们知道，写操作要等待读操作结束后才可以获得锁，写操作等待期间可能还有新的读操作持续到来，如果写操作等待所有读操作结束，很可能被饿死。然而，通过`RWMutex.readerWait`可完美解决这个问题。 
-
-写操作到来时，会把`RWMutex.readerCount`值拷贝到`RWMutex.readerWait`中，用于标记排在写操作前面的读者个数。  
-
-前面的读操作结束后，除了会递减`RWMutex.readerCount`，还会递减`RWMutex.readerWait`值，当`RWMutex.readerWait`值变为0时唤醒写操作。  
 
 ### 参考
-【Package race】https://golang.org/pkg/internal/race/    
-【sync.RWMutex源码分析】http://liangjf.top/2020/07/20/141.sync.RWMutex%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/  
-【剖析Go的读写锁】http://zablog.me/2017/09/27/go_sync/  
-【《Go专家编程》GO 读写锁实现原理剖析】https://my.oschina.net/renhc/blog/2878292  
 
-
-
+【sync.Mutex 源码分析】https://reading.hidevops.io/articles/sync/sync_mutex_source_code_analysis/  
+【http://cbsheng.github.io/posts/%E4%B8%80%E4%BB%BD%E8%AF%A6%E7%BB%86%E6%B3%A8%E9%87%8A%E7%9A%84go-mutex%E6%BA%90%E7%A0%81/】http://cbsheng.github.io/posts/%E4%B8%80%E4%BB%BD%E8%AF%A6%E7%BB%86%E6%B3%A8%E9%87%8A%E7%9A%84go-mutex%E6%BA%90%E7%A0%81/  

@@ -1,30 +1,40 @@
 package main
 
 import (
+	"fmt"
 	"sync"
 )
 
-type test struct {
-	mapp map[string]string
-	mx   sync.RWMutex
-}
+var (
+	mu      sync.Mutex
+	balance int
+)
 
-const rwmutexMaxReaders = 1 << 30
+const (
+	// mutex is locked
+	// 是否加锁的标识
+	mutexLocked = 1 << iota
+	mutexWoken
+	mutexStarving
+	mutexWaiterShift = iota
+)
 
 func main() {
-	t := test{}
-	wg := sync.WaitGroup{}
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
-		t.mx.RLock()
-	}()
 
-	go func() {
-		defer wg.Done()
-		t.mx.Lock()
-	}()
+	fmt.Println(1 << 2)
+	fmt.Println(1 << 2)
 
-	wg.Wait()
+}
 
+func Deposit(amount int) {
+	mu.Lock()
+	balance = balance + amount
+	mu.Unlock()
+}
+
+func Balance() int {
+	mu.Lock()
+	b := balance
+	mu.Unlock()
+	return b
 }
