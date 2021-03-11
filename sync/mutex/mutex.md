@@ -1,3 +1,16 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+
+- [互斥锁](#%E4%BA%92%E6%96%A5%E9%94%81)
+  - [前言](#%E5%89%8D%E8%A8%80)
+  - [什么是sync.Mutex](#%E4%BB%80%E4%B9%88%E6%98%AFsyncmutex)
+  - [分下源码](#%E5%88%86%E4%B8%8B%E6%BA%90%E7%A0%81)
+  - [Lock](#lock)
+  - [参考](#%E5%8F%82%E8%80%83)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## 互斥锁
 
 ### 前言
@@ -118,11 +131,13 @@ func (m *Mutex) Lock() {
 
 func (m *Mutex) lockSlow() {
 	var waitStartTime int64
+    // 是否处于饥饿模式
 	starving := false
 	// 用来存当前goroutine是否已唤醒
 	awoke := false
 	// 用来存当前goroutine的循环次数
 	iter := 0
+    // 记录下当前的状态
 	old := m.state
 	for {
 		// 在饥饿模式下，锁不需要自旋了
@@ -138,6 +153,7 @@ func (m *Mutex) lockSlow() {
 			}
 			// 主动自旋
 			runtime_doSpin()
+            // 循环次数加一
 			iter++
 			old = m.state
 			continue
@@ -242,5 +258,5 @@ func (m *Mutex) lockSlow() {
 ### 参考
 
 【sync.Mutex 源码分析】https://reading.hidevops.io/articles/sync/sync_mutex_source_code_analysis/  
-【http://cbsheng.github.io/posts/%E4%B8%80%E4%BB%BD%E8%AF%A6%E7%BB%86%E6%B3%A8%E9%87%8A%E7%9A%84go-mutex%E6%BA%90%E7%A0%81/】http://cbsheng.github.io/posts/%E4%B8%80%E4%BB%BD%E8%AF%A6%E7%BB%86%E6%B3%A8%E9%87%8A%E7%9A%84go-mutex%E6%BA%90%E7%A0%81/  
+【一份详细注释的go Mutex源码】http://cbsheng.github.io/posts/%E4%B8%80%E4%BB%BD%E8%AF%A6%E7%BB%86%E6%B3%A8%E9%87%8A%E7%9A%84go-mutex%E6%BA%90%E7%A0%81/  
 【源码剖析 golang 中 sync.Mutex】https://www.purewhite.io/2019/03/28/golang-mutex-source/    
