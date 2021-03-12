@@ -20,11 +20,9 @@ const (
 )
 
 func main() {
-	for {
-		add := 1
-		add = add
-		fmt.Println(12)
-	}
+	a, b := 60, 13
+
+	fmt.Println(a & b)
 
 }
 
