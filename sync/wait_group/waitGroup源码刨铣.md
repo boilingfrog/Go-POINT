@@ -412,3 +412,9 @@ func (wg *WaitGroup) Wait() {
 【Go中由WaitGroup引发对内存对齐思考】https://cloud.tencent.com/developer/article/1776930  
 【Golang 之 WaitGroup 源码解析】https://www.linkinstar.wiki/2020/03/15/golang/source-code/sync-waitgroup-source-code/  
 【sync.WaitGroup】https://golang.design/under-the-hood/zh-cn/part1basic/ch05sync/waitgroup/    
+
+
+
+**版权声明：本文为博主原创文章，遵循 [CC 4.0 BY-SA](https://creativecommons.org/licenses/by-sa/4.0/) 版权协议，转载请附上原文出处链接和本声明。  
+本文链接：https://www.cnblogs.com/ricklz/p/14500392.html**
+
