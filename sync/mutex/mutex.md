@@ -6,8 +6,9 @@
   - [前言](#%E5%89%8D%E8%A8%80)
   - [什么是sync.Mutex](#%E4%BB%80%E4%B9%88%E6%98%AFsyncmutex)
   - [分析下源码](#%E5%88%86%E6%9E%90%E4%B8%8B%E6%BA%90%E7%A0%81)
-  - [Lock](#lock)
+    - [Lock](#lock)
     - [Unlock](#unlock)
+  - [总结](#%E6%80%BB%E7%BB%93)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -112,7 +113,7 @@ type Mutex struct {
 
 <img src="/img/sync_mutex_state.png" width = "568" height = "173" alt="sync_mutex" align=center />
 
-### Lock
+#### Lock
 
 ```go
 // Lock locks m.
@@ -437,7 +438,7 @@ func (m *Mutex) unlockSlow(new int32) {
 }
 ```
 
-
+### 总结
 
 
 
@@ -448,3 +449,4 @@ func (m *Mutex) unlockSlow(new int32) {
 【一份详细注释的go Mutex源码】http://cbsheng.github.io/posts/%E4%B8%80%E4%BB%BD%E8%AF%A6%E7%BB%86%E6%B3%A8%E9%87%8A%E7%9A%84go-mutex%E6%BA%90%E7%A0%81/  
 【源码剖析 golang 中 sync.Mutex】https://www.purewhite.io/2019/03/28/golang-mutex-source/   
 【sync.mutex 源代码分析】https://colobu.com/2018/12/18/dive-into-sync-mutex/    
+【源码剖析 golang 中 sync.Mutex】https://www.purewhite.io/2019/03/28/golang-mutex-source/      
