@@ -5,8 +5,9 @@
 - [互斥锁](#%E4%BA%92%E6%96%A5%E9%94%81)
   - [前言](#%E5%89%8D%E8%A8%80)
   - [什么是sync.Mutex](#%E4%BB%80%E4%B9%88%E6%98%AFsyncmutex)
-  - [分下源码](#%E5%88%86%E4%B8%8B%E6%BA%90%E7%A0%81)
+  - [分析下源码](#%E5%88%86%E6%9E%90%E4%B8%8B%E6%BA%90%E7%A0%81)
   - [Lock](#lock)
+    - [Unlock](#unlock)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -48,7 +49,7 @@ func Balance() int {
 
 使用起来很简单，对需要锁定的资源，前面加`Lock()`锁定,完成的时候加`Unlock()`解锁就好了。  
 
-### 分下源码
+### 分析下源码
 
 ```go
 const (
@@ -140,13 +141,11 @@ func (m *Mutex) lockSlow() {
 	// 记录下当前的状态
 	old := m.state
 	for {
-		// 在饥饿模式下，锁不需要自旋了
-		// 锁的所有权会直接转交给队列头的goroutine
-		// 如果 已经获取了锁，并且不是饥饿状态，并且可以自旋
+		// 第一个条件是state已被锁，但是不是饥饿状态。如果时饥饿状态，自旋时没有用的，锁的拥有权直接交给了等待队列的第一个。
+		// 第二个条件是还可以自旋，多核、压力不大并且在一定次数内可以自旋， 具体的条件可以参考`sync_runtime_canSpin`的实现。
+		// 如果满足这两个条件，不断自旋来等待锁被释放、或者进入饥饿状态、或者不能再自旋。
 		if old&(mutexLocked|mutexStarving) == mutexLocked && runtime_canSpin(iter) {
-			// 主动旋转是有意义的。
-			// 尝试设置MutexWoken标志来通知解锁
-			// 不唤醒其他被阻止的goroutine。
+			// 自旋的过程中如果发现state还没有设置woken标识，则设置它的woken标识， 并标记自己为被唤醒。
 			if !awoke && old&mutexWoken == 0 && old>>mutexWaiterShift != 0 &&
 				atomic.CompareAndSwapInt32(&m.state, old, old|mutexWoken) {
 				awoke = true
@@ -158,10 +157,18 @@ func (m *Mutex) lockSlow() {
 			old = m.state
 			continue
 		}
+
+		// 到了这一步， state的状态可能是：
+		// 1. 锁还没有被释放，锁处于正常状态
+		// 2. 锁还没有被释放， 锁处于饥饿状态
+		// 3. 锁已经被释放， 锁处于正常状态
+		// 4. 锁已经被释放， 锁处于饥饿状态
+
+		// new 复制 state的当前状态， 用来设置新的状态
+		// old 是锁当前的状态
 		new := old
-		// 不要试图获取饥饿的互斥体，新的goroutine必须排队
-		// 如果锁是饥饿状态，新到的goroutine乖乖排队去
-		// 非饥饿状态，把期望状态设置为mutexLocked(获取锁)
+		// 如果old state状态不是饥饿状态, new state 设置锁， 尝试通过CAS获取锁,
+		// 如果old state状态是饥饿状态, 则不设置new state的锁，因为饥饿状态下锁直接转给等待队列的第一个.
 		if old&mutexStarving == 0 {
 			// 伪代码：newState = locked
 			new |= mutexLocked
@@ -171,10 +178,9 @@ func (m *Mutex) lockSlow() {
 		if old&(mutexLocked|mutexStarving) != 0 {
 			new += 1 << mutexWaiterShift
 		}
-		// 当前的goroutine将互斥锁切换到饥饿模式。
-		// 但是，如果互斥锁当前已解锁，请不要进行切换。
-		// Unlock期望一个饥饿的锁会有一些等待拿锁的goroutine，而不只是一个
-		// 这种情况下不会成立
+
+		// 如果当前goroutine已经处于饥饿状态， 并且old state的已被加锁,
+		// 将new state的状态标记为饥饿状态, 将锁转变为饥饿状态.
 		if starving && old&mutexLocked != 0 {
 			// 设置为饥饿状态
 			new |= mutexStarving
@@ -190,6 +196,7 @@ func (m *Mutex) lockSlow() {
 			new &^= mutexWoken
 		}
 		// 原子(cas)更新state的状态
+		// 注意new的锁标记不一定是true, 也可能只是标记一下锁的state是饥饿状态.
 		if atomic.CompareAndSwapInt32(&m.state, old, new) {
 			// 如果说old状态不是饥饿状态也不是被获取状态
 			// 那么代表当前goroutine已经通过CAS成功获取了锁
@@ -251,6 +258,7 @@ func (m *Mutex) lockSlow() {
 		race.Acquire(unsafe.Pointer(m))
 	}
 }
+
 const (
 	active_spin     = 4
 )
@@ -331,13 +339,103 @@ again:
 
 梳理下流程  
 
-1、如果已经获得了锁，并且不是饥饿状态
+1、原子的(cas)来判断是否加锁,如果之前锁没有被使用，当前`goroutine`获取锁；  
 
-2、
+2、如果已经被别的`goroutine`持有了，一个for循环去抢占锁；  
 
-3、
+3、如果锁已经被锁了，并且不是饥饿状态，并且满足自旋的条件，当前goroutine会不断的进行自旋，等待锁被释放；  
 
-4、
+4、不满足锁自旋的条件，然后结束自旋，这是当前锁的状态可能有下面几种情况：  
+
+- 1、锁还没有被释放，锁处于正常状态 
+
+- 2、锁还没有被释放， 锁处于饥饿状态
+
+- 3、锁已经被释放， 锁处于正常状态
+
+- 4、锁已经被释放， 锁处于饥饿状态  
+
+5、复制一份锁的状态；  
+
+6、如果`old.state`不是饥饿状态，新的goroutine尝试去获锁，如果是饥饿状态，就直接将锁直接转给等待队列的第一个；  
+
+7、如果锁是被获取或饥饿状态，等待者的数量加一；  
+
+8、如果当前的`goroutine`已经是饥饿状态，并且当前所还是处于被锁定中，将`new state`标注为饥饿状态；  
+
+9、如果`awoke`为`true`本`goroutine`已经在之前被唤醒了，需要清除`new state`的唤醒标记, 因为本`goroutine`要么获得了锁，要么进入休眠；  
+
+10、通过CAS设置`new state`值；  
+
+11、如果old state的状态是未被锁状态，并且锁不处于饥饿状态,那么当前goroutine已经获取了锁的拥有权，接口Locak;  
+
+12、判断一下当前goroutine是新来的还是刚被唤醒的，新来的加入到等待队列的尾部，刚被唤醒的加入到等待队列的头部；  
+
+13、判断如果当前state是否是饥饿状态，不是的唤醒本次goroutine,继续循环，是饥饿状态继续往下面走；  
+
+14、当前goroutine来设置锁，等待者减一，获取锁。   
+
+
+#### Unlock
+
+```go
+// Unlock unlocks m.
+// 如果没有lock就去unlocak是会报错的  
+//
+//一个锁定的互斥锁与一个特定的goroutine没有关联。
+// 它允许一个goroutine锁定一个互斥锁然后
+// 安排另一个goroutine解锁它。
+func (m *Mutex) Unlock() {
+	if race.Enabled {
+		_ = m.state
+		race.Release(unsafe.Pointer(m))
+	}
+
+	// 修改state的状态
+	new := atomic.AddInt32(&m.state, -mutexLocked)
+	if new != 0 {
+		// 不为0，说明没有成功解锁
+		m.unlockSlow(new)
+	}
+}
+
+func (m *Mutex) unlockSlow(new int32) {
+	if (new+mutexLocked)&mutexLocked == 0 {
+		throw("sync: unlock of unlocked mutex")
+	}
+	if new&mutexStarving == 0 {
+		old := new
+		for {
+			// 如果说锁没有等待拿锁的goroutine
+			// 或者锁被获取了(在循环的过程中被其它goroutine获取了)
+			// 或者锁是被唤醒状态(表示有goroutine被唤醒，不需要再去尝试唤醒其它goroutine)
+			// 或者锁是饥饿模式(会直接转交给队列头的goroutine)
+			// 那么就直接返回，啥都不用做了
+
+			// 也就是没有等待的goroutine, 或者锁不处于空闲的状态，直接返回.
+			if old>>mutexWaiterShift == 0 || old&(mutexLocked|mutexWoken|mutexStarving) != 0 {
+				return
+			}
+
+			// 走到这一步的时候，说明锁目前还是空闲状态，并且没有goroutine被唤醒且队列中有goroutine等待拿锁
+			// 将等待的goroutine数减一，并设置woken标识
+			new = (old - 1<<mutexWaiterShift) | mutexWoken
+			// 设置新的state, 这里通过信号量会唤醒一个阻塞的goroutine去获取锁.
+			if atomic.CompareAndSwapInt32(&m.state, old, new) {
+				runtime_Semrelease(&m.sema, false, 1)
+				return
+			}
+			old = m.state
+		}
+	} else {
+		// 饥饿模式下， 直接将锁的拥有权传给等待队列中的第一个.
+		// 注意此时state的mutexLocked还没有加锁，唤醒的goroutine会设置它。
+		// 在此期间，如果有新的goroutine来请求锁， 因为mutex处于饥饿状态， mutex还是被认为处于锁状态，
+		// 新来的goroutine不会把锁抢过去.
+		runtime_Semrelease(&m.sema, true, 1)
+	}
+}
+```
 
 
 
@@ -348,4 +446,5 @@ again:
 
 【sync.Mutex 源码分析】https://reading.hidevops.io/articles/sync/sync_mutex_source_code_analysis/  
 【一份详细注释的go Mutex源码】http://cbsheng.github.io/posts/%E4%B8%80%E4%BB%BD%E8%AF%A6%E7%BB%86%E6%B3%A8%E9%87%8A%E7%9A%84go-mutex%E6%BA%90%E7%A0%81/  
-【源码剖析 golang 中 sync.Mutex】https://www.purewhite.io/2019/03/28/golang-mutex-source/    
+【源码剖析 golang 中 sync.Mutex】https://www.purewhite.io/2019/03/28/golang-mutex-source/   
+【sync.mutex 源代码分析】https://colobu.com/2018/12/18/dive-into-sync-mutex/    
