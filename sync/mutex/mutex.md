@@ -251,6 +251,47 @@ func (m *Mutex) lockSlow() {
 		race.Acquire(unsafe.Pointer(m))
 	}
 }
+const (
+	active_spin     = 4
+)
+
+// src/runtime/proc.go
+// Active spinning for sync.Mutex.
+// go:linkname sync_runtime_canSpin sync.runtime_canSpin
+// go:nosplit
+func sync_runtime_canSpin(i int) bool {
+    // sync.Mutex是会被多个goroutine竞争的，所以自旋的次数需要控制
+    // active_spin的值为4
+    // 满足下面的添加才会发生自旋
+    // 1、自旋的次数小于active_spin也就是4
+    // 2、如果在单核的cpu是不能自旋的
+    // 3、 GOMAXPROCS> 1，并且至少有一个其他正在运行的P，并且本地runq为空。
+    // 4、当前P没有其它等待运行的G 
+	if i >= active_spin || ncpu <= 1 || gomaxprocs <= int32(sched.npidle+sched.nmspinning)+1 {
+		return false
+	}
+	if p := getg().m.p.ptr(); !runqempty(p) {
+		return false
+	}
+	return true
+}
+
+// src/runtime/proc.go
+// go:linkname sync_runtime_doSpin sync.runtime_doSpin
+// go:nosplit
+// procyield的实现是用汇编实现的
+func sync_runtime_doSpin() {
+	procyield(active_spin_cnt)
+}
+
+// src/runtime/asm_amd64.s
+TEXT runtime·procyield(SB),NOSPLIT,$0-0
+	MOVL	cycles+0(FP), AX
+again:
+	PAUSE
+	SUBL	$1, AX
+	JNZ	again
+	RET
 ```
 
 上面有很多关于&和|的运算和判断，下面来具体的分析下  
@@ -288,7 +329,15 @@ func (m *Mutex) lockSlow() {
 
 各二进位全部右移若干位，对无符号数，高位补0，有符号数，各编译器处理方法不一样，有的补符号位（算术右移），有的补0  
 
+梳理下流程  
 
+1、如果已经获得了锁，并且不是饥饿状态
+
+2、
+
+3、
+
+4、
 
 
 
