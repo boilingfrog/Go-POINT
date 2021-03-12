@@ -131,18 +131,18 @@ func (m *Mutex) Lock() {
 
 func (m *Mutex) lockSlow() {
 	var waitStartTime int64
-    // 是否处于饥饿模式
+	// 是否处于饥饿模式
 	starving := false
 	// 用来存当前goroutine是否已唤醒
 	awoke := false
 	// 用来存当前goroutine的循环次数
 	iter := 0
-    // 记录下当前的状态
+	// 记录下当前的状态
 	old := m.state
 	for {
 		// 在饥饿模式下，锁不需要自旋了
 		// 锁的所有权会直接转交给队列头的goroutine
-		// TODO
+		// 如果 已经获取了锁，并且不是饥饿状态，并且可以自旋
 		if old&(mutexLocked|mutexStarving) == mutexLocked && runtime_canSpin(iter) {
 			// 主动旋转是有意义的。
 			// 尝试设置MutexWoken标志来通知解锁
@@ -153,7 +153,7 @@ func (m *Mutex) lockSlow() {
 			}
 			// 主动自旋
 			runtime_doSpin()
-            // 循环次数加一
+			// 循环次数加一
 			iter++
 			old = m.state
 			continue
