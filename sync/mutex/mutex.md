@@ -401,7 +401,7 @@ again:
 
 11、饥饿状态，当前`goroutine`来设置锁，等待者减一，如果当前`goroutine`是队列中最后一个`goroutine`设置饥饿状态为正常，拿到锁结束`Lock`。  
 
-<img src="/img/sync_mutex_lock.png" width = "642" height = "936" alt="mutex" align=center />
+<img src="/img/sync_mutex_lock.png" width = "642" height = "846" alt="mutex" align=center />
 
 #### Unlock
 
