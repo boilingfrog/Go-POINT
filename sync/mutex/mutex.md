@@ -465,7 +465,7 @@ func (m *Mutex) unlockSlow(new int32) {
 
 3、饥饿模式下，通过信号量，唤醒在饥饿模式下面`Lock`操作下队列中第一个`goroutine`。  
 
-<img src="/img/sync_mutex_unlock.png" width = "444" height = "456" alt="mutex" align=center />
+<img src="/img/sync_mutex_unlock.png" width = "419" height = "456" alt="mutex" align=center />
 
 ### 总结
 
