@@ -115,12 +115,24 @@ type Mutex struct {
 
 #### Lock
 
+加锁基本上就这三种情况：  
+
+1、可直接获取锁，直接加锁，返回；  
+
+2、有冲突 首先自旋，如果其他`goroutine`在这段时间内释放了该锁，直接获得该锁；如果没有释放
+
+3、有冲突，且已经过了自旋阶段，这时候可能存在两种状态，饥饿模式，正常模式；  
+
+- 1、饥饿模式 加入到等待队列首部，通过信号量阻塞，等待被唤醒；  
+
+- 2、正常模式 唤醒，重新回到3。  
+
 ```go
 // Lock locks m.
 // 如果锁正在使用中，新的goroutine请求，将被阻塞，直到锁被释放
 func (m *Mutex) Lock() {
 	// 原子的(cas)来判断是否加锁
-	// 未加锁，直接加锁，返回
+	// 如果可以获取锁，直接加锁，返回
 	if atomic.CompareAndSwapInt32(&m.state, 0, mutexLocked) {
 		if race.Enabled {
 			race.Acquire(unsafe.Pointer(m))
@@ -297,6 +309,7 @@ func sync_runtime_doSpin() {
 TEXT runtime·procyield(SB),NOSPLIT,$0-0
 	MOVL	cycles+0(FP), AX
 again:
+        // PAUSE指令提升了自旋等待循环（spin-wait loop）的性能
 	PAUSE
 	SUBL	$1, AX
 	JNZ	again
@@ -443,6 +456,14 @@ func (m *Mutex) unlockSlow(new int32) {
 	}
 }
 ```
+
+梳理下流程：  
+
+1、首先判断如果之前是锁的状态是未加锁，`Unlock`将会触发`panic`；  
+
+2、如果当前锁是正常模式，一个for循环，去不断尝试解锁；  
+
+3、饥饿模式下，通过信号量，唤醒在饥饿模式下面`Lock`操作下队列中第一个`goroutine`。  
 
 ### 总结
 
