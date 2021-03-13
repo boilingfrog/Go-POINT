@@ -415,7 +415,6 @@ func (wg *WaitGroup) Wait() {
 
 
 
-| 版权声明：本文为博主原创文章，遵循 [CC 4.0 BY-SA](https://creativecommons.org/licenses/by-sa/4.0/) 版权协议，转载请附上原文出处链接和本声明。   |
-| ------------- | 
-| 本文链接：https://www.cnblogs.com/ricklz/p/14500392.html  |
+>版权声明：本文为博主原创文章，遵循 [CC 4.0 BY-SA](https://creativecommons.org/licenses/by-sa/4.0/) 版权协议，转载请附上原文出处链接和本声明。  
+>本文链接：https://www.cnblogs.com/ricklz/p/14500392.html
 
