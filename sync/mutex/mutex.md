@@ -496,5 +496,5 @@ func (m *Mutex) unlockSlow(new int32) {
 【源码剖析 golang 中 sync.Mutex】https://www.purewhite.io/2019/03/28/golang-mutex-source/  
 
 >**本文作者**：liz  
->**本文链接**：https://boilingfrog.github.io/2021/03/14/sync.Mutex    
+>**本文链接**：https://boilingfrog.github.io/2021/03/14/sync.Mutex/    
 >**版权声明**：本文为博主原创文章，遵循 [CC 4.0 BY-SA](https://creativecommons.org/licenses/by-sa/4.0/) 版权协议，转载请附上原文出处链接和本声明。    
