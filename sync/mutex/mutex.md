@@ -316,7 +316,7 @@ func sync_runtime_doSpin() {
 TEXT runtime·procyield(SB),NOSPLIT,$0-0
 	MOVL	cycles+0(FP), AX
 again:
-        // PAUSE指令提升了自旋等待循环（spin-wait loop）的性能
+        // 让加锁失败时cpu睡眠30个（about）clock，从而使得读操作的频率低很多。流水线重排的代价也会小很多
 	PAUSE
 	SUBL	$1, AX
 	JNZ	again
@@ -479,7 +479,13 @@ func (m *Mutex) unlockSlow(new int32) {
 
 ### 总结
 
+1、加锁的过程会存在正常模式和互斥模式的转换；  
 
+2、饥饿模式就是保证锁的公平性，正常模式下的互斥锁能够提供更好地性能，饥饿模式的能避免 Goroutine 由于陷入等待无法获取锁而造成的高尾延时；  
+
+3、锁的状态的转换，也使用到了位运算；  
+
+4、一个已经锁定的互斥锁，允许其他协程进行解锁，不过只能被解锁一次；  
 
 ### 参考
 
