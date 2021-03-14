@@ -493,4 +493,8 @@ func (m *Mutex) unlockSlow(new int32) {
 【一份详细注释的go Mutex源码】http://cbsheng.github.io/posts/%E4%B8%80%E4%BB%BD%E8%AF%A6%E7%BB%86%E6%B3%A8%E9%87%8A%E7%9A%84go-mutex%E6%BA%90%E7%A0%81/  
 【源码剖析 golang 中 sync.Mutex】https://www.purewhite.io/2019/03/28/golang-mutex-source/   
 【sync.mutex 源代码分析】https://colobu.com/2018/12/18/dive-into-sync-mutex/    
-【源码剖析 golang 中 sync.Mutex】https://www.purewhite.io/2019/03/28/golang-mutex-source/      
+【源码剖析 golang 中 sync.Mutex】https://www.purewhite.io/2019/03/28/golang-mutex-source/  
+
+>**本文作者**：liz  
+>**本文链接**：https://boilingfrog.github.io/2021/03/14/sync.Mutex    
+>**版权声明**：本文为博主原创文章，遵循 [CC 4.0 BY-SA](https://creativecommons.org/licenses/by-sa/4.0/) 版权协议，转载请附上原文出处链接和本声明。    
