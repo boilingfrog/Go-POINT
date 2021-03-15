@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"sync"
 )
 
@@ -20,10 +19,7 @@ const (
 )
 
 func main() {
-	a, b := 60, 13
-
-	fmt.Println(a & b)
-
+	Deposit(1)
 }
 
 func Deposit(amount int) {

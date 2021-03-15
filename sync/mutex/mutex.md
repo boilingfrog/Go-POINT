@@ -231,7 +231,7 @@ func (m *Mutex) lockSlow() {
 				waitStartTime = runtime_nanotime()
 			}
 			// queueLifo为true，也就是之前已经在等了
-			// runtime_SemacquireMutex中的lifo为true，则将等待服务程序放在等待队列的开头。
+			// 中的lifo为true，则将等待服务程序放在等待队列的开头。runtime_SemacquireMutex
 			// 会被阻塞
 			runtime_SemacquireMutex(&m.sema, queueLifo, 1)
 			// 阻塞被唤醒
