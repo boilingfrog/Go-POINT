@@ -79,12 +79,12 @@ func (rw *RWMutex) RLock() {
 		_ = rw.w.state
 		race.Disable()
 	}
-    // 当有之前有写锁的时候，会先将readerCount减去rwmutexMaxReaders的值
-    // 这样当有写操作在进行的时候这个值就是一个负数
-    // 读操作根据这个来判断是否要将自己阻塞
+	// 当有之前有写锁的时候，会先将readerCount减去rwmutexMaxReaders的值
+	// 这样当有写操作在进行的时候这个值就是一个负数
+	// 读操作根据这个来判断是否要将自己阻塞
 
-    // 如果之前没有写锁，那么readerCount的值将大于等于0
-    // 写锁同样根据这个值来判断在本次写锁之前是已经有读锁存在了
+	// 如果之前没有写锁，那么readerCount的值将大于等于0
+	// 写锁同样根据这个值来判断在本次写锁之前是已经有读锁存在了
 
 	// 首先通过atomic的原子性使readerCount+1
 	// 1、如果readerCount<0。说明写锁已经获取了，那么这个读锁需要等待写锁的完成
@@ -178,12 +178,14 @@ func (rw *RWMutex) Lock() {
 	}
 	// 获取互斥锁
 	rw.w.Lock()
-    // readerCount-rwmutexMaxReaders小于0, 再加回rwmutexMaxReaders
-	// 若r仍然不为0, 代表当前还有读锁
+
+    // 原子的修改readerCount的值，直接将readerCount减去rwmutexMaxReaders
+    // 说明，有写锁进来了，这在上面的读锁中也有体现
 	r := atomic.AddInt32(&rw.readerCount, -rwmutexMaxReaders) + rwmutexMaxReaders
-	// 等待写锁前面的读锁释放, 所以若不为0就阻塞写锁, 等待rUnlockSlow-rUnlockSlow的readerWait-1直至0倍唤醒写锁
+	// 当r不为0说明，当前写锁之前有读锁的存在
+    // 修改下readerWait，也就是当前写锁需要等待的读锁的个数  
 	if r != 0 && atomic.AddInt32(&rw.readerWait, r) != 0 {
-        // 阻塞写锁
+        // 阻塞当前写锁
 		runtime_SemacquireMutex(&rw.writerSem, false, 0)
 	}
 	if race.Enabled {
@@ -194,9 +196,11 @@ func (rw *RWMutex) Lock() {
 }
 ```
 
-![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/lock.jpg?raw=true)
+梳理下流程：  
 
-`RWMutex.readerWait`的作用  
+1、修改下`readerCount`的数量，直接减去`rwmutexMaxReaders`；  
+
+2、判断当前写锁之前，是否有读锁的存在；  
 
 我们知道，写操作要等待读操作结束后才可以获得锁，写操作等待期间可能还有新的读操作持续到来，如果写操作等待所有读操作结束，很可能被饿死。然而，
 通过`RWMutex.readerWait`可完美解决这个问题。  
@@ -205,14 +209,20 @@ func (rw *RWMutex) Lock() {
 
 前面的读操作结束后，除了会递减`RWMutex.readerCount`，还会递减`RWMutex.readerWait`值，当`RWMutex.readerWait`值变为0时唤醒写操作。  
 
-写操作之后产生的读操作就会加入到`readerCount`，阻塞知道写锁释放。  
+写操作之后产生的读操作就会加入到`readerCount`，阻塞知道写锁释放。    
 
+3、如果有读锁，阻塞当前写锁；  
+
+![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/lock.jpg?raw=true)
 
 #### Unlock
 
 ```go
-// 唤醒因读锁定而被阻塞的协程（如果有的话）
-// 解除互斥锁
+// 如果写锁未锁定，解锁将会触发panic
+
+//一个锁定的互斥锁与一个特定的goroutine没有关联。
+// 它允许一个goroutine锁定一个写锁然后
+// 安排另一个goroutine解锁它。
 func (rw *RWMutex) Unlock() {
 	if race.Enabled {
 		_ = rw.w.state
@@ -221,12 +231,14 @@ func (rw *RWMutex) Unlock() {
 	}
 
 	// 增加readerCount, 若超过读锁的最大限制, 触发panic
+    // 和写锁定的-rwmutexMaxReaders，向对应
 	r := atomic.AddInt32(&rw.readerCount, rwmutexMaxReaders)
 	if r >= rwmutexMaxReaders {
 		race.Enable()
 		throw("sync: Unlock of unlocked RWMutex")
 	}
-	//解除阻塞的读锁(若有)
+	// 如果r>0，说明当前写锁后面，有阻塞的读锁
+    // 然后，通过信号量一一释放阻塞的读锁
 	for i := 0; i < int(r); i++ {
 		runtime_Semrelease(&rw.readerSem, false, 0)
 	}
@@ -237,6 +249,12 @@ func (rw *RWMutex) Unlock() {
 	}
 }
 ```
+
+梳理下流程：  
+
+1、首先修改`readerCount`的值，加上`rwmutexMaxReaders`，和上文的`-rwmutexMaxReaders`相呼应；  
+
+2、然后判断后面是否有读锁被阻塞，如果有一一唤醒。   
 
 ![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/unlock.jpg?raw=true)
 
