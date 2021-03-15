@@ -79,7 +79,7 @@ func (rw *RWMutex) RLock() {
 		_ = rw.w.state
 		race.Disable()
 	}
-	// 当有之前有写锁的时候，会先将readerCount减去rwmutexMaxReaders的值
+	// 当有之前有写锁的时候，写锁会先将readerCount减去rwmutexMaxReaders的值
 	// 这样当有写操作在进行的时候这个值就是一个负数
 	// 读操作根据这个来判断是否要将自己阻塞
 
@@ -109,7 +109,7 @@ func (rw *RWMutex) RLock() {
 
 3、通过`runtime_SemacquireMutex`将写锁加入到阻塞队列的尾部。  
 
-![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/rlock.jpg?raw=true)
+<img src="/img/sync_rwmutex_rlock.png" width = "340" height = "524" alt="RWMutex" align=center />
 
 #### RUnlock
 
@@ -162,7 +162,7 @@ func (rw *RWMutex) rUnlockSlow(r int32) {
 
 3、通过信号量唤醒队列中第一个被阻塞的写锁。  
 
-![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/runlock.jpg?raw=true) 
+<img src="/img/sync_rwmutex_runlock.png" width = "350" height = "513" alt="RWMutex" align=center />
 
 ### 写锁
 
@@ -287,6 +287,32 @@ func (rw *RWMutex) Unlock() {
 写操作到来时，会把`RWMutex.readerCount`值拷贝到`RWMutex.readerWait`中，用于标记排在写操作前面的读者个数。  
 
 前面的读操作结束后，除了会递减`RWMutex.readerCount`，还会递减`RWMutex.readerWait`值，当`RWMutex.readerWait`值变为0时唤醒写操作。  
+
+#### 两个读锁之间穿插了一个写锁
+
+```go
+type test struct {
+	data map[string]string
+	r    sync.RWMutex
+}
+
+func (t test) read() {
+	t.r.RLock()
+	t.r.RLock()
+	t.r.Lock()
+	fmt.Println(t.data)
+	t.r.Unlock()
+	t.r.RUnlock()
+	t.r.RUnlock()
+}
+```
+
+上面的代码将会发什么？  
+
+deadlock!   
+
+读锁是会阻塞写锁的，一个
+
 
 ### 参考
 【Package race】https://golang.org/pkg/internal/race/    
