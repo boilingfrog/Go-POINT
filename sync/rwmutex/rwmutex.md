@@ -17,6 +17,7 @@
     - [写操作是如何阻止读操作的](#%E5%86%99%E6%93%8D%E4%BD%9C%E6%98%AF%E5%A6%82%E4%BD%95%E9%98%BB%E6%AD%A2%E8%AF%BB%E6%93%8D%E4%BD%9C%E7%9A%84)
     - [读操作是如何阻止写操作的](#%E8%AF%BB%E6%93%8D%E4%BD%9C%E6%98%AF%E5%A6%82%E4%BD%95%E9%98%BB%E6%AD%A2%E5%86%99%E6%93%8D%E4%BD%9C%E7%9A%84)
     - [为什么写锁定不会被饿死](#%E4%B8%BA%E4%BB%80%E4%B9%88%E5%86%99%E9%94%81%E5%AE%9A%E4%B8%8D%E4%BC%9A%E8%A2%AB%E9%A5%BF%E6%AD%BB)
+    - [两个读锁之间穿插了一个写锁](#%E4%B8%A4%E4%B8%AA%E8%AF%BB%E9%94%81%E4%B9%8B%E9%97%B4%E7%A9%BF%E6%8F%92%E4%BA%86%E4%B8%80%E4%B8%AA%E5%86%99%E9%94%81)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -298,11 +299,9 @@ type test struct {
 
 func (t test) read() {
 	t.r.RLock()
-	t.r.RLock()
 	t.r.Lock()
 	fmt.Println(t.data)
 	t.r.Unlock()
-	t.r.RUnlock()
 	t.r.RUnlock()
 }
 ```
@@ -311,8 +310,15 @@ func (t test) read() {
 
 deadlock!   
 
-读锁是会阻塞写锁的，一个
+分析下原因  
 
+1、读锁是会阻塞写锁的，上面的读锁已经上锁了；
+
+2、后面的写锁来加锁。发现已经有读锁了，然后使用信号量阻塞当前的写锁。等待被读锁唤醒；  
+
+3、然后这个写锁马上解锁，但是当前的写锁，一直在等待被信号量唤醒，结果没等到，下面的读锁不能触发信号量的发出；
+
+4、然后就死循环了，触发了deadlock。  
 
 ### 参考
 【Package race】https://golang.org/pkg/internal/race/    
