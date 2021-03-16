@@ -108,7 +108,7 @@ func (rw *RWMutex) RLock() {
 
 2、原子的修改`readerCount`，如果结果小于0说明有写锁存在，需要阻塞读锁；  
 
-3、通过`runtime_SemacquireMutex`将写锁加入到阻塞队列的尾部。  
+3、通过`runtime_SemacquireMutex`将当前的读锁加入到阻塞队列的尾部。  
 
 <img src="/img/sync_rwmutex_rlock.png" width = "474" height = "524" alt="RWMutex" align=center />
 
@@ -159,7 +159,7 @@ func (rw *RWMutex) rUnlockSlow(r int32) {
 - 1、如果操作之后的值大于0，说明还有读锁存在，直接结束本次操作；  
 - 2、如果操作之后值小于0，说明还有写锁存在，尝试在最后一个读锁完成的时候去唤醒写锁；  
 
-2、readerWait--操作，如果readerWait--操作之后的值为0，说明，写锁之前，已经没有读锁了；  
+2、`readerWait--`操作，如果`readerWait--`操作之后的值为0，说明，写锁之前，已经没有读锁了；  
 
 3、通过信号量唤醒队列中第一个被阻塞的写锁。  
 
@@ -203,14 +203,13 @@ func (rw *RWMutex) Lock() {
 
 2、判断当前写锁之前，是否有读锁的存在；  
 
-我们知道，写操作要等待读操作结束后才可以获得锁，写操作等待期间可能还有新的读操作持续到来，如果写操作等待所有读操作结束，很可能被饿死。然而，
-通过`RWMutex.readerWait`可完美解决这个问题。  
+我们知道，写操作要等待读操作结束后才可以获得锁，写操作等待期间可能还有新的读操作持续到来，如果写操作等待所有读操作结束，很可能被饿死。然而，通过`RWMutex.readerWait`可完美解决这个问题。  
 
 写操作到来时，会把`RWMutex.readerCount`值拷贝到`RWMutex.readerWait`中，用于标记排在写操作前面的读者个数。 
 
 前面的读操作结束后，除了会递减`RWMutex.readerCount`，还会递减`RWMutex.readerWait`值，当`RWMutex.readerWait`值变为0时唤醒写操作。  
 
-写操作之后产生的读操作就会加入到`readerCount`，阻塞知道写锁释放。    
+写操作之后产生的读操作就会加入到`readerCount`，阻塞直到写锁释放。    
 
 3、如果有读锁，阻塞当前写锁；  
 
@@ -314,11 +313,11 @@ deadlock!
 
 1、读锁是会阻塞写锁的，上面的读锁已经上锁了；
 
-2、后面的写锁来加锁。发现已经有读锁了，然后使用信号量阻塞当前的写锁。等待被读锁唤醒；  
+2、后面的写锁来加锁。发现已经有读锁了，然后使用信号量阻塞当前的写锁，等待读锁解锁时被唤醒；  
 
-3、然后这个写锁马上解锁，但是当前的写锁，一直在等待被信号量唤醒，结果没等到，下面的读锁不能触发信号量的发出；
+3、然后这个写锁马上解锁，但是当前的写锁，一直在等待被信号量唤醒，读锁的解锁又一直在等待写锁的解锁；
 
-4、然后就死循环了，触发了deadlock。  
+4、然后就死循环，deadlock。  
 
 ### 参考
 【Package race】https://golang.org/pkg/internal/race/    
