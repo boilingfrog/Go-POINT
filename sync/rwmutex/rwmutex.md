@@ -163,7 +163,7 @@ func (rw *RWMutex) rUnlockSlow(r int32) {
 
 3、通过信号量唤醒队列中第一个被阻塞的写锁。  
 
-<img src="/img/sync_rwmutex_runlock.png" width = "350" height = "513" alt="RWMutex" align=center />
+<img src="/img/sync_rwmutex_runlock.png" width = "486" height = "513" alt="RWMutex" align=center />
 
 ### 写锁
 
