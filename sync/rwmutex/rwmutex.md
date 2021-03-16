@@ -213,7 +213,7 @@ func (rw *RWMutex) Lock() {
 
 3、如果有读锁，阻塞当前写锁；  
 
-<img src="/img/sync_rwmutex_lock.png" width = "329" height = "562" alt="RWMutex" align=center />
+<img src="/img/sync_rwmutex_lock.png" width = "329" height = "598" alt="RWMutex" align=center />
 
 #### Unlock
 
