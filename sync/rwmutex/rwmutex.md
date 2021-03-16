@@ -179,13 +179,13 @@ func (rw *RWMutex) Lock() {
 	// 获取互斥锁
 	rw.w.Lock()
 
-    // 原子的修改readerCount的值，直接将readerCount减去rwmutexMaxReaders
-    // 说明，有写锁进来了，这在上面的读锁中也有体现
+	// 原子的修改readerCount的值，直接将readerCount减去rwmutexMaxReaders
+	// 说明，有写锁进来了，这在上面的读锁中也有体现
 	r := atomic.AddInt32(&rw.readerCount, -rwmutexMaxReaders) + rwmutexMaxReaders
 	// 当r不为0说明，当前写锁之前有读锁的存在
-    // 修改下readerWait，也就是当前写锁需要等待的读锁的个数  
+	// 修改下readerWait，也就是当前写锁需要等待的读锁的个数  
 	if r != 0 && atomic.AddInt32(&rw.readerWait, r) != 0 {
-        // 阻塞当前写锁
+		// 阻塞当前写锁
 		runtime_SemacquireMutex(&rw.writerSem, false, 0)
 	}
 	if race.Enabled {
@@ -231,14 +231,14 @@ func (rw *RWMutex) Unlock() {
 	}
 
 	// 增加readerCount, 若超过读锁的最大限制, 触发panic
-    // 和写锁定的-rwmutexMaxReaders，向对应
+	// 和写锁定的-rwmutexMaxReaders，向对应
 	r := atomic.AddInt32(&rw.readerCount, rwmutexMaxReaders)
 	if r >= rwmutexMaxReaders {
 		race.Enable()
 		throw("sync: Unlock of unlocked RWMutex")
 	}
 	// 如果r>0，说明当前写锁后面，有阻塞的读锁
-    // 然后，通过信号量一一释放阻塞的读锁
+	// 然后，通过信号量一一释放阻塞的读锁
 	for i := 0; i < int(r); i++ {
 		runtime_Semrelease(&rw.readerSem, false, 0)
 	}
@@ -256,7 +256,7 @@ func (rw *RWMutex) Unlock() {
 
 2、然后判断后面是否有读锁被阻塞，如果有一一唤醒。   
 
-![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/unlock.jpg?raw=true)
+<img src="/img/sync_rwmutex_unlock.png" width = "414" height = "488" alt="RWMutex" align=center />
 
 ### 问题要论
 
