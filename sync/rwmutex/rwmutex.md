@@ -109,7 +109,7 @@ func (rw *RWMutex) RLock() {
 
 3、通过`runtime_SemacquireMutex`将写锁加入到阻塞队列的尾部。  
 
-<img src="/img/sync_rwmutex_rlock.png" width = "340" height = "524" alt="RWMutex" align=center />
+<img src="/img/sync_rwmutex_rlock.png" width = "474" height = "524" alt="RWMutex" align=center />
 
 #### RUnlock
 
