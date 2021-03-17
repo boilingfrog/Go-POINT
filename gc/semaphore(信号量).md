@@ -2,8 +2,21 @@
 
 ### 前言
 
-最近看源码，遇到这个一脸懵，花点时间看下  
+最近在看源码，发现好多地方用到了这个`semaphore`。  
 
+本文是在`go version go1.13.15 darwin/amd64`上进行的  
+
+### 作用是什么  
+
+
+  
+### 如何使用
+
+这个是go内部的包只能在内部使用  
+
+`go/src/runtime/sema.go`  
+
+`go/src/sync/runtime.go`   
 
 
 
