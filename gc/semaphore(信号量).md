@@ -11,18 +11,17 @@
 下面是官方的描述  
 
 ```go
-// Asynchronous semaphore for sync.Mutex.
-
-// A semaRoot holds a balanced tree of sudog with distinct addresses (s.elem).
-// Each of those sudog may in turn point (through s.waitlink) to a list
-// of other sudogs waiting on the same address.
-// The operations on the inner lists of sudogs with the same address
-// are all O(1). The scanning of the top-level semaRoot list is O(log n),
-// where n is the number of distinct addresses with goroutines blocked
-// on them that hash to the given semaRoot.
-// See golang.org/issue/17953 for a program that worked badly
-// before we introduced the second level of list, and test/locklinear.go
-// for a test that exercises this.
+// Semaphore implementation exposed to Go.
+// Intended use is provide a sleep and wakeup
+// primitive that can be used in the contended case
+// of other synchronization primitives.
+// Thus it targets the same goal as Linux's futex,
+// but it has much simpler semantics.
+//
+// That is, don't think of these as semaphores.
+// Think of them as a way to implement sleep and wakeup
+// such that every sleep is paired with a single wakeup,
+// even if, due to races, the wakeup happens before the sleep.
 
 // Go 语言中暴露的 semaphore 实现
 // 具体的用法是提供 sleep 和 wakeup 原语
