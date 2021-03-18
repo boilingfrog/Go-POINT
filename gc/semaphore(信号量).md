@@ -50,6 +50,36 @@
 
 `go/src/runtime/sema.go`  
 
+
+```go
+// Asynchronous semaphore for sync.Mutex.
+
+// A semaRoot holds a balanced tree of sudog with distinct addresses (s.elem).
+// Each of those sudog may in turn point (through s.waitlink) to a list
+// of other sudogs waiting on the same address.
+// The operations on the inner lists of sudogs with the same address
+// are all O(1). The scanning of the top-level semaRoot list is O(log n),
+// where n is the number of distinct addresses with goroutines blocked
+// on them that hash to the given semaRoot.
+// See golang.org/issue/17953 for a program that worked badly
+// before we introduced the second level of list, and test/locklinear.go
+// for a test that exercises this.
+type semaRoot struct {
+	lock  mutex
+	treap *sudog // root of balanced tree of unique waiters.
+	nwait uint32 // Number of waiters. Read w/o the lock.
+}
+
+// Prime to not correlate with any user patterns.
+const semTabSize = 251
+
+var semtable [semTabSize]struct {
+	root semaRoot
+	pad  [cpu.CacheLinePadSize - unsafe.Sizeof(semaRoot{})]byte
+}
+
+```
+
 `go/src/sync/runtime.go`   
 
 
