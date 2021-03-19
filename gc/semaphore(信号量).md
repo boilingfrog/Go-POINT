@@ -42,14 +42,65 @@
 
 go中的`semaphore`作用和`futex`目标一样，提供`sleep`和`wakeup`原语，使其能够在其它同步原语中的竞争情况下使用。   
 
-例如在读写锁的实现中，读锁和写锁之前的相互阻塞唤醒，就是通过`sleep`和`wakeup`实现，当有读锁存在的时候，新加入的写锁。  
+例如在读写锁的实现中，读锁和写锁之前的相互阻塞唤醒，就是通过`sleep`和`wakeup`实现，当有读锁存在的时候，新加入的写锁通过`semaphore`阻塞自己，当前面的读锁完成，在通过`semaphore`唤醒被阻塞的写锁。    
 
-### 如何使用
+写锁
+
+```go
+// 获取互斥锁
+// 阻塞等待所有读操作结束（如果有的话）
+func (rw *RWMutex) Lock() {
+	...
+	// 原子的修改readerCount的值，直接将readerCount减去rwmutexMaxReaders
+	// 说明，有写锁进来了，这在上面的读锁中也有体现
+	r := atomic.AddInt32(&rw.readerCount, -rwmutexMaxReaders) + rwmutexMaxReaders
+	// 当r不为0说明，当前写锁之前有读锁的存在
+	// 修改下readerWait，也就是当前写锁需要等待的读锁的个数  
+	if r != 0 && atomic.AddInt32(&rw.readerWait, r) != 0 {
+		// 阻塞当前写锁
+		runtime_SemacquireMutex(&rw.writerSem, false, 0)
+	}
+	...
+}
+```
+
+通过`runtime_SemacquireMutex`对当前写锁进行`sleep`  
+
+读锁释放  
+
+```go
+// 减少读操作计数，即readerCount--
+// 唤醒等待写操作的协程（如果有的话）
+func (rw *RWMutex) RUnlock() {
+...
+	// 首先通过atomic的原子性使readerCount-1
+	// 1.若readerCount大于0, 证明当前还有读锁, 直接结束本次操作
+	// 2.若readerCount小于0, 证明已经没有读锁, 但是还有因为读锁被阻塞的写锁存在
+	if r := atomic.AddInt32(&rw.readerCount, -1); r < 0 {
+		// 尝试唤醒被阻塞的写锁
+		rw.rUnlockSlow(r)
+	}
+...
+}
+
+func (rw *RWMutex) rUnlockSlow(r int32) {
+...
+	// readerWait--操作，如果readerWait--操作之后的值为0，说明，写锁之前，已经没有读锁了
+	// 通过writerSem信号量，唤醒队列中第一个阻塞的写锁
+	if atomic.AddInt32(&rw.readerWait, -1) == 0 {
+		// 唤醒一个写锁
+		runtime_Semrelease(&rw.writerSem, false, 1)
+	}
+}
+```
+
+写锁处理完之后，调用`runtime_Semrelease`来唤醒`sleep`的写锁
+
+### 分析下原理
 
 这个是go内部的包只能在内部使用  
 
 `go/src/runtime/sema.go`  
-
 
 ```go
 // Asynchronous semaphore for sync.Mutex.
