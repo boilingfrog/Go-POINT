@@ -103,22 +103,18 @@ func (rw *RWMutex) rUnlockSlow(r int32) {
 `go/src/runtime/sema.go`  
 
 ```go
-// Asynchronous semaphore for sync.Mutex.
+// 用于sync.Mutex的异步信号量。
 
-// A semaRoot holds a balanced tree of sudog with distinct addresses (s.elem).
-// Each of those sudog may in turn point (through s.waitlink) to a list
-// of other sudogs waiting on the same address.
-// The operations on the inner lists of sudogs with the same address
-// are all O(1). The scanning of the top-level semaRoot list is O(log n),
-// where n is the number of distinct addresses with goroutines blocked
-// on them that hash to the given semaRoot.
-// See golang.org/issue/17953 for a program that worked badly
-// before we introduced the second level of list, and test/locklinear.go
-// for a test that exercises this.
+// semaRoot拥有一个具有不同地址（s.elem）的sudog平衡树。
+// 每个sudog都可以依次（通过s.waitlink）指向一个列表，在相同地址上等待的其他sudog。
+// 对具有相同地址的sudog内部列表进行的操作全部为O（1）。顶层semaRoot列表的扫描为O（log n），
+// 其中，n是阻止goroutines的不同地址的数量，通过他们散列到给定的semaRoot。
 type semaRoot struct {
 	lock  mutex
-	treap *sudog // root of balanced tree of unique waiters.
-	nwait uint32 // Number of waiters. Read w/o the lock.
+	// waiters的平衡树的根节点
+	treap *sudog
+	// waiters的数量，读取的时候无所
+	nwait uint32
 }
 
 // Prime to not correlate with any user patterns.
