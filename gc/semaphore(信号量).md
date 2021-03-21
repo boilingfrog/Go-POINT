@@ -98,6 +98,31 @@ func (rw *RWMutex) rUnlockSlow(r int32) {
 
 ### 分析下原理
 
+在`go/src/sync/runtime.go`中，定义了这几个方法  
+
+```go
+// Semacquire waits until *s > 0 and then atomically decrements it.
+// It is intended as a simple sleep primitive for use by the synchronization
+// library and should not be used directly.
+func runtime_Semacquire(s *uint32)
+
+// SemacquireMutex is like Semacquire, but for profiling contended Mutexes.
+// If lifo is true, queue waiter at the head of wait queue.
+// skipframes is the number of frames to omit during tracing, counting from
+// runtime_SemacquireMutex's caller.
+func runtime_SemacquireMutex(s *uint32, lifo bool, skipframes int)
+
+// Semrelease atomically increments *s and notifies a waiting goroutine
+// if one is blocked in Semacquire.
+// It is intended as a simple wakeup primitive for use by the synchronization
+// library and should not be used directly.
+// If handoff is true, pass count directly to the first waiter.
+// skipframes is the number of frames to omit during tracing, counting from
+// runtime_Semrelease's caller.
+func runtime_Semrelease(s *uint32, handoff bool, skipframes int)
+```
+
+
 这个是go内部的包只能在内部使用  
 
 `go/src/runtime/sema.go`  
@@ -127,7 +152,6 @@ var semtable [semTabSize]struct {
 
 ```
 
-`go/src/sync/runtime.go`   
 
 
 
