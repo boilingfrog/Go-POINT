@@ -149,7 +149,72 @@ var semtable [semTabSize]struct {
 	root semaRoot
 	pad  [cpu.CacheLinePadSize - unsafe.Sizeof(semaRoot{})]byte
 }
+```
 
+#### poll_runtime_Semacquire
+
+```go
+//go:linkname poll_runtime_Semacquire internal/poll.runtime_Semacquire
+func poll_runtime_Semacquire(addr *uint32) {
+	semacquire1(addr, false, semaBlockProfile, 0)
+}
+
+func semacquire1(addr *uint32, lifo bool, profile semaProfileFlags, skipframes int) {
+	gp := getg()
+	if gp != gp.m.curg {
+		throw("semacquire not on the G stack")
+	}
+
+	// Easy case.
+	if cansemacquire(addr) {
+		return
+	}
+
+	// Harder case:
+	//	increment waiter count
+	//	try cansemacquire one more time, return if succeeded
+	//	enqueue itself as a waiter
+	//	sleep
+	//	(waiter descriptor is dequeued by signaler)
+	s := acquireSudog()
+	root := semroot(addr)
+	t0 := int64(0)
+	s.releasetime = 0
+	s.acquiretime = 0
+	s.ticket = 0
+	if profile&semaBlockProfile != 0 && blockprofilerate > 0 {
+		t0 = cputicks()
+		s.releasetime = -1
+	}
+	if profile&semaMutexProfile != 0 && mutexprofilerate > 0 {
+		if t0 == 0 {
+			t0 = cputicks()
+		}
+		s.acquiretime = t0
+	}
+	for {
+		lock(&root.lock)
+		// Add ourselves to nwait to disable "easy case" in semrelease.
+		atomic.Xadd(&root.nwait, 1)
+		// Check cansemacquire to avoid missed wakeup.
+		if cansemacquire(addr) {
+			atomic.Xadd(&root.nwait, -1)
+			unlock(&root.lock)
+			break
+		}
+		// Any semrelease after the cansemacquire knows we're waiting
+		// (we set nwait above), so go to sleep.
+		root.queue(addr, s, lifo)
+		goparkunlock(&root.lock, waitReasonSemacquire, traceEvGoBlockSync, 4+skipframes)
+		if s.ticket != 0 || cansemacquire(addr) {
+			break
+		}
+	}
+	if s.releasetime > 0 {
+		blockevent(s.releasetime-t0, 3+skipframes)
+	}
+	releaseSudog(s)
+}
 ```
 
 
