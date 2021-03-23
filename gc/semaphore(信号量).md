@@ -7,6 +7,8 @@
   - [作用是什么](#%E4%BD%9C%E7%94%A8%E6%98%AF%E4%BB%80%E4%B9%88)
   - [几个主要的方法](#%E5%87%A0%E4%B8%AA%E4%B8%BB%E8%A6%81%E7%9A%84%E6%96%B9%E6%B3%95)
   - [如何实现](#%E5%A6%82%E4%BD%95%E5%AE%9E%E7%8E%B0)
+    - [sudog 缓存](#sudog-%E7%BC%93%E5%AD%98)
+    - [semaphore](#semaphore)
     - [poll_runtime_Semacquire](#poll_runtime_semacquire)
   - [参考](#%E5%8F%82%E8%80%83)
 
@@ -155,6 +157,54 @@ func sync_runtime_SemacquireMutex(addr *uint32, lifo bool, skipframes int) {
 ```
 ### 如何实现
 
+#### sudog 缓存
+
+`semaphore`的实现使用到了`sudog`，我们先来看下  
+
+```go
+// sudog represents a g in a wait list, such as for sending/receiving
+// on a channel.
+//
+// sudog is necessary because the g ↔ synchronization object relation
+// is many-to-many. A g can be on many wait lists, so there may be
+// many sudogs for one g; and many gs may be waiting on the same
+// synchronization object, so there may be many sudogs for one object.
+//
+// sudogs are allocated from a special pool. Use acquireSudog and
+// releaseSudog to allocate and free them.
+type sudog struct {
+	// The following fields are protected by the hchan.lock of the
+	// channel this sudog is blocking on. shrinkstack depends on
+	// this for sudogs involved in channel ops.
+
+	g *g
+
+	// isSelect indicates g is participating in a select, so
+	// g.selectDone must be CAS'd to win the wake-up race.
+	isSelect bool
+	next     *sudog
+	prev     *sudog
+	elem     unsafe.Pointer // data element (may point to stack)
+
+	// The following fields are never accessed concurrently.
+	// For channels, waitlink is only accessed by g.
+	// For semaphores, all fields (including the ones above)
+	// are only accessed when holding a semaRoot lock.
+
+	acquiretime int64
+	releasetime int64
+	ticket      uint32
+	parent      *sudog // semaRoot binary tree
+	waitlink    *sudog // g.waiting list or semaRoot
+	waittail    *sudog // semaRoot
+	c           *hchan // channel
+}
+```
+
+
+
+#### semaphore
+
 `go/src/runtime/sema.go`  
 
 ```go
@@ -190,22 +240,22 @@ func poll_runtime_Semacquire(addr *uint32) {
 }
 
 func semacquire1(addr *uint32, lifo bool, profile semaProfileFlags, skipframes int) {
+    // 判断当前的
 	gp := getg()
 	if gp != gp.m.curg {
 		throw("semacquire not on the G stack")
 	}
 
-	// Easy case.
+	// *addr -= 1
 	if cansemacquire(addr) {
 		return
 	}
 
-	// Harder case:
-	//	increment waiter count
-	//	try cansemacquire one more time, return if succeeded
-	//	enqueue itself as a waiter
-	//	sleep
-	//	(waiter descriptor is dequeued by signaler)
+	// 增加等待计数
+	// 再试一次 cansemacquire 如果成功则直接返回
+	// 将自己作为等待者入队
+	// 休眠
+	// (等待器描述符由出队信号产生出队行为)
 	s := acquireSudog()
 	root := semroot(addr)
 	t0 := int64(0)
@@ -244,6 +294,18 @@ func semacquire1(addr *uint32, lifo bool, profile semaProfileFlags, skipframes i
 		blockevent(s.releasetime-t0, 3+skipframes)
 	}
 	releaseSudog(s)
+}
+
+func cansemacquire(addr *uint32) bool {
+	for {
+		v := atomic.Load(addr)
+		if v == 0 {
+			return false
+		}
+		if atomic.Cas(addr, v, v-1) {
+			return true
+		}
+	}
 }
 ```
 
