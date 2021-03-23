@@ -7,8 +7,10 @@
   - [作用是什么](#%E4%BD%9C%E7%94%A8%E6%98%AF%E4%BB%80%E4%B9%88)
   - [几个主要的方法](#%E5%87%A0%E4%B8%AA%E4%B8%BB%E8%A6%81%E7%9A%84%E6%96%B9%E6%B3%95)
   - [如何实现](#%E5%A6%82%E4%BD%95%E5%AE%9E%E7%8E%B0)
-    - [sudog 缓存](#sudog-%E7%BC%93%E5%AD%98)
-    - [semaphore](#semaphore)
+  - [sudog 缓存](#sudog-%E7%BC%93%E5%AD%98)
+    - [acquireSudog](#acquiresudog)
+    - [releaseSudog](#releasesudog)
+  - [semaphore](#semaphore)
     - [poll_runtime_Semacquire](#poll_runtime_semacquire)
   - [参考](#%E5%8F%82%E8%80%83)
 
@@ -157,53 +159,140 @@ func sync_runtime_SemacquireMutex(addr *uint32, lifo bool, skipframes int) {
 ```
 ### 如何实现
 
-#### sudog 缓存
+### sudog 缓存
 
 `semaphore`的实现使用到了`sudog`，我们先来看下  
 
+sudog 是运行时用来存放处于阻塞状态的`goroutine`的一个上层抽象，是用来实现用户态信号量的主要机制之一。 例如当一个`goroutine`因为等待`channel`的数据需要进行阻塞时，`sudog`会将`goroutine`及其用于等待数据的位置进行记录， 并进而串联成一个等待队列，或二叉平衡树。  
+
 ```go
-// sudog represents a g in a wait list, such as for sending/receiving
-// on a channel.
-//
-// sudog is necessary because the g ↔ synchronization object relation
-// is many-to-many. A g can be on many wait lists, so there may be
-// many sudogs for one g; and many gs may be waiting on the same
-// synchronization object, so there may be many sudogs for one object.
-//
 // sudogs are allocated from a special pool. Use acquireSudog and
 // releaseSudog to allocate and free them.
 type sudog struct {
-	// The following fields are protected by the hchan.lock of the
-	// channel this sudog is blocking on. shrinkstack depends on
-	// this for sudogs involved in channel ops.
-
+	// 以下字段受hchan保护
 	g *g
 
-	// isSelect indicates g is participating in a select, so
-	// g.selectDone must be CAS'd to win the wake-up race.
+	// isSelect 表示 g 正在参与一个 select, so
+	// 因此 g.selectDone 必须以 CAS 的方式来获取wake-up race.
 	isSelect bool
 	next     *sudog
 	prev     *sudog
-	elem     unsafe.Pointer // data element (may point to stack)
+	elem     unsafe.Pointer // 数据元素（可能指向栈）
 
-	// The following fields are never accessed concurrently.
-	// For channels, waitlink is only accessed by g.
-	// For semaphores, all fields (including the ones above)
-	// are only accessed when holding a semaRoot lock.
-
+	// 以下字段不会并发访问。
+	// 对于通道，waitlink只被g访问。
+	// 对于信号量，所有字段(包括上面的字段)
+	// 只有当持有一个semroot锁时才被访问。
 	acquiretime int64
 	releasetime int64
 	ticket      uint32
-	parent      *sudog // semaRoot binary tree
-	waitlink    *sudog // g.waiting list or semaRoot
+	parent      *sudog //semaRoot 二叉树
+	waitlink    *sudog // g.waiting 列表或 semaRoot
 	waittail    *sudog // semaRoot
 	c           *hchan // channel
 }
 ```
 
+#### acquireSudog
+
+`go/src/runtime/proc.go`
+
+```go
+//go:nosplit
+func acquireSudog() *sudog {
+	// Delicate dance: the semaphore implementation calls
+	// acquireSudog, acquireSudog calls new(sudog),
+	// new calls malloc, malloc can call the garbage collector,
+	// and the garbage collector calls the semaphore implementation
+	// in stopTheWorld.
+	// Break the cycle by doing acquirem/releasem around new(sudog).
+	// The acquirem/releasem increments m.locks during new(sudog),
+	// which keeps the garbage collector from being invoked.
+	mp := acquirem()
+	pp := mp.p.ptr()
+	if len(pp.sudogcache) == 0 {
+		lock(&sched.sudoglock)
+		// First, try to grab a batch from central cache.
+		for len(pp.sudogcache) < cap(pp.sudogcache)/2 && sched.sudogcache != nil {
+			s := sched.sudogcache
+			sched.sudogcache = s.next
+			s.next = nil
+			pp.sudogcache = append(pp.sudogcache, s)
+		}
+		unlock(&sched.sudoglock)
+		// If the central cache is empty, allocate a new one.
+		if len(pp.sudogcache) == 0 {
+			pp.sudogcache = append(pp.sudogcache, new(sudog))
+		}
+	}
+	n := len(pp.sudogcache)
+	s := pp.sudogcache[n-1]
+	pp.sudogcache[n-1] = nil
+	pp.sudogcache = pp.sudogcache[:n-1]
+	if s.elem != nil {
+		throw("acquireSudog: found s.elem != nil in cache")
+	}
+	releasem(mp)
+	return s
+}
+```
+
+#### releaseSudog
+
+```go
+//go:nosplit
+func releaseSudog(s *sudog) {
+	if s.elem != nil {
+		throw("runtime: sudog with non-nil elem")
+	}
+	if s.isSelect {
+		throw("runtime: sudog with non-false isSelect")
+	}
+	if s.next != nil {
+		throw("runtime: sudog with non-nil next")
+	}
+	if s.prev != nil {
+		throw("runtime: sudog with non-nil prev")
+	}
+	if s.waitlink != nil {
+		throw("runtime: sudog with non-nil waitlink")
+	}
+	if s.c != nil {
+		throw("runtime: sudog with non-nil c")
+	}
+	gp := getg()
+	if gp.param != nil {
+		throw("runtime: releaseSudog with non-nil gp.param")
+	}
+	mp := acquirem() // avoid rescheduling to another P
+	pp := mp.p.ptr()
+	if len(pp.sudogcache) == cap(pp.sudogcache) {
+		// Transfer half of local cache to the central cache.
+		var first, last *sudog
+		for len(pp.sudogcache) > cap(pp.sudogcache)/2 {
+			n := len(pp.sudogcache)
+			p := pp.sudogcache[n-1]
+			pp.sudogcache[n-1] = nil
+			pp.sudogcache = pp.sudogcache[:n-1]
+			if first == nil {
+				first = p
+			} else {
+				last.next = p
+			}
+			last = p
+		}
+		lock(&sched.sudoglock)
+		last.next = sched.sudogcache
+		sched.sudogcache = first
+		unlock(&sched.sudoglock)
+	}
+	pp.sudogcache = append(pp.sudogcache, s)
+	releasem(mp)
+}
+```
 
 
-#### semaphore
+### semaphore
 
 `go/src/runtime/sema.go`  
 
