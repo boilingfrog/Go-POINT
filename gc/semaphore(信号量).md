@@ -1,3 +1,17 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+
+- [运行时信号量机制 semaphore](#%E8%BF%90%E8%A1%8C%E6%97%B6%E4%BF%A1%E5%8F%B7%E9%87%8F%E6%9C%BA%E5%88%B6-semaphore)
+  - [前言](#%E5%89%8D%E8%A8%80)
+  - [作用是什么](#%E4%BD%9C%E7%94%A8%E6%98%AF%E4%BB%80%E4%B9%88)
+  - [几个主要的方法](#%E5%87%A0%E4%B8%AA%E4%B8%BB%E8%A6%81%E7%9A%84%E6%96%B9%E6%B3%95)
+  - [如何实现](#%E5%A6%82%E4%BD%95%E5%AE%9E%E7%8E%B0)
+    - [poll_runtime_Semacquire](#poll_runtime_semacquire)
+  - [参考](#%E5%8F%82%E8%80%83)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## 运行时信号量机制 semaphore
 
 ### 前言
@@ -72,7 +86,7 @@ func (rw *RWMutex) Lock() {
 // 减少读操作计数，即readerCount--
 // 唤醒等待写操作的协程（如果有的话）
 func (rw *RWMutex) RUnlock() {
-...
+	...
 	// 首先通过atomic的原子性使readerCount-1
 	// 1.若readerCount大于0, 证明当前还有读锁, 直接结束本次操作
 	// 2.若readerCount小于0, 证明已经没有读锁, 但是还有因为读锁被阻塞的写锁存在
@@ -80,11 +94,11 @@ func (rw *RWMutex) RUnlock() {
 		// 尝试唤醒被阻塞的写锁
 		rw.rUnlockSlow(r)
 	}
-...
+	...
 }
 
 func (rw *RWMutex) rUnlockSlow(r int32) {
-...
+	...
 	// readerWait--操作，如果readerWait--操作之后的值为0，说明，写锁之前，已经没有读锁了
 	// 通过writerSem信号量，唤醒队列中第一个阻塞的写锁
 	if atomic.AddInt32(&rw.readerWait, -1) == 0 {
@@ -96,34 +110,50 @@ func (rw *RWMutex) rUnlockSlow(r int32) {
 
 写锁处理完之后，调用`runtime_Semrelease`来唤醒`sleep`的写锁
 
-### 分析下原理
+### 几个主要的方法
 
 在`go/src/sync/runtime.go`中，定义了这几个方法  
 
 ```go
-// Semacquire waits until *s > 0 and then atomically decrements it.
-// It is intended as a simple sleep primitive for use by the synchronization
-// library and should not be used directly.
+// Semacquire等待*s > 0，然后原子递减它。
+// 它是一个简单的睡眠原语，用于同步
+// library and不应该直接使用。
 func runtime_Semacquire(s *uint32)
 
-// SemacquireMutex is like Semacquire, but for profiling contended Mutexes.
-// If lifo is true, queue waiter at the head of wait queue.
-// skipframes is the number of frames to omit during tracing, counting from
+// SemacquireMutex类似于Semacquire,用来阻塞互斥的对象
+// 如果lifo为true，waiter将会被插入到队列的头部
+// skipframes是跟踪过程中要省略的帧数，从这里开始计算
 // runtime_SemacquireMutex's caller.
 func runtime_SemacquireMutex(s *uint32, lifo bool, skipframes int)
 
-// Semrelease atomically increments *s and notifies a waiting goroutine
-// if one is blocked in Semacquire.
-// It is intended as a simple wakeup primitive for use by the synchronization
-// library and should not be used directly.
-// If handoff is true, pass count directly to the first waiter.
-// skipframes is the number of frames to omit during tracing, counting from
+// Semrelease会自动增加*s并通知一个被Semacquire阻塞的等待的goroutine
+// 它是一个简单的唤醒原语，用于同步
+// library and不应该直接使用。
+// 如果handoff为true, 传递信号到队列头部的waiter
+// skipframes是跟踪过程中要省略的帧数，从这里开始计算
 // runtime_Semrelease's caller.
 func runtime_Semrelease(s *uint32, handoff bool, skipframes int)
 ```
 
+具体的实现是在`go/src/runtime/sema.go`中
 
-这个是go内部的包只能在内部使用  
+```go
+//go:linkname sync_runtime_Semacquire sync.runtime_Semacquire
+func sync_runtime_Semacquire(addr *uint32) {
+	semacquire1(addr, false, semaBlockProfile, 0)
+}
+
+//go:linkname sync_runtime_Semrelease sync.runtime_Semrelease
+func sync_runtime_Semrelease(addr *uint32, handoff bool, skipframes int) {
+	semrelease1(addr, handoff, skipframes)
+}
+
+//go:linkname sync_runtime_SemacquireMutex sync.runtime_SemacquireMutex
+func sync_runtime_SemacquireMutex(addr *uint32, lifo bool, skipframes int) {
+	semacquire1(addr, lifo, semaBlockProfile|semaMutexProfile, skipframes)
+}
+```
+### 如何实现
 
 `go/src/runtime/sema.go`  
 
