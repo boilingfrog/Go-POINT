@@ -200,19 +200,18 @@ type sudog struct {
 ```go
 //go:nosplit
 func acquireSudog() *sudog {
-	// Delicate dance: the semaphore implementation calls
-	// acquireSudog, acquireSudog calls new(sudog),
-	// new calls malloc, malloc can call the garbage collector,
-	// and the garbage collector calls the semaphore implementation
-	// in stopTheWorld.
-	// Break the cycle by doing acquirem/releasem around new(sudog).
-	// The acquirem/releasem increments m.locks during new(sudog),
-	// which keeps the garbage collector from being invoked.
+	// Delicate dance: 信号量的实现调用acquireSudog，然后acquireSudog调用new(sudog)
+	// new调用malloc, malloc调用垃圾收集器，垃圾收集器在stopTheWorld调用信号量
+	// 通过在new(sudog)周围执行acquirem/releasem来打破循环
+	// acquirem/releasem在new(sudog)期间增加m.locks，防止垃圾收集器被调用。
+
+	// 获取当前 g 所在的 m
 	mp := acquirem()
+	// 获取p的指针
 	pp := mp.p.ptr()
 	if len(pp.sudogcache) == 0 {
 		lock(&sched.sudoglock)
-		// First, try to grab a batch from central cache.
+		// 首先，尝试从中央缓存获取一批数据。
 		for len(pp.sudogcache) < cap(pp.sudogcache)/2 && sched.sudogcache != nil {
 			s := sched.sudogcache
 			sched.sudogcache = s.next
@@ -220,14 +219,16 @@ func acquireSudog() *sudog {
 			pp.sudogcache = append(pp.sudogcache, s)
 		}
 		unlock(&sched.sudoglock)
-		// If the central cache is empty, allocate a new one.
+		// 如果中央缓存中没有，新分配
 		if len(pp.sudogcache) == 0 {
 			pp.sudogcache = append(pp.sudogcache, new(sudog))
 		}
 	}
+	// 取缓存中最后一个
 	n := len(pp.sudogcache)
 	s := pp.sudogcache[n-1]
 	pp.sudogcache[n-1] = nil
+	// 将刚取出的在缓存中移除
 	pp.sudogcache = pp.sudogcache[:n-1]
 	if s.elem != nil {
 		throw("acquireSudog: found s.elem != nil in cache")
