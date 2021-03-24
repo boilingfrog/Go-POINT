@@ -193,11 +193,20 @@ type sudog struct {
 }
 ```
 
+`sudog`的获取和归还，遵循以下策略：  
+
+1、获取，首先从`per-P`缓存获取，对于`per-P`缓存，如果`per-P`缓存为空，则从全局池抓取一半，然后取出`per-P`缓存中的最后一个；  
+
+2、归还，归还到`per-P`缓存，如果`per-P`缓存满了，就把`per-P`缓存的一半归还到全局缓存中，然后归还`sudog`到`per-P`缓存中。    
+
 #### acquireSudog
 
-`go/src/runtime/proc.go`
+1、如果`per-P`缓存的内容没达到长度的一般，则会从全局额缓存中抓取一半；  
+
+2、然后返回把`per-P`缓存中最后一个`sudog`返回，并且置空；   
 
 ```go
+// go/src/runtime/proc.go
 //go:nosplit
 func acquireSudog() *sudog {
 	// Delicate dance: 信号量的实现调用acquireSudog，然后acquireSudog调用new(sudog)
@@ -240,7 +249,12 @@ func acquireSudog() *sudog {
 
 #### releaseSudog
 
+1、如果`per-P`缓存满了，就归还`per-P`缓存一般的内容到全局缓存；  
+
+2、然后将回收的`sudog`放到`per-P`缓存中。   
+
 ```go
+// go/src/runtime/proc.go
 //go:nosplit
 func releaseSudog(s *sudog) {
 	if s.elem != nil {
@@ -265,10 +279,12 @@ func releaseSudog(s *sudog) {
 	if gp.param != nil {
 		throw("runtime: releaseSudog with non-nil gp.param")
 	}
+	// 避免重新安排到另一个P
 	mp := acquirem() // avoid rescheduling to another P
 	pp := mp.p.ptr()
+	// 如果缓存满了
 	if len(pp.sudogcache) == cap(pp.sudogcache) {
-		// Transfer half of local cache to the central cache.
+		// 将本地高速缓存的一半传输到中央高速缓存
 		var first, last *sudog
 		for len(pp.sudogcache) > cap(pp.sudogcache)/2 {
 			n := len(pp.sudogcache)
@@ -287,11 +303,11 @@ func releaseSudog(s *sudog) {
 		sched.sudogcache = first
 		unlock(&sched.sudoglock)
 	}
+	// 归还sudog到`per-P`缓存中
 	pp.sudogcache = append(pp.sudogcache, s)
 	releasem(mp)
 }
 ```
-
 
 ### semaphore
 
