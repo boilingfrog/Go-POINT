@@ -311,9 +311,8 @@ func releaseSudog(s *sudog) {
 
 ### semaphore
 
-`go/src/runtime/sema.go`  
-
 ```go
+// go/src/runtime/sema.go
 // 用于sync.Mutex的异步信号量。
 
 // semaRoot拥有一个具有不同地址（s.elem）的sudog平衡树。
@@ -337,13 +336,19 @@ var semtable [semTabSize]struct {
 }
 ```
 
-#### poll_runtime_Semacquire
+#### poll_runtime_Semacquire/sync_runtime_SemacquireMutex
 
 ```go
+// go/src/runtime/sema.go
 //go:linkname poll_runtime_Semacquire internal/poll.runtime_Semacquire
 func poll_runtime_Semacquire(addr *uint32) {
 	semacquire1(addr, false, semaBlockProfile, 0)
 }
+//go:linkname sync_runtime_SemacquireMutex sync.runtime_SemacquireMutex
+func sync_runtime_SemacquireMutex(addr *uint32, lifo bool, skipframes int) {
+	semacquire1(addr, lifo, semaBlockProfile|semaMutexProfile, skipframes)
+}
+
 
 func semacquire1(addr *uint32, lifo bool, profile semaProfileFlags, skipframes int) {
 	// 判断这个goroutine，是否是m上正在运行的那个
@@ -422,8 +427,54 @@ func cansemacquire(addr *uint32) bool {
 }
 ```
 
+#### sync_runtime_Semrelease
 
+```go
+// go/src/runtime/sema.go
+//go:linkname sync_runtime_Semrelease sync.runtime_Semrelease
+func sync_runtime_Semrelease(addr *uint32, handoff bool, skipframes int) {
+	semrelease1(addr, handoff, skipframes)
+}
 
+func semrelease1(addr *uint32, handoff bool, skipframes int) {
+	root := semroot(addr)
+	atomic.Xadd(addr, 1)
+
+	// Easy case: no waiters?
+	// This check must happen after the xadd, to avoid a missed wakeup
+	// (see loop in semacquire).
+	if atomic.Load(&root.nwait) == 0 {
+		return
+	}
+
+	// Harder case: search for a waiter and wake it.
+	lock(&root.lock)
+	if atomic.Load(&root.nwait) == 0 {
+		// The count is already consumed by another goroutine,
+		// so no need to wake up another goroutine.
+		unlock(&root.lock)
+		return
+	}
+	s, t0 := root.dequeue(addr)
+	if s != nil {
+		atomic.Xadd(&root.nwait, -1)
+	}
+	unlock(&root.lock)
+	if s != nil { // May be slow, so unlock first
+		acquiretime := s.acquiretime
+		if acquiretime != 0 {
+			mutexevent(t0-acquiretime, 3+skipframes)
+		}
+		if s.ticket != 0 {
+			throw("corrupted semaphore ticket")
+		}
+		if handoff && cansemacquire(addr) {
+			s.ticket = 1
+		}
+		readyWithTime(s, 5+skipframes)
+	}
+}
+```
 
 
 ### 参考
