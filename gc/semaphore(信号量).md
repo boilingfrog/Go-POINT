@@ -472,6 +472,8 @@ func semrelease1(addr *uint32, handoff bool, skipframes int) {
 		if handoff && cansemacquire(addr) {
 			s.ticket = 1
 		}
+        // goready(s.g, 5) 
+        // 标记 runnable，等待被重新调度
 		readyWithTime(s, 5+skipframes)
 	}
 }
