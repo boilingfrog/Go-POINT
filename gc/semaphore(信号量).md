@@ -440,27 +440,28 @@ func semrelease1(addr *uint32, handoff bool, skipframes int) {
 	root := semroot(addr)
 	atomic.Xadd(addr, 1)
 
-	// Easy case: no waiters?
-	// This check must happen after the xadd, to avoid a missed wakeup
-	// (see loop in semacquire).
+	// Easy case:没有等待者
+	// 这个检查必须发生在xadd之后，以避免错过唤醒
 	if atomic.Load(&root.nwait) == 0 {
 		return
 	}
 
-	// Harder case: search for a waiter and wake it.
+	// Harder case: 找到等待者，并且唤醒
 	lock(&root.lock)
 	if atomic.Load(&root.nwait) == 0 {
-		// The count is already consumed by another goroutine,
-		// so no need to wake up another goroutine.
+		// 该计数已被另一个goroutine占用，
+		// 因此无需唤醒其他goroutine。
 		unlock(&root.lock)
 		return
 	}
+
+	// 搜索一个等待着然后将其唤醒
 	s, t0 := root.dequeue(addr)
 	if s != nil {
 		atomic.Xadd(&root.nwait, -1)
 	}
 	unlock(&root.lock)
-	if s != nil { // May be slow, so unlock first
+	if s != nil { // 可能会很慢，因此先解锁
 		acquiretime := s.acquiretime
 		if acquiretime != 0 {
 			mutexevent(t0-acquiretime, 3+skipframes)
