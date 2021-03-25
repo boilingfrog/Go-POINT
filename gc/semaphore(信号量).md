@@ -346,7 +346,7 @@ func poll_runtime_Semacquire(addr *uint32) {
 }
 
 func semacquire1(addr *uint32, lifo bool, profile semaProfileFlags, skipframes int) {
-    // 判断当前的
+	// 判断这个goroutine，是否是m上正在运行的那个
 	gp := getg()
 	if gp != gp.m.curg {
 		throw("semacquire not on the G stack")
@@ -362,6 +362,8 @@ func semacquire1(addr *uint32, lifo bool, profile semaProfileFlags, skipframes i
 	// 将自己作为等待者入队
 	// 休眠
 	// (等待器描述符由出队信号产生出队行为)
+
+	// 获取一个sudog
 	s := acquireSudog()
 	root := semroot(addr)
 	t0 := int64(0)
@@ -380,17 +382,20 @@ func semacquire1(addr *uint32, lifo bool, profile semaProfileFlags, skipframes i
 	}
 	for {
 		lock(&root.lock)
-		// Add ourselves to nwait to disable "easy case" in semrelease.
+		// 添加我们自己到nwait来禁用semrelease中的"easy case"
 		atomic.Xadd(&root.nwait, 1)
-		// Check cansemacquire to avoid missed wakeup.
+		// 检查cansemacquire避免错过唤醒
 		if cansemacquire(addr) {
 			atomic.Xadd(&root.nwait, -1)
 			unlock(&root.lock)
 			break
 		}
-		// Any semrelease after the cansemacquire knows we're waiting
-		// (we set nwait above), so go to sleep.
+		// 任何在 cansemacquire 之后的 semrelease 都知道我们在等待（因为设置了 nwait），因此休眠
+
+		// 队列将s添加到semaRoot中被阻止的goroutine中
 		root.queue(addr, s, lifo)
+		// 将当前goroutine置于等待状态并解锁锁。
+		// 通过调用goready（gp），可以使goroutine再次可运行。
 		goparkunlock(&root.lock, waitReasonSemacquire, traceEvGoBlockSync, 4+skipframes)
 		if s.ticket != 0 || cansemacquire(addr) {
 			break
@@ -399,6 +404,8 @@ func semacquire1(addr *uint32, lifo bool, profile semaProfileFlags, skipframes i
 	if s.releasetime > 0 {
 		blockevent(s.releasetime-t0, 3+skipframes)
 	}
+
+	// 归还sudog
 	releaseSudog(s)
 }
 
