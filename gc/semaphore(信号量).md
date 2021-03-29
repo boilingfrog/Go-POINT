@@ -11,7 +11,8 @@
     - [acquireSudog](#acquiresudog)
     - [releaseSudog](#releasesudog)
   - [semaphore](#semaphore)
-    - [poll_runtime_Semacquire](#poll_runtime_semacquire)
+    - [poll_runtime_Semacquire/sync_runtime_SemacquireMutex](#poll_runtime_semacquiresync_runtime_semacquiremutex)
+    - [sync_runtime_Semrelease](#sync_runtime_semrelease)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -479,9 +480,13 @@ func semrelease1(addr *uint32, handoff bool, skipframes int) {
 }
 ```
 
+摘自"同步原语"的一段总结  
+
+> 这一对 semacquire 和 semrelease 理解上可能不太直观。 首先，我们必须意识到这两个函数一定是在两个不同的 M（线程）上得到执行，否则不会出现并发，我们不妨设为 M1 和 M2。 当 M1 上的 G1 执行到 semacquire1 时，如果快速路径成功，则说明 G1 抢到锁，能够继续执行。但一旦失败且在慢速路径下 依然抢不到锁，则会进入 goparkunlock，将当前的 G1 放到等待队列中，进而让 M1 切换并执行其他 G。 当 M2 上的 G2 开始调用 semrelease1 时，只是单纯的将等待队列的 G1 重新放到调度队列中，而当 G1 重新被调度时（假设运气好又在 M1 上被调度），代码仍然会从 goparkunlock 之后开始执行，并再次尝试竞争信号量，如果成功，则会归还 sudog。
 
 ### 参考
 
 【同步原语】https://golang.design/under-the-hood/zh-cn/part2runtime/ch06sched/sync/  
 【Go并发编程实战--信号量的使用方法和其实现原理】https://juejin.cn/post/6906677772479889422  
-【Semaphore】https://github.com/cch123/golang-notes/blob/master/semaphore.md    
+【Semaphore】https://github.com/cch123/golang-notes/blob/master/semaphore.md   
+【进程同步之信号量机制（pv操作）及三个经典同步问题】https://blog.csdn.net/SpeedMe/article/details/17597373   
