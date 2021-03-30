@@ -51,8 +51,10 @@ func runtime_Semrelease(s *uint32, handoff bool, skipframes int)
 
 ```go
 type waiter struct {
+	// 信号量的权重
 	n     int64
-	ready chan<- struct{} // Closed when semaphore acquired.
+	// 获得信号量后关闭
+	ready chan<- struct{}
 }
 
 // NewWeighted使用给定的值创建一个新的加权信号量
@@ -82,52 +84,64 @@ type Weighted struct {
 // 如果ctx已经完成，则Acquire仍然可以成功执行而不会阻塞
 func (s *Weighted) Acquire(ctx context.Context, n int64) error {
 	s.mu.Lock()
-    // 如果资源足够，并且没有排队等待的waiters
-    // cur+n,直接返回
+	// 如果资源足够，并且没有排队等待的waiters
+	// cur+n,直接返回
 	if s.size-s.cur >= n && s.waiters.Len() == 0 {
 		s.cur += n
 		s.mu.Unlock()
 		return nil
 	}
-
+	// 资源不够，err返回
 	if n > s.size {
-		// Don't make other Acquire calls block on one that's doomed to fail.
+		// 不要其他的Acquire，阻塞在此
 		s.mu.Unlock()
 		<-ctx.Done()
 		return ctx.Err()
 	}
 
 	ready := make(chan struct{})
+	// 组装waiter
 	w := waiter{n: n, ready: ready}
+	// 插入waiters中
 	elem := s.waiters.PushBack(w)
 	s.mu.Unlock()
 
+	// 阻塞等待，直到资源可用或ctx完成
 	select {
 	case <-ctx.Done():
 		err := ctx.Err()
 		s.mu.Lock()
 		select {
 		case <-ready:
-			// Acquired the semaphore after we were canceled.  Rather than trying to
-			// fix up the queue, just pretend we didn't notice the cancelation.
+			// 在canceled之后获取了信号量，不要试图去修复队列，假装没看到取消
 			err = nil
 		default:
 			s.waiters.Remove(elem)
 		}
 		s.mu.Unlock()
 		return err
-
+		// 等待者被唤醒了
 	case <-ready:
 		return nil
 	}
 }
 ```
 
+梳理下流程：  
+
+1、如果资源够用并且没有等待队列，添加已经使用的资源数；  
+
+2、如果超过资源数，抛出`err`;   
+
+3、资源够用，并且等待队列，将之后的加入到等待队列中；  
+
+4、阻塞直到资源可用或ctx完成。  
+
 #### TryAcquire
 
 ```go
-// TryAcquire acquires the semaphore with a weight of n without blocking.
-// On success, returns true. On failure, returns false and leaves the semaphore unchanged.
+// TryAcquire获取权重为n的信号量而不阻塞。
+// 成功时返回true。 失败时，返回false并保持信号量不变。
 func (s *Weighted) TryAcquire(n int64) bool {
 	s.mu.Lock()
 	success := s.size-s.cur >= n && s.waiters.Len() == 0
@@ -139,10 +153,12 @@ func (s *Weighted) TryAcquire(n int64) bool {
 }
 ```
 
+`TryAcquire`获取权重为n的信号量而不阻塞，相比`Acquire`少了等待队列的处理。  
+
 #### Release
 
 ```go
-// Release releases the semaphore with a weight of n.
+// Release释放权值为n的信号量。
 func (s *Weighted) Release(n int64) {
 	s.mu.Lock()
 	s.cur -= n
