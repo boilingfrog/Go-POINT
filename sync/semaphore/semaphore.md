@@ -3,15 +3,22 @@
 
 
 - [semaphore](#semaphore)
+  - [前言](#%E5%89%8D%E8%A8%80)
   - [semaphore的作用](#semaphore%E7%9A%84%E4%BD%9C%E7%94%A8)
   - [如何使用](#%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8)
   - [分析下原理](#%E5%88%86%E6%9E%90%E4%B8%8B%E5%8E%9F%E7%90%86)
     - [Acquire](#acquire)
+    - [TryAcquire](#tryacquire)
+    - [Release](#release)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## semaphore
+
+### 前言
+
+本文是在`go version go1.13.15 darwin/amd64`上进行的  
 
 ### semaphore的作用
 
@@ -75,6 +82,8 @@ type Weighted struct {
 // 如果ctx已经完成，则Acquire仍然可以成功执行而不会阻塞
 func (s *Weighted) Acquire(ctx context.Context, n int64) error {
 	s.mu.Lock()
+    // 如果资源足够，并且没有排队等待的waiters
+    // cur+n,直接返回
 	if s.size-s.cur >= n && s.waiters.Len() == 0 {
 		s.cur += n
 		s.mu.Unlock()
@@ -114,8 +123,62 @@ func (s *Weighted) Acquire(ctx context.Context, n int64) error {
 }
 ```
 
+#### TryAcquire
 
+```go
+// TryAcquire acquires the semaphore with a weight of n without blocking.
+// On success, returns true. On failure, returns false and leaves the semaphore unchanged.
+func (s *Weighted) TryAcquire(n int64) bool {
+	s.mu.Lock()
+	success := s.size-s.cur >= n && s.waiters.Len() == 0
+	if success {
+		s.cur += n
+	}
+	s.mu.Unlock()
+	return success
+}
+```
 
+#### Release
+
+```go
+// Release releases the semaphore with a weight of n.
+func (s *Weighted) Release(n int64) {
+	s.mu.Lock()
+	s.cur -= n
+	if s.cur < 0 {
+		s.mu.Unlock()
+		panic("semaphore: bad release")
+	}
+	for {
+		next := s.waiters.Front()
+		if next == nil {
+			break // No more waiters blocked.
+		}
+
+		w := next.Value.(waiter)
+		if s.size-s.cur < w.n {
+			// Not enough tokens for the next waiter.  We could keep going (to try to
+			// find a waiter with a smaller request), but under load that could cause
+			// starvation for large requests; instead, we leave all remaining waiters
+			// blocked.
+			//
+			// Consider a semaphore used as a read-write lock, with N tokens, N
+			// readers, and one writer.  Each reader can Acquire(1) to obtain a read
+			// lock.  The writer can Acquire(N) to obtain a write lock, excluding all
+			// of the readers.  If we allow the readers to jump ahead in the queue,
+			// the writer will starve — there is always one token available for every
+			// reader.
+			break
+		}
+
+		s.cur += w.n
+		s.waiters.Remove(next)
+		close(w.ready)
+	}
+	s.mu.Unlock()
+}
+```
 
 ### 参考
 【Golang并发同步原语之-信号量Semaphor】https://blog.haohtml.com/archives/25563    
