@@ -11,20 +11,19 @@ import (
 
 func main() {
 	eg := errgroup.Group{}
-	var err error
-	eg.Go(func() error {
+	eg.Go(func() (err error) {
 		// 处理业务
 		err = test1()
 		return err
 	})
 
-	eg.Go(func() error {
+	eg.Go(func() (err error) {
 		// 处理业务
 		err = test1()
 		return err
 	})
 
-	if err = eg.Wait(); err != nil {
+	if err := eg.Wait(); err != nil {
 		fmt.Println(err)
 	}
 }
