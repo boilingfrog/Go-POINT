@@ -162,29 +162,28 @@ func (s *Weighted) TryAcquire(n int64) bool {
 func (s *Weighted) Release(n int64) {
 	s.mu.Lock()
 	s.cur -= n
+    // cur的范围在[0 - size]
 	if s.cur < 0 {
 		s.mu.Unlock()
 		panic("semaphore: bad release")
 	}
 	for {
 		next := s.waiters.Front()
+        // 已经没有waiter了
 		if next == nil {
-			break // No more waiters blocked.
+			break 
 		}
 
 		w := next.Value.(waiter)
 		if s.size-s.cur < w.n {
-			// Not enough tokens for the next waiter.  We could keep going (to try to
-			// find a waiter with a smaller request), but under load that could cause
-			// starvation for large requests; instead, we leave all remaining waiters
-			// blocked.
-			//
-			// Consider a semaphore used as a read-write lock, with N tokens, N
-			// readers, and one writer.  Each reader can Acquire(1) to obtain a read
-			// lock.  The writer can Acquire(N) to obtain a write lock, excluding all
-			// of the readers.  If we allow the readers to jump ahead in the queue,
-			// the writer will starve — there is always one token available for every
-			// reader.
+            // 没有足够的令牌供下一个waiter使用。我们可以继续（尝试
+            // 查找请求较小的waiter），但在负载下可能会导致
+            // 饥饿的大型请求；相反，我们留下所有剩余的waiter阻塞
+            //
+            // 考虑一个用作读写锁的信号量，带有N个令牌，N个reader和一位writer
+            // 每个reader都可以通过Acquire（1）获取读锁。
+			// writer写入可以通过Acquire（N）获得写锁定，但不包括所有的reader。
+			// 如果我们允许读者在队列中前进，writer将会饿死-总是有一个令牌可供每个读者。
 			break
 		}
 
@@ -193,11 +192,11 @@ func (s *Weighted) Release(n int64) {
 		close(w.ready)
 	}
 	s.mu.Unlock()
-}
 ```
 
 ### 参考
 【Golang并发同步原语之-信号量Semaphor】https://blog.haohtml.com/archives/25563    
+【Go并发编程实战--信号量的使用方法和其实现原理】https://juejin.cn/post/6906677772479889422  
 
 
 
