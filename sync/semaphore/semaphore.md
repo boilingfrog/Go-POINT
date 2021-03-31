@@ -198,6 +198,7 @@ func (s *Weighted) Release(n int64) {
 对于调用者的唤醒，遵循的原则总是先进先出。当有10个资源可以被释放，第一个`waiter`需要100个资源，第二个`waiter`需要1个资源。不会让第二个先释放，必须等待第一个资源被释放。这样避免需要资源比较大`waiter`的被饿死，因为这样需要资源数比较小的`waiter`，总是可以被最先释放，需要资源比较大的`waiter`，就没有获取资源的机会了。  
 
 ### 参考
+
 【Golang并发同步原语之-信号量Semaphor】https://blog.haohtml.com/archives/25563    
 【Go并发编程实战--信号量的使用方法和其实现原理】https://juejin.cn/post/6906677772479889422  
 
