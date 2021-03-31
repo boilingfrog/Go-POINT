@@ -26,6 +26,21 @@ func main() {
 		"http://www.example.net/foo",
 		"http://www.example.net/bar",
 		"http://www.example.net/baz",
+		"http://www.example.com",
+		"http://www.example.net",
+		"http://www.example.net/foo",
+		"http://www.example.net/bar",
+		"http://www.example.net/baz",
+		"http://www.example.com",
+		"http://www.example.net",
+		"http://www.example.net/foo",
+		"http://www.example.net/bar",
+		"http://www.example.net/baz",
+		"http://www.example.com",
+		"http://www.example.net",
+		"http://www.example.net/foo",
+		"http://www.example.net/bar",
+		"http://www.example.net/baz",
 	}
 	s := semaphore.NewWeighted(Limit)
 	var w sync.WaitGroup

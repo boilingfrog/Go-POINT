@@ -162,26 +162,26 @@ func (s *Weighted) TryAcquire(n int64) bool {
 func (s *Weighted) Release(n int64) {
 	s.mu.Lock()
 	s.cur -= n
-    // cur的范围在[0 - size]
+	// cur的范围在[0 - size]
 	if s.cur < 0 {
 		s.mu.Unlock()
 		panic("semaphore: bad release")
 	}
 	for {
 		next := s.waiters.Front()
-        // 已经没有waiter了
+		// 已经没有waiter了
 		if next == nil {
-			break 
+			break
 		}
 
 		w := next.Value.(waiter)
 		if s.size-s.cur < w.n {
-            // 没有足够的令牌供下一个waiter使用。我们可以继续（尝试
-            // 查找请求较小的waiter），但在负载下可能会导致
-            // 饥饿的大型请求；相反，我们留下所有剩余的waiter阻塞
-            //
-            // 考虑一个用作读写锁的信号量，带有N个令牌，N个reader和一位writer
-            // 每个reader都可以通过Acquire（1）获取读锁。
+			// 没有足够的令牌供下一个waiter使用。我们可以继续（尝试
+			// 查找请求较小的waiter），但在负载下可能会导致
+			// 饥饿的大型请求；相反，我们留下所有剩余的waiter阻塞
+			//
+			// 考虑一个用作读写锁的信号量，带有N个令牌，N个reader和一位writer
+			// 每个reader都可以通过Acquire（1）获取读锁。
 			// writer写入可以通过Acquire（N）获得写锁定，但不包括所有的reader。
 			// 如果我们允许读者在队列中前进，writer将会饿死-总是有一个令牌可供每个读者。
 			break
@@ -192,7 +192,10 @@ func (s *Weighted) Release(n int64) {
 		close(w.ready)
 	}
 	s.mu.Unlock()
+}
 ```
+
+对于调用者的唤醒，遵循的原则总是先进先出。当有10个资源可以被释放，第一个`waiter`需要100个资源，第二个`waiter`需要1个资源。不会让第二个先释放，必须等待第一个资源被释放。这样避免需要资源比较大`waiter`的被饿死，因为这样需要资源数比较小的`waiter`，总是可以被最先释放，需要资源比较大的`waiter`，就没有获取资源的机会了。  
 
 ### 参考
 【Golang并发同步原语之-信号量Semaphor】https://blog.haohtml.com/archives/25563    
