@@ -3,22 +3,18 @@
 
 
 - [semaphore](#semaphore)
-  - [前言](#%E5%89%8D%E8%A8%80)
   - [semaphore的作用](#semaphore%E7%9A%84%E4%BD%9C%E7%94%A8)
   - [如何使用](#%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8)
   - [分析下原理](#%E5%88%86%E6%9E%90%E4%B8%8B%E5%8E%9F%E7%90%86)
     - [Acquire](#acquire)
     - [TryAcquire](#tryacquire)
     - [Release](#release)
+  - [总结](#%E6%80%BB%E7%BB%93)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## semaphore
-
-### 前言
-
-本文是在`go version go1.13.15 darwin/amd64`上进行的  
 
 ### semaphore的作用
 
@@ -41,10 +37,45 @@ func runtime_Semrelease(s *uint32, handoff bool, skipframes int)
 
 ### 如何使用
 
-可以使用`semaphore`对控制一下`goroutine`的并发数量  
-
+通过信号量来限制并行的`goroutine`数量，达到最大的`maxWorkers`数量，`Acquire`将会阻塞，直到其中一个`goroutine`执行完成，释放出信号量。  
 ```go
+// Example_workerPool演示如何使用信号量来限制
+// 用于并行任务的goroutine。
+func main() {
+	ctx := context.Background()
 
+	var (
+		maxWorkers = runtime.GOMAXPROCS(0)
+		sem        = semaphore.NewWeighted(int64(maxWorkers))
+		out        = make([]int, 32)
+	)
+
+	// Compute the output using up to maxWorkers goroutines at a time.
+	for i := range out {
+		// When maxWorkers goroutines are in flight, Acquire blocks until one of the
+		// workers finishes.
+		if err := sem.Acquire(ctx, 1); err != nil {
+			log.Printf("Failed to acquire semaphore: %v", err)
+			break
+		}
+
+		go func(i int) {
+			defer sem.Release(1)
+			// doSomething
+			out[i] = i + 1
+		}(i)
+	}
+
+	// Acquire all of the tokens to wait for any remaining workers to finish.
+	//
+	// If you are already waiting for the workers by some other means (such as an
+	// errgroup.Group), you can omit this final Acquire call.
+	if err := sem.Acquire(ctx, int64(maxWorkers)); err != nil {
+		log.Printf("Failed to acquire semaphore: %v", err)
+	}
+
+	fmt.Println(out)
+}
 ```
 
 ### 分析下原理
@@ -173,6 +204,11 @@ func (s *Weighted) Release(n int64) {
 		s.mu.Unlock()
 		panic("semaphore: bad release")
 	}
+	s.notifyWaiters()
+	s.mu.Unlock()
+}
+
+func (s *Weighted) notifyWaiters() {
 	// 如果有阻塞的waiters，尝试去进行一一唤醒 
 	// 唤醒的时候，先进先出，避免被资源比较大的waiter被饿死
 	for {
@@ -200,7 +236,6 @@ func (s *Weighted) Release(n int64) {
 		s.waiters.Remove(next)
 		close(w.ready)
 	}
-	s.mu.Unlock()
 }
 ```
 
