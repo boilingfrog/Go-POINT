@@ -1,76 +1,101 @@
 package main
 
 import (
-	"fmt"
-	"net/http"
 	_ "net/http/pprof"
-	"os"
-	"os/signal"
-	"sync"
-	"syscall"
-	"time"
 )
+
+var (
+	poolCount      = 5
+	goroutineCount = 10
+)
+
+func main() {
+	//jobsChan := make(chan int, poolCount)
+	//
+	//// workers
+	//var wg sync.WaitGroup
+	//for i := 0; i < goroutineCount; i++ {
+	//	wg.Add(1)
+	//	go func() {
+	//		defer wg.Done()
+	//		for item := range jobsChan {
+	//			// ...
+	//			fmt.Println(item)
+	//		}
+	//	}()
+	//}
+	//
+	//// senders
+	//for i := 0; i < 1000; i++ {
+	//	jobsChan <- i
+	//}
+	//
+	//// 关闭channel，上游的goroutine在读完channel的内容，就会通过wg的done退出
+	//close(jobsChan)
+	//wg.Wait()
+
+}
 
 var base string
 
-func main() {
-	// 开启pprof，监听请求
-	ip := "127.0.0.1:6069"
-	// 开启pprof
-	go func() {
-		if err := http.ListenAndServe(ip, nil); err != nil {
-			fmt.Printf("start pprof failed on %s\n", ip)
-			os.Exit(1)
-		}
-	}()
-
-	// 路由，访问，触发内存泄露的代码判断
-	http.HandleFunc("/test", handler)
-
-	// 阻塞
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT)
-	for {
-		s := <-c
-		switch s {
-		case syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT:
-			time.Sleep(time.Second)
-			return
-		case syscall.SIGHUP:
-		default:
-			return
-		}
-	}
-}
-
-func handler(w http.ResponseWriter, r *http.Request) {
-	var (
-		jobsChan = make(chan int, 10)
-		rw       sync.RWMutex
-		num      int
-	)
-
-	wg := sync.WaitGroup{}
-	wg.Add(3)
-	for i := 0; i < 3; i++ {
-		go func() {
-			defer wg.Done()
-			for redPacket := range jobsChan {
-				_ = redPacket
-				rw.Lock()
-				num++
-				rw.Unlock()
-			}
-		}()
-	}
-
-	for i := 0; i < 10; i++ {
-		jobsChan <- i + 1
-	}
-	close(jobsChan)
-	wg.Wait()
-	fmt.Println(num)
-}
+//func main() {
+//	// 开启pprof，监听请求
+//	ip := "127.0.0.1:6069"
+//	// 开启pprof
+//	go func() {
+//		if err := http.ListenAndServe(ip, nil); err != nil {
+//			fmt.Printf("start pprof failed on %s\n", ip)
+//			os.Exit(1)
+//		}
+//	}()
+//
+//	// 路由，访问，触发内存泄露的代码判断
+//	http.HandleFunc("/test", handler)
+//
+//	// 阻塞
+//	c := make(chan os.Signal, 1)
+//	signal.Notify(c, syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT)
+//	for {
+//		s := <-c
+//		switch s {
+//		case syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT:
+//			time.Sleep(time.Second)
+//			return
+//		case syscall.SIGHUP:
+//		default:
+//			return
+//		}
+//	}
+//}
+//
+//func handler(w http.ResponseWriter, r *http.Request) {
+//	var (
+//		jobsChan = make(chan int, 10)
+//		rw       sync.RWMutex
+//		num      int
+//	)
+//
+//	wg := sync.WaitGroup{}
+//	wg.Add(3)
+//	for i := 0; i < 3; i++ {
+//		go func() {
+//			defer wg.Done()
+//			for redPacket := range jobsChan {
+//				_ = redPacket
+//				rw.Lock()
+//				num++
+//				rw.Unlock()
+//			}
+//		}()
+//	}
+//
+//	for i := 0; i < 10; i++ {
+//		jobsChan <- i + 1
+//	}
+//	close(jobsChan)
+//	wg.Wait()
+//	fmt.Println(num)
+//}
 
 //func query() int {
 //	n := rand.Intn(100)
