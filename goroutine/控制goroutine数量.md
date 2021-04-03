@@ -123,8 +123,58 @@ func main() {
 
 - [Jeffail/tunny](https://github.com/Jeffail/tunny)  
 
+### 几个开源的线程池的设计
+
+#### fasthttp中的协程池实现  
+
+`fasthttp`比`net/http`效率高很多倍的重要原因，就是利用了协程池。来看下大佬的设计思路。   
+
+看下实现  
+
+```go
+// workerPool serves incoming connections via a pool of workers
+// in FILO order, i.e. the most recently stopped worker will serve the next
+// incoming connection.
+//
+// Such a scheme keeps CPU caches hot (in theory).
+type workerPool struct {
+	// Function for serving server connections.
+	// It must leave c unclosed.
+	WorkerFunc ServeHandler
+
+	MaxWorkersCount int
+
+	LogAllErrors bool
+
+	MaxIdleWorkerDuration time.Duration
+
+	Logger Logger
+
+	lock         sync.Mutex
+	workersCount int
+	mustStop     bool
+
+	ready []*workerChan
+
+	stopCh chan struct{}
+
+	workerChanPool sync.Pool
+
+	connState func(net.Conn, ConnState)
+}
+
+type workerChan struct {
+	lastUseTime time.Time
+	ch          chan net.Conn
+}
+```
+
+  
+
 
 ### 参考
 
 【Golang 开发需要协程池吗？】https://www.zhihu.com/question/302981392  
 【来，控制一下 Goroutine 的并发数量】https://segmentfault.com/a/1190000017956396  
+【golang协程池设计】https://segmentfault.com/a/1190000018193161  
+【fasthttp中的协程池实现】https://segmentfault.com/a/1190000009133154    
