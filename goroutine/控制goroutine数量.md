@@ -8,6 +8,9 @@
     - [通过channel+sync](#%E9%80%9A%E8%BF%87channelsync)
     - [使用semaphore](#%E4%BD%BF%E7%94%A8semaphore)
     - [线程池](#%E7%BA%BF%E7%A8%8B%E6%B1%A0)
+  - [几个开源的线程池的设计](#%E5%87%A0%E4%B8%AA%E5%BC%80%E6%BA%90%E7%9A%84%E7%BA%BF%E7%A8%8B%E6%B1%A0%E7%9A%84%E8%AE%BE%E8%AE%A1)
+    - [fasthttp中的协程池实现](#fasthttp%E4%B8%AD%E7%9A%84%E5%8D%8F%E7%A8%8B%E6%B1%A0%E5%AE%9E%E7%8E%B0)
+      - [Start](#start)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -132,13 +135,12 @@ func main() {
 看下实现  
 
 ```go
-// workerPool serves incoming connections via a pool of workers
-// in FILO order, i.e. the most recently stopped worker will serve the next
-// incoming connection.
+// workerPool通过一组工作池服务传入的连接
+// 按照FILO（先进后出）的顺序，即最近停止的工作人员将为下一个工作传入的连接。
 //
-// Such a scheme keeps CPU caches hot (in theory).
+// 这种方案能够保持cpu的缓存保持高效（理论上）
 type workerPool struct {
-	// Function for serving server connections.
+	// 这个函数用于server的连接
 	// It must leave c unclosed.
 	WorkerFunc ServeHandler
 
@@ -158,15 +160,66 @@ type workerPool struct {
 
 	stopCh chan struct{}
 
+	// workerChan的缓存池，通过sync.Pool实现
 	workerChanPool sync.Pool
 
 	connState func(net.Conn, ConnState)
 }
 
+// workerChan的结构
 type workerChan struct {
 	lastUseTime time.Time
 	ch          chan net.Conn
 }
+```
+
+##### Start
+
+```go
+func (wp *workerPool) Start() {
+	// 判断是否已经Start过了
+	if wp.stopCh != nil {
+		panic("BUG: workerPool already started")
+	}
+	// stopCh塞入值
+	wp.stopCh = make(chan struct{})
+	stopCh := wp.stopCh
+	wp.workerChanPool.New = func() interface{} {
+		// 如果单核cpu则让workerChan阻塞
+		// 否则，使用非阻塞，workerChan的长度为1
+		return &workerChan{
+			ch: make(chan net.Conn, workerChanCap),
+		}
+	}
+	go func() {
+		var scratch []*workerChan
+		for {
+			wp.clean(&scratch)
+			select {
+			case <-stopCh:
+				return
+			default:
+				time.Sleep(wp.getMaxIdleWorkerDuration())
+			}
+		}
+	}()
+}
+
+// 如果单核cpu则让workerChan阻塞
+// 否则，使用非阻塞，workerChan的长度为1
+var workerChanCap = func() int {
+	// Use blocking workerChan if GOMAXPROCS=1.
+	// This immediately switches Serve to WorkerFunc, which results
+	// in higher performance (under go1.5 at least).
+	if runtime.GOMAXPROCS(0) == 1 {
+		return 0
+	}
+
+	// Use non-blocking workerChan if GOMAXPROCS>1,
+	// since otherwise the Serve caller (Acceptor) may lag accepting
+	// new connections if WorkerFunc is CPU-bound.
+	return 1
+}()
 ```
 
   
