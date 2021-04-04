@@ -11,6 +11,8 @@
   - [几个开源的线程池的设计](#%E5%87%A0%E4%B8%AA%E5%BC%80%E6%BA%90%E7%9A%84%E7%BA%BF%E7%A8%8B%E6%B1%A0%E7%9A%84%E8%AE%BE%E8%AE%A1)
     - [fasthttp中的协程池实现](#fasthttp%E4%B8%AD%E7%9A%84%E5%8D%8F%E7%A8%8B%E6%B1%A0%E5%AE%9E%E7%8E%B0)
       - [Start](#start)
+    - [Stop](#stop)
+    - [](#)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -196,6 +198,7 @@ func (wp *workerPool) Start() {
 		for {
 			wp.clean(&scratch)
 			select {
+            // 接收到退出信号，退出
 			case <-stopCh:
 				return
 			default:
@@ -208,22 +211,64 @@ func (wp *workerPool) Start() {
 // 如果单核cpu则让workerChan阻塞
 // 否则，使用非阻塞，workerChan的长度为1
 var workerChanCap = func() int {
-	// Use blocking workerChan if GOMAXPROCS=1.
-	// This immediately switches Serve to WorkerFunc, which results
-	// in higher performance (under go1.5 at least).
+	// 如果GOMAXPROCS=1，workerChan的长度为0，变成一个阻塞的channel
 	if runtime.GOMAXPROCS(0) == 1 {
 		return 0
 	}
 
-	// Use non-blocking workerChan if GOMAXPROCS>1,
-	// since otherwise the Serve caller (Acceptor) may lag accepting
-	// new connections if WorkerFunc is CPU-bound.
+	// 如果GOMAXPROCS>1则使用非阻塞的workerChan
 	return 1
 }()
 ```
 
-  
+梳理下流程：  
 
+1、首先判断下`stopCh`是否为`nil`，不为`nil`表示已经`started`了；  
+
+2、初始化`wp.stopCh = make(chan struct{})`，`stopCh`是一个标识，用了`struct{}`不用`bool`，因为空结构体变量的内存占用大小为0，而`bool`类型内存占用大小为1，这样可以更加最大化利用我们服务器的内存空间；  
+
+3、设置`workerChanPool`的`New`函数，然后可以在`Get`不到东西时，自动创建一个；如果单核`cpu`则让`workerChan`阻塞，否则，使用非阻塞，`workerChan`的长度设置为1；  
+
+4、启动一个`goroutine`，处理`clean`操作，在接收到退出信号，退出。  
+
+#### Stop
+
+```go
+func (wp *workerPool) Stop() {
+	// 同start，stop也只能触发一次
+	if wp.stopCh == nil {
+		panic("BUG: workerPool wasn't started")
+	}
+	// 关闭stopCh
+	close(wp.stopCh)
+	// 将stopCh置为nil
+	wp.stopCh = nil
+
+	// 停止所有的等待获取连接的workers
+	// 正在运行的workers，不需要等待他们退出，他们会在完成connection或mustStop被设置成true退出
+	wp.lock.Lock()
+	ready := wp.ready
+	// 循环将ready的workerChan置为nil
+	for i := range ready {
+		ready[i].ch <- nil
+		ready[i] = nil
+	}
+	wp.ready = ready[:0]
+	// 设置mustStop为true
+	wp.mustStop = true
+	wp.lock.Unlock()
+}
+```
+
+梳理下流程：  
+
+1、判断stop只能被关闭一次；  
+
+2、关闭`stopCh`，设置`stopCh`为`nil`；  
+
+3、停止所有的等待获取连接的`workers`，正在运行的`workers`，不需要等待他们退出，他们会在完成`connection`或`mustStop`被设置成`true`退出。  
+
+#### 
 
 ### 参考
 
