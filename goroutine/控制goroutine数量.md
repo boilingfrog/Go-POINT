@@ -11,7 +11,7 @@
   - [几个开源的线程池的设计](#%E5%87%A0%E4%B8%AA%E5%BC%80%E6%BA%90%E7%9A%84%E7%BA%BF%E7%A8%8B%E6%B1%A0%E7%9A%84%E8%AE%BE%E8%AE%A1)
     - [fasthttp中的协程池实现](#fasthttp%E4%B8%AD%E7%9A%84%E5%8D%8F%E7%A8%8B%E6%B1%A0%E5%AE%9E%E7%8E%B0)
       - [Start](#start)
-    - [Stop](#stop)
+      - [Stop](#stop)
     - [](#)
   - [参考](#%E5%8F%82%E8%80%83)
 
@@ -231,7 +231,7 @@ var workerChanCap = func() int {
 
 4、启动一个`goroutine`，处理`clean`操作，在接收到退出信号，退出。  
 
-#### Stop
+##### Stop
 
 ```go
 func (wp *workerPool) Stop() {
