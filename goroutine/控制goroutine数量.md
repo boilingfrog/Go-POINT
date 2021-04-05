@@ -12,7 +12,7 @@
     - [fasthttp中的协程池实现](#fasthttp%E4%B8%AD%E7%9A%84%E5%8D%8F%E7%A8%8B%E6%B1%A0%E5%AE%9E%E7%8E%B0)
       - [Start](#start)
       - [Stop](#stop)
-    - [](#)
+      - [clean](#clean)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -268,7 +268,56 @@ func (wp *workerPool) Stop() {
 
 3、停止所有的等待获取连接的`workers`，正在运行的`workers`，不需要等待他们退出，他们会在完成`connection`或`mustStop`被设置成`true`退出。  
 
-#### 
+##### clean
+
+```go
+func (wp *workerPool) clean(scratch *[]*workerChan) {
+	maxIdleWorkerDuration := wp.getMaxIdleWorkerDuration()
+
+    // 清理掉最近最少使用的workers如果他们过了maxIdleWorkerDuration时间没有提供服务
+	criticalTime := time.Now().Add(-maxIdleWorkerDuration)
+
+	wp.lock.Lock()
+	ready := wp.ready
+	n := len(ready)
+
+    // 使用二分搜索算法找出最近可以被清除的worker
+    // 最后使用的workerChan 一定是放回队列尾部的。
+	l, r, mid := 0, n-1, 0
+	for l <= r {
+		mid = (l + r) / 2
+		if criticalTime.After(wp.ready[mid].lastUseTime) {
+			l = mid + 1
+		} else {
+			r = mid - 1
+		}
+	}
+	i := r
+	if i == -1 {
+		wp.lock.Unlock()
+		return
+	}
+
+    // 将ready中i之前的的全部清除
+	*scratch = append((*scratch)[:0], ready[:i+1]...)
+	m := copy(ready, ready[i+1:])
+	for i = m; i < n; i++ {
+		ready[i] = nil
+	}
+	wp.ready = ready[:m]
+	wp.lock.Unlock()
+
+	// Notify obsolete workers to stop.
+	// This notification must be outside the wp.lock, since ch.ch
+	// may be blocking and may consume a lot of time if many workers
+	// are located on non-local CPUs.
+	tmp := *scratch
+	for i := range tmp {
+		tmp[i].ch <- nil
+		tmp[i] = nil
+	}
+}
+```
 
 ### 参考
 

@@ -1,39 +1,118 @@
 package main
 
 import (
+	"fmt"
 	_ "net/http/pprof"
+	"runtime"
+	"sync"
 )
 
+const (
+	// 同时运行的goroutine上限
+	Limit = 3
+	// 信号量的权重
+	Weight = 1
+)
+
+var workerChanCap = func() int {
+	// Use blocking workerChan if GOMAXPROCS=1.
+	// This immediately switches Serve to WorkerFunc, which results
+	// in higher performance (under go1.5 at least).
+	if runtime.GOMAXPROCS(0) == 1 {
+		return 0
+	}
+
+	// Use non-blocking workerChan if GOMAXPROCS>1,
+	// since otherwise the Serve caller (Acceptor) may lag accepting
+	// new connections if WorkerFunc is CPU-bound.
+	return 1
+}()
+
+func main() {
+	slice1 := []int{1, 2, 3, 4, 5}
+	slice2 := []int{5, 4, 3}
+
+	s1 := copy(slice1, slice2) // 只会复制slice2的3个元素到slice1的前3个位置
+	fmt.Println(s1)
+	fmt.Println(slice1)
+	//names := []string{
+	//	"小白",
+	//	"小红",
+	//	"小明",
+	//	"小李",
+	//	"小花",
+	//}
+	//
+	//sem := semaphore.NewWeighted(Limit)
+	//var w sync.WaitGroup
+	//for _, name := range names {
+	//	w.Add(1)
+	//	go func(name string) {
+	//		sem.Acquire(context.Background(), Weight)
+	//		// ... 具体的业务逻辑
+	//		fmt.Println(name, "-吃饭了")
+	//		time.Sleep(2 * time.Second)
+	//		sem.Release(Weight)
+	//		w.Done()
+	//	}(name)
+	//}
+	//w.Wait()
+	//
+	//fmt.Println("ending--------")
+}
+
+type poolLimit struct {
+	poolCount      int
+	goroutineCount int
+}
+
+func newPool(poolCount, goroutineCount int) *poolLimit {
+	return &poolLimit{
+		poolCount:      poolCount,
+		goroutineCount: goroutineCount,
+	}
+}
+
+func (pool *poolLimit) Go(f func() error) {
+	go func() {
+		if err := f(); err != nil {
+
+		}
+	}()
+
+}
+
 var (
-	poolCount      = 5
+	// channel长度
+	poolCount = 5
+	// 复用的goroutine数量
 	goroutineCount = 10
 )
 
-func main() {
-	//jobsChan := make(chan int, poolCount)
-	//
-	//// workers
-	//var wg sync.WaitGroup
-	//for i := 0; i < goroutineCount; i++ {
-	//	wg.Add(1)
-	//	go func() {
-	//		defer wg.Done()
-	//		for item := range jobsChan {
-	//			// ...
-	//			fmt.Println(item)
-	//		}
-	//	}()
-	//}
-	//
-	//// senders
-	//for i := 0; i < 1000; i++ {
-	//	jobsChan <- i
-	//}
-	//
-	//// 关闭channel，上游的goroutine在读完channel的内容，就会通过wg的done退出
-	//close(jobsChan)
-	//wg.Wait()
+func limit() {
+	jobsChan := make(chan int, poolCount)
 
+	// workers
+	var wg sync.WaitGroup
+	for i := 0; i < goroutineCount; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for item := range jobsChan {
+				// ...
+				fmt.Println(item)
+			}
+		}()
+	}
+
+	// senders
+	for i := 0; i < 1000; i++ {
+		jobsChan <- i
+	}
+
+	// 关闭channel，上游的goroutine在读完channel的内容，就会通过wg的done退出
+	close(jobsChan)
+	wg.Wait()
 }
 
 var base string
