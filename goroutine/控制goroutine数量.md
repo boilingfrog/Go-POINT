@@ -452,7 +452,130 @@ func (wp *workerPool) release(ch *workerChan) bool {
 
 #### panjf2000/ants
 
-再看看下ants的设计
+先看下示例  
+
+示例一   
+
+```go
+package main
+
+import (
+	"fmt"
+	"sync"
+	"sync/atomic"
+	"time"
+
+	"github.com/panjf2000/ants"
+)
+
+func demoFunc() {
+	time.Sleep(10 * time.Millisecond)
+	fmt.Println("Hello World!")
+}
+
+func main() {
+	defer ants.Release()
+
+	runTimes := 1000
+
+	var wg sync.WaitGroup
+	syncCalculateSum := func() {
+		demoFunc()
+		wg.Done()
+	}
+	for i := 0; i < runTimes; i++ {
+		wg.Add(1)
+		_ = ants.Submit(syncCalculateSum)
+	}
+	wg.Wait()
+	fmt.Printf("running goroutines: %d\n", ants.Running())
+	fmt.Printf("finish all tasks.\n")
+}
+```
+
+示例二  
+
+```go
+package main
+
+import (
+	"fmt"
+	"sync"
+	"sync/atomic"
+	"time"
+
+	"github.com/panjf2000/ants"
+)
+
+var sum int32
+
+func myFunc(i interface{}) {
+	n := i.(int32)
+	atomic.AddInt32(&sum, n)
+	fmt.Printf("run with %d\n", n)
+}
+
+func main() {
+	var wg sync.WaitGroup
+	runTimes := 1000
+
+	// Use the pool with a method,
+	// set 10 to the capacity of goroutine pool and 1 second for expired duration.
+	p, _ := ants.NewPoolWithFunc(10, func(i interface{}) {
+		myFunc(i)
+		wg.Done()
+	})
+	defer p.Release()
+	// Submit tasks one by one.
+	for i := 0; i < runTimes; i++ {
+		wg.Add(1)
+		_ = p.Invoke(int32(i))
+	}
+	wg.Wait()
+	fmt.Printf("running goroutines: %d\n", p.Running())
+	fmt.Printf("finish all tasks, result is %d\n", sum)
+	if sum != 499500 {
+		panic("the final result is wrong!!!")
+	}
+}
+```
+
+#### 看下实现  
+
+```go
+// PoolWithFunc accepts the tasks from client,
+// it limits the total of goroutines to a given number by recycling goroutines.
+type PoolWithFunc struct {
+	// capacity of the pool.
+	capacity int32
+
+	// running is the number of the currently running goroutines.
+	running int32
+
+	// workers is a slice that store the available workers.
+	workers []*goWorkerWithFunc
+
+	// state is used to notice the pool to closed itself.
+	state int32
+
+	// lock for synchronous operation.
+	lock sync.Locker
+
+	// cond for waiting to get a idle worker.
+	cond *sync.Cond
+
+	// poolFunc is the function for processing tasks.
+	poolFunc func(interface{})
+
+	// workerCache speeds up the obtainment of the an usable worker in function:retrieveWorker.
+	workerCache sync.Pool
+
+	// blockingNum is the number of the goroutines already been blocked on pool.Submit, protected by pool.lock
+	blockingNum int
+
+	options *Options
+}
+```
 
 
 
@@ -463,3 +586,4 @@ func (wp *workerPool) release(ch *workerChan) bool {
 【来，控制一下 Goroutine 的并发数量】https://segmentfault.com/a/1190000017956396  
 【golang协程池设计】https://segmentfault.com/a/1190000018193161  
 【fasthttp中的协程池实现】https://segmentfault.com/a/1190000009133154    
+【panjf2000/ants】https://github.com/panjf2000/ants   
