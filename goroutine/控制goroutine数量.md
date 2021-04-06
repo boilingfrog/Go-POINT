@@ -200,7 +200,7 @@ func (wp *workerPool) Start() {
 		for {
 			wp.clean(&scratch)
 			select {
-            // 接收到退出信号，退出
+			// 接收到退出信号，退出
 			case <-stopCh:
 				return
 			default:
