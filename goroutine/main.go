@@ -3,62 +3,60 @@ package main
 import (
 	"fmt"
 	_ "net/http/pprof"
-	"runtime"
 	"sync"
+	"sync/atomic"
+	"time"
+
+	"github.com/panjf2000/ants"
 )
 
-const (
-	// 同时运行的goroutine上限
-	Limit = 3
-	// 信号量的权重
-	Weight = 1
-)
+var sum int32
 
-var workerChanCap = func() int {
-	// Use blocking workerChan if GOMAXPROCS=1.
-	// This immediately switches Serve to WorkerFunc, which results
-	// in higher performance (under go1.5 at least).
-	if runtime.GOMAXPROCS(0) == 1 {
-		return 0
-	}
+func myFunc(i interface{}) {
+	n := i.(int32)
+	atomic.AddInt32(&sum, n)
+	fmt.Printf("run with %d\n", n)
+}
 
-	// Use non-blocking workerChan if GOMAXPROCS>1,
-	// since otherwise the Serve caller (Acceptor) may lag accepting
-	// new connections if WorkerFunc is CPU-bound.
-	return 1
-}()
+func demoFunc() {
+	time.Sleep(10 * time.Millisecond)
+	fmt.Println("Hello World!")
+}
 
 func main() {
-	slice1 := []int{1, 2, 3, 4, 5}
-	slice2 := []int{5, 4, 3}
+	defer ants.Release()
 
-	s1 := copy(slice1, slice2) // 只会复制slice2的3个元素到slice1的前3个位置
-	fmt.Println(s1)
-	fmt.Println(slice1)
-	//names := []string{
-	//	"小白",
-	//	"小红",
-	//	"小明",
-	//	"小李",
-	//	"小花",
+	runTimes := 3000
+
+	// Use the common pool.
+	var wg sync.WaitGroup
+	syncCalculateSum := func() {
+		demoFunc()
+		wg.Done()
+	}
+	for i := 0; i < runTimes; i++ {
+		wg.Add(1)
+		_ = ants.Submit(syncCalculateSum)
+	}
+	wg.Wait()
+	fmt.Printf("running goroutines: %d\n", ants.Running())
+	fmt.Printf("finish all tasks.\n")
+
+	// Use the pool with a function,
+	// set 10 to the capacity of goroutine pool and 1 second for expired duration.
+	//p, _ := ants.NewPoolWithFunc(10, func(i interface{}) {
+	//	myFunc(i)
+	//	wg.Done()
+	//})
+	//defer p.Release()
+	//// Submit tasks one by one.
+	//for i := 0; i < runTimes; i++ {
+	//	wg.Add(1)
+	//	_ = p.Invoke(int32(i))
 	//}
-	//
-	//sem := semaphore.NewWeighted(Limit)
-	//var w sync.WaitGroup
-	//for _, name := range names {
-	//	w.Add(1)
-	//	go func(name string) {
-	//		sem.Acquire(context.Background(), Weight)
-	//		// ... 具体的业务逻辑
-	//		fmt.Println(name, "-吃饭了")
-	//		time.Sleep(2 * time.Second)
-	//		sem.Release(Weight)
-	//		w.Done()
-	//	}(name)
-	//}
-	//w.Wait()
-	//
-	//fmt.Println("ending--------")
+	//wg.Wait()
+	//fmt.Printf("running goroutines: %d\n", p.Running())
+	//fmt.Printf("finish all tasks, result is %d\n", sum)
 }
 
 type poolLimit struct {

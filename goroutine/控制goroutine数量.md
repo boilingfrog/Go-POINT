@@ -450,6 +450,12 @@ func (wp *workerPool) release(ch *workerChan) bool {
 
 3、当`workerFunc`拿到的`workerChan`为`nil`或`wp.mustStop`被设为了`true`，就跳出`for`循环。 
 
+#### panjf2000/ants
+
+再看看下ants的设计
+
+
+
  
 ### 参考
 
