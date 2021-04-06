@@ -136,6 +136,12 @@ func main() {
 
 `fasthttp`比`net/http`效率高很多倍的重要原因，就是利用了协程池。来看下大佬的设计思路。   
 
+1、按需增长`goroutine`数量，有一个最大值，同时监听`channel`，`Server`会把`accept`到的`connection`放入到`channel`中，这样监听的`goroutine`就能处理消费。  
+
+2、本地维护了一个待使用的`channel`列表，当本地`channel`列表拿不到`ch`，会在`sync.pool`中取。  
+
+3、对于待使用的`channel`列表，会定期清理掉超过最大空闲时间的`workerChan`。  
+
 看下实现  
 
 ```go
