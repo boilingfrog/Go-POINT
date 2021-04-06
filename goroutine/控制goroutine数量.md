@@ -13,6 +13,8 @@
       - [Start](#start)
       - [Stop](#stop)
       - [clean](#clean)
+      - [getCh](#getch)
+      - [workerFunc](#workerfunc)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -274,15 +276,15 @@ func (wp *workerPool) Stop() {
 func (wp *workerPool) clean(scratch *[]*workerChan) {
 	maxIdleWorkerDuration := wp.getMaxIdleWorkerDuration()
 
-    // 清理掉最近最少使用的workers如果他们过了maxIdleWorkerDuration时间没有提供服务
+	// 清理掉最近最少使用的workers如果他们过了maxIdleWorkerDuration时间没有提供服务
 	criticalTime := time.Now().Add(-maxIdleWorkerDuration)
 
 	wp.lock.Lock()
 	ready := wp.ready
 	n := len(ready)
 
-    // 使用二分搜索算法找出最近可以被清除的worker
-    // 最后使用的workerChan 一定是放回队列尾部的。
+	// 使用二分搜索算法找出最近可以被清除的worker
+	// 最后使用的workerChan 一定是放回队列尾部的。
 	l, r, mid := 0, n-1, 0
 	for l <= r {
 		mid = (l + r) / 2
@@ -298,7 +300,7 @@ func (wp *workerPool) clean(scratch *[]*workerChan) {
 		return
 	}
 
-    // 将ready中i之前的的全部清除
+	// 将ready中i之前的的全部清除
 	*scratch = append((*scratch)[:0], ready[:i+1]...)
 	m := copy(ready, ready[i+1:])
 	for i = m; i < n; i++ {
@@ -307,10 +309,10 @@ func (wp *workerPool) clean(scratch *[]*workerChan) {
 	wp.ready = ready[:m]
 	wp.lock.Unlock()
 
-	// Notify obsolete workers to stop.
-	// This notification must be outside the wp.lock, since ch.ch
-	// may be blocking and may consume a lot of time if many workers
-	// are located on non-local CPUs.
+	// 通知淘汰的workers停止
+	// 此通知必须位于wp.lock之外，因为ch.ch
+	// 如果有很多workers，可能会阻塞并且可能会花费大量时间
+	// 位于非本地CPU上。
 	tmp := *scratch
 	for i := range tmp {
 		tmp[i].ch <- nil
@@ -319,6 +321,122 @@ func (wp *workerPool) clean(scratch *[]*workerChan) {
 }
 ```
 
+主要是清理掉最近最少使用的`workers`如果他们过了`maxIdleWorkerDuration`时间没有提供服务  
+
+##### getCh 
+
+获取一个`workerChan`
+
+```go
+func (wp *workerPool) getCh() *workerChan {
+	var ch *workerChan
+	createWorker := false
+
+	wp.lock.Lock()
+	ready := wp.ready
+	n := len(ready) - 1
+	// 如果ready为空
+	if n < 0 {
+		if wp.workersCount < wp.MaxWorkersCount {
+			createWorker = true
+			wp.workersCount++
+		}
+	} else {
+		// 不为空从ready中取一个
+		ch = ready[n]
+		ready[n] = nil
+		wp.ready = ready[:n]
+	}
+	wp.lock.Unlock()
+
+	// 如果没拿到ch
+	if ch == nil {
+		if !createWorker {
+			return nil
+		}
+		// 从缓存中获取一个ch
+		vch := wp.workerChanPool.Get()
+		ch = vch.(*workerChan)
+		go func() {
+			// 具体的执行函数
+			wp.workerFunc(ch)
+			// 再放入到pool中
+		}()
+	}
+	return ch
+}
+```
+
+梳理下流程：  
+
+1、获取一个可执行的`workerChan`，如果`ready`中为空，并且`workersCount`没有达到最大值，增加`workersCount`数量，并且设置当前操作`createWorker = true`；  
+
+2、`ready`中不为空，直接在`ready`获取一个；  
+
+3、如果没有获取到则在`sync.pool`中获取一个，之后再放回到`pool`中。  
+
+##### workerFunc
+
+```go
+func (wp *workerPool) workerFunc(ch *workerChan) {
+	var c net.Conn
+
+	var err error
+	// 监听workerChan
+	for c = range ch.ch {
+		if c == nil {
+			break
+		}
+
+		// 具体的业务逻辑
+		...
+		c = nil
+
+		// 释放workerChan
+		// 在mustStop的时候将会跳出循环
+		if !wp.release(ch) {
+			break
+		}
+	}
+
+	wp.lock.Lock()
+	wp.workersCount--
+	wp.lock.Unlock()
+}
+
+// 把Conn放入到channel中
+func (wp *workerPool) Serve(c net.Conn) bool {
+	ch := wp.getCh()
+	if ch == nil {
+		return false
+	}
+	ch.ch <- c
+	return true
+}
+
+func (wp *workerPool) release(ch *workerChan) bool {
+	// 修改 ch.lastUseTime
+	ch.lastUseTime = time.Now()
+	wp.lock.Lock()
+	// 如果需要停止，直接返回
+	if wp.mustStop {
+		wp.lock.Unlock()
+		return false
+	}
+	// 将ch放到ready中
+	wp.ready = append(wp.ready, ch)
+	wp.lock.Unlock()
+	return true
+}
+```
+
+1、`workerFunc`会监听`workerChan`，并且在使用完`workerChan`归还到`ready`中；  
+
+2、`Serve`会把`connection`放入到`workerChan`中，这样`workerFunc`就能通过`workerChan`拿到需要处理的连接请求；  
+
+3、当`workerFunc`拿到的`workerChan`为`nil`或`wp.mustStop`被设为了`true`，就跳出`for`循环。 
+
+ 
 ### 参考
 
 【Golang 开发需要协程池吗？】https://www.zhihu.com/question/302981392  
