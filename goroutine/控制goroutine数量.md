@@ -148,6 +148,7 @@ type workerPool struct {
 	// It must leave c unclosed.
 	WorkerFunc ServeHandler
 
+	// 最大的Workers数量
 	MaxWorkersCount int
 
 	LogAllErrors bool
@@ -157,11 +158,16 @@ type workerPool struct {
 	Logger Logger
 
 	lock         sync.Mutex
+	// 当前worker的数量
 	workersCount int
+	// worker停止的标识
 	mustStop     bool
 
+	// 等待使用的workerChan
+	// 可能会被清理
 	ready []*workerChan
 
+	// 用来标识start和stop
 	stopCh chan struct{}
 
 	// workerChan的缓存池，通过sync.Pool实现
@@ -429,6 +435,8 @@ func (wp *workerPool) release(ch *workerChan) bool {
 	return true
 }
 ```
+
+梳理下流程：  
 
 1、`workerFunc`会监听`workerChan`，并且在使用完`workerChan`归还到`ready`中；  
 
