@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/panjf2000/ants"
 	"math/rand"
 	"net/http"
 	_ "net/http/pprof"
@@ -13,6 +12,8 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
+
+	"github.com/panjf2000/ants"
 )
 
 var sum int32

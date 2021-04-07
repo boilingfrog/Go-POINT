@@ -15,6 +15,10 @@
       - [clean](#clean)
       - [getCh](#getch)
       - [workerFunc](#workerfunc)
+    - [panjf2000/ants](#panjf2000ants)
+    - [看下实现](#%E7%9C%8B%E4%B8%8B%E5%AE%9E%E7%8E%B0)
+      - [NewPoolWithFunc](#newpoolwithfunc)
+      - [Release](#release)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -547,35 +551,257 @@ func main() {
 // it limits the total of goroutines to a given number by recycling goroutines.
 type PoolWithFunc struct {
 	// capacity of the pool.
+	// pool的大小
 	capacity int32
 
 	// running is the number of the currently running goroutines.
+	// 当前正在运行的goroutine的数量
 	running int32
 
 	// workers is a slice that store the available workers.
+	// 存储可用的goWorkerWithFunc
 	workers []*goWorkerWithFunc
 
 	// state is used to notice the pool to closed itself.
+	// 用于通知pool关闭的标识
 	state int32
 
 	// lock for synchronous operation.
 	lock sync.Locker
 
 	// cond for waiting to get a idle worker.
+	// 通过Cond找到一个空闲的worker
 	cond *sync.Cond
 
 	// poolFunc is the function for processing tasks.
+	// 处理具体的任务
 	poolFunc func(interface{})
 
 	// workerCache speeds up the obtainment of the an usable worker in function:retrieveWorker.
 	workerCache sync.Pool
 
 	// blockingNum is the number of the goroutines already been blocked on pool.Submit, protected by pool.lock
+	// 被blocked的goroutine的数量
 	blockingNum int
 
 	options *Options
 }
 ```
+
+##### NewPoolWithFunc  
+
+```go
+// goWorkerWithFunc是执行任务的实际执行者，
+// 它启动一个接受任务的goroutine并执行函数调用。
+type goWorkerWithFunc struct {
+	// pool who owns this worker.
+	pool *PoolWithFunc
+
+	// args is a job should be done.
+	args chan interface{}
+
+	// recycleTime will be update when putting a worker back into queue.
+	recycleTime time.Time
+}
+
+// NewPoolWithFunc generates an instance of ants pool with a specific function.
+func NewPoolWithFunc(size int, pf func(interface{}), options ...Option) (*PoolWithFunc, error) {
+	if size <= 0 {
+		return nil, ErrInvalidPoolSize
+	}
+
+	if pf == nil {
+		return nil, ErrLackPoolFunc
+	}
+
+	opts := loadOptions(options...)
+
+	if expiry := opts.ExpiryDuration; expiry < 0 {
+		return nil, ErrInvalidPoolExpiry
+	} else if expiry == 0 {
+		opts.ExpiryDuration = DefaultCleanIntervalTime
+	}
+
+	if opts.Logger == nil {
+		opts.Logger = defaultLogger
+	}
+
+	p := &PoolWithFunc{
+		capacity: int32(size),
+		poolFunc: pf,
+		lock:     internal.NewSpinLock(),
+		options:  opts,
+	}
+
+	// 这里的sync.pool里面存储的是goWorkerWithFunc，在sync.pool拿不到到的时候创建
+	p.workerCache.New = func() interface{} {
+		return &goWorkerWithFunc{
+			pool: p,
+			args: make(chan interface{}, workerChanCap),
+		}
+	}
+	if p.options.PreAlloc {
+		p.workers = make([]*goWorkerWithFunc, 0, size)
+	}
+	p.cond = sync.NewCond(p.lock)
+
+	// 定期清理过期的workers
+	go p.purgePeriodically()
+
+	return p, nil
+}
+
+// purgePeriodically clears expired workers periodically which runs in an individual goroutine, as a scavenger.
+func (p *PoolWithFunc) purgePeriodically() {
+	heartbeat := time.NewTicker(p.options.ExpiryDuration)
+	defer heartbeat.Stop()
+
+	var expiredWorkers []*goWorkerWithFunc
+	for range heartbeat.C {
+		if p.IsClosed() {
+			break
+		}
+		currentTime := time.Now()
+		p.lock.Lock()
+		idleWorkers := p.workers
+		n := len(idleWorkers)
+		var i int
+		// 找到需要清理的workers的范围
+		for i = 0; i < n && currentTime.Sub(idleWorkers[i].recycleTime) > p.options.ExpiryDuration; i++ {
+		}
+		expiredWorkers = append(expiredWorkers[:0], idleWorkers[:i]...)
+		if i > 0 {
+			m := copy(idleWorkers, idleWorkers[i:])
+			for i = m; i < n; i++ {
+				idleWorkers[i] = nil
+			}
+			p.workers = idleWorkers[:m]
+		}
+		p.lock.Unlock()
+
+		// 通知淘汰的workers停止
+		// 此通知必须位于wp.lock之外，因为ch.ch
+		// 如果有很多workers，可能会阻塞并且可能会花费大量时间
+		// 位于非本地CPU上。
+		for i, w := range expiredWorkers {
+			w.args <- nil
+			expiredWorkers[i] = nil
+		}
+
+		// 可能存在清理所有工作程序的情况（没有任何工作程序在运行）
+		// 虽然某些调用程序仍然卡在“ p.cond.Wait（）”中，
+		// 然后应该唤醒所有这些调用者。
+		if p.Running() == 0 {
+			p.cond.Broadcast()
+		}
+	}
+}
+```
+
+1、在生成特定的执行的实例池的时候，也会定期清理掉那些无用的`workers`；  
+
+2、这里使用`sync.pool`存储`goWorkerWithFunc`，在`sync.pool`拿不到到的时候创建。  
+
+##### Release
+
+```go
+// 提交任务到任务池
+func (p *PoolWithFunc) Invoke(args interface{}) error {
+	if p.IsClosed() {
+		return ErrPoolClosed
+	}
+	var w *goWorkerWithFunc
+	if w = p.retrieveWorker(); w == nil {
+		return ErrPoolOverload
+	}
+	w.args <- args
+	return nil
+}
+
+// retrieveWorker returns a available worker to run the tasks.
+func (p *PoolWithFunc) retrieveWorker() (w *goWorkerWithFunc) {
+	spawnWorker := func() {
+		// 从sync.pool中获取一个
+		w = p.workerCache.Get().(*goWorkerWithFunc)
+		w.run()
+	}
+
+	p.lock.Lock()
+	idleWorkers := p.workers
+	n := len(idleWorkers) - 1
+	// 如果workers有，取一个出来
+	if n >= 0 {
+		w = idleWorkers[n]
+		idleWorkers[n] = nil
+		p.workers = idleWorkers[:n]
+		p.lock.Unlock()
+		// 当前正在运行的goroutine的数量小于pool的大小
+		// 从sync.pool中取一个
+	} else if p.Running() < p.Cap() {
+		p.lock.Unlock()
+		spawnWorker()
+	} else {
+		if p.options.Nonblocking {
+			p.lock.Unlock()
+			return
+		}
+	Reentry:
+		// 当前阻塞的goroutine大于最大的限制
+		if p.options.MaxBlockingTasks != 0 && p.blockingNum >= p.options.MaxBlockingTasks {
+			p.lock.Unlock()
+			return
+		}
+		p.blockingNum++
+		// 阻塞当前
+		p.cond.Wait()
+		p.blockingNum--
+		// 当前正在运行的goroutine数量为0
+		// sync.pool中取一个
+		if p.Running() == 0 {
+			p.lock.Unlock()
+			if !p.IsClosed() {
+				spawnWorker()
+			}
+			return
+		}
+		l := len(p.workers) - 1
+		// 可用的workers数量为0
+		if l < 0 {
+			// 正在运行的goroutine数量小于pool的大小
+			// sync.pool中取一个
+			if p.Running() < p.Cap() {
+				p.lock.Unlock()
+				spawnWorker()
+				return
+			}
+			// 循环
+			goto Reentry
+		}
+		w = p.workers[l]
+		p.workers[l] = nil
+		p.workers = p.workers[:l]
+		p.lock.Unlock()
+	}
+	return
+}
+
+// 关闭pool
+func (p *PoolWithFunc) Release() {
+	// 写入state关闭的标识
+	atomic.StoreInt32(&p.state, CLOSED)
+	p.lock.Lock()
+	idleWorkers := p.workers
+	for _, w := range idleWorkers {
+		w.args <- nil
+	}
+	// 清理掉workers
+	p.workers = nil
+	p.lock.Unlock()
+	// 可能有一些调用者在retrieveWorker（）中等待，因此我们需要将其唤醒以防止那些调用者无限阻塞。
+	p.cond.Broadcast()
+}
+```
+
 
 
 
