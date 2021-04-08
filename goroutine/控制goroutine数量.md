@@ -581,6 +581,96 @@ type Pool struct {
 }
 ```
 
+##### Submit
+
+```go
+// Submit submits a task to this pool.
+func (p *Pool) Submit(task func()) error {
+	if p.IsClosed() {
+		return ErrPoolClosed
+	}
+	var w *goWorker
+	if w = p.retrieveWorker(); w == nil {
+		return ErrPoolOverload
+	}
+	w.task <- task
+	return nil
+}
+
+// retrieveWorker returns a available worker to run the tasks.
+func (p *Pool) retrieveWorker() (w *goWorker) {
+	spawnWorker := func() {
+        // sync.pool中获取
+		w = p.workerCache.Get().(*goWorker)
+		w.run()
+	}
+
+	p.lock.Lock()
+
+	w = p.workers.detach()
+	if w != nil {
+		p.lock.Unlock()
+     // capacity为负数，不限制池的容量
+	} else if capacity := p.Cap(); capacity == -1 {
+		p.lock.Unlock()
+		spawnWorker()
+        // 正在运行的goroutine数量小于pool的容量
+	} else if p.Running() < capacity {
+		p.lock.Unlock()
+		spawnWorker()
+	} else {
+        // 当Nonblocking为true，Pool.Submit将不会被阻塞
+		if p.options.Nonblocking {
+			p.lock.Unlock()
+			return
+		}
+	Reentry:
+		// 当前阻塞的goroutine大于最大的限制
+		if p.options.MaxBlockingTasks != 0 && p.blockingNum >= p.options.MaxBlockingTasks {
+			p.lock.Unlock()
+			return
+		}
+		p.blockingNum++
+		p.cond.Wait()
+		p.blockingNum--
+		var nw int
+        // 如果正在运行的goroutine数量为0
+		if nw = p.Running(); nw == 0 {
+			p.lock.Unlock()
+			if !p.IsClosed() {
+                // sync.pool中取一个
+				spawnWorker()
+			}
+			return
+		}
+        // 没找到
+		if w = p.workers.detach(); w == nil {
+            // 正在运行的goroutine数量小于pool的容量
+			if nw < capacity {
+				p.lock.Unlock()
+				spawnWorker()
+				return
+			}
+            // 循环
+			goto Reentry
+		}
+
+		p.lock.Unlock()
+	}
+	return
+}
+
+// 关闭pool
+func (p *Pool) Release() {
+    // 写入关闭的标识
+	atomic.StoreInt32(&p.state, CLOSED)
+	p.lock.Lock()
+	p.workers.reset()
+	p.lock.Unlock()
+    // 唤醒等待的
+	p.cond.Broadcast()
+}
+```
 
 
 
