@@ -670,18 +670,45 @@ func (p *Pool) Release() {
     // 唤醒等待的
 	p.cond.Broadcast()
 }
+
+// purgePeriodically clears expired workers periodically which runs in an individual goroutine, as a scavenger.
+func (p *Pool) purgePeriodically() {
+	heartbeat := time.NewTicker(p.options.ExpiryDuration)
+	defer heartbeat.Stop()
+
+	for range heartbeat.C {
+		if p.IsClosed() {
+			break
+		}
+
+		p.lock.Lock()
+		expiredWorkers := p.workers.retrieveExpiry(p.options.ExpiryDuration)
+		p.lock.Unlock()
+
+		// Notify obsolete workers to stop.
+		// This notification must be outside the p.lock, since w.task
+		// may be blocking and may consume a lot of time if many workers
+		// are located on non-local CPUs.
+		for i := range expiredWorkers {
+			expiredWorkers[i].task <- nil
+			expiredWorkers[i] = nil
+		}
+
+		// There might be a situation that all workers have been cleaned up(no any worker is running)
+		// while some invokers still get stuck in "p.cond.Wait()",
+		// then it ought to wakes all those invokers.
+		if p.Running() == 0 {
+			p.cond.Broadcast()
+		}
+	}
+}
 ```
 
+梳理下思路：  
 
+1、
 
-
-
-
-
-
-
-
-
+示例二的实现：
 
 ```go
 // PoolWithFunc accepts the tasks from client,
@@ -723,11 +750,7 @@ type PoolWithFunc struct {
 
 	options *Options
 }
-```
 
-##### NewPoolWithFunc  
-
-```go
 // goWorkerWithFunc是执行任务的实际执行者，
 // 它启动一个接受任务的goroutine并执行函数调用。
 type goWorkerWithFunc struct {
