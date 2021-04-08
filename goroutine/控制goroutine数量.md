@@ -546,6 +546,53 @@ func main() {
 
 #### 看下实现  
 
+示例一的实现：  
+
+```go
+// Pool accepts the tasks from client, it limits the total of goroutines to a given number by recycling goroutines.
+type Pool struct {
+	// capacity of the pool, a negative value means that the capacity of pool is limitless, an infinite pool is used to
+	// avoid potential issue of endless blocking caused by nested usage of a pool: submitting a task to pool
+	// which submits a new task to the same pool.
+	capacity int32
+
+	// running is the number of the currently running goroutines.
+	running int32
+
+	// workers is a slice that store the available workers.
+	workers workerArray
+
+	// state is used to notice the pool to closed itself.
+	state int32
+
+	// lock for synchronous operation.
+	lock sync.Locker
+
+	// cond for waiting to get a idle worker.
+	cond *sync.Cond
+
+	// workerCache speeds up the obtainment of the an usable worker in function:retrieveWorker.
+	workerCache sync.Pool
+
+	// blockingNum is the number of the goroutines already been blocked on pool.Submit, protected by pool.lock
+	blockingNum int
+
+	options *Options
+}
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
 ```go
 // PoolWithFunc accepts the tasks from client,
 // it limits the total of goroutines to a given number by recycling goroutines.
@@ -698,11 +745,13 @@ func (p *PoolWithFunc) purgePeriodically() {
 }
 ```
 
+梳理下流程：  
+
 1、在生成特定的执行的实例池的时候，也会定期清理掉那些无用的`workers`；  
 
 2、这里使用`sync.pool`存储`goWorkerWithFunc`，在`sync.pool`拿不到到的时候创建。  
 
-##### Release
+##### Invoke
 
 ```go
 // 提交任务到任务池
@@ -802,6 +851,11 @@ func (p *PoolWithFunc) Release() {
 }
 ```
 
+梳理下流程：  
+
+1、`Invoke`提交任务到任务池，调用`retrieveWorker`取出一个`ch`来，放入当前的`task`；  
+
+2、
 
 
 
