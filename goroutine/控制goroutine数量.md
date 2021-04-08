@@ -579,11 +579,71 @@ type Pool struct {
 
 	options *Options
 }
+
+// goWorker is the actual executor who runs the tasks,
+// it starts a goroutine that accepts tasks and
+// performs function calls.
+type goWorker struct {
+	// pool who owns this worker.
+	pool *Pool
+
+	// task is a job should be done.
+	task chan func()
+
+	// recycleTime will be update when putting a worker back into queue.
+	recycleTime time.Time
+}
 ```
 
 ##### Submit
 
 ```go
+// NewPool generates an instance of ants pool.
+func NewPool(size int, options ...Option) (*Pool, error) {
+	opts := loadOptions(options...)
+
+	if size <= 0 {
+		size = -1
+	}
+
+	if expiry := opts.ExpiryDuration; expiry < 0 {
+		return nil, ErrInvalidPoolExpiry
+	} else if expiry == 0 {
+		opts.ExpiryDuration = DefaultCleanIntervalTime
+	}
+
+	if opts.Logger == nil {
+		opts.Logger = defaultLogger
+	}
+
+	p := &Pool{
+		capacity: int32(size),
+		lock:     internal.NewSpinLock(),
+		options:  opts,
+	}
+	p.workerCache.New = func() interface{} {
+		return &goWorker{
+			pool: p,
+			task: make(chan func(), workerChanCap),
+		}
+	}
+	if p.options.PreAlloc {
+		if size == -1 {
+			return nil, ErrInvalidPreAllocSize
+		}
+		p.workers = newWorkerArray(loopQueueType, size)
+	} else {
+		p.workers = newWorkerArray(stackType, 0)
+	}
+
+	p.cond = sync.NewCond(p.lock)
+
+	// Start a goroutine to clean up expired workers periodically.
+	go p.purgePeriodically()
+
+	return p, nil
+}
+
 // Submit submits a task to this pool.
 func (p *Pool) Submit(task func()) error {
 	if p.IsClosed() {
