@@ -774,7 +774,7 @@ func (p *Pool) purgePeriodically() {
 
 - 本地缓存没有，通过`sync.Pool`注册的new事件，生成一个`goWorker`，不过这块有点奇怪对于`sync.Pool`的使用，生成的`goWorker`没有放到`pool`中，只是用到了`sync.Pool`的找不到然后`New`的特点。
 
-对于`sync.pool`的`get`
+对于`sync.pool`的`Get`
 
 1、优先从`private`中选择对象  
 2、若取不到，则尝试从`localPool`的`shared`队列的队头进行读取  
@@ -784,6 +784,10 @@ func (p *Pool) purgePeriodically() {
 <img src="/img/pool_1.png" width = "537" height = "990" alt="gc" align="center" />
 
 每次都经历了几次无效的查询，最后才使用`New`方法新建，感觉这个`sync.pool`的使用有点多余了。   
+
+3、如果缓存池满了，就循环去拿直到成功拿出一个；  
+
+4、同时也会定期清理掉过期的`goWorker`,通过`sync.Cond`唤醒其的阻塞等待；  
 
 示例二的实现：
 
