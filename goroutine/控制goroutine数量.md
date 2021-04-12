@@ -570,6 +570,8 @@ func main() {
 
 #### go-playground/pool
 
+`go-playground/pool`会在一开始就启动
+
 先放几个使用的demo  
 
 **Per Unit Work**
@@ -954,16 +956,16 @@ func (b *batch) Queue(fn WorkFunc) {
 	wu := b.pool.Queue(fn)
 
 	// 放到WorkUnit的切片中
-	b.units = append(b.units, wu) 
-    // 通过waitgroup进行goroutine的执行控制
+	b.units = append(b.units, wu)
+	// 通过waitgroup进行goroutine的执行控制
 	b.wg.Add(1)
 	b.m.Unlock()
 
 	// 执行任务
 	go func(b *batch, wu WorkUnit) {
 		wu.Wait()
-        // 将执行的结果写入到results中
-        b.results <- wu
+		// 将执行的结果写入到results中
+		b.results <- wu
 		b.wg.Done()
 	}(b, wu)
 }
@@ -997,16 +999,16 @@ func (b *batch) Cancel() {
 
 // 输出执行完成的结果集
 func (b *batch) Results() <-chan WorkUnit {
-    // 启动一个协程监听完成的通知
-    // waitgroup阻塞直到所有的worker都完成退出
-    // 最后关闭channel
+	// 启动一个协程监听完成的通知
+	// waitgroup阻塞直到所有的worker都完成退出
+	// 最后关闭channel
 	go func(b *batch) {
 		<-b.done
 		b.m.Lock()
-        // 阻塞直到上面waitgroup中的goroutine一个个执行完成退出
+		// 阻塞直到上面waitgroup中的goroutine一个个执行完成退出
 		b.wg.Wait()
 		b.m.Unlock()
-        // 关闭channel
+		// 关闭channel
 		close(b.results)
 	}(b)
 
