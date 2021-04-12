@@ -954,14 +954,16 @@ func (b *batch) Queue(fn WorkFunc) {
 	wu := b.pool.Queue(fn)
 
 	// 放到WorkUnit的切片中
-	b.units = append(b.units, wu) // keeping a reference for cancellation purposes
+	b.units = append(b.units, wu) 
+    // 通过waitgroup进行goroutine的执行控制
 	b.wg.Add(1)
 	b.m.Unlock()
 
 	// 执行任务
 	go func(b *batch, wu WorkUnit) {
 		wu.Wait()
-		b.results <- wu
+        // 将执行的结果写入到results中
+        b.results <- wu
 		b.wg.Done()
 	}(b, wu)
 }
@@ -995,17 +997,30 @@ func (b *batch) Cancel() {
 
 // 输出执行完成的结果集
 func (b *batch) Results() <-chan WorkUnit {
+    // 启动一个协程监听完成的通知
+    // waitgroup阻塞直到所有的worker都完成退出
+    // 最后关闭channel
 	go func(b *batch) {
 		<-b.done
 		b.m.Lock()
+        // 阻塞直到上面waitgroup中的goroutine一个个执行完成退出
 		b.wg.Wait()
 		b.m.Unlock()
+        // 关闭channel
 		close(b.results)
 	}(b)
 
 	return b.results
 }
 ```
+
+梳理下流程：  
+
+1、首先初始化`Batch`的大小；  
+
+2、然后`Queue`将一个个`WorkFunc`放入到`WorkUnit`中，执行，并将结果写入到`results`中，全部执行完成，调用`QueueComplete`，发送执行完成的通知；  
+
+3、`Results`会打印出所有的结果集，同时监听所有的`worker`执行完成，关闭`channel`，退出。  
 
 ### 参考
 
