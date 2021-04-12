@@ -17,6 +17,10 @@
       - [workerFunc](#workerfunc)
     - [panjf2000/ants](#panjf2000ants)
       - [设计思路](#%E8%AE%BE%E8%AE%A1%E6%80%9D%E8%B7%AF)
+    - [go-playground/pool](#go-playgroundpool)
+      - [workUnit](#workunit)
+      - [limitedPool](#limitedpool)
+      - [batch](#batch)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -564,6 +568,446 @@ func main() {
 
 具体的设计细节可参考，作者的文章[Goroutine 并发调度模型深度解析之手撸一个高性能 goroutine 池](HTTPS://strikefreedom.top/high-performance-implementation-of-goroutine-pool)
 
+#### go-playground/pool
+
+先放几个使用的demo  
+
+**Per Unit Work**
+
+```go
+package main
+
+import (
+	"fmt"
+	"time"
+
+	"gopkg.in/go-playground/pool.v3"
+)
+
+func main() {
+
+	p := pool.NewLimited(10)
+	defer p.Close()
+
+	user := p.Queue(getUser(13))
+	other := p.Queue(getOtherInfo(13))
+
+	user.Wait()
+	if err := user.Error(); err != nil {
+		// handle error
+	}
+
+	// do stuff with user
+	username := user.Value().(string)
+	fmt.Println(username)
+
+	other.Wait()
+	if err := other.Error(); err != nil {
+		// handle error
+	}
+
+	// do stuff with other
+	otherInfo := other.Value().(string)
+	fmt.Println(otherInfo)
+}
+
+func getUser(id int) pool.WorkFunc {
+
+	return func(wu pool.WorkUnit) (interface{}, error) {
+
+		// simulate waiting for something, like TCP connection to be established
+		// or connection from pool grabbed
+		time.Sleep(time.Second * 1)
+
+		if wu.IsCancelled() {
+			// return values not used
+			return nil, nil
+		}
+
+		// ready for processing...
+
+		return "Joeybloggs", nil
+	}
+}
+
+func getOtherInfo(id int) pool.WorkFunc {
+
+	return func(wu pool.WorkUnit) (interface{}, error) {
+
+		// simulate waiting for something, like TCP connection to be established
+		// or connection from pool grabbed
+		time.Sleep(time.Second * 1)
+
+		if wu.IsCancelled() {
+			// return values not used
+			return nil, nil
+		}
+
+		// ready for processing...
+
+		return "Other Info", nil
+	}
+}
+```
+
+**Batch Work**
+
+```go
+package main
+
+import (
+	"fmt"
+	"time"
+
+	"gopkg.in/go-playground/pool.v3"
+)
+
+func main() {
+
+	p := pool.NewLimited(10)
+	defer p.Close()
+
+	batch := p.Batch()
+
+	// for max speed Queue in another goroutine
+	// but it is not required, just can't start reading results
+	// until all items are Queued.
+
+	go func() {
+		for i := 0; i < 10; i++ {
+			batch.Queue(sendEmail("email content"))
+		}
+
+		// DO NOT FORGET THIS OR GOROUTINES WILL DEADLOCK
+		// if calling Cancel() it calles QueueComplete() internally
+		batch.QueueComplete()
+	}()
+
+	for email := range batch.Results() {
+
+		if err := email.Error(); err != nil {
+			// handle error
+			// maybe call batch.Cancel()
+		}
+
+		// use return value
+		fmt.Println(email.Value().(bool))
+	}
+}
+
+func sendEmail(email string) pool.WorkFunc {
+	return func(wu pool.WorkUnit) (interface{}, error) {
+
+		// simulate waiting for something, like TCP connection to be established
+		// or connection from pool grabbed
+		time.Sleep(time.Second * 1)
+
+		if wu.IsCancelled() {
+			// return values not used
+			return nil, nil
+		}
+
+		// ready for processing...
+
+		return true, nil // everything ok, send nil, error if not
+	}
+}
+```
+
+来看下实现  
+
+##### workUnit
+
+`workUnit`作为`channel`信息进行传递，用来给`work`传递当前需要执行的任务信息。   
+
+```go
+// WorkUnit contains a single uint of works values
+type WorkUnit interface {
+
+	// 阻塞直到当前任务被完成或被取消
+	Wait()
+
+	// 执行函数返回的结果
+	Value() interface{}
+
+	// Error returns the Work Unit's error
+	Error() error
+
+	// 取消当前的可执行任务
+	Cancel()
+
+	// 判断当前的可执行单元是否被取消了
+	IsCancelled() bool
+}
+
+var _ WorkUnit = new(workUnit)
+
+// workUnit contains a single unit of works values
+type workUnit struct {
+	// 任务执行的结果
+	value      interface{}
+	// 错误信息
+	err        error
+	// 通知任务完成
+	done       chan struct{}
+	// 需要执行的任务函数
+	fn         WorkFunc
+	// 任务是会否被取消
+	cancelled  atomic.Value
+	// 是否正在取消任务
+	cancelling atomic.Value
+	// 任务是否正在执行
+	writing    atomic.Value
+}
+```
+
+##### limitedPool
+
+```go
+var _ Pool = new(limitedPool)
+
+// limitedPool contains all information for a limited pool instance.
+type limitedPool struct {
+	// 并发量
+	workers uint
+	// work的channel
+	work    chan *workUnit
+	// 通知结束的channel
+	cancel  chan struct{}
+	// 是否关闭的标识
+	closed  bool
+	// 读写锁
+	m       sync.RWMutex
+}
+
+// 初始化一个pool
+func NewLimited(workers uint) Pool {
+
+	if workers == 0 {
+		panic("invalid workers '0'")
+	}
+	// 初始化pool的work数量
+	p := &limitedPool{
+		workers: workers,
+	}
+	// 初始化pool的操作
+	p.initialize()
+
+	return p
+}
+
+func (p *limitedPool) initialize() {
+	// channel的长度为work数量的两倍
+	p.work = make(chan *workUnit, p.workers*2)
+	p.cancel = make(chan struct{})
+	p.closed = false
+
+	// fire up workers here
+	for i := 0; i < int(p.workers); i++ {
+		p.newWorker(p.work, p.cancel)
+	}
+}
+
+// 将工作传递并取消频道到newWorker（）以避免任何潜在的竞争状况
+// 在p.work读写之间
+func (p *limitedPool) newWorker(work chan *workUnit, cancel chan struct{}) {
+	go func(p *limitedPool) {
+
+		var wu *workUnit
+
+		defer func(p *limitedPool) {
+			// 捕获异常，结束掉异常的工作单元，并将其再次作为新的任务启动
+			if err := recover(); err != nil {
+
+				trace := make([]byte, 1<<16)
+				n := runtime.Stack(trace, true)
+
+				s := fmt.Sprintf(errRecovery, err, string(trace[:int(math.Min(float64(n), float64(7000)))]))
+
+				iwu := wu
+				iwu.err = &ErrRecovery{s: s}
+				close(iwu.done)
+
+				// 重新启动
+				p.newWorker(p.work, p.cancel)
+			}
+		}(p)
+
+		var value interface{}
+		var err error
+		// 监听channel，读取内容
+		for {
+			select {
+			// channel中取出数据
+			case wu = <-work:
+
+				// 防止channel 被关闭后读取到零值
+				if wu == nil {
+					continue
+				}
+
+				// 单个和批量的cancellation这个都支持
+				if wu.cancelled.Load() == nil {
+					// 执行我们的业务函数
+					value, err = wu.fn(wu)
+
+					wu.writing.Store(struct{}{})
+
+					// 如果WorkFunc取消了此工作单元，则需要再次检查
+					// 防止产生竞争条件
+					if wu.cancelled.Load() == nil && wu.cancelling.Load() == nil {
+						wu.value, wu.err = value, err
+
+						// 执行完成，关闭当前channel
+						close(wu.done)
+					}
+				}
+				// 如果取消了，就退出
+			case <-cancel:
+				return
+			}
+		}
+
+	}(p)
+}
+
+// 放置一个执行的task到channel，并返回channel
+func (p *limitedPool) Queue(fn WorkFunc) WorkUnit {
+	// 初始化一个workUnit类型的channel
+	w := &workUnit{
+		done: make(chan struct{}),
+		// 具体的执行函数
+		fn:   fn,
+	}
+
+	go func() {
+		p.m.RLock()
+		// 如果pool关闭的时候通知channel关闭
+		if p.closed {
+			w.err = &ErrPoolClosed{s: errClosed}
+			if w.cancelled.Load() == nil {
+				close(w.done)
+			}
+			p.m.RUnlock()
+			return
+		}
+		// 将channel传递给pool的work
+		p.work <- w
+
+		p.m.RUnlock()
+	}()
+
+	return w
+}
+```
+
+梳理下流程：  
+
+1、首先初始化`pool`的大小；  
+
+2、然后根据`pool`的大小启动对应数量的`worker`，阻塞等待`channel`被塞入可执行函数；  
+
+3、然后可执行函数会被放入`workUnit`，然后通过`channel`传递给阻塞的`worker`。  
+
+
+同样这里也提供了批量执行的方法  
+
+##### batch
+
+```go
+// batch contains all information for a batch run of WorkUnits
+type batch struct {
+	pool    Pool
+	m       sync.Mutex
+    // WorkUnit的切片
+	units   []WorkUnit
+    // 结果集,执行完后的workUnit会更新其value,error,可以从结果集channel中读取
+	results chan WorkUnit
+    // 通知batch是否完成
+	done    chan struct{}
+	closed  bool
+	wg      *sync.WaitGroup
+}
+
+// 初始化Batch
+func newBatch(p Pool) Batch {
+	return &batch{
+		pool:    p,
+		units:   make([]WorkUnit, 0, 4),
+		results: make(chan WorkUnit),
+		done:    make(chan struct{}),
+		wg:      new(sync.WaitGroup),
+	}
+}
+
+
+// 将WorkFunc放入到WorkUnit中并保留取消和输出结果的参考。
+func (b *batch) Queue(fn WorkFunc) {
+
+	b.m.Lock()
+
+	if b.closed {
+		b.m.Unlock()
+		return
+	}
+    // 返回一个WorkUnit
+	wu := b.pool.Queue(fn)
+
+    // 放到WorkUnit的切片中
+	b.units = append(b.units, wu) // keeping a reference for cancellation purposes
+	b.wg.Add(1)
+	b.m.Unlock()
+
+    // 执行任务
+	go func(b *batch, wu WorkUnit) {
+		wu.Wait()
+		b.results <- wu
+		b.wg.Done()
+	}(b, wu)
+}
+
+
+// QueueComplete让批处理知道不再有排队的工作单元
+// 以便在所有工作完成后可以关闭结果渠道。
+// 警告：如果未调用此函数，则结果通道将永远不会耗尽，
+// 但会永远阻止以获取更多结果。
+func (b *batch) QueueComplete() {
+	b.m.Lock()
+	b.closed = true
+	close(b.done)
+	b.m.Unlock()
+}
+
+// 取消批次的任务
+func (b *batch) Cancel() {
+
+	b.QueueComplete() 
+
+	b.m.Lock()
+
+	// 一个个取消units，倒叙的取消
+	for i := len(b.units) - 1; i >= 0; i-- {
+		b.units[i].Cancel()
+	}
+
+	b.m.Unlock()
+}
+
+// 输出执行完成的结果集
+func (b *batch) Results() <-chan WorkUnit {
+	go func(b *batch) {
+		<-b.done
+		b.m.Lock()
+		b.wg.Wait()
+		b.m.Unlock()
+		close(b.results)
+	}(b)
+
+	return b.results
+}
+```
+
+
 ### 参考
 
 【Golang 开发需要协程池吗？】https://www.zhihu.com/question/302981392  
@@ -571,3 +1015,4 @@ func main() {
 【golang协程池设计】https://segmentfault.com/a/1190000018193161  
 【fasthttp中的协程池实现】https://segmentfault.com/a/1190000009133154    
 【panjf2000/ants】https://github.com/panjf2000/ants   
+【golang协程池设计】https://segmentfault.com/a/1190000018193161  
