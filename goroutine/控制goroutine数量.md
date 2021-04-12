@@ -919,11 +919,11 @@ func (p *limitedPool) Queue(fn WorkFunc) WorkUnit {
 type batch struct {
 	pool    Pool
 	m       sync.Mutex
-    // WorkUnit的切片
+	// WorkUnit的切片
 	units   []WorkUnit
-    // 结果集,执行完后的workUnit会更新其value,error,可以从结果集channel中读取
+	// 结果集,执行完后的workUnit会更新其value,error,可以从结果集channel中读取
 	results chan WorkUnit
-    // 通知batch是否完成
+	// 通知batch是否完成
 	done    chan struct{}
 	closed  bool
 	wg      *sync.WaitGroup
@@ -950,15 +950,15 @@ func (b *batch) Queue(fn WorkFunc) {
 		b.m.Unlock()
 		return
 	}
-    // 返回一个WorkUnit
+	// 返回一个WorkUnit
 	wu := b.pool.Queue(fn)
 
-    // 放到WorkUnit的切片中
+	// 放到WorkUnit的切片中
 	b.units = append(b.units, wu) // keeping a reference for cancellation purposes
 	b.wg.Add(1)
 	b.m.Unlock()
 
-    // 执行任务
+	// 执行任务
 	go func(b *batch, wu WorkUnit) {
 		wu.Wait()
 		b.results <- wu
@@ -981,7 +981,7 @@ func (b *batch) QueueComplete() {
 // 取消批次的任务
 func (b *batch) Cancel() {
 
-	b.QueueComplete() 
+	b.QueueComplete()
 
 	b.m.Lock()
 
@@ -1006,7 +1006,6 @@ func (b *batch) Results() <-chan WorkUnit {
 	return b.results
 }
 ```
-
 
 ### 参考
 
