@@ -148,7 +148,7 @@ func main() {
 
 3、对于待使用的`channel`列表，会定期清理掉超过最大空闲时间的`workerChan`。  
 
-看下实现  
+看下具体实现  
 
 ```go
 // workerPool通过一组工作池服务传入的连接
