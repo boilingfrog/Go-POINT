@@ -379,6 +379,7 @@ func (wp *workerPool) getCh() *workerChan {
 			// 具体的执行函数
 			wp.workerFunc(ch)
 			// 再放入到pool中
+			wp.workerChanPool.Put(vch)
 		}()
 	}
 	return ch
@@ -391,7 +392,9 @@ func (wp *workerPool) getCh() *workerChan {
 
 2、`ready`中不为空，直接在`ready`获取一个；  
 
-3、如果没有获取到则在`sync.pool`中获取一个，之后再放回到`pool`中。  
+3、如果没有获取到则在`sync.pool`中获取一个，之后再放回到`pool`中；    
+
+4、拿到了就启动一个`workerFunc`监听`workerChan`，处理具体的业务逻辑。  
 
 ##### workerFunc
 
