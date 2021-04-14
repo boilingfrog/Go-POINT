@@ -1029,6 +1029,14 @@ func (b *batch) Results() <-chan WorkUnit {
 
 3、`Results`会打印出所有的结果集，同时监听所有的`worker`执行完成，关闭`channel`，退出。  
 
+### 总结
+
+控制`goroutine`数量一般使用两种方式：  
+
+- 简单的场景使用`sync+channel`就可以了；  
+
+- 复杂的场景可以使用`goroutine pool`  
+
 ### 参考
 
 【Golang 开发需要协程池吗？】https://www.zhihu.com/question/302981392  
