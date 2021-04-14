@@ -146,7 +146,9 @@ func main() {
 
 2、本地维护了一个待使用的`channel`列表，当本地`channel`列表拿不到`ch`，会在`sync.pool`中取。  
 
-3、对于待使用的`channel`列表，会定期清理掉超过最大空闲时间的`workerChan`。  
+3、如果`workersCount`没达到上限，则从生成一个`workerFunc`监听`workerChan`。  
+
+4、对于待使用的`channel`列表，会定期清理掉超过最大空闲时间的`workerChan`。  
 
 看下具体实现  
 
@@ -561,13 +563,13 @@ func main() {
 
 - 本地的缓存中有空闲的`goWorker`，直接取出；  
 
-- 本地缓存没有就去`sync.Pool`，拿一个`goWorker`。   
+- 本地缓存没有就去`sync.Pool`，拿一个`goWorker`；   
 
-3、如果缓存池满了，就循环去拿直到成功拿出一个；  
+3、如果缓存池满了，非阻塞模式直接返回`nil`，阻塞模式就循环去拿直到成功拿出一个；  
 
 4、同时也会定期清理掉过期的`goWorker`,通过`sync.Cond`唤醒其的阻塞等待；  
 
-5、对于使用完成的`goWorker`在使用完成之后重新归还到`free pool`。     
+5、对于使用完成的`goWorker`在使用完成之后重新归还到`pool`。     
 
 具体的设计细节可参考，作者的文章[Goroutine 并发调度模型深度解析之手撸一个高性能 goroutine 池](HTTPS://strikefreedom.top/high-performance-implementation-of-goroutine-pool)
 
