@@ -17,9 +17,10 @@ import (
 	"github.com/panjf2000/ants"
 )
 
-func main() {
-	pool2()
-}
+//
+//func main() {
+//	pool2()
+//}
 
 func pool2() {
 	p := pool.NewLimited(10)
@@ -250,7 +251,7 @@ func limit() {
 
 var base string
 
-func pprof() {
+func main() {
 	// 开启pprof，监听请求
 	ip := "127.0.0.1:6069"
 	// 开启pprof
@@ -281,32 +282,31 @@ func pprof() {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	var (
-		jobsChan = make(chan int, 10)
-		rw       sync.RWMutex
-		num      int
-	)
+	var count = 1000
 
-	wg := sync.WaitGroup{}
-	wg.Add(3)
-	for i := 0; i < 3; i++ {
-		go func() {
+	var data = make(map[int]string, count)
+	_ = data
+	var wg sync.WaitGroup
+
+	for i := 0; i < count; i++ {
+		wg.Add(1)
+		go func(i int) {
 			defer wg.Done()
-			for redPacket := range jobsChan {
-				_ = redPacket
-				rw.Lock()
-				num++
-				rw.Unlock()
-			}
-		}()
+			time.Sleep(time.Second * 1)
+			mockSqlPool()
+			// panic("+++")
+			data[i] = "test"
+		}(i)
 	}
-
-	for i := 0; i < 10; i++ {
-		jobsChan <- i + 1
-	}
-	close(jobsChan)
+	fmt.Println("-----------WaitGroup执行-----------")
 	wg.Wait()
-	fmt.Println(num)
+	fmt.Println("哈哈，你好吗")
+}
+
+// 模拟数据库的连接和释放
+func mockSqlPool() {
+	defer fmt.Println("关闭pool")
+	fmt.Println("我是pool")
 }
 
 func query() int {
