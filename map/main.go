@@ -34,3 +34,31 @@ func mockSqlPool() {
 	defer fmt.Println("关闭pool")
 	fmt.Println("我是pool")
 }
+func pool1() {
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go func() {
+		defer func() {
+			fmt.Println("7777777777")
+			wg.Done()
+		}()
+		time.Sleep(time.Second)
+
+		mockSqlPool()
+		panic("++++")
+	}()
+
+	go func() {
+		defer wg.Done()
+		mockSqlPool()
+
+		time.Sleep(time.Second * 2)
+
+		fmt.Println("run 1")
+	}()
+
+	fmt.Println("执行了吗")
+	wg.Wait()
+	fmt.Println("完美退出了")
+}
