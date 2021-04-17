@@ -1,3 +1,14 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [错误使用map引发的血案](#%E9%94%99%E8%AF%AF%E4%BD%BF%E7%94%A8map%E5%BC%95%E5%8F%91%E7%9A%84%E8%A1%80%E6%A1%88)
+  - [前言](#%E5%89%8D%E8%A8%80)
+  - [场景复原](#%E5%9C%BA%E6%99%AF%E5%A4%8D%E5%8E%9F)
+  - [原因](#%E5%8E%9F%E5%9B%A0)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## 错误使用map引发的血案
 
 ### 前言  
@@ -16,7 +27,9 @@
 
 ### 场景复原
 
-先来看来伪代码
+先来看来伪代码  
+
+一个全局的`map`，然后`WaitGroup`开启一组协程并发的读写数据，写入内容到`map`中。  
 
 ```go
 package main
@@ -107,49 +120,93 @@ main.main.func1(0xc00008c004, 0xc000066180, 0x4)
         /Users/yj/Go/src/Go-POINT/map/main.go:21 +0x63
 created by main.main
         /Users/yj/Go/src/Go-POINT/map/main.go:18 +0xbb
-...
+
+goroutine 192 [semacquire]:
+internal/poll.runtime_Semacquire(0xc00009e06c)
+        /usr/local/go/src/runtime/sema.go:61 +0x42
+internal/poll.(*fdMutex).rwlock(0xc00009e060, 0x10fae00, 0xc00023ad00)
+        /usr/local/go/src/internal/poll/fd_mutex.go:154 +0xe9
+internal/poll.(*FD).writeLock(...)
+        /usr/local/go/src/internal/poll/fd_mutex.go:239
+internal/poll.(*FD).Write(0xc00009e060, 0xc000246100, 0xb, 0x10, 0x0, 0x0, 0x0)
+        /usr/local/go/src/internal/poll/fd_unix.go:255 +0x6f
+os.(*File).write(...)
+        /usr/local/go/src/os/file_unix.go:276
+os.(*File).Write(0xc00009c008, 0xc000246100, 0xb, 0x10, 0xc000124580, 0x40, 0x0)
+        /usr/local/go/src/os/file.go:153 +0xa7
+fmt.Fprintln(0x1158520, 0xc00009c008, 0xc00014d728, 0x1, 0x1, 0x107e3e6, 0xc0000d8100, 0x16)
+        /usr/local/go/src/fmt/print.go:265 +0xb3
+fmt.Println(...)
+        /usr/local/go/src/fmt/print.go:274
+main.mockSqlPool()
+        /Users/yj/Go/src/Go-POINT/map/main.go:35 +0x129
+main.main.func1(0xc0000a0004, 0xc000088180, 0x8f)
+        /Users/yj/Go/src/Go-POINT/map/main.go:21 +0x75
+created by main.main
+        /Users/yj/Go/src/Go-POINT/map/main.go:18 +0x102
+
+goroutine 193 [semacquire]:
+internal/poll.runtime_Semacquire(0xc00009e06c)
+        /usr/local/go/src/runtime/sema.go:61 +0x42
+internal/poll.(*fdMutex).rwlock(0xc00009e060, 0x10fae00, 0xc000286410)
+        /usr/local/go/src/internal/poll/fd_mutex.go:154 +0xe9
+internal/poll.(*FD).writeLock(...)
+        /usr/local/go/src/internal/poll/fd_mutex.go:239
+internal/poll.(*FD).Write(0xc00009e060, 0xc0000a01a0, 0xb, 0x10, 0x0, 0x0, 0x0)
+        /usr/local/go/src/internal/poll/fd_unix.go:255 +0x6f
+os.(*File).write(...)
+        /usr/local/go/src/os/file_unix.go:276
+os.(*File).Write(0xc00009c008, 0xc0000a01a0, 0xb, 0x10, 0xc0001245c0, 0x40, 0x0)
+        /usr/local/go/src/os/file.go:153 +0xa7
+fmt.Fprintln(0x1158520, 0xc00009c008, 0xc00014df28, 0x1, 0x1, 0x107e3e6, 0xc0000d8100, 0x17)
+        /usr/local/go/src/fmt/print.go:265 +0xb3
+fmt.Println(...)
+        /usr/local/go/src/fmt/print.go:274
+main.mockSqlPool()
+        /Users/yj/Go/src/Go-POINT/map/main.go:35 +0x129
+main.main.func1(0xc0000a0004, 0xc000088180, 0x90)
+        /Users/yj/Go/src/Go-POINT/map/main.go:21 +0x75
+created by main.main
+        /Users/yj/Go/src/Go-POINT/map/main.go:18 +0x102
+
+goroutine 194 [semacquire]:
+internal/poll.runtime_Semacquire(0xc00009e06c)
+        /usr/local/go/src/runtime/sema.go:61 +0x42
+internal/poll.(*fdMutex).rwlock(0xc00009e060, 0x10fae00, 0xc00023add0)
+        /usr/local/go/src/internal/poll/fd_mutex.go:154 +0xe9
+internal/poll.(*FD).writeLock(...)
+        /usr/local/go/src/internal/poll/fd_mutex.go:239
+internal/poll.(*FD).Write(0xc00009e060, 0xc000246110, 0xb, 0x10, 0x0, 0x0, 0x0)
+        /usr/local/go/src/internal/poll/fd_unix.go:255 +0x6f
+os.(*File).write(...)
+        /usr/local/go/src/os/file_unix.go:276
+os.(*File).Write(0xc00009c008, 0xc000246110, 0xb, 0x10, 0xc000124600, 0x40, 0x0)
+        /usr/local/go/src/os/file.go:153 +0xa7
+fmt.Fprintln(0x1158520, 0xc00009c008, 0xc000146728, 0x1, 0x1, 0x107e3e6, 0xc0000d8100, 0x18)
+        /usr/local/go/src/fmt/print.go:265 +0xb3
+fmt.Println(...)
+        /usr/local/go/src/fmt/print.go:274
+main.mockSqlPool()
+        /Users/yj/Go/src/Go-POINT/map/main.go:35 +0x129
+main.main.func1(0xc0000a0004, 0xc000088180, 0x91)
+        /Users/yj/Go/src/Go-POINT/map/main.go:21 +0x75
+created by main.main
+        /Users/yj/Go/src/Go-POINT/map/main.go:18 +0x102
+
 ```
 
-一个全局的`map`，然后`WaitGroup`开启一组协程并发的读写数据，写入内容到`map`中。  
+会发现很多`goroutine`处于`semacquire`状态，说明这些`goroutine`正在等待被信号量唤醒。但是这时候`waitGroup`已经应为`panic`退出了，这些`goroutine`不会在通过`waitGroup.Done()`退出，造成这些`goroutine`一直阻塞到这，最后的结果就是这些`goroutine`占用的数据库连接不能被释放。  
 
-#### WaitGroup中某个goroutine发生panic会如何？
+关于`waitGroup`的信号量  
 
-```go
-func waitGroupPanic() {
-	var wg sync.WaitGroup
-	wg.Add(3)
+整个`Wait()`会被`runtime_Semacquire`阻塞，直到等到全部退出的信号量；
 
-	go func() {
-		defer wg.Done()
-		time.Sleep(time.Second)
-		panic("just panic")
-	}()
+`Done()`会在最后一次的时候通过`runtime_Semrelease`发出取消阻塞的信号，然后被`runtime_Semacquire`阻塞的`Wait()`就可以退出了；  
 
-	go func() {
-		defer wg.Done()
-		fmt.Println("run 1")
-	}()
-
-	go func() {
-		defer wg.Done()
-		time.Sleep(time.Second * 2)
-		fmt.Println("run 2")
-	}()
-
-	fmt.Println("执行了吗")
-	wg.Wait()
-	fmt.Println("完美退出了")
-}
-```
-
-对于`panic`能够改变程序的控制流，调用`panic`后会立刻停止执行当前函数的剩余代码，并在当前Goroutine中递归执行调用方的`defer`  
-
-上面的测试代码中，当第一个`goroutine`发生`panic`的时候，`panic`会向上传递，直到`wg.Wait()`导致整个wg.Wait()
+### 原因
 
 上面的错误原因有两个：  
 
 - 1、`map`不是并发安全，并发写的时候会触发`panic`；  
 
 - 2、避免在循环中连接梳理数据库； 
-
-因为map的并发写入，导致触发了`panic`，对于`panic`,当`panic`异常发生时，程序会中断后面代码的执行，也就是
