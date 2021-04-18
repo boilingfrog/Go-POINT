@@ -195,7 +195,7 @@ created by main.main
 
 ```
 
-会发现很多`goroutine`处于`semacquire`状态，说明这些`goroutine`正在等待被信号量唤醒。但是这时候`waitGroup`已经应为`panic`退出了，这些`goroutine`不会在通过`waitGroup.Done()`退出，造成这些`goroutine`一直阻塞到这，最后的结果就是这些`goroutine`占用的数据库连接不能被释放。  
+会发现很多`goroutine`处于`semacquire`状态，说明这些`goroutine`正在等待被信号量唤醒。但是这时候`waitGroup`已经因为`panic`退出了，这些`goroutine`不会在通过`waitGroup.Done()`退出，造成这些`goroutine`一直阻塞到这，最后的结果就是这些`goroutine`占用的数据库连接不能被释放。  
 
 关于`waitGroup`的信号量  
 
@@ -203,10 +203,16 @@ created by main.main
 
 `Done()`会在最后一次的时候通过`runtime_Semrelease`发出取消阻塞的信号，然后被`runtime_Semacquire`阻塞的`Wait()`就可以退出了；  
 
+上面涉及到的几种状态  
+
+- semacquire 状态，这个状态表示等待调用  
+- Waiting 等待状态。线程在等待某件事的发生。例如等待网络数据、硬盘；调用操作系统 API；等待内存同步访问条件 ready，如 atomic, mutexes
+- Runnable 就绪状态。只要给 CPU 资源我就能运行
+
 ### 原因
 
 上面的错误原因有两个：  
 
 - 1、`map`不是并发安全，并发写的时候会触发`panic`；  
 
-- 2、避免在循环中连接梳理数据库； 
+- 2、避免在循环中连接数据库； 
