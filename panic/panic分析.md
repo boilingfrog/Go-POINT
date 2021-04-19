@@ -250,10 +250,10 @@ func gopanic(e interface{}) {
 		d._panic = (*_panic)(noescape(unsafe.Pointer(&p)))
 
 		p.argp = unsafe.Pointer(getargp(0))
-        // 通过reflectcall函数调用defered函数
-        // 如果defered函数再次发生panic而且并未被该defered函数recover，则reflectcall永远不会返回
-        // 如果defered函数并没有发生过panic或者发生了panic但该defered函数成功recover了新发生的panic，
-        // 则此函数会返回继续执行后面的代码。
+		// 通过reflectcall函数调用defered函数
+		// 如果defered函数再次发生panic而且并未被该defered函数recover，则reflectcall永远不会返回
+		// 如果defered函数并没有发生过panic或者发生了panic但该defered函数成功recover了新发生的panic，
+		// 则此函数会返回继续执行后面的代码。
 		reflectcall(nil, unsafe.Pointer(d.fn), deferArgs(d), uint32(d.siz), uint32(d.siz))
 		p.argp = nil
 
