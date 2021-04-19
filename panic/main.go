@@ -1,12 +1,17 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+)
 
 func main() {
-	fmt.Println(1)
-	func() {
-		fmt.Println(2)
-		panic("3")
+	defer fmt.Println("in main")
+	defer func() {
+		defer func() {
+			panic("3 panic again and again")
+		}()
+		panic("2 panic again")
 	}()
-	fmt.Println(4)
+
+	panic("1 panic once")
 }

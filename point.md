@@ -34,3 +34,7 @@ func TestLeakWithGoleak(t *testing.T) {
 ```go
 $ go test -v -run ^TestLeakWithGoleak$
 ```
+
+### time可以显示执行时间
+
+`time go run xx.go `可以显示执行时间，包括 real, sys, user 的执行时间
