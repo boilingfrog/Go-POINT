@@ -207,25 +207,25 @@ func gopanic(e interface{}) {
 		throw("panic holding locks")
 	}
 
-    // 下面是可以恢复的
+	// 下面是可以恢复的
 	var p _panic
 	p.arg = e
-    // panic 保存了对应的消息，并指向了保存在 goroutine 链表中先前的 panic 链表
+	// panic 保存了对应的消息，并指向了保存在 goroutine 链表中先前的 panic 链表
 	p.link = gp._panic
 	gp._panic = (*_panic)(noescape(unsafe.Pointer(&p)))
 
 	atomic.Xadd(&runningPanicDefers, 1)
 
 	for {
-        // 开始逐个取当前 goroutine 的 defer 调用
+		// 开始逐个取当前 goroutine 的 defer 调用
 		d := gp._defer
-        // 没有defer，退出循环
+		// 没有defer，退出循环
 		if d == nil {
 			break
 		}
 
-		// If defer was started by earlier panic or Goexit (and, since we're back here, that triggered a new panic),
-		// take defer off list. The earlier panic or Goexit will not continue running.
+		// 如果 defer 是由早期的 panic 或 Goexit 开始的（并且，因为我们回到这里，这引发了新的 panic），
+		// 则将 defer 带离链表。更早的 panic 或 Goexit 将无法继续运行。
 		if d.started {
 			if d._panic != nil {
 				d._panic.aborted = true
@@ -237,21 +237,21 @@ func gopanic(e interface{}) {
 			continue
 		}
 
-		// Mark defer as started, but keep on list, so that traceback
-		// can find and update the defer's argument frame if stack growth
-		// or a garbage collection happens before reflectcall starts executing d.fn.
+		// 将deferred标记为started
+		// 如果栈增长或者垃圾回收在 reflectcall 开始执行 d.fn 前发生
+		// 标记 defer 已经开始执行，但仍将其保存在列表中，从而 traceback 可以找到并更新这个 defer 的参数帧
 		d.started = true
 
-		// Record the panic that is running the defer.
-		// If there is a new panic during the deferred call, that panic
-		// will find d in the list and will mark d._panic (this panic) aborted.
+		// 记录正在运行的延迟的panic。
+		// 如果在延迟调用期间有新的panic，那么这个panic
+		// 将在列表中找到d，并将标记d._panic(此panic)中止。
 		d._panic = (*_panic)(noescape(unsafe.Pointer(&p)))
 
 		p.argp = unsafe.Pointer(getargp(0))
 		reflectcall(nil, unsafe.Pointer(d.fn), deferArgs(d), uint32(d.siz), uint32(d.siz))
 		p.argp = nil
 
-		// reflectcall did not panic. Remove d.
+		// reflectcall没有panic。删除d
 		if gp._defer != d {
 			throw("bad defer entry in panic")
 		}
@@ -269,30 +269,31 @@ func gopanic(e interface{}) {
 			atomic.Xadd(&runningPanicDefers, -1)
 
 			gp._panic = p.link
-			// Aborted panics are marked but remain on the g.panic list.
-			// Remove them from the list.
+			// 忽略的 panic 会被标记，但仍然保留在 g.panic 列表中
+			// 这里将它们移出列表
 			for gp._panic != nil && gp._panic.aborted {
 				gp._panic = gp._panic.link
 			}
-			if gp._panic == nil { // must be done with signal
+			if gp._panic == nil { // 必须由 signal 完成
 				gp.sig = 0
 			}
-			// Pass information about recovering frame to recovery.
+			// 传递关于恢复帧的信息
 			gp.sigcode0 = uintptr(sp)
 			gp.sigcode1 = pc
+			// 调用 recover，并重新进入调度循环，不再返回
 			mcall(recovery)
+			// 如果无法重新进入调度循环，则无法恢复错误
 			throw("recovery failed") // mcall should not return
 		}
 	}
 
-	// ran out of deferred calls - old-school panic now
-	// Because it is unsafe to call arbitrary user code after freezing
-	// the world, we call preprintpanics to invoke all necessary Error
-	// and String methods to prepare the panic strings before startpanic.
+	// 消耗完所有的 defer 调用，保守地进行 panic
+	// 因为在冻结之后调用任意用户代码是不安全的，所以我们调用 preprintpanics 来调用
+	// 所有必要的 Error 和 String 方法来在 startpanic 之前准备 panic 字符串。
 	preprintpanics(gp._panic)
 
-	fatalpanic(gp._panic) // should not return
-	*(*int)(nil) = 0      // not reached
+	fatalpanic(gp._panic) // 不应该返回
+	*(*int)(nil) = 0      // 无法触及
 }
 ```
 
