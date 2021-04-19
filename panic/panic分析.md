@@ -250,6 +250,10 @@ func gopanic(e interface{}) {
 		d._panic = (*_panic)(noescape(unsafe.Pointer(&p)))
 
 		p.argp = unsafe.Pointer(getargp(0))
+        // 通过reflectcall函数调用defered函数
+        // 如果defered函数再次发生panic而且并未被该defered函数recover，则reflectcall永远不会返回
+        // 如果defered函数并没有发生过panic或者发生了panic但该defered函数成功recover了新发生的panic，
+        // 则此函数会返回继续执行后面的代码。
 		reflectcall(nil, unsafe.Pointer(d.fn), deferArgs(d), uint32(d.siz), uint32(d.siz))
 		p.argp = nil
 
@@ -308,7 +312,28 @@ func gopanic(e interface{}) {
 func reflectcall(argtype *_type, fn, arg unsafe.Pointer, argsize uint32, retoffset uint32)
 ```
 
+梳理下流程  
+
+1、在处理`panic`期间，会先判断当前`panic`的类型，确定`panic`是否可恢复;  
+
+- 系统栈上的panic无法恢复
+- 如果正在进行malloc时发生panic也无法恢复
+- 在禁止抢占时发生panic也无法恢复
+- 在g锁在m上时发生panic也无法恢复
+
+2、可恢复的`panic`，`panic`的`link`指向`goroutine`链表中先前的`panic`链表；   
+
+3、循环逐个获取当前`goroutine`的`defer`调用；  
+
+- 如果defer是由早期panic或Goexit开始的，则将defer带离链表，更早的panic或Goexit将无法继续运行；  
+
+- 
+
+- 
+
 ### 参考
 
 【panic 和 recover】https://draveness.me/golang/docs/part2-foundation/ch05-keyword/golang-panic-recover/  
 【恐慌与恢复内建函数】https://golang.design/under-the-hood/zh-cn/part1basic/ch03lang/panic/  
+【Go语言panic/recover的实现】https://zhuanlan.zhihu.com/p/72779197  
+【panic and recover】https://eddycjy.gitbook.io/golang/di-6-ke-chang-yong-guan-jian-zi/panic-and-recover#yuan-ma  
