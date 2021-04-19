@@ -166,6 +166,8 @@ type _panic struct {
 }
 ```
 
+`link`指向了保存在`goroutine`链表中先前的`panic`链表  
+
 #### gopanic 和 gorecover
 
 ```go
@@ -295,6 +297,15 @@ func gopanic(e interface{}) {
 	fatalpanic(gp._panic) // 不应该返回
 	*(*int)(nil) = 0      // 无法触及
 }
+
+// reflectcall 使用 arg 指向的 n 个参数字节的副本调用 fn。
+// fn 返回后，reflectcall 在返回之前将 n-retoffset 结果字节复制回 arg+retoffset。
+// 如果重新复制结果字节，则调用者应将参数帧类型作为 argtype 传递，以便该调用可以在复制期间执行适当的写障碍。
+// reflect 包传递帧类型。在 runtime 包中，只有一个调用将结果复制回来，即 cgocallbackg1，
+// 并且它不传递帧类型，这意味着没有调用写障碍。参见该调用的页面了解相关理由。
+//
+// 包 reflect 通过 linkname 访问此符号
+func reflectcall(argtype *_type, fn, arg unsafe.Pointer, argsize uint32, retoffset uint32)
 ```
 
 ### 参考
