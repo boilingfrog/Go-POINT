@@ -19,7 +19,7 @@ func main() {
 			defer wg.Done()
 			time.Sleep(time.Second * 1)
 			mockSqlPool()
-			// panic("+++")
+			panic("+++")
 			data[i] = "test"
 		}(i)
 	}
@@ -61,4 +61,15 @@ func pool1() {
 	fmt.Println("执行了吗")
 	wg.Wait()
 	fmt.Println("完美退出了")
+}
+
+func test2() {
+	var mapp = make(map[int]string, 100)
+	for i := 0; i < 1000; i++ {
+		go func(i int) {
+			mapp[i] = "xxx"
+			fmt.Println(i)
+		}(i)
+	}
+
 }
