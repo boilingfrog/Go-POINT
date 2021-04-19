@@ -158,7 +158,7 @@ goroutine 1 [running]:
 //
 //go:notinheap
 type _panic struct {
-	argp      unsafe.Pointer // pointer to arguments of deferred call run during panic; cannot move - known to liblink
+	argp      unsafe.Pointer // panic 期间 defer 调用参数的指针; 无法移动 - liblink 已知
 	arg       interface{}    // panic的参数
 	link      *_panic        // link 链接到更早的 panic
 	recovered bool           // panic是否结束
