@@ -146,8 +146,157 @@ goroutine 1 [running]:
 
 ### 看下实现
 
+先来看下`_panic`的结构  
 
+```go
+// _panic 保存了一个活跃的 panic
+//
+// 这个标记了 go:notinheap 因为 _panic 的值必须位于栈上
+//
+// argp 和 link 字段为栈指针，但在栈增长时不需要特殊处理：因为他们是指针类型且
+// _panic 值只位于栈上，正常的栈指针调整会处理他们。
+//
+//go:notinheap
+type _panic struct {
+	argp      unsafe.Pointer // pointer to arguments of deferred call run during panic; cannot move - known to liblink
+	arg       interface{}    // panic的参数
+	link      *_panic        // link 链接到更早的 panic
+	recovered bool           // panic是否结束
+	aborted   bool           // panic是否被忽略
+}
+```
+
+#### gopanic 和 gorecover
+
+```go
+// 预先声明的函数 panic 的实现
+func gopanic(e interface{}) {
+	gp := getg()
+	// 判断在系统栈上还是在用户栈上
+	// 如果执行在系统或信号栈时，getg() 会返回当前 m 的 g0 或 gsignal
+	// 因此可以通过 gp.m.curg == gp 来判断所在栈
+	// 系统栈上的 panic 无法恢复
+	if gp.m.curg != gp {
+		print("panic: ")
+		printany(e)
+		print("\n")
+		throw("panic on system stack")
+	}
+	// 如果正在进行 malloc 时发生 panic 也无法恢复
+	if gp.m.mallocing != 0 {
+		print("panic: ")
+		printany(e)
+		print("\n")
+		throw("panic during malloc")
+	}
+	// 在禁止抢占时发生 panic 也无法恢复
+	if gp.m.preemptoff != "" {
+		print("panic: ")
+		printany(e)
+		print("\n")
+		print("preempt off reason: ")
+		print(gp.m.preemptoff)
+		print("\n")
+		throw("panic during preemptoff")
+	}
+	// 在 g 锁在 m 上时发生 panic 也无法恢复
+	if gp.m.locks != 0 {
+		print("panic: ")
+		printany(e)
+		print("\n")
+		throw("panic holding locks")
+	}
+
+    // 下面是可以恢复的
+	var p _panic
+	p.arg = e
+    // panic 保存了对应的消息，并指向了保存在 goroutine 链表中先前的 panic 链表
+	p.link = gp._panic
+	gp._panic = (*_panic)(noescape(unsafe.Pointer(&p)))
+
+	atomic.Xadd(&runningPanicDefers, 1)
+
+	for {
+        // 开始逐个取当前 goroutine 的 defer 调用
+		d := gp._defer
+        // 没有defer，退出循环
+		if d == nil {
+			break
+		}
+
+		// If defer was started by earlier panic or Goexit (and, since we're back here, that triggered a new panic),
+		// take defer off list. The earlier panic or Goexit will not continue running.
+		if d.started {
+			if d._panic != nil {
+				d._panic.aborted = true
+			}
+			d._panic = nil
+			d.fn = nil
+			gp._defer = d.link
+			freedefer(d)
+			continue
+		}
+
+		// Mark defer as started, but keep on list, so that traceback
+		// can find and update the defer's argument frame if stack growth
+		// or a garbage collection happens before reflectcall starts executing d.fn.
+		d.started = true
+
+		// Record the panic that is running the defer.
+		// If there is a new panic during the deferred call, that panic
+		// will find d in the list and will mark d._panic (this panic) aborted.
+		d._panic = (*_panic)(noescape(unsafe.Pointer(&p)))
+
+		p.argp = unsafe.Pointer(getargp(0))
+		reflectcall(nil, unsafe.Pointer(d.fn), deferArgs(d), uint32(d.siz), uint32(d.siz))
+		p.argp = nil
+
+		// reflectcall did not panic. Remove d.
+		if gp._defer != d {
+			throw("bad defer entry in panic")
+		}
+		d._panic = nil
+		d.fn = nil
+		gp._defer = d.link
+
+		// trigger shrinkage to test stack copy. See stack_test.go:TestStackPanic
+		//GC()
+
+		pc := d.pc
+		sp := unsafe.Pointer(d.sp) // must be pointer so it gets adjusted during stack copy
+		freedefer(d)
+		if p.recovered {
+			atomic.Xadd(&runningPanicDefers, -1)
+
+			gp._panic = p.link
+			// Aborted panics are marked but remain on the g.panic list.
+			// Remove them from the list.
+			for gp._panic != nil && gp._panic.aborted {
+				gp._panic = gp._panic.link
+			}
+			if gp._panic == nil { // must be done with signal
+				gp.sig = 0
+			}
+			// Pass information about recovering frame to recovery.
+			gp.sigcode0 = uintptr(sp)
+			gp.sigcode1 = pc
+			mcall(recovery)
+			throw("recovery failed") // mcall should not return
+		}
+	}
+
+	// ran out of deferred calls - old-school panic now
+	// Because it is unsafe to call arbitrary user code after freezing
+	// the world, we call preprintpanics to invoke all necessary Error
+	// and String methods to prepare the panic strings before startpanic.
+	preprintpanics(gp._panic)
+
+	fatalpanic(gp._panic) // should not return
+	*(*int)(nil) = 0      // not reached
+}
+```
 
 ### 参考
 
 【panic 和 recover】https://draveness.me/golang/docs/part2-foundation/ch05-keyword/golang-panic-recover/  
+【恐慌与恢复内建函数】https://golang.design/under-the-hood/zh-cn/part1basic/ch03lang/panic/  
