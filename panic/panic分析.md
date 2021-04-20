@@ -174,6 +174,14 @@ type _panic struct {
 
 #### gopanic
 
+编译器会将`panic`装换成`gopanic`，来看下执行的流程：  
+
+1、创建新的`runtime._panic`并添加到所在`Goroutine`的_`panic`链表的最前面；  
+
+2、在循环中不断从当前Goroutine 的`_defer`中链表获取`runtime._defer`并调用`runtime.reflectcall`运行延迟调用函数；  
+
+3、调用`runtime.fatalpanic`中止整个程序；  
+
 ```go
 // 预先声明的函数 panic 的实现
 func gopanic(e interface{}) {
