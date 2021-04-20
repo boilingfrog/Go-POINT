@@ -331,11 +331,11 @@ func reflectcall(argtype *_type, fn, arg unsafe.Pointer, argsize uint32, retoffs
 
 3、循环逐个获取当前`goroutine`的`defer`调用；  
 
-- 如果defer是由早期panic或Goexit开始的，则将defer带离链表，更早的panic或Goexit将无法继续运行；  
+- 如果defer是由早期panic或Goexit开始的，则将defer带离链表，更早的panic或Goexit将无法继续运行，也就是将之前的panic终止掉，将aborted设置为true，在下面执行recover时保证goexit不会被取消；  
 
-- 然后表示当前defer为
+- recovered会在gorecover中被标记，见下文。当recovered被标记为true时，recovery函数触发Goroutine的调度，调度之前会准备好 sp、pc 以及函数的返回值；  
 
-- 
+- 当延迟函数中`recover`了一个`panic`时，就会返回1，当`runtime.deferproc`函数的返回值是1时，编译器生成的代码会直接跳转到调用方函数返回之前并执行`runtime.deferreturn`，跳转到`runtime.deferturn`函数之后，程序就已经从`panic`恢复了正常的逻辑。而`runtime.gorecover`函数也能从`runtime._panic`结构中取出了调用`panic`时传入的`arg`参数并返回给调用方。    
 
 ```go
 // 在发生 panic 后 defer 函数调用 recover 后展开栈。然后安排继续运行，
