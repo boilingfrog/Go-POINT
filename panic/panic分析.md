@@ -8,6 +8,7 @@
   - [看下实现](#%E7%9C%8B%E4%B8%8B%E5%AE%9E%E7%8E%B0)
     - [gopanic](#gopanic)
     - [gorecover](#gorecover)
+  - [总结](#%E6%80%BB%E7%BB%93)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -245,9 +246,9 @@ func gopanic(e interface{}) {
 		// 将deferred标记为started
 		// 如果栈增长或者垃圾回收在 reflectcall 开始执行 d.fn 前发生
 		// 标记 defer 已经开始执行，但仍将其保存在列表中，从而 traceback 可以找到并更新这个 defer 的参数帧
-		
-        // 标记defer是否已经执行
-        d.started = true
+
+		// 标记defer是否已经执行
+		d.started = true
 
 		// 记录正在运行的延迟的panic。
 		// 如果在延迟调用期间有新的panic，那么这个panic
@@ -351,7 +352,7 @@ func recovery(gp *g) {
 		throw("bad recovery")
 	}
 
-    // 使 deferproc 为此 d 返回
+	// 使 deferproc 为此 d 返回
 	// 这时候返回 1。调用函数将跳转到标准的返回尾声
 	gp.sched.sp = sp
 	gp.sched.pc = pc
@@ -401,7 +402,7 @@ func gorecover(argp uintptr) interface{} {
 	gp := getg()
 	p := gp._panic
 	if p != nil && !p.recovered && argp == uintptr(p.argp) {
-        // 标记recovered
+		// 标记recovered
 		p.recovered = true
 		return p.arg
 	}
@@ -409,7 +410,13 @@ func gorecover(argp uintptr) interface{} {
 }
 ```
 
+在正常情况下，它会修改`runtime._panic`的`recovered`字段，`runtime.gorecover`函数中并不包含恢复程序的逻辑，程序的恢复是由`runtime.gopanic`函数负责。  
+
 `gorecover`将`recovered`标记为true，然后`gopanic`就可以通过`mcall`调用`recovery`并重新进入调度循环  
+
+### 总结
+
+xxdsd
 
 ### 参考
 
