@@ -5,6 +5,9 @@
 - [panic源码解读](#panic%E6%BA%90%E7%A0%81%E8%A7%A3%E8%AF%BB)
   - [panic的作用](#panic%E7%9A%84%E4%BD%9C%E7%94%A8)
     - [panic使用场景](#panic%E4%BD%BF%E7%94%A8%E5%9C%BA%E6%99%AF)
+  - [看下实现](#%E7%9C%8B%E4%B8%8B%E5%AE%9E%E7%8E%B0)
+    - [gopanic](#gopanic)
+    - [gorecover](#gorecover)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -168,7 +171,7 @@ type _panic struct {
 
 `link`指向了保存在`goroutine`链表中先前的`panic`链表  
 
-#### gopanic 和 gorecover
+#### gopanic
 
 ```go
 // 预先声明的函数 panic 的实现
@@ -334,7 +337,51 @@ func reflectcall(argtype *_type, fn, arg unsafe.Pointer, argsize uint32, retoffs
 
 - 
 
-### gorecover
+```go
+// 在发生 panic 后 defer 函数调用 recover 后展开栈。然后安排继续运行，
+// 就像 defer 函数的调用方正常返回一样。
+func recovery(gp *g) {
+	// Info about defer passed in G struct.
+	sp := gp.sigcode0
+	pc := gp.sigcode1
+
+	// d's arguments need to be in the stack.
+	if sp != 0 && (sp < gp.stack.lo || gp.stack.hi < sp) {
+		print("recover: ", hex(sp), " not in [", hex(gp.stack.lo), ", ", hex(gp.stack.hi), "]\n")
+		throw("bad recovery")
+	}
+
+    // 使 deferproc 为此 d 返回
+	// 这时候返回 1。调用函数将跳转到标准的返回尾声
+	gp.sched.sp = sp
+	gp.sched.pc = pc
+	gp.sched.lr = 0
+	gp.sched.ret = 1
+	gogo(&gp.sched)
+}
+```
+
+在`recovery`函数中，利用`g`中的两个状态码回溯栈指针`sp`并恢复程序计数器`pc`到调度器中，并调用`gogo`重新调度`g`，将`g`恢复到调用`recover`函数的位置，`goroutine`继续执行，`recovery`在调度过程中会将函数的返回值设置为1。调用函数将跳转到标准的返回尾声。    
+
+```go
+func deferproc(siz int32, fn *funcval) { // arguments of fn follow fn
+	...
+
+	// deferproc returns 0 normally.
+	// a deferred func that stops a panic
+	// makes the deferproc return 1.
+	// the code the compiler generates always
+	// checks the return value and jumps to the
+	// end of the function if deferproc returns != 0.
+	return0()
+	// No code can go here - the C return register has
+	// been set and must not be clobbered.
+}
+```
+
+当延迟函数中`recover`了一个`panic`时，就会返回1，当`runtime.deferproc`函数的返回值是1时，编译器生成的代码会直接跳转到调用方函数返回之前并执行`runtime.deferreturn`，跳转到`runtime.deferturn`函数之后，程序就已经从`panic`恢复了正常的逻辑。而`runtime.gorecover`函数也能从`runtime._panic`结构中取出了调用`panic`时传入的`arg`参数并返回给调用方。    
+
+#### gorecover
 
 如果`recover`被正确执行了，也就是`gorecover`，那么`recovered`将被标记成true
 
@@ -363,32 +410,6 @@ func gorecover(argp uintptr) interface{} {
 ```
 
 `gorecover`将`recovered`标记为true，然后`gopanic`就可以通过`mcall`调用`recovery`并重新进入调度循环  
-
-```go
-// 在发生 panic 后 defer 函数调用 recover 后展开栈。然后安排继续运行，
-// 就像 defer 函数的调用方正常返回一样。
-func recovery(gp *g) {
-	// Info about defer passed in G struct.
-	sp := gp.sigcode0
-	pc := gp.sigcode1
-
-	// d's arguments need to be in the stack.
-	if sp != 0 && (sp < gp.stack.lo || gp.stack.hi < sp) {
-		print("recover: ", hex(sp), " not in [", hex(gp.stack.lo), ", ", hex(gp.stack.hi), "]\n")
-		throw("bad recovery")
-	}
-
-    // 使 deferproc 为此 d 返回
-	// 这时候返回 1。调用函数将跳转到标准的返回尾声
-	gp.sched.sp = sp
-	gp.sched.pc = pc
-	gp.sched.lr = 0
-	gp.sched.ret = 1
-	gogo(&gp.sched)
-}
-```
-
-在`recovery`函数中，利用`g`中的两个状态码回溯栈指针`sp`并恢复程序计数器`pc`到调度器中，并调用`gogo`重新调度`g`，将`g`恢复到调用`recover`函数的位置，`goroutine`继续执行，`recovery`在调度过程中会将函数的返回值设置为1。  
 
 ### 参考
 
