@@ -242,7 +242,9 @@ func gopanic(e interface{}) {
 		// 将deferred标记为started
 		// 如果栈增长或者垃圾回收在 reflectcall 开始执行 d.fn 前发生
 		// 标记 defer 已经开始执行，但仍将其保存在列表中，从而 traceback 可以找到并更新这个 defer 的参数帧
-		d.started = true
+		
+        // 标记defer是否已经执行
+        d.started = true
 
 		// 记录正在运行的延迟的panic。
 		// 如果在延迟调用期间有新的panic，那么这个panic
@@ -250,6 +252,7 @@ func gopanic(e interface{}) {
 		d._panic = (*_panic)(noescape(unsafe.Pointer(&p)))
 
 		p.argp = unsafe.Pointer(getargp(0))
+
 		// 通过reflectcall函数调用defered函数
 		// 如果defered函数再次发生panic而且并未被该defered函数recover，则reflectcall永远不会返回
 		// 如果defered函数并没有发生过panic或者发生了panic但该defered函数成功recover了新发生的panic，
@@ -327,9 +330,66 @@ func reflectcall(argtype *_type, fn, arg unsafe.Pointer, argsize uint32, retoffs
 
 - 如果defer是由早期panic或Goexit开始的，则将defer带离链表，更早的panic或Goexit将无法继续运行；  
 
-- 
+- 然后表示当前defer为
 
 - 
+
+### gorecover
+
+如果`recover`被正确执行了，也就是`gorecover`，那么`recovered`将被标记成true
+
+```go
+// go/src/runtime/panic.go
+// 执行预先声明的函数 recover。
+// 不允许分段栈，因为它需要可靠地找到其调用者的栈段。
+//
+// TODO(rsc): Once we commit to CopyStackAlways,
+// this doesn't need to be nosplit.
+//go:nosplit
+func gorecover(argp uintptr) interface{} {
+	// 必须在 panic 期间作为 defer 调用的一部分在函数中运行。
+	// 必须从调用的最顶层函数（ defer 语句中使用的函数）调用。
+	// p.argp 是最顶层 defer 函数调用的参数指针。
+	// 比较调用方报告的 argp，如果匹配，则调用者可以恢复。
+	gp := getg()
+	p := gp._panic
+	if p != nil && !p.recovered && argp == uintptr(p.argp) {
+        // 标记recovered
+		p.recovered = true
+		return p.arg
+	}
+	return nil
+}
+```
+
+`gorecover`将`recovered`标记为true，然后`gopanic`就可以通过`mcall`调用`recovery`并重新进入调度循环  
+
+```go
+// Unwind the stack after a deferred function calls recover
+// after a panic. Then arrange to continue running as though
+// the caller of the deferred function returned normally.
+func recovery(gp *g) {
+	// Info about defer passed in G struct.
+	sp := gp.sigcode0
+	pc := gp.sigcode1
+
+	// d's arguments need to be in the stack.
+	if sp != 0 && (sp < gp.stack.lo || gp.stack.hi < sp) {
+		print("recover: ", hex(sp), " not in [", hex(gp.stack.lo), ", ", hex(gp.stack.hi), "]\n")
+		throw("bad recovery")
+	}
+
+	// Make the deferproc for this d return again,
+	// this time returning 1.  The calling function will
+	// jump to the standard return epilogue.
+	gp.sched.sp = sp
+	gp.sched.pc = pc
+	gp.sched.lr = 0
+	gp.sched.ret = 1
+	gogo(&gp.sched)
+}
+```
+
 
 ### 参考
 
