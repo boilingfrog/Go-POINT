@@ -365,9 +365,8 @@ func gorecover(argp uintptr) interface{} {
 `gorecover`将`recovered`标记为true，然后`gopanic`就可以通过`mcall`调用`recovery`并重新进入调度循环  
 
 ```go
-// Unwind the stack after a deferred function calls recover
-// after a panic. Then arrange to continue running as though
-// the caller of the deferred function returned normally.
+// 在发生 panic 后 defer 函数调用 recover 后展开栈。然后安排继续运行，
+// 就像 defer 函数的调用方正常返回一样。
 func recovery(gp *g) {
 	// Info about defer passed in G struct.
 	sp := gp.sigcode0
@@ -379,9 +378,8 @@ func recovery(gp *g) {
 		throw("bad recovery")
 	}
 
-	// Make the deferproc for this d return again,
-	// this time returning 1.  The calling function will
-	// jump to the standard return epilogue.
+    // 使 deferproc 为此 d 返回
+	// 这时候返回 1。调用函数将跳转到标准的返回尾声
 	gp.sched.sp = sp
 	gp.sched.pc = pc
 	gp.sched.lr = 0
@@ -390,6 +388,7 @@ func recovery(gp *g) {
 }
 ```
 
+在`recovery`函数中，利用`g`中的两个状态码回溯栈指针`sp`并恢复程序计数器`pc`到调度器中，并调用`gogo`重新调度`g`，将`g`恢复到调用`recover`函数的位置，`goroutine`继续执行，`recovery`在调度过程中会将函数的返回值设置为1。  
 
 ### 参考
 
@@ -397,3 +396,4 @@ func recovery(gp *g) {
 【恐慌与恢复内建函数】https://golang.design/under-the-hood/zh-cn/part1basic/ch03lang/panic/  
 【Go语言panic/recover的实现】https://zhuanlan.zhihu.com/p/72779197  
 【panic and recover】https://eddycjy.gitbook.io/golang/di-6-ke-chang-yong-guan-jian-zi/panic-and-recover#yuan-ma  
+【翻了源码，我把 panic 与 recover 给彻底搞明白了】https://jishuin.proginn.com/p/763bfbd4ed8c   
