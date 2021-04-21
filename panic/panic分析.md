@@ -9,7 +9,7 @@
   - [看下实现](#%E7%9C%8B%E4%B8%8B%E5%AE%9E%E7%8E%B0)
     - [gopanic](#gopanic)
     - [gorecover](#gorecover)
-    - [preprintpanics和fatalpanic](#preprintpanics%E5%92%8Cfatalpanic)
+    - [fatalpanic](#fatalpanic)
   - [总结](#%E6%80%BB%E7%BB%93)
   - [参考](#%E5%8F%82%E8%80%83)
 
@@ -428,30 +428,12 @@ func gorecover(argp uintptr) interface{} {
 
 `gorecover`将`recovered`标记为true，然后`gopanic`就可以通过`mcall`调用`recovery`并重新进入调度循环  
 
-#### preprintpanics和fatalpanic
+#### fatalpanic
 
 `runtime.fatalpanic`实现了无法被恢复的程序崩溃，它在中止程序之前会通过`runtime.printpanics`打印出全部的`panic`消息以及调用时传入的参数：  
 
 ```go
 // go/src/runtime/panic.go
-// 在停止前调用所有的 Error 和 String 方法
-func preprintpanics(p *_panic) {
-	defer func() {
-		if recover() != nil {
-			throw("panic while printing panic value")
-		}
-	}()
-	for p != nil {
-		switch v := p.arg.(type) {
-		case error:
-			p.arg = v.Error()
-		case stringer:
-			p.arg = v.String()
-		}
-		p = p.link
-	}
-}
-
 // fatalpanic 实现了不可恢复的 panic。类似于 fatalthrow，
 // 如果 msgs != nil，则 fatalpanic 仍然能够打印 panic 的消息
 // 并在 main 在退出时候减少 runningPanicDeferss
@@ -491,6 +473,20 @@ func fatalpanic(msgs *_panic) {
 	})
 
 	*(*int)(nil) = 0 // not reached
+}
+
+// 打印出当前活动的panic
+func printpanics(p *_panic) {
+	if p.link != nil {
+		printpanics(p.link)
+		print("\t")
+	}
+	print("panic: ")
+	printany(p.arg)
+	if p.recovered {
+		print(" [recovered]")
+	}
+	print("\n")
 }
 ```
 
