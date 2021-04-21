@@ -9,6 +9,7 @@
   - [看下实现](#%E7%9C%8B%E4%B8%8B%E5%AE%9E%E7%8E%B0)
     - [gopanic](#gopanic)
     - [gorecover](#gorecover)
+    - [preprintpanics和fatalpanic](#preprintpanics%E5%92%8Cfatalpanic)
   - [总结](#%E6%80%BB%E7%BB%93)
   - [参考](#%E5%8F%82%E8%80%83)
 
@@ -432,6 +433,7 @@ func gorecover(argp uintptr) interface{} {
 `runtime.fatalpanic`实现了无法被恢复的程序崩溃，它在中止程序之前会通过`runtime.printpanics`打印出全部的`panic`消息以及调用时传入的参数：  
 
 ```go
+// go/src/runtime/panic.go
 // 在停止前调用所有的 Error 和 String 方法
 func preprintpanics(p *_panic) {
 	defer func() {
@@ -450,26 +452,26 @@ func preprintpanics(p *_panic) {
 	}
 }
 
-// fatalpanic implements an unrecoverable panic. It is like fatalthrow, except
-// that if msgs != nil, fatalpanic also prints panic messages and decrements
-// runningPanicDefers once main is blocked from exiting.
+// fatalpanic 实现了不可恢复的 panic。类似于 fatalthrow，
+// 如果 msgs != nil，则 fatalpanic 仍然能够打印 panic 的消息
+// 并在 main 在退出时候减少 runningPanicDeferss
 //
 //go:nosplit
 func fatalpanic(msgs *_panic) {
+	// 返回程序计数寄存器指针
 	pc := getcallerpc()
+	// 返回堆栈指针
 	sp := getcallersp()
+	// 返回当前G
 	gp := getg()
 	var docrash bool
-	// Switch to the system stack to avoid any stack growth, which
-	// may make things worse if the runtime is in a bad state.
+	// 切换到系统栈来避免栈增长，如果运行时状态较差则可能导致更糟糕的事情
 	systemstack(func() {
 		if startpanic_m() && msgs != nil {
-			// There were panic messages and startpanic_m
-			// says it's okay to try to print them.
+			// 有 panic 消息和 startpanic_m 则可以尝试打印它们
 
-			// startpanic_m set panicking, which will
-			// block main from exiting, so now OK to
-			// decrement runningPanicDefers.
+			// startpanic_m 设置 panic 会从阻止 main 的退出，
+			// 因此现在可以开始减少 runningPanicDefers 了
 			atomic.Xadd(&runningPanicDefers, -1)
 
 			printpanics(msgs)
@@ -479,12 +481,11 @@ func fatalpanic(msgs *_panic) {
 	})
 
 	if docrash {
-		// By crashing outside the above systemstack call, debuggers
-		// will not be confused when generating a backtrace.
-		// Function crash is marked nosplit to avoid stack growth.
+		// 通过在上述 systemstack 调用之外崩溃，调试器在生成回溯时不会混淆。
+		// 函数崩溃标记为 nosplit 以避免堆栈增长。
 		crash()
 	}
-
+	// 从系统推出
 	systemstack(func() {
 		exit(2)
 	})
