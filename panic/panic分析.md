@@ -3,6 +3,7 @@
 
 
 - [panic源码解读](#panic%E6%BA%90%E7%A0%81%E8%A7%A3%E8%AF%BB)
+  - [前言](#%E5%89%8D%E8%A8%80)
   - [panic的作用](#panic%E7%9A%84%E4%BD%9C%E7%94%A8)
     - [panic使用场景](#panic%E4%BD%BF%E7%94%A8%E5%9C%BA%E6%99%AF)
   - [看下实现](#%E7%9C%8B%E4%B8%8B%E5%AE%9E%E7%8E%B0)
@@ -14,6 +15,10 @@
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## panic源码解读
+
+### 前言
+
+本文是在`go version go1.13.15 darwin/amd64`上进行的  
 
 ### panic的作用
 
