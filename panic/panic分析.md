@@ -427,6 +427,72 @@ func gorecover(argp uintptr) interface{} {
 
 `gorecover`将`recovered`标记为true，然后`gopanic`就可以通过`mcall`调用`recovery`并重新进入调度循环  
 
+#### preprintpanics和fatalpanic
+
+`runtime.fatalpanic`实现了无法被恢复的程序崩溃，它在中止程序之前会通过`runtime.printpanics`打印出全部的`panic`消息以及调用时传入的参数：  
+
+```go
+// 在停止前调用所有的 Error 和 String 方法
+func preprintpanics(p *_panic) {
+	defer func() {
+		if recover() != nil {
+			throw("panic while printing panic value")
+		}
+	}()
+	for p != nil {
+		switch v := p.arg.(type) {
+		case error:
+			p.arg = v.Error()
+		case stringer:
+			p.arg = v.String()
+		}
+		p = p.link
+	}
+}
+
+// fatalpanic implements an unrecoverable panic. It is like fatalthrow, except
+// that if msgs != nil, fatalpanic also prints panic messages and decrements
+// runningPanicDefers once main is blocked from exiting.
+//
+//go:nosplit
+func fatalpanic(msgs *_panic) {
+	pc := getcallerpc()
+	sp := getcallersp()
+	gp := getg()
+	var docrash bool
+	// Switch to the system stack to avoid any stack growth, which
+	// may make things worse if the runtime is in a bad state.
+	systemstack(func() {
+		if startpanic_m() && msgs != nil {
+			// There were panic messages and startpanic_m
+			// says it's okay to try to print them.
+
+			// startpanic_m set panicking, which will
+			// block main from exiting, so now OK to
+			// decrement runningPanicDefers.
+			atomic.Xadd(&runningPanicDefers, -1)
+
+			printpanics(msgs)
+		}
+
+		docrash = dopanic_m(gp, pc, sp)
+	})
+
+	if docrash {
+		// By crashing outside the above systemstack call, debuggers
+		// will not be confused when generating a backtrace.
+		// Function crash is marked nosplit to avoid stack growth.
+		crash()
+	}
+
+	systemstack(func() {
+		exit(2)
+	})
+
+	*(*int)(nil) = 0 // not reached
+}
+```
+
 ### 总结
 
 1、编译器会负责做转换关键字的工作；
