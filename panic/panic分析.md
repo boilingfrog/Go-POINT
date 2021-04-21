@@ -398,6 +398,8 @@ func deferproc(siz int32, fn *funcval) { // arguments of fn follow fn
 
 #### gorecover
 
+编译器会将`recover`装换成`gorecover`  
+
 如果`recover`被正确执行了，也就是`gorecover`，那么`recovered`将被标记成true
 
 ```go
