@@ -490,6 +490,8 @@ func printpanics(p *_panic) {
 
 ### 总结
 
+> 引一段来自【panic 和recover】的总结
+
 1、编译器会负责做转换关键字的工作；
 
 - 1、将`panic`和`recover`分别转换成`runtime.gopanic`和`runtime.gorecover`；

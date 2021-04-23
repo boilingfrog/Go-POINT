@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"runtime"
 )
 
 func main() {
@@ -12,6 +13,8 @@ func main() {
 		}()
 		panic("2 panic again")
 	}()
-
-	panic("1 panic once")
+	fmt.Println("++++++++++++++++++++++++++++++")
+	runtime.Goexit()
+	fmt.Println("main")
+	select {}
 }
