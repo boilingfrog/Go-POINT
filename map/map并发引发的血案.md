@@ -1,11 +1,12 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
 
 - [错误使用map引发的血案](#%E9%94%99%E8%AF%AF%E4%BD%BF%E7%94%A8map%E5%BC%95%E5%8F%91%E7%9A%84%E8%A1%80%E6%A1%88)
   - [前言](#%E5%89%8D%E8%A8%80)
   - [场景复原](#%E5%9C%BA%E6%99%AF%E5%A4%8D%E5%8E%9F)
   - [原因](#%E5%8E%9F%E5%9B%A0)
+  - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -216,3 +217,7 @@ created by main.main
 - 1、`map`不是并发安全，并发写的时候会触发`panic`；  
 
 - 2、避免在循环中连接数据库； 
+
+### 参考
+
+【map 并发崩溃一例】https://xargin.com/map-concurrent-throw/  
