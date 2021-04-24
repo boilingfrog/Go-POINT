@@ -11,6 +11,7 @@
     - [同一个域名，不同的URL路径被转发到不同的服务上](#%E5%90%8C%E4%B8%80%E4%B8%AA%E5%9F%9F%E5%90%8D%E4%B8%8D%E5%90%8C%E7%9A%84url%E8%B7%AF%E5%BE%84%E8%A2%AB%E8%BD%AC%E5%8F%91%E5%88%B0%E4%B8%8D%E5%90%8C%E7%9A%84%E6%9C%8D%E5%8A%A1%E4%B8%8A)
     - [不同的域名（虚拟主机名）被转发到不同的服务上](#%E4%B8%8D%E5%90%8C%E7%9A%84%E5%9F%9F%E5%90%8D%E8%99%9A%E6%8B%9F%E4%B8%BB%E6%9C%BA%E5%90%8D%E8%A2%AB%E8%BD%AC%E5%8F%91%E5%88%B0%E4%B8%8D%E5%90%8C%E7%9A%84%E6%9C%8D%E5%8A%A1%E4%B8%8A)
     - [不使用域名的转发规则](#%E4%B8%8D%E4%BD%BF%E7%94%A8%E5%9F%9F%E5%90%8D%E7%9A%84%E8%BD%AC%E5%8F%91%E8%A7%84%E5%88%99)
+  - [四层、七层负载均衡的区别](#%E5%9B%9B%E5%B1%82%E4%B8%83%E5%B1%82%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E7%9A%84%E5%8C%BA%E5%88%AB)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -178,6 +179,6 @@ spec:
 ### 参考
 【Kubernetes的Ingress是啥】https://www.cnblogs.com/chenqionghe/p/11726231.html  
 【理解k8s 的 Ingress】https://www.jianshu.com/p/189fab1845c5  
-【Ingress】https://www.huaweicloud.com/zhishi/Ingress.html 
+【Ingress】https://www.huaweicloud.com/zhishi/Ingress.html   
 【四层、七层负载均衡的区别】https://cloud.tencent.com/developer/article/1082047  
 
