@@ -170,7 +170,7 @@ end
 MacBook-Pro-3:centos7 yj$ vagrant up
 ```
 
-启动过程中要选择网络，我选择的是`bridge0`  
+启动过程中要选择网络，我选择的是`en0`  
 
 默认的账号还是root，密码还是vagrant   
 
