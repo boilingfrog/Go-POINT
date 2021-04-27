@@ -1,9 +1,11 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+
 - [vagrant搭建centos](#vagrant%E6%90%AD%E5%BB%BAcentos)
   - [什么是vagrant](#%E4%BB%80%E4%B9%88%E6%98%AFvagrant)
   - [如何使用](#%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8)
+  - [同时构建多台](#%E5%90%8C%E6%97%B6%E6%9E%84%E5%BB%BA%E5%A4%9A%E5%8F%B0)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -122,3 +124,54 @@ $ ssh -p 2200 root@127.0.0.1
 账号:root  
 
 密码:vagrant
+
+### 同时构建多台
+
+修改之前产生的`Vagrantfile`文件为  
+
+```go
+Vagrant.configure("2") do |config|
+  
+  config.vm.define "centos7-1" do |vb|
+      config.vm.provider "virtualbox" do |v|
+      v.memory = 1024
+      v.cpus = 1
+    end
+  vb.vm.host_name = "centos7-1"
+  vb.vm.network :public_network, ip: "192.168.56.301"
+  vb.vm.box = "centos7.2"
+  end
+
+  config.vm.define "centos7-2" do |vb|
+      config.vm.provider "virtualbox" do |v|
+      v.memory = 1024
+      v.cpus = 1
+    end
+  vb.vm.host_name = "centos7-2"
+  vb.vm.network :public_network, ip: "192.168.56.302"
+  vb.vm.box = "centos7.2"
+  end
+
+  config.vm.define "centos7-3" do |vb|
+      config.vm.provider "virtualbox" do |v|
+      v.memory = 1024
+      v.cpus = 1
+    end
+  vb.vm.host_name = "centos7-3"
+  vb.vm.network :public_network, ip: "192.168.56.303"
+  vb.vm.box = "centos7.2"
+  end
+end
+``` 
+
+启动  
+
+```go
+MacBook-Pro-3:centos7 yj$ vagrant up
+```
+
+启动过程中要选择网络，我选择的是`bridge0`  
+
+默认的账号还是root，密码还是vagrant   
+
+
