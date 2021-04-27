@@ -1,3 +1,12 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [vagrant搭建centos](#vagrant%E6%90%AD%E5%BB%BAcentos)
+  - [什么是vagrant](#%E4%BB%80%E4%B9%88%E6%98%AFvagrant)
+  - [如何使用](#%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## vagrant搭建centos
 
 ### 什么是vagrant
@@ -108,7 +117,7 @@ $ ssh -p 2200 root@127.0.0.1
 
 上面启动的时候已经告诉我们地址和端口了
 
-<img src="img/vagrant_1.jpg" alt="vagrant" align=center />
+<img src="/img/vagrant_1.jpg" alt="vagrant" align=center />
 
 账号:root  
 
