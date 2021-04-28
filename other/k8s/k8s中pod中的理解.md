@@ -1,6 +1,7 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+
 - [k8s中pod的理解](#k8s%E4%B8%ADpod%E7%9A%84%E7%90%86%E8%A7%A3)
     - [基本概念](#%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5)
     - [pod存在的意义](#pod%E5%AD%98%E5%9C%A8%E7%9A%84%E6%84%8F%E4%B9%89)
@@ -17,6 +18,7 @@
   - [Horizontal Pod Autoscaler](#horizontal-pod-autoscaler)
   - [pod的健康检查](#pod%E7%9A%84%E5%81%A5%E5%BA%B7%E6%A3%80%E6%9F%A5)
   - [资源限制](#%E8%B5%84%E6%BA%90%E9%99%90%E5%88%B6)
+  - [pod的升级和回滚](#pod%E7%9A%84%E5%8D%87%E7%BA%A7%E5%92%8C%E5%9B%9E%E6%BB%9A)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -471,7 +473,11 @@ spec:
 
 最小0.25个CPU及64MB内存，最大0.5个CPU及128MB内存。  
 
+### pod的升级和回滚
+
+来看下pod的滚动升级
+
 ### 参考
 【初识Kubernetes（K8s）：各种资源对象的理解和定义】https://blog.51cto.com/andyxu/2329257  
 【Kubernetes系列学习文章 - Pod的深入理解（四）】https://cloud.tencent.com/developer/article/1443520  
-
+【详解 Kubernetes Pod 的实现原理】https://draveness.me/kubernetes-pod/  
