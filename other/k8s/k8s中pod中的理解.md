@@ -477,6 +477,7 @@ spec:
 
 来看下pod的滚动升级
 
+
 ### 参考
 【初识Kubernetes（K8s）：各种资源对象的理解和定义】https://blog.51cto.com/andyxu/2329257  
 【Kubernetes系列学习文章 - Pod的深入理解（四）】https://cloud.tencent.com/developer/article/1443520  
