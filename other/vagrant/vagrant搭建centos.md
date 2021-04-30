@@ -209,7 +209,7 @@ $ ssh root@192.168.44.113
 
 所以使用`private_network`如果没有外部机器(虚拟机宿主机之外的机器)连接，使用这种方式设置的静态`ip`，能够摆脱主机网络变换的限制。
 
-ps:比如`public_network`如果更换了`wefi`连接，主机ip就不可用了，应为网段不一样了。   
+PS:比如`public_network`如果更换了`wefi`连接，之前设置的静态`ip`可能就不可用了，因为网段不一样了。   
 
 ```go
 vb1.vm.network "private_network", ip: "192.168.56.112"
