@@ -139,7 +139,7 @@ Vagrant.configure("2") do |config|
       v.cpus = 1
     end
   vb.vm.host_name = "centos7-1"
-  vb.vm.network "public_network", ip: "192.168.44.111"
+  vb.vm.network "public_network", ip: "192.168.44.111",bridge: "en0: Wi-Fi (AirPort)"
   vb.vm.box = "centos7.2"
   end
 
@@ -149,7 +149,7 @@ Vagrant.configure("2") do |config|
       v.cpus = 1
     end
   vb1.vm.host_name = "centos7-2"
-  vb1.vm.network "public_network", ip: "192.168.44.112"
+  vb1.vm.network "public_network", ip: "192.168.44.112",bridge: "en0: Wi-Fi (AirPort)"
   vb1.vm.box = "centos7.2"
   end
 
@@ -159,7 +159,7 @@ Vagrant.configure("2") do |config|
       v.cpus = 1
     end
   vb2.vm.host_name = "centos7-3"
-  vb2.vm.network "public_network", ip: "192.168.44.113"
+  vb2.vm.network "public_network", ip: "192.168.44.113",bridge: "en0: Wi-Fi (AirPort)"
   vb2.vm.box = "centos7.2"
   end
 end
@@ -175,8 +175,6 @@ end
 vb2.vm.network "public_network", ip: "192.168.44.113"
 ```
 
-这里设置了静态的`ip`,我们就可以通过静态`ip`直接访问虚拟机了  
-
 公有网络的`iP`网络要和主机的网段一致。  
 
 <img src="/img/vagrant_2.jpg" alt="vagrant" align=center />
@@ -187,11 +185,9 @@ vb2.vm.network "public_network", ip: "192.168.44.113"
 MacBook-Pro-3:centos7 yj$ vagrant up
 ```
 
-启动过程中要选择网络，我选择的是`en0`  
+默认的账号还是`root`，密码还是`vagrant`  
 
-默认的账号还是root，密码还是vagrant  
-
-连接 
+这里设置了静态的`ip`,我们就可以通过静态`ip`直接访问虚拟机了  
 
 ```go
 $ ssh root@192.168.44.113
