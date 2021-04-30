@@ -177,9 +177,9 @@ vb2.vm.network "public_network", ip: "192.168.44.113"
 
 这里设置了静态的`ip`,我们就可以通过静态`ip`直接访问虚拟机了  
 
-```go
-$ ssh root@192.168.44.113
-```
+公有网络的`iP`网络要和主机的网段一致。  
+
+<img src="/img/vagrant_2.jpg" alt="vagrant" align=center />
 
 启动  
 
@@ -189,7 +189,13 @@ MacBook-Pro-3:centos7 yj$ vagrant up
 
 启动过程中要选择网络，我选择的是`en0`  
 
-默认的账号还是root，密码还是vagrant   
+默认的账号还是root，密码还是vagrant  
+
+连接 
+
+```go
+$ ssh root@192.168.44.113
+``` 
 
 ### 常用的命令
 
