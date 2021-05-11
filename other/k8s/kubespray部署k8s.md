@@ -14,3 +14,11 @@ k8s.gcr.io/dns/k8s-dns-node-cache:1.17.1
 k8s.gcr.io/cpa/cluster-proportional-autoscaler-amd64:1.8.3
 k8s.gcr.io/kube-scheduler:v1.19.9
 ```
+
+镜像打包
+
+```
+ docker load -i ./images.tar
+ docker save -o ./images.tar webapp:1.0 nginx:1.12 mysql:5.7
+```
+
