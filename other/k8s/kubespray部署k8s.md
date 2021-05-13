@@ -17,8 +17,15 @@ k8s.gcr.io/kube-scheduler:v1.19.9
 
 镜像打包
 
+打包导入到tar包中 
+
+```go
+$ docker save -o ./images.tar webapp:1.0 nginx:1.12 mysql:5.7
+
 ```
- docker load -i ./images.tar
- docker save -o ./images.tar webapp:1.0 nginx:1.12 mysql:5.7
+
+导出镜像
+```
+$  docker load -i ./images.tar
 ```
 
