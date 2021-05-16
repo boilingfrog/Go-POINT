@@ -47,3 +47,9 @@ docker tag liz2019/kube-scheduler:v1.19.9 k8s.gcr.io/kube-scheduler:v1.19.9
  docker save -o ./images.tar webapp:1.0 nginx:1.12 mysql:5.7
 ```
 
+运行的命令 
+
+```go
+docker run --rm -it --mount type=bind,source=C:/goWork/src/kubespray/inventory/sample,dst=/inventory --mount type=bind,source=C:/Users/rickl/.ssh/id_rsa,dst=/root/.ssh/id_rsa quay.io/kubespray/kubespray:v2.15.1 bash
+ansible-playbook -i /inventory/inventory.ini  --become --become-user=root cluster.yml
+```
