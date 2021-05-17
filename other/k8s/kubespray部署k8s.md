@@ -1,6 +1,6 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
 
 - [kubespray部署k8s](#kubespray%E9%83%A8%E7%BD%B2k8s)
   - [依赖的镜像](#%E4%BE%9D%E8%B5%96%E7%9A%84%E9%95%9C%E5%83%8F)
@@ -51,25 +51,6 @@ docker tag liz2019/cluster-proportional-autoscaler-amd64:1.8.3 k8s.gcr.io/cpa/cl
 docker tag liz2019/kube-scheduler:v1.19.9 k8s.gcr.io/kube-scheduler:v1.19.9
 
 ```
-
-````go
-docker pull k8smx/kube-apiserver:v1.19.11
-docker pull k8smx/kube-controller-manager:v1.19.11
-docker pull k8smx/kube-scheduler:v1.19.11
-docker pull k8smx/kube-proxy:v1.19.11
-docker pull k8smx/pause:3.2
-docker pull k8smx/etcd:3.4.13-0
-docker pull k8smx/coredns:1.7.0
-
-docker tag k8smx/kube-apiserver:v1.19.11 k8s.gcr.io/kube-apiserver:v1.19.11
-docker tag k8smx/kube-controller-manager:v1.19.11 k8s.gcr.io/kube-controller-manager:v1.19.11
-docker tag k8smx/kube-scheduler:v1.19.11 k8s.gcr.io/kube-scheduler:v1.19.11
-docker tag k8smx/kube-proxy:v1.19.11 k8s.gcr.io/kube-proxy:v1.19.11
-docker tag k8smx/pause:3.2 k8s.gcr.io/pause:3.2
-docker tag k8smx/etcd:3.4.13-0 k8s.gcr.io/etcd:3.4.13-0
-docker tag k8smx/coredns:1.7.0 k8s.gcr.io/coredns:1.7.0
-````
-
 
 镜像打包
 
@@ -129,4 +110,10 @@ $ ansible-playbook -i /inventory/inventory.ini --private-key /root/.ssh/id_rsa c
 
 ```go
 $ ansible-playbook -i /inventory/inventory.ini --private-key /root/.ssh/id_rsa cluster.yml
+```
+
+运行出错，删除
+
+```go
+$ ansible-playbook -i /inventory/inventory.ini --private-key /root/.ssh/id_rsa reset.yml
 ```
