@@ -1,3 +1,16 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [kubespray部署k8s](#kubespray%E9%83%A8%E7%BD%B2k8s)
+  - [依赖的镜像](#%E4%BE%9D%E8%B5%96%E7%9A%84%E9%95%9C%E5%83%8F)
+  - [配置文件](#%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6)
+  - [运行](#%E8%BF%90%E8%A1%8C)
+    - [通过对应的镜像](#%E9%80%9A%E8%BF%87%E5%AF%B9%E5%BA%94%E7%9A%84%E9%95%9C%E5%83%8F)
+    - [运行代码](#%E8%BF%90%E8%A1%8C%E4%BB%A3%E7%A0%81)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## kubespray部署k8s
 
 ### 依赖的镜像
@@ -72,9 +85,48 @@ $ docker save -o ./images.tar webapp:1.0 nginx:1.12 mysql:5.7
 $  docker load -i ./images.tar
 ```
 
-运行的命令 
+### 配置文件
+
+```toml
+[all]
+10.10.110.xx ansible_ssh_port=333
+10.10.110.xx ansible_ssh_port=333
+10.10.110.xx ansible_ssh_port=333
+
+[kube-master]
+10.10.149.198
+
+[etcd]
+10.10.149.198
+10.10.130.113
+10.10.135.26
+
+[kube-node]
+10.10.130.113
+10.10.135.26
+
+[calico-rr]
+
+[k8s-cluster:children]
+kube-master
+kube-node
+calico-rr
+```
+
+### 运行 
+
+#### 通过对应的镜像
 
 ```go
-docker run --rm -it --mount type=bind,source=C:/goWork/src/kubespray/inventory/sample,dst=/inventory --mount type=bind,source=C:/Users/rickl/.ssh/id_rsa,dst=/root/.ssh/id_rsa quay.io/kubespray/kubespray:v2.15.1 bash
-ansible-playbook -i /inventory/inventory.ini  --become --become-user=root cluster.yml
+$ docker pull quay.io/kubespray/kubespray:v2.15.1
+$ docker run --rm -it --mount type=bind,source="$(pwd)"/inventory/sample,dst=/inventory \
+  --mount type=bind,source="${HOME}"/.ssh/id_rsa,dst=/root/.ssh/id_rsa \
+  quay.io/kubespray/kubespray:v2.15.1 bash
+$ ansible-playbook -i /inventory/inventory.ini --private-key /root/.ssh/id_rsa cluster.yml
+```
+
+#### 运行代码
+
+```go
+$ ansible-playbook -i /inventory/inventory.ini --private-key /root/.ssh/id_rsa cluster.yml
 ```
