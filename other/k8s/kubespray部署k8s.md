@@ -68,7 +68,7 @@ $  docker load -i ./images.tar
 
 ### 配置文件
 
-```toml
+```go
 [all]
 10.10.110.xx ansible_ssh_port=333
 10.10.110.xx ansible_ssh_port=333
