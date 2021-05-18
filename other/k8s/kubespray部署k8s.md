@@ -24,6 +24,8 @@
 
 [kubespray项目地址](https://github.com/kubernetes-sigs/kubespray)  
 
+releases版本：v2.15.1  
+
 #### 需要关闭防火墙  
 
 具体命令，自行google  
