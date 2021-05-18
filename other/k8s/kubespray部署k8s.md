@@ -84,12 +84,11 @@ docker tag liz2019/kube-scheduler:v1.19.9 k8s.gcr.io/kube-scheduler:v1.19.9
 
 ```go
 $ docker save -o ./images.tar webapp:1.0 nginx:1.12 mysql:5.7
-
 ```
 
 导出镜像
 ```go
-$  docker load -i ./images.tar
+$ docker load -i ./images.tar
 ```
 
 #### 配置文件
