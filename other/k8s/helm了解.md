@@ -10,6 +10,11 @@
   - [helm使用](#helm%E4%BD%BF%E7%94%A8-1)
     - [添加仓库](#%E6%B7%BB%E5%8A%A0%E4%BB%93%E5%BA%93)
     - [helm安装nginx](#helm%E5%AE%89%E8%A3%85nginx)
+  - [helm的核心概念](#helm%E7%9A%84%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5)
+    - [Chart](#chart)
+    - [Config](#config)
+    - [Repository](#repository)
+    - [Release](#release)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -152,7 +157,23 @@ nginx   LoadBalancer   xx.xxx.xxx.xx   <pending>     80:31998/TCP   6m3s
 
 <img src="/img/helm_2.jpg" alt="helm" align=center />
 
+### helm的核心概念
 
+#### Chart
+
+`Helm`采用`Chart`的格式来标准化描述一个应用（K8S 资源文件集合），`Chart`有自身标准的目录结构，可以将目录打包成版本化的压缩包进行部署。就像我们下载一个软件包之后，就可以在电脑上直接安装一样，同理`Chart`包可以通过`Helm`部署到任意的`K8S`集群中。  
+
+#### Config
+
+`Config`指应用配置参数，在`Chart`中由`values.yaml`和命令行参数组成。`Chart`采用`Go Template`的特性 + `values.yaml`对部署的模板文件进行参数渲染，也可以通过`Helm Client`的命令`–set key=value`的方式进行参数赋值。    
+
+#### Repository
+
+类似于`Docker Hub`，`Helm`官方、阿里云等社区都提供了`Helm Repository`，我们可以通过`helm repo add`导入仓库地址，便可以检索仓库并选择别人已经制作好的`Chart`包，开箱即用。  
+
+#### Release
+
+`Release`代表`Chart`在集群中的运行实例，同一个集群的同一个`Namespace`下`Release`名称是唯一的。`Helm`围绕`Release`对应用提供了强大的生命周期管理能力，包括`Release`的查询、安装、更新、删除、回滚等。    
 
 
 
