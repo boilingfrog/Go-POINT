@@ -1,3 +1,17 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+
+- [helm使用](#helm%E4%BD%BF%E7%94%A8)
+  - [什么是helm](#%E4%BB%80%E4%B9%88%E6%98%AFhelm)
+  - [安装helm](#%E5%AE%89%E8%A3%85helm)
+    - [Helm V2 & V3 架构设计](#helm-v2--v3-%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1)
+    - [配置kube config](#%E9%85%8D%E7%BD%AEkube-config)
+  - [helm使用](#helm%E4%BD%BF%E7%94%A8-1)
+  - [参考](#%E5%8F%82%E8%80%83)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## helm使用
 
 ### 什么是helm 
@@ -21,6 +35,35 @@
 - 4、造成多租户场景下架构设计与实现复杂。    
 
 <img src="/img/helm_1.jpeg" alt="helm" align=center />
+
+所以对应v3版本的helm直接安装客户端就好了。   
+
+关于helm版本的安装选择需要根据自己的k8s版本做选择，具体的版本策略[Helm版本支持策略](https://helm.sh/zh/docs/topics/version_skew/)  
+
+具体的安装参考[安装Helm](https://helm.sh/zh/docs/intro/install/)就好了  
+
+我的k8s版本是`v1.19.9`，所以本次我选择的helm版本是`v3.4.2`  
+
+#### 配置kube config
+
+1、配置`KUBECONFIG`变量  
+
+```go
+$ KUBECONFIG=~/.kube/config
+```
+
+2、完成`Kubeconfig`配置后，依次执行以下命令查看并切换`context`以访问本集群
+
+````go
+$ kubectl config get-contexts
+$ kubectl config use-context cls-3jju4zdc-context-default
+````
+
+3、执行以下命令，测试是否可正常访问集群  
+
+```go
+$ kubectl get node
+```
 
 ### helm使用
 
