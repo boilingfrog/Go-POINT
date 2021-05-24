@@ -194,7 +194,37 @@ test-demo/
 └── values.yaml
 ```
 
+#### 模板管理
 
+创建 Chart 骨架
+
+```go
+helm create ./chart-demo
+```
+
+Chart 打包
+
+````go
+helm package ./chart-demo
+````
+
+获取 Chart 包元数据信息
+
+````go
+helm inspect chart ./chart-demo
+````
+
+本地渲染模板文件
+
+```go
+helm template ${chart-demo-release-name} --namespace ${namespace} ./chart-demo
+```
+
+查询 Chart 依赖信息
+
+```go
+helm dependency list ./chart-demo
+```
 
 
 
