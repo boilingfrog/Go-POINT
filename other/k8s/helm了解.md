@@ -15,6 +15,9 @@
     - [Config](#config)
     - [Repository](#repository)
     - [Release](#release)
+    - [chart的目录](#chart%E7%9A%84%E7%9B%AE%E5%BD%95)
+    - [模板管理](#%E6%A8%A1%E6%9D%BF%E7%AE%A1%E7%90%86)
+    - [模板部署](#%E6%A8%A1%E6%9D%BF%E9%83%A8%E7%BD%B2)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -178,7 +181,7 @@ nginx   LoadBalancer   xx.xxx.xxx.xx   <pending>     80:31998/TCP   6m3s
 #### chart的目录
 
 ```go
-test-demo/
+chart-demo/
 ├── Chart.yaml
 ├── charts
 ├── templates
@@ -225,6 +228,39 @@ helm template ${chart-demo-release-name} --namespace ${namespace} ./chart-demo
 ```go
 helm dependency list ./chart-demo
 ```
+
+#### 模板部署  
+
+查询 Release 列表
+
+```go
+helm list --namespace ${namespace}
+```
+
+Chart 安装
+
+````go
+helm install ${chart-demo-release-name} ./chart-demo --namespace ${namespace}
+````
+
+Chart 版本升级
+
+```go
+helm upgrade ${chart-demo-release-name} ./chart-demo-new-version --namespace ${namespace}
+```
+
+Chart 版本回滚
+
+```go
+helm rollback ${chart-demo-release-name} ${revision} --namespace ${namespace}
+```
+
+查看 Release 历史版本
+
+```go
+helm history ${chart-demo-release-name} --namespace ${namespace}
+```
+
 
 
 
