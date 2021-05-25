@@ -229,12 +229,22 @@ helm template ${chart-demo-release-name} --namespace ${namespace} ./chart-demo
 helm dependency list ./chart-demo
 ```
 
+检查依赖和模板配置是否正确
+
+```go
+$ helm lint chart-demo
+==> Linting charts/chart-demo/
+[INFO] Chart.yaml: icon is recommended
+
+1 chart(s) linted, 0 chart(s) failed
+```
+
 #### 模板部署  
 
 查询 Release 列表
 
 ```go
-helm list --namespace ${namespace}
+helm list --namespace xxxx
 ```
 
 Chart 安装
@@ -261,7 +271,9 @@ helm rollback ${chart-demo-release-name} ${revision} --namespace ${namespace}
 helm history ${chart-demo-release-name} --namespace ${namespace}
 ```
 
+**${}中的替换成自己的名字**
 
+查看
 
 
 
