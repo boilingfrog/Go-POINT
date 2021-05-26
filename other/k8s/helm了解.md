@@ -64,20 +64,20 @@
 
 1、配置`KUBECONFIG`变量  
 
-```go
+```shell script
 $ KUBECONFIG=~/.kube/config
 ```
 
 2、完成`Kubeconfig`配置后，依次执行以下命令查看并切换`context`以访问本集群
 
-````go
+````shell script
 $ kubectl config get-contexts
 $ kubectl config use-context cls-3jju4zdc-context-default
 ````
 
 3、执行以下命令，测试是否可正常访问集群  
 
-```go
+```shell script
 $ kubectl get node
 ```
 
@@ -87,7 +87,7 @@ $ kubectl get node
 
 查看版本
 
-```go
+```shell script
 $ helm version
 version.BuildInfo{Version:"v3.4.2", GitCommit:"23dd3af5e19a02d4f4baa5b2f242645a1a3af629", GitTreeState:"clean", GoVersion:"go1.14.13"}
 ```
@@ -96,7 +96,7 @@ version.BuildInfo{Version:"v3.4.2", GitCommit:"23dd3af5e19a02d4f4baa5b2f242645a1
 
 在`Helm`中默认是不会添加`Chart`仓库，所以这里我们需要手动添加，下面是添加一些常用的`Charts`库，命令如下：   
 
-```go
+```shell script
 helm repo add  elastic    https://helm.elastic.co       
 helm repo add  gitlab     https://charts.gitlab.io       
 helm repo add  harbor     https://helm.goharbor.io       
@@ -104,14 +104,14 @@ helm repo add  bitnami    https://charts.bitnami.com/bitnami
 helm repo add  incubator  https://kubernetes-charts-incubator.storage.googleapis.com       
 helm repo add  stable     https://kubernetes-charts.storage.googleapis.com       
 
-// 添加国内仓库       
+# 添加国内仓库       
 helm repo add stable http://mirror.azure.cn/kubernetes/charts       
 helm repo add aliyun https://kubernetes.oss-cn-hangzhou.aliyuncs.com/charts     
   
-// 执行更新命令，将仓库中的信息进行同步：
+# 执行更新命令，将仓库中的信息进行同步：
 helm repo update       
 
-// 查看仓库信息
+# 查看仓库信息
 helm repo list   
 ```
 
@@ -119,7 +119,7 @@ helm repo list
 
 通过`Helm`在`Repo`中查询可安装的`Nginx`包  
 
-```go
+```shell script
 $ helm search repo nginx
 NAME                            	CHART VERSION	APP VERSION	DESCRIPTION                                       
 bitnami/nginx                   	8.9.0        	1.19.10    	Chart for the nginx server                        
@@ -132,21 +132,21 @@ bitnami/kong                    	3.7.3        	2.4.1      	Kong is a scalable, o
 
 创建`Namespace`并且部署应用  
 
-```go
-//  创建命名空间test
+```shell script
+#  创建命名空间test
 $ kubectl create namespace test
 
-// 查看创建的命名空间
+# 查看创建的命名空间
 $ kubectl get ns
 
-// 选择一个chart在k8s上部署我们的应用
+# 选择一个chart在k8s上部署我们的应用
 $ helm install nginx bitnami/nginx -n test
 
-// 查看应用状态
+# 查看应用状态
 $ helm status nginx -n test
 $ helm list -n test
 
-// 查看pod的状态
+# 查看pod的状态
 $ kubectl get pods -n test
 NAME                     READY   STATUS    RESTARTS   AGE
 nginx-7b9d7c59ff-69mgz   1/1     Running   0          2m39s
@@ -186,7 +186,7 @@ nginx   LoadBalancer   xx.xxx.xxx.xx   <pending>     80:31998/TCP   6m3s
 
 #### chart的目录
 
-```go
+```shell script
 chart-demo/
 ├── Chart.yaml
 ├── charts
@@ -207,37 +207,37 @@ chart-demo/
 
 创建 Chart 骨架
 
-```go
+```shell script
 helm create ./chart-demo
 ```
 
 Chart 打包
 
-````go
+````shell script
 helm package ./chart-demo
 ````
 
 获取 Chart 包元数据信息
 
-````go
+````shell script
 helm inspect chart ./chart-demo
 ````
 
 本地渲染模板文件
 
-```go
+```shell script
 helm template ${chart-demo-release-name} --namespace ${namespace} ./chart-demo
 ```
 
 查询 Chart 依赖信息
 
-```go
+```shell script
 helm dependency list ./chart-demo
 ```
 
 检查依赖和模板配置是否正确
 
-```go
+```shell script
 $ helm lint chart-demo
 ==> Linting charts/chart-demo/
 [INFO] Chart.yaml: icon is recommended
@@ -249,31 +249,31 @@ $ helm lint chart-demo
 
 查询 Release 列表
 
-```go
+```shell script
 helm list --namespace xxxx
 ```
 
 Chart 安装
 
-````go
+````shell script
 helm install ${chart-demo-release-name} ./chart-demo --namespace ${namespace}
 ````
 
 Chart 版本升级
 
-```go
+```shell script
 helm upgrade ${chart-demo-release-name} ./chart-demo-new-version --namespace ${namespace}
 ```
 
 Chart 版本回滚
 
-```go
+```shell script
 helm rollback ${chart-demo-release-name} ${revision} --namespace ${namespace}
 ```
 
 查看 Release 历史版本
 
-```go
+```shell script
 helm history ${chart-demo-release-name} --namespace ${namespace}
 ```
 
@@ -281,19 +281,19 @@ helm history ${chart-demo-release-name} --namespace ${namespace}
 
 卸载应用，并保留安装记录
 
-```go
+```shell script
 helm uninstall ${chart-demo-release-name} -n ${namespace} --keep-history
 ```
 
 查看全部应用（包含安装和卸载的应用）  
 
-```go
+```shell script
 helm list -n ${namespace} --all
 ```
 
 卸载应用，不保留安装记录
 
-```go
+```shell script
 helm delete ${chart-demo-release-name} -n ${namespace}
 ```
 
