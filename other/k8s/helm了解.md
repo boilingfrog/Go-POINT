@@ -188,9 +188,9 @@ nginx   LoadBalancer   xx.xxx.xxx.xx   <pending>     80:31998/TCP   6m3s
 
 ```shell script
 chart-demo/
-├── Chart.yaml
-├── charts
-├── templates
+├── Chart.yaml # chart原数据信息
+├── charts # 应用依赖集合
+├── templates # k8s资源模板集合
 │   ├── NOTES.txt
 │   ├── _helpers.tpl
 │   ├── deployment.yaml
@@ -200,7 +200,7 @@ chart-demo/
 │   ├── serviceaccount.yaml
 │   └── tests
 │       └── test-connection.yaml
-└── values.yaml
+└── values.yaml # 资源配置文件
 ```
 
 #### 模板管理
