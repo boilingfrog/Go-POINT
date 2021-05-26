@@ -15,9 +15,13 @@
     - [Config](#config)
     - [Repository](#repository)
     - [Release](#release)
+  - [基本使用](#%E5%9F%BA%E6%9C%AC%E4%BD%BF%E7%94%A8)
     - [chart的目录](#chart%E7%9A%84%E7%9B%AE%E5%BD%95)
     - [模板管理](#%E6%A8%A1%E6%9D%BF%E7%AE%A1%E7%90%86)
     - [模板部署](#%E6%A8%A1%E6%9D%BF%E9%83%A8%E7%BD%B2)
+    - [卸载应用](#%E5%8D%B8%E8%BD%BD%E5%BA%94%E7%94%A8)
+    - [自定义参数安装应用](#%E8%87%AA%E5%AE%9A%E4%B9%89%E5%8F%82%E6%95%B0%E5%AE%89%E8%A3%85%E5%BA%94%E7%94%A8)
+  - [应用发布顺序依赖](#%E5%BA%94%E7%94%A8%E5%8F%91%E5%B8%83%E9%A1%BA%E5%BA%8F%E4%BE%9D%E8%B5%96)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -178,6 +182,8 @@ nginx   LoadBalancer   xx.xxx.xxx.xx   <pending>     80:31998/TCP   6m3s
 
 `Release`代表`Chart`在集群中的运行实例，同一个集群的同一个`Namespace`下`Release`名称是唯一的。`Helm`围绕`Release`对应用提供了强大的生命周期管理能力，包括`Release`的查询、安装、更新、删除、回滚等。    
 
+### 基本使用
+
 #### chart的目录
 
 ```go
@@ -271,11 +277,63 @@ helm rollback ${chart-demo-release-name} ${revision} --namespace ${namespace}
 helm history ${chart-demo-release-name} --namespace ${namespace}
 ```
 
+#### 卸载应用
+
+卸载应用，并保留安装记录
+
+```go
+helm uninstall ${chart-demo-release-name} -n ${namespace} --keep-history
+```
+
+查看全部应用（包含安装和卸载的应用）  
+
+```go
+helm list -n ${namespace} --all
+```
+
+卸载应用，不保留安装记录
+
+```go
+helm delete ${chart-demo-release-name} -n ${namespace}
+```
+
 **${}中的替换成自己的名字**
 
-查看
+#### 自定义参数安装应用
 
+`Helm`中支持使用自定义`yaml`文件和`--set`命令参数对要安装的应用进行参数配置，使用如下：  
 
+方式一：使用自定义`values.yaml`文件安装应用
+
+我们知道chart的目录结构中有一个`values.yaml`，里面就是用来放参数的配置文件，修改对应的`values.yaml`就可以了  
+
+```go
+// 展示对应配置参数信息
+$ helm show values bitnami/nginx
+image:
+  registry: docker.io
+  repository: bitnami/nginx
+  tag: 1.19.10-debian-10-r14
+...
+```
+
+方式二：使用`--set`配置参数进行安装  
+
+`--set`参数是在使用`helm`命令时候添加的参数，可以在执行`helm`安装与更新应用时使用，多个参数间用,隔开，使用如下：  
+
+注意：如果配置文件和`--set`同时使用，则`--set`设置的参数会覆盖配置文件中的参数配置。  
+
+```go
+// 使用set创建一个release
+helm install --set 'registry.registry=docker.io,registry.repository=bitnami/nginx' nginx bitnami/nginx -n blog
+
+// 更新一个release
+helm upgrade --set 'servers[0].port=8080' nginx bitnami/nginx -n blog
+```
+
+### 应用发布顺序依赖  
+
+虽然`Chart`可以通过`requirements.yaml`来管理依赖关系，并按照顺序下发模板资源，但是并无法控制子`Chart`之间的发布顺序。例如服务 B 部署必须依赖服务 A 的资源全部`Ready`。可以通过自定义子`Chart`之间的依赖顺序，在产品层控制每个子`Chart`的发布过程。  
 
 ### 参考
 【YAML 模版老去？Helm Chart 或将应用分发事实标准】https://www.infoq.cn/article/dwc0ipnguogq4kbap*9g  
