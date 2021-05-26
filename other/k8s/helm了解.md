@@ -307,8 +307,8 @@ helm delete ${chart-demo-release-name} -n ${namespace}
 
 我们知道chart的目录结构中有一个`values.yaml`，里面就是用来放参数的配置文件，修改对应的`values.yaml`就可以了  
 
-```go
-// 展示对应配置参数信息
+```shell script
+# 展示对应配置参数信息
 $ helm show values bitnami/nginx
 image:
   registry: docker.io
@@ -323,11 +323,11 @@ image:
 
 注意：如果配置文件和`--set`同时使用，则`--set`设置的参数会覆盖配置文件中的参数配置。  
 
-```go
-// 使用set创建一个release
+```shell script
+# 使用set创建一个release
 helm install --set 'registry.registry=docker.io,registry.repository=bitnami/nginx' nginx bitnami/nginx -n blog
 
-// 更新一个release
+# 更新一个release
 helm upgrade --set 'servers[0].port=8080' nginx bitnami/nginx -n blog
 ```
 
