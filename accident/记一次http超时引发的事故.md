@@ -18,6 +18,23 @@
 
 ### 客户端设置超时
 
+最简单的我们通过`http.Client`的`Timeout`字段，就可以实现客户端的超时控制  
+
+```go
+	c := &http.Client{
+		Timeout: 3 * time.Second,
+	}
+
+	resp, err := c.Get("http://127.0.0.1:8081/test")
+	fmt.Println(resp)
+	fmt.Println(err)
+```
+
+
+### 问题
+
+#### 如果在客户端在超时的临界点，触发了超时机制，这时候服务端刚好也接收到了，http的请求  
+
 
 
 ### 分下下http client超时的处理方法
