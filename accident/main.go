@@ -46,14 +46,6 @@ func server() {
 func handler(w http.ResponseWriter, r *http.Request) {
 	time.Sleep(3 * time.Second)
 	fmt.Println("测试超时")
-}
 
-func client() {
-	c := &http.Client{
-		Timeout: 3 * time.Second,
-	}
-
-	resp, err := c.Get("localhost:8081/test")
-	fmt.Println(resp)
-	fmt.Println(err)
+	w.Write([]byte("hello world"))
 }
