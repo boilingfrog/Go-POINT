@@ -86,12 +86,12 @@ func doRequest(request *request) ([]byte, error) {
 			return nil, errReq
 		}
 	}
-    // 这里的client没有设置超时时间
-    // 所以当下面检测到一次超时的时候，会重新又发起一次请求
-    // 但是老的请求其实没有被关闭，一直在执行
+	// 这里的client没有设置超时时间
+	// 所以当下面检测到一次超时的时候，会重新又发起一次请求
+	// 但是老的请求其实没有被关闭，一直在执行
 	client := http.Client{}
 	res, err := client.Do(req)
-    ...
+	...
 }
 
 // 重试调用请求
@@ -110,9 +110,9 @@ func asyncCall(f func(request *request) ([]byte, error), req *request) ([]byte, 
 				err:  err,
 			}
 		}(ctx)
-        // 错误主要在这里
-        // 如果超时重试为3，第一次超时了，马上又发起了一次新的请求，但是这里错误使用了超时的退出
-        // 具体看上面
+		// 错误主要在这里
+		// 如果超时重试为3，第一次超时了，马上又发起了一次新的请求，但是这里错误使用了超时的退出
+		// 具体看上面
 		select {
 		case res := <-done:
 			return res.data, res.err
@@ -150,17 +150,17 @@ func doRequest(request *request) ([]byte, error) {
 		}
 	}
 
-   // 这里通过http.Client设置超时时间
+	// 这里通过http.Client设置超时时间
 	client := http.Client{
 		Timeout: time.Duration(request.ps.timeout) * time.Millisecond,
 	}
 	res, err := client.Do(req)
-    ...
+	...
 }
 
 func asyncCall(f func(request *request) ([]byte, error), req *request) ([]byte, error) {
 	p := req.ps
-    // 重试的时候只有上一个http请求真的超时了，之后才会发起一次新的请求
+	// 重试的时候只有上一个http请求真的超时了，之后才会发起一次新的请求
 	for i := 0; i < p.retry; i++ {
 		// 发送HTTP请求
 		res, err := f(req)
@@ -183,8 +183,6 @@ func asyncCall(f func(request *request) ([]byte, error), req *request) ([]byte, 
 - ReadTimeout 
 
 - WriteTimeout
-
-
 
 
 ### 客户端设置超时
