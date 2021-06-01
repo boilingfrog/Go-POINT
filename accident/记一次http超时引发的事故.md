@@ -23,6 +23,15 @@
 
 ### 服务设置超时
 
+`http.Server`有两个设置超时的方法:  
+
+- ReadTimeout 
+
+- WriteTimeout
+
+
+
+
 ### 客户端设置超时
 
 #### http.client
