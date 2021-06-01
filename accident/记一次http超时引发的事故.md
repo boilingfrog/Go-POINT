@@ -63,16 +63,23 @@ func contextTimeout() {
 }
 ```
 
+使用`context`的优点就是，当父`context`被取消时，子`context`就会层层退出。   
+
 #### http.Transport
 
-也可以通过使用带有`DialContext`的自定义`http.Transport`来创建`http.client`这种低层次的实现来指定超时时间  
+通过`Transport`还可以进行一些更小维度的超时设置  
+
+- net.Dialer.Timeout 限制建立TCP连接的时间
+- http.Transport.TLSHandshakeTimeout 限制 TLS握手的时间
+- http.Transport.ResponseHeaderTimeout 限制读取response header的时间
+- http.Transport.ExpectContinueTimeout 限制client在发送包含 Expect: 100-continue的header到收到继续发送body的response之间的时间等待。注意在1.6中设置这个值会禁用HTTP/2(DefaultTransport自1.6.2起是个特例)
+
 
 ```go
 func transportTimeout() {
 	transport := &http.Transport{
-		DialContext: (&net.Dialer{
-			Timeout: 3 * time.Second,
-		}).DialContext,
+		DialContext:           (&net.Dialer{}).DialContext,
+		ResponseHeaderTimeout: 3 * time.Second,
 	}
 
 	c := http.Client{Transport: transport}

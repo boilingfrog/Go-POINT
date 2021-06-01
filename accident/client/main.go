@@ -12,14 +12,13 @@ import (
 func main() {
 	transportTimeout()
 
-	httpClientTimeout()
+	// httpClientTimeout()
 }
 
 func transportTimeout() {
 	transport := &http.Transport{
-		DialContext: (&net.Dialer{
-			Timeout: 2 * time.Second,
-		}).DialContext,
+		DialContext:           (&net.Dialer{}).DialContext,
+		ResponseHeaderTimeout: 3 * time.Second,
 	}
 
 	c := http.Client{Transport: transport}
