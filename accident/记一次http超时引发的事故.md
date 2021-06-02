@@ -304,7 +304,7 @@ func transportTimeout() {
 
 1、所有的超时实现都是基于`Deadline`，`Deadline`是一个时间的绝对值，一旦设置他们永久生效，不管此时连接是否被使用和怎么用，所以需要每手动设置，所以如果想使用`SetDeadline`建立超时机制，需要每次在`Read/Write`操作之前调用它。  
 
-2、使用context进行超时控制的好处就是，当父`context`超时的时候，子`context`就会层层退出。  
+2、使用`context`进行超时控制的好处就是，当父`context`超时的时候，子`context`就会层层退出。  
 
 ### 参考
 
