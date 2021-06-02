@@ -13,13 +13,33 @@ func main() {
 	server()
 }
 
+func handler(w http.ResponseWriter, r *http.Request) {
+	time.Sleep(3 * time.Second)
+	fmt.Println("测试超时")
+
+	w.Write([]byte("hello world"))
+}
+
+func serverHandle() {
+	srv := http.Server{
+		Addr:         ":8081",
+		WriteTimeout: 1 * time.Second,
+		Handler:      http.TimeoutHandler(http.HandlerFunc(handler), 5*time.Second, "Timeout!\n"),
+	}
+	if err := srv.ListenAndServe(); err != nil {
+		os.Exit(1)
+	}
+}
+
 func server() {
-	// 开启pprof，监听请求
-	ip := "127.0.0.1:8081"
 	// 开启pprof
 	go func() {
-		if err := http.ListenAndServe(ip, nil); err != nil {
-			fmt.Printf("start pprof failed on %s\n", ip)
+		srv := http.Server{
+			Addr:         ":8081",
+			WriteTimeout: 1 * time.Second,
+			Handler:      http.TimeoutHandler(http.HandlerFunc(handler), 1*time.Second, "Timeout!\n"),
+		}
+		if err := srv.ListenAndServe(); err != nil {
 			os.Exit(1)
 		}
 	}()
@@ -41,11 +61,4 @@ func server() {
 			return
 		}
 	}
-}
-
-func handler(w http.ResponseWriter, r *http.Request) {
-	time.Sleep(3 * time.Second)
-	fmt.Println("测试超时")
-
-	w.Write([]byte("hello world"))
 }
