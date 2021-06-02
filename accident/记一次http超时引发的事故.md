@@ -11,6 +11,7 @@
     - [http.Transport](#httptransport)
   - [问题](#%E9%97%AE%E9%A2%98)
     - [如果在客户端在超时的临界点，触发了超时机制，这时候服务端刚好也接收到了，http的请求](#%E5%A6%82%E6%9E%9C%E5%9C%A8%E5%AE%A2%E6%88%B7%E7%AB%AF%E5%9C%A8%E8%B6%85%E6%97%B6%E7%9A%84%E4%B8%B4%E7%95%8C%E7%82%B9%E8%A7%A6%E5%8F%91%E4%BA%86%E8%B6%85%E6%97%B6%E6%9C%BA%E5%88%B6%E8%BF%99%E6%97%B6%E5%80%99%E6%9C%8D%E5%8A%A1%E7%AB%AF%E5%88%9A%E5%A5%BD%E4%B9%9F%E6%8E%A5%E6%94%B6%E5%88%B0%E4%BA%86http%E7%9A%84%E8%AF%B7%E6%B1%82)
+  - [总结](#%E6%80%BB%E7%BB%93)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -125,7 +126,7 @@ func asyncCall(f func(request *request) ([]byte, error), req *request) ([]byte, 
 
 错误的原因  
 
-1、超时重试，之后过了一段时间没有拿到结果就认为是超超时了，但是http请求没有被关闭；  
+1、超时重试，之后过了一段时间没有拿到结果就认为是超时了，但是http请求没有被关闭；  
 
 2、错误使用了`http`的超时，具体的做法要通过`context`或`http.client`去实现，见下文；  
 
@@ -182,8 +183,48 @@ func asyncCall(f func(request *request) ([]byte, error), req *request) ([]byte, 
 
 - ReadTimeout 
 
+`ReadTimeout`的时间计算是从连接被接受(accept)到`request body`完全被读取(如果你不读取body，那么时间截止到读完header为止)  
+
 - WriteTimeout
 
+`WriteTimeout`的时间计算正常是从`request header`的读取结束开始，到`response write`结束为止 (也就是ServeHTTP方法的生命周期)  
+
+```go
+srv := &http.Server{  
+    ReadTimeout: 5 * time.Second,
+    WriteTimeout: 10 * time.Second,
+}
+
+srv.ListenAndServe()
+```
+
+`net/http`包还提供了`TimeoutHandler`返回了一个在给定的时间限制内运行的`handler`  
+
+```go
+func TimeoutHandler(h Handler, dt time.Duration, msg string) Handler
+```
+
+第一个参数是`Handler`，第二个参数是`time.Duration`（超时时间），第三个参数是`string`类型，当到达超时时间后返回的信息  
+
+```go
+func handler(w http.ResponseWriter, r *http.Request) {
+	time.Sleep(3 * time.Second)
+	fmt.Println("测试超时")
+
+	w.Write([]byte("hello world"))
+}
+
+func server() {
+	srv := http.Server{
+		Addr:         ":8081",
+		WriteTimeout: 1 * time.Second,
+		Handler:      http.TimeoutHandler(http.HandlerFunc(handler), 5*time.Second, "Timeout!\n"),
+	}
+	if err := srv.ListenAndServe(); err != nil {
+		os.Exit(1)
+	}
+}
+```
 
 ### 客户端设置超时
 
@@ -258,7 +299,14 @@ func transportTimeout() {
 
 这种服务端还是可以拿到请求的数据，所以对于超时时间的设置我们需要根据实际情况进行权衡，同时我们要考虑接口的幂等性。  
 
+### 总结
+
+1、所有的超时实现都是基于`Deadline`，`Deadline`是一个时间的绝对值，一旦设置他们永久生效，不管此时连接是否被使用和怎么用，所以需要每手动设置，所以如果想使用`SetDeadline`建立超时机制，需要每次在`Read/Write`操作之前调用它。  
+
+2、使用context进行超时控制的好处就是，当父`context`超时的时候，子`context`就会层层退出。  
+
 ### 参考
 
 【[译]Go net/http 超时机制完全手册】https://colobu.com/2016/07/01/the-complete-guide-to-golang-net-http-timeouts/  
-【Go 语言 HTTP 请求超时入门】https://studygolang.com/articles/14405  
+【Go 语言 HTTP 请求超时入门】https://studygolang.com/articles/14405   
+【使用 timeout、deadline 和 context 取消参数使 Go net/http 服务更灵活】https://jishuin.proginn.com/p/763bfbd2fb6a  

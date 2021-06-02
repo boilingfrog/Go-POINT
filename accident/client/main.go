@@ -10,8 +10,7 @@ import (
 )
 
 func main() {
-	transportTimeout()
-
+	contextTimeout()
 	// httpClientTimeout()
 }
 
