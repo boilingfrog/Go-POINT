@@ -8,7 +8,7 @@
     - [可伸缩(scalable)](#%E5%8F%AF%E4%BC%B8%E7%BC%A9scalable)
     - [跨语言(multi-language)](#%E8%B7%A8%E8%AF%AD%E8%A8%80multi-language)
     - [可扩展(extensible)](#%E5%8F%AF%E6%89%A9%E5%B1%95extensible)
-  - [Bazel的作用](#bazel%E7%9A%84%E4%BD%9C%E7%94%A8)
+  - [使用Bazel部署go项目](#%E4%BD%BF%E7%94%A8bazel%E9%83%A8%E7%BD%B2go%E9%A1%B9%E7%9B%AE)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -59,13 +59,14 @@
 
 #### 跨语言(multi-language)
 
-如果一个项目不同模块使用不同的语言，利用 Bazel 可以使用一致的风格来管理项目外部依赖和内部依赖。典型的项目如 Ray。该项目使用 C++ 构建 Ray 的核心调度组件、通过 Python/Java 来提供多语言的 API，并将上述所有模块用单个 repo 进行管理。如此组织使其项目整合相当困难，但 Bazel 在此处理的游刃有余，大家可以去该 repo 一探究竟。  
+如果一个项目不同模块使用不同的语言，利用`Bazel`可以使用一致的风格来管理项目外部依赖和内部依赖。典型的项目如 Ray。该项目使用`C++`构建`Ray`的核心调度组件、通过`Python/Java`来提供多语言的`API`，并将上述所有模块用单个`repo`进行管理。如此组织使其项目整合相当困难，但`Bazel`在此处理的游刃有余，大家可以去该`repo`一探究竟。  
 
 #### 可扩展(extensible)
 
 `Bazel`使用的语法是基于`Python`裁剪而成的一门语言：`Startlark`。其表达能力强大，往小了说，可以使用户自定义一些`rules`（类似一般语言中的函数）对构建逻辑进行复用；往大了说，可以支持第三方编写适配新的语言或平台的`rules`集，比如`rules go`。 `Bazel`并不原生支持构建`golang`工程，但通过引入`rules go` ，就能以比较一致的风格来管理`golang`工程。  
 
-### Bazel的作用
+### 使用Bazel部署go项目
+
 
 
 
