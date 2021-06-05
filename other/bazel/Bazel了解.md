@@ -76,3 +76,4 @@
 【bazel文档】https://docs.bazel.build/versions/4.1.0/skylark/concepts.html  
 【Bazel 构建 golang 项目】https://zhuanlan.zhihu.com/p/95998597  
 【如何评价 Google 开源的 Bazel ？】https://www.zhihu.com/question/29025960  
+【使用bazel编译go项目】https://juejin.cn/post/6844903892757528590  
