@@ -1,0 +1,3 @@
+build --action_env=GOPROXY=https://goproxy.cn
+test  --action_env=GOPROXY=https://goproxy.cn
+run   --action_env=GOPROXY=https://goproxy.cn
