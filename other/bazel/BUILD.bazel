@@ -1,8 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary")
-
-go_binary(
-    name = "go_default_library",
-    srcs = ["main.go"],
-    importpath = "test",
-    visibility = ["//visibility:private"],
-)
+load("@bazel_gazelle//:def.bzl", "gazelle")
+ 
+# gazelle:prefix bazel
+gazelle(name = "bazel")

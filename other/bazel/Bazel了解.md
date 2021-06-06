@@ -8,7 +8,8 @@
     - [可伸缩(scalable)](#%E5%8F%AF%E4%BC%B8%E7%BC%A9scalable)
     - [跨语言(multi-language)](#%E8%B7%A8%E8%AF%AD%E8%A8%80multi-language)
     - [可扩展(extensible)](#%E5%8F%AF%E6%89%A9%E5%B1%95extensible)
-  - [使用Bazel部署go项目](#%E4%BD%BF%E7%94%A8bazel%E9%83%A8%E7%BD%B2go%E9%A1%B9%E7%9B%AE)
+  - [使用Bazel部署go应用](#%E4%BD%BF%E7%94%A8bazel%E9%83%A8%E7%BD%B2go%E5%BA%94%E7%94%A8)
+    - [手动通过Bazel部署go应用](#%E6%89%8B%E5%8A%A8%E9%80%9A%E8%BF%87bazel%E9%83%A8%E7%BD%B2go%E5%BA%94%E7%94%A8)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -65,9 +66,29 @@
 
 `Bazel`使用的语法是基于`Python`裁剪而成的一门语言：`Startlark`。其表达能力强大，往小了说，可以使用户自定义一些`rules`（类似一般语言中的函数）对构建逻辑进行复用；往大了说，可以支持第三方编写适配新的语言或平台的`rules`集，比如`rules go`。 `Bazel`并不原生支持构建`golang`工程，但通过引入`rules go` ，就能以比较一致的风格来管理`golang`工程。  
 
-### 使用Bazel部署go项目
+### 使用Bazel部署go应用
 
+1、安装`Bazel`  
 
+```
+$ brew install Bazel
+```
+
+这是mac下面的安装，其他平台自行google  
+
+2、安装`gazelle`
+
+```
+$ go get github.com/bazelbuild/bazel-gazelle/cmd/gazelle
+```
+
+#### 手动通过Bazel部署go应用
+
+创建
+
+#### 使用gazelle自动生成BUILD.bazel文件
+
+在实际的项目中，里面的`BUILD.bazel`我们肯定是使用工具自动生成的，来看下如何自动生成的  
 
 
 
