@@ -84,6 +84,24 @@ $ go get github.com/bazelbuild/bazel-gazelle/cmd/gazelle
 
 #### 手动通过Bazel部署go应用
 
+查看运行的结果
+
+```
+$ bazel run //:test
+Starting local Bazel server and connecting to it...
+DEBUG: /root/.cache/bazel/_bazel_root/4aeaa44aa45c9ae450c5a2536656d9b5/external/bazel_tools/tools/cpp/lib_cc_configure.bzl:118:5: 
+Auto-Configuration Warning: CC with -fuse-ld=gold returned 0, but its -v output didn't contain 'gold', falling back to the default linker.
+INFO: Analyzed target //:test (28 packages loaded, 6580 targets configured).
+INFO: Found 1 target...
+Target //:test up-to-date:
+  bazel-bin/linux_amd64_stripped/test
+INFO: Elapsed time: 35.144s, Critical Path: 1.19s
+INFO: 3 processes: 3 linux-sandbox.
+INFO: Build completed successfully, 7 total actions
+INFO: Build completed successfully, 7 total actions
+hello world
+```
+
 创建
 
 #### 使用gazelle自动生成BUILD.bazel文件
