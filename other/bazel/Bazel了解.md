@@ -10,6 +10,7 @@
     - [可扩展(extensible)](#%E5%8F%AF%E6%89%A9%E5%B1%95extensible)
   - [使用Bazel部署go应用](#%E4%BD%BF%E7%94%A8bazel%E9%83%A8%E7%BD%B2go%E5%BA%94%E7%94%A8)
     - [手动通过Bazel部署go应用](#%E6%89%8B%E5%8A%A8%E9%80%9A%E8%BF%87bazel%E9%83%A8%E7%BD%B2go%E5%BA%94%E7%94%A8)
+    - [使用gazelle自动生成BUILD.bazel文件](#%E4%BD%BF%E7%94%A8gazelle%E8%87%AA%E5%8A%A8%E7%94%9F%E6%88%90buildbazel%E6%96%87%E4%BB%B6)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -70,11 +71,13 @@
 
 1、安装`Bazel`  
 
+mac中直接通过brew安装
+
 ```
 $ brew install Bazel
 ```
 
-这是mac下面的安装，其他平台自行google  
+centos中的安装可参考[centos7安装bazel](https://blog.csdn.net/xavier_muse/article/details/93203093)
 
 2、安装`gazelle`
 
@@ -84,25 +87,78 @@ $ go get github.com/bazelbuild/bazel-gazelle/cmd/gazelle
 
 #### 手动通过Bazel部署go应用
 
-查看运行的结果
+创建go的运行文件  
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+	fmt.Println("hello world")
+}
+```
+
+创建`WORKSPACE`文件
+
+```go
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "io_bazel_rules_go",
+    urls = [
+        "https://storage.googleapis.com/bazel-mirror/github.com/bazelbuild/rules_go/releases/download/0.19.0/rules_go-0.19.0.tar.gz",
+        "https://github.com/bazelbuild/rules_go/releases/download/0.19.0/rules_go-0.19.0.tar.gz",
+    ],
+    sha256 = "9fb16af4d4836c8222142e54c9efa0bb5fc562ffc893ce2abeac3e25daead144",
+)
+
+load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
+
+go_rules_dependencies()
+go_register_toolchains()
+```
+
+创建`BUILD.bazel`文件  
+
+```go
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+
+go_binary(
+    name = "test",
+    srcs = ["main.go"],
+    importpath = "test",
+    visibility = ["//visibility:private"],
+)
+```
+
+查看目录  
+
+```
+test
+├── BUILD.bazel
+├── WORKSPACE
+└── main.go
+```
+
+运行  
 
 ```
 $ bazel run //:test
-Starting local Bazel server and connecting to it...
-DEBUG: /root/.cache/bazel/_bazel_root/4aeaa44aa45c9ae450c5a2536656d9b5/external/bazel_tools/tools/cpp/lib_cc_configure.bzl:118:5: 
+DEBUG: /root/.cache/bazel/_bazel_root/1bc6a4d389355f502b77b0dd6dd1fdb4/external/bazel_tools/tools/cpp/lib_cc_configure.bzl:118:5: 
 Auto-Configuration Warning: CC with -fuse-ld=gold returned 0, but its -v output didn't contain 'gold', falling back to the default linker.
-INFO: Analyzed target //:test (28 packages loaded, 6580 targets configured).
+INFO: Analyzed target //:test (0 packages loaded, 0 targets configured).
 INFO: Found 1 target...
 Target //:test up-to-date:
   bazel-bin/linux_amd64_stripped/test
-INFO: Elapsed time: 35.144s, Critical Path: 1.19s
-INFO: 3 processes: 3 linux-sandbox.
-INFO: Build completed successfully, 7 total actions
-INFO: Build completed successfully, 7 total actions
+INFO: Elapsed time: 0.254s, Critical Path: 0.00s
+INFO: 0 processes.
+INFO: Build completed successfully, 1 total action
+INFO: Build completed successfully, 1 total action
 hello world
 ```
 
-创建
+成功输出`hello world`  
 
 #### 使用gazelle自动生成BUILD.bazel文件
 
