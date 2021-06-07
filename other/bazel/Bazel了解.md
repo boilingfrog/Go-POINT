@@ -253,9 +253,23 @@ gazelle(name = "gazelle")
 
 需要注意的是 # 后面的内容对于`Bazel`而言是注释，对于`Gazelle`来说却是一种语法，会被`Gazelle`运行时所使用。当然`Gazelle`除了可以通过`bazel rule`运行，也可以单独在命令行中执行。    
 
+查看下目录
+
+```
+test
+├── BUILD.bazel
+├── WORKSPACE
+├── main.go
+├── t1
+│   └── main.go
+└── t2
+    └── main.go
+```
+
 在根目录下面执行`bazel run //:gazelle`  
 
 ```
+test
 ├── BUILD.bazel
 ├── main.go
 ├── t1
