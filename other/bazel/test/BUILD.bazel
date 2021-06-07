@@ -1,0 +1,6 @@
+load("@bazel_gazelle//:def.bzl", "gazelle")
+
+# gazelle:prefix test
+# gazelle:proto disable_global
+# gazelle:exclude .cache
+gazelle(name = "gazelle")
