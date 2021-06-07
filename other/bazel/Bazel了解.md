@@ -104,19 +104,37 @@ func main() {
 ```go
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
+# download rules_go
 http_archive(
     name = "io_bazel_rules_go",
+    sha256 = "8663604808d2738dc615a2c3eb70eba54a9a982089dd09f6ffe5d0e75771bc4f",
     urls = [
-        "https://storage.googleapis.com/bazel-mirror/github.com/bazelbuild/rules_go/releases/download/0.19.0/rules_go-0.19.0.tar.gz",
-        "https://github.com/bazelbuild/rules_go/releases/download/0.19.0/rules_go-0.19.0.tar.gz",
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.23.6/rules_go-v0.23.6.tar.gz",
+        "https://github.com/bazelbuild/rules_go/releases/download/v0.23.6/rules_go-v0.23.6.tar.gz",
     ],
-    sha256 = "9fb16af4d4836c8222142e54c9efa0bb5fc562ffc893ce2abeac3e25daead144",
 )
 
+# load rules_go
 load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
 
 go_rules_dependencies()
+
 go_register_toolchains()
+
+# download gazelle
+http_archive(
+    name = "bazel_gazelle",
+    sha256 = "cdb02a887a7187ea4d5a27452311a75ed8637379a1287d8eeb952138ea485f7d",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/v0.21.1/bazel-gazelle-v0.21.1.tar.gz",
+        "https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.21.1/bazel-gazelle-v0.21.1.tar.gz",
+    ],
+)
+
+# load gazelle
+load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
+
+gazelle_dependencies()
 ```
 
 创建`BUILD.bazel`文件  
@@ -164,6 +182,43 @@ hello world
 
 在实际的项目中，里面的`BUILD.bazel`我们肯定是使用工具自动生成的，来看下如何自动生成的  
 
+创建t1和t2两个文件夹，写入两个文件
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+	fmt.Println("hello")
+}
+```
+
+在项目的根目录的`BUILD.bazel`中配置加载并配置`Gazelle`  
+
+```
+load("@bazel_gazelle//:def.bzl", "gazelle")
+# gazelle:prefix test  
+gazelle(name = "gazelle") 
+```
+
+需要注意的是 # 后面的内容对于`Bazel`而言是注释，对于`Gazelle`来说却是一种语法，会被`Gazelle`运行时所使用。当然`Gazelle`除了可以通过`bazel rule`运行，也可以单独在命令行中执行。    
+
+在根目录下面执行`bazel run //:gazelle`  
+
+```
+├── BUILD.bazel
+├── main.go
+├── t1
+│   ├── BUILD.bazel
+│   └── main.go
+├── t2
+│   ├── BUILD.bazel
+│   └── main.go
+└── WORKSPACE
+```
+
+发现对应的目录下面已经生成了我们需要的`BUILD.bazel`文件  
 
 
 ### 参考
