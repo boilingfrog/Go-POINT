@@ -1,4 +1,0 @@
-load("@bazel_gazelle//:def.bzl", "gazelle")
-
-# gazelle:prefix test
-gazelle(name = "gazelle")
