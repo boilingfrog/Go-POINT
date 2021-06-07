@@ -10,7 +10,7 @@
     - [可扩展(extensible)](#%E5%8F%AF%E6%89%A9%E5%B1%95extensible)
   - [Bazel中的主要文件](#bazel%E4%B8%AD%E7%9A%84%E4%B8%BB%E8%A6%81%E6%96%87%E4%BB%B6)
     - [WORKSPACE](#workspace)
-    - [BUILD.(bazel)](#buildbazel)
+    - [BUILD.bazel](#buildbazel)
     - [自定义 rule (*.bzl)](#%E8%87%AA%E5%AE%9A%E4%B9%89-rule-bzl)
     - [配置项 .bazelrc](#%E9%85%8D%E7%BD%AE%E9%A1%B9-bazelrc)
   - [使用Bazel部署go应用](#%E4%BD%BF%E7%94%A8bazel%E9%83%A8%E7%BD%B2go%E5%BA%94%E7%94%A8)
@@ -84,9 +84,9 @@
 
 3、管理项目外部依赖库。  
 
-#### BUILD.(bazel)
+#### BUILD.bazel
 
-该文件主要针对其所在文件夹进行依赖解析`（label）`和目标定义`（bazel target）`。拿 go 来说，构建目标可以是 `go_binary、go_test、go_library `等。  
+存在于根目录以及源文件所在目录，用来标记源文件编译以及依赖情况，一般是自动生成。拿 go 来说，构建目标可以是 `go_binary、go_test、go_library `等。  
 
 #### 自定义 rule (*.bzl)
 
