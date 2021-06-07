@@ -8,6 +8,11 @@
     - [可伸缩(scalable)](#%E5%8F%AF%E4%BC%B8%E7%BC%A9scalable)
     - [跨语言(multi-language)](#%E8%B7%A8%E8%AF%AD%E8%A8%80multi-language)
     - [可扩展(extensible)](#%E5%8F%AF%E6%89%A9%E5%B1%95extensible)
+  - [Bazel中的主要文件](#bazel%E4%B8%AD%E7%9A%84%E4%B8%BB%E8%A6%81%E6%96%87%E4%BB%B6)
+    - [WORKSPACE](#workspace)
+    - [BUILD.(bazel)](#buildbazel)
+    - [自定义 rule (*.bzl)](#%E8%87%AA%E5%AE%9A%E4%B9%89-rule-bzl)
+    - [配置项 .bazelrc](#%E9%85%8D%E7%BD%AE%E9%A1%B9-bazelrc)
   - [使用Bazel部署go应用](#%E4%BD%BF%E7%94%A8bazel%E9%83%A8%E7%BD%B2go%E5%BA%94%E7%94%A8)
     - [手动通过Bazel部署go应用](#%E6%89%8B%E5%8A%A8%E9%80%9A%E8%BF%87bazel%E9%83%A8%E7%BD%B2go%E5%BA%94%E7%94%A8)
     - [使用gazelle自动生成BUILD.bazel文件](#%E4%BD%BF%E7%94%A8gazelle%E8%87%AA%E5%8A%A8%E7%94%9F%E6%88%90buildbazel%E6%96%87%E4%BB%B6)
@@ -66,6 +71,50 @@
 #### 可扩展(extensible)
 
 `Bazel`使用的语法是基于`Python`裁剪而成的一门语言：`Startlark`。其表达能力强大，往小了说，可以使用户自定义一些`rules`（类似一般语言中的函数）对构建逻辑进行复用；往大了说，可以支持第三方编写适配新的语言或平台的`rules`集，比如`rules go`。 `Bazel`并不原生支持构建`golang`工程，但通过引入`rules go` ，就能以比较一致的风格来管理`golang`工程。  
+
+### Bazel中的主要文件
+
+使用`Bazel`管理的项目一般包含以下几种`Bazel`相关的文件：`WORKSPACE，BUILD(.bazel)，.bzl` 和 `.bazelrc` 等。其中 `WORKSPACE` 和 `.bazelrc` 放置于项目的根目录下，`BUILD.bazel` 放项目中的每个文件夹中（包括根目录），`.bzl`文件可以根据用户喜好自由放置，一般可放在项目根目录下的某个专用文件夹（比如 build）中。    
+
+#### WORKSPACE
+
+1、定义项目根目录和项目名。  
+
+2、加载 Bazel 工具和 rules 集。  
+
+3、管理项目外部依赖库。  
+
+#### BUILD.(bazel)
+
+该文件主要针对其所在文件夹进行依赖解析`（label）`和目标定义`（bazel target）`。拿 go 来说，构建目标可以是 `go_binary、go_test、go_library `等。  
+
+#### 自定义 rule (*.bzl)
+
+如果你的项目有一些复杂构造逻辑、或者一些需要复用的构造逻辑，那么可以将这些逻辑以函数形式保存在 `.bzl` 文件，供`WORKSPACE`或者`BUILD`文件调用。其语法跟`Python`类似：    
+ 
+```
+def third_party_http_deps():
+    http_archive(
+        name = "xxxx",
+        ...
+    )
+
+    http_archive(
+        name = "yyyy",
+        ...
+    )
+```
+
+#### 配置项 .bazelrc
+
+对于`Bazel`来说，如果某些构建动作都需要某个参数，就可以将其写在此配置中，从而省去每次敲命令都重复输入该参数。举个 Go 的例子：由于国情在此，构建、测试和运行时可能都需要`GOPROXY`，则可以配置如下：
+
+```
+# set GOPROXY
+test --action_env=GOPROXY=https://goproxy.io
+build --action_env=GOPROXY=https://goproxy.io
+run --action_env=GOPROXY=https://goproxy.io
+```
 
 ### 使用Bazel部署go应用
 
@@ -241,3 +290,4 @@ hello t1
 【Bazel 构建 golang 项目】https://zhuanlan.zhihu.com/p/95998597  
 【如何评价 Google 开源的 Bazel ？】https://www.zhihu.com/question/29025960  
 【使用bazel编译go项目】https://juejin.cn/post/6844903892757528590  
+【Bazel学习笔记】https://blog.gmem.cc/bazel-study-note   
