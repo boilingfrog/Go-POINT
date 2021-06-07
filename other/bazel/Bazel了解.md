@@ -190,7 +190,7 @@ package main
 import "fmt"
 
 func main() {
-	fmt.Println("hello")
+	fmt.Println("hello t1")
 }
 ```
 
@@ -220,6 +220,20 @@ gazelle(name = "gazelle")
 
 发现对应的目录下面已经生成了我们需要的`BUILD.bazel`文件  
 
+在根目录下,运行下  
+
+```
+$ bazel run t1:t1
+INFO: Analyzed target //t1:t1 (0 packages loaded, 0 targets configured).
+INFO: Found 1 target...
+Target //t1:t1 up-to-date:
+  bazel-bin/t1/t1_/t1
+INFO: Elapsed time: 0.486s, Critical Path: 0.33s
+INFO: 3 processes: 1 internal, 2 darwin-sandbox.
+INFO: Build completed successfully, 3 total actions
+INFO: Build completed successfully, 3 total actions
+hello t1
+```
 
 ### 参考
 【带你深入AI（6）- 详解bazel】https://blog.csdn.net/u013510838/article/details/80102438   
