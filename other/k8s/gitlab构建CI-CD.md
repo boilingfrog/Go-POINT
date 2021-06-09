@@ -39,21 +39,8 @@ services:
       - ./data:/var/opt/gitlab
       - ./losg:/var/log/gitlab
 ```
-### docker部署gitlab-runner
+### 使用二进制部署gitlab-runner
 
-通过docker-compose启动gitlab-runner  
+可参考官方的安装方式[Install GitLab Runner manually on GNU/Linux](https://docs.gitlab.com/runner/install/linux-manually.html)
 
-```go
-version: "3.1"
-services:
-  gitlab-runner:
-    image: liz2019/gitlab-runner:latest
-    restart: always
-    container_name: gitlab-runner
-    privileged: true
-    volumes:
-      - ./config:/etc/gitlab-runner
-      - /var/run/docker.sock:/var/run/docker.sock
-      - /bin/docker:/bin/docker
-```
 
