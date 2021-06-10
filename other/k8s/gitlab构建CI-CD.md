@@ -43,4 +43,6 @@ services:
 
 可参考官方的安装方式[Install GitLab Runner manually on GNU/Linux](https://docs.gitlab.com/runner/install/linux-manually.html)
 
+### gitlab-runner注册
+
 
