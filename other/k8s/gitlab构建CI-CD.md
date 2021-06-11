@@ -45,4 +45,22 @@ services:
 
 ### gitlab-runner注册
 
+安装完成之后使用注册命令注册  
+
+```
+$ gitlab-runner register
+```
+
+然后会提示输入gitlab的地址以及token信息  
+
+地址信息和token我们在下面可以看到
+
+<img src="/img/gitlab-runner_1.jpg" alt="gitlab-runner" align=center />
+
+根据提示输入信息 
+
+<img src="/img/gitlab-runner_2.jpg" alt="gitlab-runner" align=center />
+
+
+
 
