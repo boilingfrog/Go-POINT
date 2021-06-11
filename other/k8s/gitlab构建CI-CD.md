@@ -61,6 +61,9 @@ $ gitlab-runner register
 
 <img src="/img/gitlab-runner_2.jpg" alt="gitlab-runner" align=center />
 
+之后在`gitlab`的`runner`中就可以看到我们注册的`gitlab-runner`了  
+
+<img src="/img/gitlab-runner_3.jpg" alt="gitlab-runner" align=center />
 
 
 
