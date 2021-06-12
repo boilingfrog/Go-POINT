@@ -57,7 +57,7 @@ $ gitlab-runner register
 
 <img src="/img/gitlab-runner_1.jpg" alt="gitlab-runner" align=center />
 
-根据提示输入信息 
+根据提示输入信息,需要注意的是里面的`tags`就是我们编写`.gitlab-ci.yml`对应填写的tag
 
 <img src="/img/gitlab-runner_2.jpg" alt="gitlab-runner" align=center />
 
