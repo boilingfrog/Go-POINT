@@ -67,3 +67,10 @@ $ gitlab-runner register
 
 
 
+### 遇到的报错
+
+`
+Error: UPGRADE FAILED: failed to replace object: Service "main-test" is invalid: spec.clusterIP: Invalid value: "": field is immutable
+`
+
+

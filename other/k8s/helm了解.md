@@ -1,7 +1,6 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-
 - [helm使用](#helm%E4%BD%BF%E7%94%A8)
   - [什么是helm](#%E4%BB%80%E4%B9%88%E6%98%AFhelm)
   - [安装helm](#%E5%AE%89%E8%A3%85helm)
@@ -22,6 +21,8 @@
     - [卸载应用](#%E5%8D%B8%E8%BD%BD%E5%BA%94%E7%94%A8)
     - [自定义参数安装应用](#%E8%87%AA%E5%AE%9A%E4%B9%89%E5%8F%82%E6%95%B0%E5%AE%89%E8%A3%85%E5%BA%94%E7%94%A8)
   - [应用发布顺序依赖](#%E5%BA%94%E7%94%A8%E5%8F%91%E5%B8%83%E9%A1%BA%E5%BA%8F%E4%BE%9D%E8%B5%96)
+  - [发布应用](#%E5%8F%91%E5%B8%83%E5%BA%94%E7%94%A8)
+  - [遇到的问题](#%E9%81%87%E5%88%B0%E7%9A%84%E9%97%AE%E9%A2%98)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -335,7 +336,47 @@ helm upgrade --set 'servers[0].port=8080' nginx bitnami/nginx -n blog
 
 虽然`Chart`可以通过`requirements.yaml`来管理依赖关系，并按照顺序下发模板资源，但是并无法控制子`Chart`之间的发布顺序。例如服务 B 部署必须依赖服务 A 的资源全部`Ready`。可以通过自定义子`Chart`之间的依赖顺序，在产品层控制每个子`Chart`的发布过程。  
 
+### 发布应用
+
+上面我们使用helm初始化了一个`charts`结构，我们使用上面初始化的好的结构，把我之前打包的一个镜像，发布到k8s环境中  
+
+镜像`liz2019/main-test:1.1.72`
+
+开始部署，为了方便查看结果，我们使用`NodePort`的类型部署，修改`values.yaml`  
+
+```
+service:
+#  type: ClusterIP
+#  port: 80
+  type: NodePort
+  port: 80
+```
+
+部署
+
+```
+$ helm upgrade --install --force --wait --namespace test  --set image.repository=liz2019/main-test --set image.tag=1.1.72 chart-demo  ./chart-demo
+
+Release "chart-demo" does not exist. Installing it now.
+NAME: chart-demo
+LAST DEPLOYED: Tue Jun 15 16:27:22 2021
+NAMESPACE: test
+STATUS: deployed
+REVISION: 1
+NOTES:
+1. Get the application URL by running these commands:
+  export NODE_PORT=$(kubectl get --namespace test -o jsonpath="{.spec.ports[0].nodePort}" services chart-demo)
+  export NODE_IP=$(kubectl get nodes --namespace test -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo http://$NODE_IP:$NODE_PORT
+```
+
+<img src="/img/helm_6.jpg" alt="helm" align=center />
+
+### 遇到的问题
+
+
 ### 参考
 【YAML 模版老去？Helm Chart 或将应用分发事实标准】https://www.infoq.cn/article/dwc0ipnguogq4kbap*9g  
 【Helm V3使用指北】http://www.wangyapu.com/2020/04/10/helm_user_guide/  
 【Helm v3安装与应用】https://blog.51cto.com/wutengfei/2569465  
+【基于Helm的Kubernetes资源管理】https://blog.gmem.cc/helm    
