@@ -372,6 +372,12 @@ NOTES:
 
 <img src="/img/helm_6.jpg" alt="helm" align=center />
 
+查看下结果
+
+<img src="/img/helm_7.jpg" alt="helm" align=center />
+
+可以看到已经成功部署了
+
 ### 遇到的问题
 
 
