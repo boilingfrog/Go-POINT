@@ -380,6 +380,33 @@ NOTES:
 
 ### 遇到的问题
 
+```
+UPGRADE FAILED: failed to replace object: Service "chart-demo" is invalid: spec.clusterIP: Invalid value: "": field is immutable
+```
+
+这种尝试设置不可变字段为空值的`Chart`，在`Helm 2`中可能正常工作，因为`Helm 2`仅仅比对新旧配置。只要你没有后续设置`clusterIP`为非空就不会出问题。但是到了`Helm 3`中则肯定会出现问题。  
+
+**强制更新的行为**
+
+指定`--force`标记时，可以在升级时，进行必要的强制更新：  
+
+- 对于Helm 2，当PATCH操作失败时，会删除、再重建目标资源
+
+- 对于Helm 3，会用PUT操作来替换（replace/overwrite）目标资源
+
+如果三方合并出现问题，有可能通过强制更新解决。对于`Helm 3`来说，更多情况下无济于事，主要是K8S限制某些字段一旦创建即不可变更。
+
+在Helm 3中，即使强制更新，你也可能遇到类似下面的错误：
+
+1、`ersistentVolumeClaim "ng" is invalid: spec: Forbidden: is immutable after creation except resources.requests for bound claims`
+
+2、`failed to replace object: Service "ng" is invalid: spec.clusterIP: Invalid value: "": field is immutable`
+
+`PUT`操作解决不了不可变字段的问题，然而`Helm 2`删除后再创建，则规避了不可变字段问题，但会引发其它问题：
+
+- PVC删除，PV级联删除么？数据怎么办
+
+- Service删除，会导致暂时的服务不可用么？
 
 ### 参考
 【YAML 模版老去？Helm Chart 或将应用分发事实标准】https://www.infoq.cn/article/dwc0ipnguogq4kbap*9g  
