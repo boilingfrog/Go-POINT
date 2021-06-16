@@ -4,7 +4,9 @@
 - [gitlab构建CI/CD](#gitlab%E6%9E%84%E5%BB%BAcicd)
   - [准备](#%E5%87%86%E5%A4%87)
   - [docker部署gitlab](#docker%E9%83%A8%E7%BD%B2gitlab)
-  - [docker部署gitlab-runner](#docker%E9%83%A8%E7%BD%B2gitlab-runner)
+  - [使用二进制部署gitlab-runner](#%E4%BD%BF%E7%94%A8%E4%BA%8C%E8%BF%9B%E5%88%B6%E9%83%A8%E7%BD%B2gitlab-runner)
+  - [gitlab-runner注册](#gitlab-runner%E6%B3%A8%E5%86%8C)
+  - [配置Variables](#%E9%85%8D%E7%BD%AEvariables)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -65,12 +67,11 @@ $ gitlab-runner register
 
 <img src="/img/gitlab-runner_3.jpg" alt="gitlab-runner" align=center />
 
+### 配置Variables
 
+在gitlab中可以配置我们gitlab-runner需要的变量，比如我们的docker-hub的密码，gitlab的账号密码等信息  
 
-### 遇到的报错
+<img src="/img/gitlab-runner_4.jpg" alt="gitlab-runner" align=center />
 
-`
-Error: UPGRADE FAILED: failed to replace object: Service "main-test" is invalid: spec.clusterIP: Invalid value: "": field is immutable
-`
 
 
