@@ -7,6 +7,7 @@
   - [使用二进制部署gitlab-runner](#%E4%BD%BF%E7%94%A8%E4%BA%8C%E8%BF%9B%E5%88%B6%E9%83%A8%E7%BD%B2gitlab-runner)
   - [gitlab-runner注册](#gitlab-runner%E6%B3%A8%E5%86%8C)
   - [配置Variables](#%E9%85%8D%E7%BD%AEvariables)
+  - [编写脚本](#%E7%BC%96%E5%86%99%E8%84%9A%E6%9C%AC)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -72,6 +73,48 @@ $ gitlab-runner register
 在gitlab中可以配置我们gitlab-runner需要的变量，比如我们的docker-hub的密码，gitlab的账号密码等信息  
 
 <img src="/img/gitlab-runner_4.jpg" alt="gitlab-runner" align=center />
+
+### 编写脚本
+
+通过`helm`和`bazel`实现在`gitlab-runner`中k8s应用的自动编译，发布。  
+
+先来个简单的`gitlab-ci.yml`测试下
+
+```
+stages:
+  - test
+  - build
+
+variables:
+  GOPROXY: https://goproxy.cn
+
+lint:
+  stage: test
+  script:
+    - echo "hello world lint"
+  only:
+    - branches
+  tags:
+    - golang-runner
+
+test:
+  stage: test
+  script:
+    - echo "hello world test"
+  only:
+    - branches
+  cache:
+    key: "bazel"
+    paths:
+      - .cache
+  tags:
+    - golang-runner
+```
+
+<img src="/img/gitlab-runner_5.jpg" alt="gitlab-runner" align=center />
+
+
+
 
 
 
