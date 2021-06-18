@@ -76,8 +76,6 @@ $ gitlab-runner register
 
 ### 编写脚本
 
-通过`helm`和`bazel`实现在`gitlab-runner`中k8s应用的自动编译，发布。  
-
 先来个简单的`gitlab-ci.yml`测试下
 
 ```
@@ -112,6 +110,106 @@ test:
 ```
 
 <img src="/img/gitlab-runner_5.jpg" alt="gitlab-runner" align=center />
+
+通过`helm`和`bazel`实现在`gitlab-runner`中k8s应用的自动编译，发布。  
+
+镜像推送到`docker-hub`中,`gitlab-runner`中的`helm`需要配置好，这里我是用了helm默认初始化的`charts`结构来发布应用  
+
+`gitlab-ci.yml`
+
+```
+stages:
+  - test
+  - build
+  - deploy
+
+variables:
+  GOPROXY: https://goproxy.cn
+
+lint:
+  stage: test
+  script:
+    - export GO_PROJECT_PATH="/home/gitlab-runner/goWork/src"
+    - mkdir -p $GO_PROJECT_PATH
+    - ln -s $(pwd) $GO_PROJECT_PATH/test
+    - cd $GO_PROJECT_PATH/test
+    - bash build/lint.sh
+  only:
+    - branches
+  tags:
+    - golang-runner
+
+test:
+  stage: test
+  script:
+    - go mod vendor
+    - bash build/bazel-test.sh
+  only:
+    - branches
+  cache:
+    key: "bazel"
+    paths:
+      - .cache
+  tags:
+    - golang-runner
+
+build:
+  stage: build
+  before_script:
+    - url_host=`git remote get-url origin | sed -e "s/http:\/\/gitlab-ci-token:.*@//g"`
+    - git remote set-url origin "http://$GIT_ACCESS_USER:$GIT_ACCESS_PASSWORD@${url_host}"
+    - git config user.name $GIT_ACCESS_USER
+    - git config user.email $GIT_ACCESS_EMAIL
+    - git fetch --tags --force
+  script:
+    - docker login -u $DOCKER_ACCESS_USER -p $DOCKER_ACCESS_PASSWORD
+    - go mod vendor
+    - bash build/bazel-build.sh
+  only:
+    - master
+  cache:
+    key: "bazel"
+    paths:
+      - .cache
+  tags:
+    - golang-runner
+
+
+
+include: '/.gitlab/deploy.yaml'
+```
+
+镜像打包
+
+```
+test::util:build_docker_images() {
+  local docker_registry=$1
+  local docker_tag=$2
+  local base_image="alpine:3.7"
+  local binary_name="main-test"
+  local docker_image_tag="${docker_registry}/${binary_name}:${docker_tag}"
+  docker build -t "${docker_image_tag}" .
+  docker push "${docker_image_tag}"
+
+  cat <<EOF >>".gitlab/deploy.yaml"
+${binary_name}:
+  stage: deploy
+  script:
+    - bash build/deploy.sh ${docker_registry} ${binary_name} ${docker_tag}
+  only:
+    - tags
+  when: manual
+  environment:
+    name: test
+  tags:
+    - golang-runner
+
+EOF
+
+  test::util::log "Docker builds done"
+}
+```
+
 
 
 
