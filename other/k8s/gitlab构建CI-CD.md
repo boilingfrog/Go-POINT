@@ -210,6 +210,15 @@ EOF
 }
 ```
 
+### 遇到的报错
+
+`go: writing go.mod cache: mkdir /home/goWork: permission denied
+`
+解决方案
+
+sudo chown -R $(whoami):admin /Users/zhushuyan/go/pkg && sudo chmod -R g+rwx /Users/zhushuyan/go/pkg
+
+
 
 
 
