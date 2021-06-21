@@ -216,7 +216,7 @@ EOF
 `
 解决方案
 
-sudo chown -R $(whoami):admin /Users/zhushuyan/go/pkg && sudo chmod -R g+rwx /Users/zhushuyan/go/pkg
+sudo chown -R $(whoami):gitlab-runner /Users/zhushuyan/go/pkg && sudo chmod -R g+rwx /Users/zhushuyan/go/pkg
 
 
 
