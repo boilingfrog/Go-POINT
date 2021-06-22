@@ -264,6 +264,10 @@ done
 
 项目的地址[gitlab-runner构建go项目](https://github.com/boilingfrog/gitlab-cicd-test)
 
+最后附上build的截图
+
+<img src="/img/gitlab-runner_9.jpg" alt="gitlab-runner" align=center />
+
 ### 遇到的报错
 
 `go: writing go.mod cache: mkdir /home/goWork: permission denied
@@ -275,10 +279,12 @@ done
 sudo chown -R $(whoami):gitlab-runner /Users/zhushuyan/go/pkg && sudo chmod -R g+rwx /Users/zhushuyan/go/pkg
 ```
 
+### 需要预备的知识点
 
+这里主要使用到了`helm`和`bazel`
 
+[helm使用](https://www.cnblogs.com/ricklz/p/14812642.html)
 
-
-
+[bazel使用](https://www.cnblogs.com/ricklz/p/14859991.html)  
 
 
