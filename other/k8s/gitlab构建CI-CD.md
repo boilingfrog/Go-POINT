@@ -8,6 +8,7 @@
   - [gitlab-runner注册](#gitlab-runner%E6%B3%A8%E5%86%8C)
   - [配置Variables](#%E9%85%8D%E7%BD%AEvariables)
   - [编写脚本](#%E7%BC%96%E5%86%99%E8%84%9A%E6%9C%AC)
+  - [遇到的报错](#%E9%81%87%E5%88%B0%E7%9A%84%E6%8A%A5%E9%94%99)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -113,7 +114,7 @@ test:
 
 通过`helm`和`bazel`实现在`gitlab-runner`中k8s应用的自动编译，发布。  
 
-镜像推送到`docker-hub`中,`gitlab-runner`中的`helm`需要配置好，这里我是用了helm默认初始化的`charts`结构来发布应用  
+镜像推送到`docker-hub`中,`gitlab-runner`中的`helm`需要配置好，这里我是用了`helm`默认初始化的`charts`结构来发布应用  
 
 `gitlab-ci.yml`
 
@@ -214,9 +215,12 @@ EOF
 
 `go: writing go.mod cache: mkdir /home/goWork: permission denied
 `
-解决方案
 
+给用户`gitlab-runner`添加最用目录的执行权限
+
+```
 sudo chown -R $(whoami):gitlab-runner /Users/zhushuyan/go/pkg && sudo chmod -R g+rwx /Users/zhushuyan/go/pkg
+```
 
 
 
