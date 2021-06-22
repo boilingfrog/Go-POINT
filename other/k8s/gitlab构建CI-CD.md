@@ -7,7 +7,8 @@
   - [使用二进制部署gitlab-runner](#%E4%BD%BF%E7%94%A8%E4%BA%8C%E8%BF%9B%E5%88%B6%E9%83%A8%E7%BD%B2gitlab-runner)
   - [gitlab-runner注册](#gitlab-runner%E6%B3%A8%E5%86%8C)
   - [配置Variables](#%E9%85%8D%E7%BD%AEvariables)
-  - [编写脚本](#%E7%BC%96%E5%86%99%E8%84%9A%E6%9C%AC)
+  - [简单先来个测试](#%E7%AE%80%E5%8D%95%E5%85%88%E6%9D%A5%E4%B8%AA%E6%B5%8B%E8%AF%95)
+  - [开始构建](#%E5%BC%80%E5%A7%8B%E6%9E%84%E5%BB%BA)
   - [遇到的报错](#%E9%81%87%E5%88%B0%E7%9A%84%E6%8A%A5%E9%94%99)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -75,7 +76,7 @@ $ gitlab-runner register
 
 <img src="/img/gitlab-runner_4.jpg" alt="gitlab-runner" align=center />
 
-### 编写脚本
+### 简单先来个测试
 
 先来个简单的`gitlab-ci.yml`测试下
 
@@ -111,6 +112,8 @@ test:
 ```
 
 <img src="/img/gitlab-runner_5.jpg" alt="gitlab-runner" align=center />
+
+### 开始构建
 
 通过`helm`和`bazel`实现在`gitlab-runner`中k8s应用的自动编译，发布。  
 
@@ -187,10 +190,47 @@ test::util:build_docker_images() {
   local docker_registry=$1
   local docker_tag=$2
   local base_image="alpine:3.7"
-  local binary_name="main-test"
-  local docker_image_tag="${docker_registry}/${binary_name}:${docker_tag}"
-  docker build -t "${docker_image_tag}" .
-  docker push "${docker_image_tag}"
+
+  query=$(test::util::find_changes)
+
+  if [ "$query" == "" ]; then
+    test::util::log "no change and exit..."
+    exit 0
+  fi
+
+
+  for b in ${query}; do
+    b=${b//\/\/src/"/src"}
+
+    if [[ $b == *test* ]]
+        then
+        continue
+    fi
+
+    local binary_file_path=$(test::util::find_binary "$b")
+    local binary_name=$(test::util::get_binary_name "$b")
+    local docker_build_path="dockerbuild/${binary_name}"
+    local docker_file_path="${docker_build_path}/Dockerfile"
+    local docker_image_tag="${docker_registry}/${binary_name}:${docker_tag}"
+
+
+    test::util::log "Starting docker build for image: ${binary_name}"
+    (
+      rm -rf "${docker_build_path}"
+      mkdir -p "${docker_build_path}"
+      cp "${binary_file_path}" "${docker_build_path}/${binary_name}"
+      cat <<EOF >"${docker_file_path}"
+FROM ${base_image}
+COPY ${binary_name} /usr/local/bin/${binary_name}
+RUN mkdir /lib64 && ln -s /lib/libc.musl-x86_64.so.1 /lib64/ld-linux-x86-64.so.2
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories \
+  && apk update --no-cache \
+ENTRYPOINT ["/usr/local/bin/${binary_name}"]
+EOF
+      docker build -q -t "${docker_image_tag}" "${docker_build_path}"
+      docker push ${docker_image_tag}
+    )
+
 
   cat <<EOF >>".gitlab/deploy.yaml"
 ${binary_name}:
@@ -204,12 +244,25 @@ ${binary_name}:
     name: test
   tags:
     - golang-runner
-
 EOF
+
+done
 
   test::util::log "Docker builds done"
 }
 ```
+
+整体的处理思路是
+
+1、通过`bazel`构建go项目。  
+
+2、构建的时候找到有改动的项目，编译，打包镜像，生成`deploy`脚本。    
+
+3、打上tag，推到`gitlab`中。
+
+4、最后通过手动触发项目的`deploy`，通过`helm`发布对应的项目到`k8s`中。
+
+项目的地址[gitlab-runner构建go项目](https://github.com/boilingfrog/gitlab-cicd-test)
 
 ### 遇到的报错
 
