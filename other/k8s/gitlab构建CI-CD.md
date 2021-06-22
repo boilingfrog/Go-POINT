@@ -264,9 +264,19 @@ done
 
 项目的地址[gitlab-runner构建go项目](https://github.com/boilingfrog/gitlab-cicd-test)
 
-最后附上build的截图
+最后附上deploy的截图
 
 <img src="/img/gitlab-runner_9.jpg" alt="gitlab-runner" align=center />
+
+对应的项目已经部署上去了
+
+```
+$ kubectl get pods -n test
+NAME                               READY   STATUS    RESTARTS   AGE
+demo1-main-test-654fbd4df6-vlhwr   1/1     Running   0          27m
+demo2-main-test-58ccfd4f8-hjcdf    1/1     Running   0          25m
+demo3-main-test-6897ff9496-mhm5n   1/1     Running   0          27m
+```
 
 ### 遇到的报错
 
