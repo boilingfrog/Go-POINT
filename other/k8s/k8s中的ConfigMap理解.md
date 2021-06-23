@@ -6,6 +6,8 @@
   - [ConfigMap的创建](#configmap%E7%9A%84%E5%88%9B%E5%BB%BA)
     - [使用key-value 字符串创建](#%E4%BD%BF%E7%94%A8key-value-%E5%AD%97%E7%AC%A6%E4%B8%B2%E5%88%9B%E5%BB%BA)
     - [从 env 文件创建](#%E4%BB%8E-env-%E6%96%87%E4%BB%B6%E5%88%9B%E5%BB%BA)
+    - [从目录创建](#%E4%BB%8E%E7%9B%AE%E5%BD%95%E5%88%9B%E5%BB%BA)
+    - [通过Yaml/Json创建](#%E9%80%9A%E8%BF%87yamljson%E5%88%9B%E5%BB%BA)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -33,13 +35,13 @@
 创建name和age
 
 ```
-$ kubectl create configmap config-test --from-literal=name=xiaoming  --from-literal=age=22 
+$ kubectl create configmap config-test-1 --from-literal=name=xiaoming  --from-literal=age=22 
 ```
 
 查看结果
 
 ```
-$ kubectl get configmap config-test -o go-template='{{.data}}'
+$ kubectl get configmap config-test-1 -o go-template='{{.data}}'
 map[age:22 name:xiaoming]#  
 ```
 
@@ -56,19 +58,62 @@ age=25
 写入`config-test-1`内容  
 
 ```
-$ kkubectl create configmap config-test-1 --from-env-file=config.env
-configmap/config-test-1 created
+$ kkubectl create configmap config-test-2 --from-env-file=config.env
+configmap/config-test-2 created
 ```
 
 查看内容
 
 ```
-$ kubectl get configmap config-test-1 -o go-template='{{.data}}'
+$ kubectl get configmap config-test-2 -o go-template='{{.data}}'
 map[age:25 name:xiaobai]#     
 ```
 
+#### 从目录创建
 
+创建对应的目录
 
+```
+$ mkdir config
+$ echo 18>config/age  
+$ echo xiaohua>config/name
+```
+
+写入`config-test-3`内容  
+
+```
+$ kubectl create configmap config-test-3 --from-file=config/
+configmap/config-test-3 created
+```
+
+查看写入的内容
+
+```
+$ kubectl get configmap config-test-3 -o go-template='{{.data}}'
+map[age:18
+ name:xiaohua
+]#       
+```
+
+#### 通过Yaml/Json创建
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-test-4
+  namespace: default
+data:
+  name: xiaolong
+  age: 16year # 需要是string
+```
+
+创建
+
+```
+$ kubectl create  -f config-test-4.yaml
+configmap/config-test-4 created
+```
 
 ### 参考
 
