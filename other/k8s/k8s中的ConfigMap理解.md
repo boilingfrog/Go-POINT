@@ -184,7 +184,7 @@ SPECIAL_REALNAME_KEY=xiaolong
 
 将`ConfigMap`用作命令行参数时，需要先把`ConfigMap`的数据保存在环境变量中，然后通过`$(VAR_NAME)`的方式引用环境变量。  
 
-```
+```yaml
 apiVersion: v1
 kind: Pod
 metadata:
@@ -221,7 +221,7 @@ long xiaolong
 
 将创建的`ConfigMap`直接挂载至 Pod 的`/etc/config`目录下，其中每一个`key-value`键值对都会生成一个文件，`key`为文件名，`value`为内容  
 
-```
+```yaml
 apiVersion: v1
 kind: Pod
 metadata:
