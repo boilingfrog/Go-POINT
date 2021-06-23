@@ -5,10 +5,10 @@
   - [什么是ConfigMap](#%E4%BB%80%E4%B9%88%E6%98%AFconfigmap)
   - [ConfigMap的创建](#configmap%E7%9A%84%E5%88%9B%E5%BB%BA)
     - [使用key-value 字符串创建](#%E4%BD%BF%E7%94%A8key-value-%E5%AD%97%E7%AC%A6%E4%B8%B2%E5%88%9B%E5%BB%BA)
-    - [从 env 文件创建](#%E4%BB%8E-env-%E6%96%87%E4%BB%B6%E5%88%9B%E5%BB%BA)
+    - [从env文件创建](#%E4%BB%8Eenv%E6%96%87%E4%BB%B6%E5%88%9B%E5%BB%BA)
     - [从目录创建](#%E4%BB%8E%E7%9B%AE%E5%BD%95%E5%88%9B%E5%BB%BA)
     - [通过Yaml/Json创建](#%E9%80%9A%E8%BF%87yamljson%E5%88%9B%E5%BB%BA)
-    - [ConfigMap使用](#configmap%E4%BD%BF%E7%94%A8)
+  - [ConfigMap使用](#configmap%E4%BD%BF%E7%94%A8)
     - [用作环境变量](#%E7%94%A8%E4%BD%9C%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F)
     - [用作命令参数](#%E7%94%A8%E4%BD%9C%E5%91%BD%E4%BB%A4%E5%8F%82%E6%95%B0)
     - [使用volume将ConfigMap作为文件或目录直接挂载](#%E4%BD%BF%E7%94%A8volume%E5%B0%86configmap%E4%BD%9C%E4%B8%BA%E6%96%87%E4%BB%B6%E6%88%96%E7%9B%AE%E5%BD%95%E7%9B%B4%E6%8E%A5%E6%8C%82%E8%BD%BD)
@@ -49,7 +49,7 @@ $ kubectl get configmap config-test-1 -o go-template='{{.data}}'
 map[age:22 name:xiaoming]#  
 ```
 
-#### 从 env 文件创建
+#### 从env文件创建
 
 创建env文件  
 
@@ -119,7 +119,7 @@ $ kubectl create  -f config-test-4.yaml
 configmap/config-test-4 created
 ```
 
-#### ConfigMap使用
+### ConfigMap使用
 
 `ConfigMap`可以通过三种方式在Pod中使用，三种分别方式为：设置环境变量、设置容器命令行参数以及在`Volume`中直接挂载文件或目录。  
 
