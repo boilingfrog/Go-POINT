@@ -8,6 +8,10 @@
     - [从 env 文件创建](#%E4%BB%8E-env-%E6%96%87%E4%BB%B6%E5%88%9B%E5%BB%BA)
     - [从目录创建](#%E4%BB%8E%E7%9B%AE%E5%BD%95%E5%88%9B%E5%BB%BA)
     - [通过Yaml/Json创建](#%E9%80%9A%E8%BF%87yamljson%E5%88%9B%E5%BB%BA)
+    - [ConfigMap使用](#configmap%E4%BD%BF%E7%94%A8)
+    - [用作环境变量](#%E7%94%A8%E4%BD%9C%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F)
+    - [用作命令参数](#%E7%94%A8%E4%BD%9C%E5%91%BD%E4%BB%A4%E5%8F%82%E6%95%B0)
+    - [使用volume将ConfigMap作为文件或目录直接挂载](#%E4%BD%BF%E7%94%A8volume%E5%B0%86configmap%E4%BD%9C%E4%B8%BA%E6%96%87%E4%BB%B6%E6%88%96%E7%9B%AE%E5%BD%95%E7%9B%B4%E6%8E%A5%E6%8C%82%E8%BD%BD)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -113,6 +117,134 @@ data:
 ```
 $ kubectl create  -f config-test-4.yaml
 configmap/config-test-4 created
+```
+
+#### ConfigMap使用
+
+`ConfigMap`可以通过三种方式在Pod中使用，三种分别方式为：设置环境变量、设置容器命令行参数以及在`Volume`中直接挂载文件或目录。  
+
+需要注意的点  
+
+> ConfigMap 必须在 Pod 引用它之前创建
+
+> 使用 envFrom 时，将会自动忽略无效的键
+
+> Pod 只能使用同一个命名空间内的 ConfigMap 
+
+首先创建 ConfigMap：
+
+```
+$ kubectl create configmap special-config --from-literal=name=long --from-literal=realname=xiaolong
+$ kubectl create configmap env-config --from-literal=log_level=INFO
+```
+
+#### 用作环境变量
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pod
+spec:
+  containers:
+    - name: test-container
+      image: busybox
+      command: ["/bin/sh", "-c", "env"]
+      env:
+        - name: SPECIAL_NAME_KEY
+          valueFrom:
+            configMapKeyRef:
+              name: special-config
+              key: name
+        - name: SPECIAL_REALNAME_KEY
+          valueFrom:
+            configMapKeyRef:
+              name: special-config
+              key: realname
+      envFrom:
+        - configMapRef:
+            name: env-config
+  restartPolicy: Never
+```
+
+运行之后查看日志
+
+```
+$ kubectl logs -f test-pod
+HOSTNAME=test-pod
+SPECIAL_NAME_KEY=long
+log_level=INFO
+SPECIAL_REALNAME_KEY=xiaolong
+```
+
+发现上面的值已成功写入了  
+
+#### 用作命令参数
+
+将`ConfigMap`用作命令行参数时，需要先把`ConfigMap`的数据保存在环境变量中，然后通过`$(VAR_NAME)`的方式引用环境变量。  
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dapi-test-pod
+spec:
+  containers:
+    - name: test-container
+      image: gcr.io/google_containers/busybox
+      command: ["/bin/sh", "-c", "echo $(SPECIAL_NAME_KEY) $(SPECIAL_REALNAME_KEY)" ]
+      env:
+        - name: SPECIAL_NAME_KEY
+          valueFrom:
+            configMapKeyRef:
+              name: special-config
+              key: name
+        - name: SPECIAL_REALNAME_KEY
+          valueFrom:
+            configMapKeyRef:
+              name: special-config
+              key: realname
+  restartPolicy: Never
+```
+
+运行之后打印日志
+
+```
+$ kubectl logs -f dapi-test-pod
+long xiaolong
+```
+
+输出我们之前的写入的配置信息  
+
+#### 使用volume将ConfigMap作为文件或目录直接挂载
+
+将创建的`ConfigMap`直接挂载至 Pod 的`/etc/config`目录下，其中每一个`key-value`键值对都会生成一个文件，`key`为文件名，`value`为内容  
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: vol-test-pod
+spec:
+  containers:
+    - name: test-container
+      image: busybox
+      command: ["/bin/sh", "-c", "cat /etc/config/name"]
+      volumeMounts:
+      - name: config-volume
+        mountPath: /etc/config
+  volumes:
+    - name: config-volume
+      configMap:
+        name: special-config
+  restartPolicy: Never
+```
+
+启动之后打印输出
+
+```
+$ kubectl logs -f vol-test-pod
+long#       
 ```
 
 ### 参考
