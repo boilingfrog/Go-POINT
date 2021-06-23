@@ -12,6 +12,7 @@
     - [用作环境变量](#%E7%94%A8%E4%BD%9C%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F)
     - [用作命令参数](#%E7%94%A8%E4%BD%9C%E5%91%BD%E4%BB%A4%E5%8F%82%E6%95%B0)
     - [使用volume将ConfigMap作为文件或目录直接挂载](#%E4%BD%BF%E7%94%A8volume%E5%B0%86configmap%E4%BD%9C%E4%B8%BA%E6%96%87%E4%BB%B6%E6%88%96%E7%9B%AE%E5%BD%95%E7%9B%B4%E6%8E%A5%E6%8C%82%E8%BD%BD)
+    - [使用subpath将ConfigMap作为单独的文件挂载到目录](#%E4%BD%BF%E7%94%A8subpath%E5%B0%86configmap%E4%BD%9C%E4%B8%BA%E5%8D%95%E7%8B%AC%E7%9A%84%E6%96%87%E4%BB%B6%E6%8C%82%E8%BD%BD%E5%88%B0%E7%9B%AE%E5%BD%95)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -245,6 +246,42 @@ spec:
 ```
 $ kubectl logs -f vol-test-pod
 long#       
+```
+
+#### 使用subpath将ConfigMap作为单独的文件挂载到目录
+
+在一般情况下`configmap`挂载文件时，会先覆盖掉挂载目录，然后再将`congfigmap`中的内容作为文件挂载进行。如果想不对原来的文件夹下的文件造成覆盖，只是将`configmap`中的每个 key，按照文件的方式挂载到目录下，可以使用`subpath`参数。
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dapi-test-pod
+spec:
+  containers:
+    - name: test-container
+      image: nginx
+      command: ["/bin/sh","-c","sleep 36000"]
+      volumeMounts:
+      - name: config-volume
+        mountPath: /etc/nginx/name
+        subPath: name
+  volumes:
+    - name: config-volume
+      configMap:
+        name: special-config
+        items:
+        - key: name
+          path: name
+  restartPolicy: Never
+```
+
+进入到pod中查看  
+
+```
+root@dapi-test-pod:/etc/nginx# ls
+conf.d		mime.types  name	scgi_params
+fastcgi_params	modules     nginx.conf	uwsgi_params
 ```
 
 ### 参考
