@@ -13,6 +13,8 @@
     - [用作命令参数](#%E7%94%A8%E4%BD%9C%E5%91%BD%E4%BB%A4%E5%8F%82%E6%95%B0)
     - [使用volume将ConfigMap作为文件或目录直接挂载](#%E4%BD%BF%E7%94%A8volume%E5%B0%86configmap%E4%BD%9C%E4%B8%BA%E6%96%87%E4%BB%B6%E6%88%96%E7%9B%AE%E5%BD%95%E7%9B%B4%E6%8E%A5%E6%8C%82%E8%BD%BD)
     - [使用subpath将ConfigMap作为单独的文件挂载到目录](#%E4%BD%BF%E7%94%A8subpath%E5%B0%86configmap%E4%BD%9C%E4%B8%BA%E5%8D%95%E7%8B%AC%E7%9A%84%E6%96%87%E4%BB%B6%E6%8C%82%E8%BD%BD%E5%88%B0%E7%9B%AE%E5%BD%95)
+  - [被挂载的ConfigMap内容会被自动更新](#%E8%A2%AB%E6%8C%82%E8%BD%BD%E7%9A%84configmap%E5%86%85%E5%AE%B9%E4%BC%9A%E8%A2%AB%E8%87%AA%E5%8A%A8%E6%9B%B4%E6%96%B0)
+  - [不可变更的ConfigMap](#%E4%B8%8D%E5%8F%AF%E5%8F%98%E6%9B%B4%E7%9A%84configmap)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -283,6 +285,36 @@ root@dapi-test-pod:/etc/nginx# ls
 conf.d		mime.types  name	scgi_params
 fastcgi_params	modules     nginx.conf	uwsgi_params
 ```
+
+### 被挂载的ConfigMap内容会被自动更新
+
+当卷中使用的`ConfigMap`被更新时，所投射的键最终也会被更新。`kubelet`组件会在每次周期性同步时检查所挂载的`ConfigMap`是否为最新。 不过,`kubelet`使用的是其本地的高速缓存来获得`ConfigMap`的当前值。  
+
+`ConfigMap`既可以通过`watch`操作实现内容传播（默认形式），也可实现基于`TTL`的缓存，还可以直接经过所有请求重定向到`API`服务器。 因此，从`ConfigMap`被更新的那一刻算起，到新的主键被投射到`Pod`中去，这一 时间跨度可能与 kubelet 的同步周期加上高速缓存的传播延迟相等。 这里的传播延迟取决于所选的高速缓存类型 （分别对应`watch`操作的传播延迟、高速缓存的`TTL`时长或者 0）。  
+
+以环境变量方式使用的`ConfigMap`数据不会被自动更新。 更新这些数据需要重新启动`Pod`。  
+
+### 不可变更的ConfigMap
+
+`Kubernetes`特性 不可变更的`Secret`和`ConfigMap`提供了一种将各个`Secret`和`ConfigMap`设置为不可变更的选项。对于大量使用 ConfigMap 的 集群（至少有数万个各不相同的`ConfigMap`给`Pod` 挂载）而言，禁止更改`ConfigMap`的数据有以下好处：  
+
+- 保护应用，使之免受意外（不想要的）更新所带来的负面影响。
+
+- 通过大幅降低对 `kube-apiserver` 的压力提升集群性能，这是因为系统会关闭 对已标记为不可变更的`ConfigMap`的监视操作。
+
+可以通过将`immutable`字段设置为`true`创建不可变更的`ConfigMap`。 例如：
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  ...
+data:
+  ...
+immutable: true
+```
+
+一旦某`ConfigMap`被标记为不可变更，则 无法 逆转这一变化，，也无法更改`data`或`binaryData`字段的内容。你只能删除并重建`ConfigMap`。 因为现有的`Pod`会维护一个对已删除的`ConfigMap`的挂载点，建议重新创建这些`Pods`。  
 
 ### 参考
 
