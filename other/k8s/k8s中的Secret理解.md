@@ -15,3 +15,19 @@
 - 作为容器的环境变量
 
 - 由 kubelet 在为 Pod 拉取镜像时使用
+
+#### Opaque Secret
+
+`Opaque`类型的数据是一个`map`类型，要求`value`是`base64`编码格式：  
+
+创建我们需要的两个`base64`账号信息  
+
+```
+$ echo -n "admin" | base64
+YWRtaW4=
+$ echo -n "1f2d1e2e67df" | base64
+MWYyZDFlMmU2N2Rm
+```
+
+
+
