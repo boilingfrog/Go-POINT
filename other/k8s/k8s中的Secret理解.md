@@ -7,7 +7,10 @@
     - [Opaque Secret](#opaque-secret)
   - [Opaque Secret的使用](#opaque-secret%E7%9A%84%E4%BD%BF%E7%94%A8)
     - [将Secret挂载到Volume中](#%E5%B0%86secret%E6%8C%82%E8%BD%BD%E5%88%B0volume%E4%B8%AD)
+      - [挂载的Secret会被自动更新](#%E6%8C%82%E8%BD%BD%E7%9A%84secret%E4%BC%9A%E8%A2%AB%E8%87%AA%E5%8A%A8%E6%9B%B4%E6%96%B0)
     - [将Secret导出到环境变量中](#%E5%B0%86secret%E5%AF%BC%E5%87%BA%E5%88%B0%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F%E4%B8%AD)
+      - [Secret更新之后对应的环境变量不会被更新](#secret%E6%9B%B4%E6%96%B0%E4%B9%8B%E5%90%8E%E5%AF%B9%E5%BA%94%E7%9A%84%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F%E4%B8%8D%E4%BC%9A%E8%A2%AB%E6%9B%B4%E6%96%B0)
+  - [不可更改的Secret](#%E4%B8%8D%E5%8F%AF%E6%9B%B4%E6%94%B9%E7%9A%84secret)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -110,9 +113,75 @@ root
 
 可以看到我们之前定义的secret的username已经被当前的pod引用，并成功挂载  
 
+##### 挂载的Secret会被自动更新 
+
+当已经存储于卷中被使用的`Secret`被更新时，被映射的键也将终将被更新。 组件`kubelet`在周期性同步时检查被挂载的`Secret`是不是最新的。 但是，它会使用其本地缓存的数值作为`Secret`的当前值。  
+
+不过，使用`Secret`作为子路径卷挂载的容器 不会收到`Secret`更新。  
+
 #### 将Secret导出到环境变量中
 
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: secret-env-pod
+spec:
+  containers:
+  - name: mycontainer
+    image: redis
+    env:
+      - name: SECRET_USERNAME
+        valueFrom:
+          secretKeyRef:
+            name: secret-test
+            key: username
+      - name: SECRET_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: secret-test
+            key: password
+  restartPolicy: Never
+```
 
+启动pod，之后进入pod
+
+```
+root@secret-env-pod:/data# echo $SECRET_USERNAME
+root
+root@secret-env-pod:/data# echo $SECRET_PASSWORD
+123456
+```
+
+可以看到secret的值已经成功写入到环境变量中了    
+
+##### Secret更新之后对应的环境变量不会被更新 
+
+如果某个容器已经在通过环境变量使用某`Secret`，对该`Secret`的更新不会被 容器马上看见，除非容器被重启。有一些第三方的解决方案能够在`Secret`发生变化时触发容器重启。  
+
+### 不可更改的Secret
+
+`Kubernetes`对于`Secret`和`ConfigMap`提供了一种不可变更的配置选择，对于大量使用`Secret`的集群（至少有成千上万各不相同的`Secret`供`Pod`挂载）， 禁止变更它们的数据有下列好处：  
+
+- 防止意外（或非预期的）更新导致应用程序中断
+
+- 通过将 Secret 标记为不可变来关闭 kube-apiserver 对其的监视，从而显著降低 kube-apiserver 的负载，提升集群性能。
+
+将`Secret`的`immutable`字段设置为`true`创建不可更改的`Secret`  
+
+```
+apiVersion: v1
+kind: Secret
+metadata:
+  ...
+data:
+  ...
+immutable: true
+```
+
+1、当一个`secret`设置成不可更改，如果想要更改`secret`中的内容，就需要删除并且重新创建这个`secret`  
+
+2、对于引用老的`secret`的pod，需要删除并且重新创建  
 
 
 ### 参考
