@@ -1,7 +1,7 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [理解ConfigMap](#%E7%90%86%E8%A7%A3configmap)
+- [理解Secret](#%E7%90%86%E8%A7%A3secret)
   - [什么是Secret](#%E4%BB%80%E4%B9%88%E6%98%AFsecret)
   - [Secret类型](#secret%E7%B1%BB%E5%9E%8B)
     - [Opaque Secret](#opaque-secret)
@@ -11,11 +11,13 @@
     - [将Secret导出到环境变量中](#%E5%B0%86secret%E5%AF%BC%E5%87%BA%E5%88%B0%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F%E4%B8%AD)
       - [Secret更新之后对应的环境变量不会被更新](#secret%E6%9B%B4%E6%96%B0%E4%B9%8B%E5%90%8E%E5%AF%B9%E5%BA%94%E7%9A%84%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F%E4%B8%8D%E4%BC%9A%E8%A2%AB%E6%9B%B4%E6%96%B0)
   - [不可更改的Secret](#%E4%B8%8D%E5%8F%AF%E6%9B%B4%E6%94%B9%E7%9A%84secret)
+  - [Secret与Pod生命周期的关系](#secret%E4%B8%8Epod%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F%E7%9A%84%E5%85%B3%E7%B3%BB)
+  - [Secret与ConfigMap对比](#secret%E4%B8%8Econfigmap%E5%AF%B9%E6%AF%94)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-## 理解ConfigMap
+## 理解Secret
 
 ### 什么是Secret
 
@@ -23,15 +25,16 @@
 
 `Secret`是一种包含少量敏感信息例如密码、令牌或密钥的对象。 这样的信息可能会被放在`Pod` 规约中或者镜像中。 用户可以创建`Secret`，同时系统也创建了一些`Secret`。
 
-### Secret类型
+要使用`Secret`，Pod 需要引用`Secret`。 `Pod`可以用三种方式之一来使用 Secret：
 
-要使用`Secret`，Pod 需要引用 Secret。 Pod 可以用三种方式之一来使用 Secret：
-
-- 作为挂载到一个或多个容器上的 卷 中的文件。
+- 作为挂载到一个或多个容器上的卷中的文件。
 
 - 作为容器的环境变量
 
-- 由 kubelet 在为 Pod 拉取镜像时使用
+- 由kubelet在为Pod拉取镜像时使用
+
+### Secret的类型
+
 
 #### Opaque Secret
 
@@ -182,6 +185,34 @@ immutable: true
 1、当一个`secret`设置成不可更改，如果想要更改`secret`中的内容，就需要删除并且重新创建这个`secret`  
 
 2、对于引用老的`secret`的pod，需要删除并且重新创建  
+
+
+
+### Secret与Pod生命周期的关系 
+
+通过API创建Pod时，不会检查引用的Secret是否存在。一旦Pod被调度，kubelet就会尝试获取该Secret的值。如果获取不到该Secret，或者暂时无法与API服务器建立连接，kubelet将会定期重试。kubelet将会报告关于 Pod 的事件，并解释它无法启动的原因。 一旦获取到Secret，kubelet将创建并挂载一个包含它的卷。在Pod的所有卷被挂载之前，Pod中的容器不会启动。  
+
+### Secret与ConfigMap对比
+
+**相同点：**
+
+- key/value 的形式
+
+- 属于某个特定的 namespace
+
+- 可以导出到环境变量
+
+- 可以通过目录 / 文件形式挂载 (支持挂载所有 key 和部分 key)
+
+**不同点：**
+
+- Secret 可以被 ServerAccount 关联 (使用)
+
+- Secret 可以存储 register 的鉴权信息，用在 ImagePullSecret 参数中，用于拉取私有仓库的镜像
+
+- Secret 支持 Base64 加密
+
+- Secret 文件存储在 tmpfs 文件系统中，Pod 删除后 Secret 文件也会对应的删除。
 
 
 ### 参考
