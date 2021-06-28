@@ -198,8 +198,6 @@ immutable: true
 
 2、对于引用老的`secret`的pod，需要删除并且重新创建  
 
-
-
 ### Secret与Pod生命周期的关系 
 
 通过API创建Pod时，不会检查引用的Secret是否存在。一旦Pod被调度，kubelet就会尝试获取该Secret的值。如果获取不到该Secret，或者暂时无法与API服务器建立连接，kubelet将会定期重试。kubelet将会报告关于 Pod 的事件，并解释它无法启动的原因。 一旦获取到Secret，kubelet将创建并挂载一个包含它的卷。在Pod的所有卷被挂载之前，Pod中的容器不会启动。  
