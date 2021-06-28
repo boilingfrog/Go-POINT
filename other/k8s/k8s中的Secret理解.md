@@ -4,12 +4,14 @@
 - [理解Secret](#%E7%90%86%E8%A7%A3secret)
   - [什么是Secret](#%E4%BB%80%E4%B9%88%E6%98%AFsecret)
   - [Secret的类型](#secret%E7%9A%84%E7%B1%BB%E5%9E%8B)
-    - [Opaque Secret](#opaque-secret)
-  - [Opaque Secret的使用](#opaque-secret%E7%9A%84%E4%BD%BF%E7%94%A8)
+  - [Opaque Secret](#opaque-secret)
+    - [Opaque Secret的使用](#opaque-secret%E7%9A%84%E4%BD%BF%E7%94%A8)
     - [将Secret挂载到Volume中](#%E5%B0%86secret%E6%8C%82%E8%BD%BD%E5%88%B0volume%E4%B8%AD)
       - [挂载的Secret会被自动更新](#%E6%8C%82%E8%BD%BD%E7%9A%84secret%E4%BC%9A%E8%A2%AB%E8%87%AA%E5%8A%A8%E6%9B%B4%E6%96%B0)
     - [将Secret导出到环境变量中](#%E5%B0%86secret%E5%AF%BC%E5%87%BA%E5%88%B0%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F%E4%B8%AD)
       - [Secret更新之后对应的环境变量不会被更新](#secret%E6%9B%B4%E6%96%B0%E4%B9%8B%E5%90%8E%E5%AF%B9%E5%BA%94%E7%9A%84%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F%E4%B8%8D%E4%BC%9A%E8%A2%AB%E6%9B%B4%E6%96%B0)
+  - [kubernetes.io/dockerconfigjson](#kubernetesiodockerconfigjson)
+  - [kubernetes.io/service-account-token](#kubernetesioservice-account-token)
   - [不可更改的Secret](#%E4%B8%8D%E5%8F%AF%E6%9B%B4%E6%94%B9%E7%9A%84secret)
   - [Secret与Pod生命周期的关系](#secret%E4%B8%8Epod%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F%E7%9A%84%E5%85%B3%E7%B3%BB)
   - [Secret与ConfigMap对比](#secret%E4%B8%8Econfigmap%E5%AF%B9%E6%AF%94)
@@ -48,7 +50,7 @@
 | kubernetes.io/tls	                    |    用于 TLS 客户端或者服务器端的数据              |
 | bootstrap.kubernetes.io/token	        |    启动引导令牌数据                             |
 
-#### Opaque Secret
+### Opaque Secret
 
 `Opaque`类型的数据是一个`map`类型，要求`value`是`base64`编码格式：  
 
@@ -84,7 +86,7 @@ $ kubectl get secret
 
 可以看到我们刚刚创建的`secret`  
 
-### Opaque Secret的使用
+#### Opaque Secret的使用
 
 创建好`secret`之后，有两种方式来使用它：  
 
@@ -173,6 +175,41 @@ root@secret-env-pod:/data# echo $SECRET_PASSWORD
 ##### Secret更新之后对应的环境变量不会被更新 
 
 如果某个容器已经在通过环境变量使用某`Secret`，对该`Secret`的更新不会被 容器马上看见，除非容器被重启。有一些第三方的解决方案能够在`Secret`发生变化时触发容器重启。  
+
+### kubernetes.io/dockerconfigjson
+
+类型`kubernetes.io/dockerconfigjson`被设计用来保存`JSON`数据的序列化形式， 该 JSON 也遵从`~/.docker/config.json`文件的格式规则，而后者是`~/.dockercfg`的新版本格式。 使用此`Secret`类型时，`Secret`对象的 data 字段必须包含`.dockerconfigjson`键，其键值为`base64`编码的字符串包含`~/.docker/config.json`文件的内容。  
+
+下面是一个`kubernetes.io/dockercfg`类型`Secret`的示例：  
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: secret-dockercfg
+type: kubernetes.io/dockercfg
+data:
+  .dockercfg: |
+        "<base64 encoded ~/.dockercfg file>"
+```
+
+### kubernetes.io/service-account-token
+
+`kubernetes.io/service-account-token：` 用于被`serviceaccount`引用。`serviceaccout`创建时`Kubernetes`会默认创建对应的`secret`。Pod如果使用了`serviceaccount`，对应的 secret 会自动挂载到Pod的`/run/secrets/kubernetes.io/serviceaccount`目录中。  
+
+```
+$ kubectl run nginx --image nginx
+  pod/nginx created
+$ kubectl get pods
+  NAME             READY   STATUS              RESTARTS   AGE
+  nginx            0/1     ContainerCreating   0          26s
+$ kubectl exec nginx ls /run/secrets/kubernetes.io/serviceaccount
+  ca.crt
+  namespace
+  token
+```
+
+`Kubernetes`在创建Pod时会自动创建一个服务账号Secret并自动修改你的Pod以使用该Secret。该服务账号令牌Secret中包含了访问`Kubernetes API`所需要的凭据。  
 
 ### 不可更改的Secret
 
