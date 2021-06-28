@@ -3,7 +3,7 @@
 
 - [理解Secret](#%E7%90%86%E8%A7%A3secret)
   - [什么是Secret](#%E4%BB%80%E4%B9%88%E6%98%AFsecret)
-  - [Secret类型](#secret%E7%B1%BB%E5%9E%8B)
+  - [Secret的类型](#secret%E7%9A%84%E7%B1%BB%E5%9E%8B)
     - [Opaque Secret](#opaque-secret)
   - [Opaque Secret的使用](#opaque-secret%E7%9A%84%E4%BD%BF%E7%94%A8)
     - [将Secret挂载到Volume中](#%E5%B0%86secret%E6%8C%82%E8%BD%BD%E5%88%B0volume%E4%B8%AD)
@@ -35,6 +35,18 @@
 
 ### Secret的类型
 
+`Kubernetes`提供若干种内置的类型，用于一些常见的使用场景。 针对这些类型，`Kubernetes`所执行的合法性检查操作以及对其所实施的限制各不相同。   
+
+|     内置类型                           | 用法                                         |
+| ------------------------------        |  -------------------------------            |
+| Opaque                                |    用户定义的任意数据                          |
+| kubernetes.io/service-account-token   |    服务账号令牌                               |
+| kubernetes.io/dockercfg               |    ~/.dockercfg 文件的序列化形式               |
+| kubernetes.io/dockerconfigjson        |    ~/.docker/config.json 文件的序列化形式      |
+| kubernetes.io/basic-auth              |    用于基本身份认证的凭据                       |
+| kubernetes.io/ssh-auth                |    用于 SSH 身份认证的凭据                      |
+| kubernetes.io/tls	                    |    用于 TLS 客户端或者服务器端的数据              |
+| bootstrap.kubernetes.io/token	        |    启动引导令牌数据                             |
 
 #### Opaque Secret
 
