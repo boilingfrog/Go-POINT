@@ -15,7 +15,7 @@
 
 `PersistentVolumeClaim（PVC）`是由用户进行存储的请求。 它类似于pod。 Pod消耗节点资源，PVC消耗PV资源。Pod可以请求特定级别的资源（CPU和内存）。声明可以请求特定的大小和访问模式（例如，可以一次读/写或多次只读）。  
 
-<img src="/img/pv_pvc_1.jpg" alt="pv_pvc" align=center />
+<img src="/img/pv_pvc_1.png" alt="pv_pvc" align=center />
 
 
 ### 参考
