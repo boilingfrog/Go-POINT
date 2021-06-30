@@ -36,7 +36,7 @@
 
 - StorageClass：充当PV的模板，自动为PVC创建PV
 
-<img src="/img/pv_pvc-2.png" alt="pv_pvc" align=center />
+<img src="/img/pv_pvc-2.png" width = "448" height = "339" alt="pv_pvc" align=center />
 
 ### 生命周期
 
