@@ -4,6 +4,14 @@
 - [pv和pvc](#pv%E5%92%8Cpvc)
   - [什么是pv和PVC](#%E4%BB%80%E4%B9%88%E6%98%AFpv%E5%92%8Cpvc)
   - [生命周期](#%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F)
+  - [PV创建的流程](#pv%E5%88%9B%E5%BB%BA%E7%9A%84%E6%B5%81%E7%A8%8B)
+    - [1、创建一个远程块存储，相当于创建了一个磁盘，称为Attach](#1%E5%88%9B%E5%BB%BA%E4%B8%80%E4%B8%AA%E8%BF%9C%E7%A8%8B%E5%9D%97%E5%AD%98%E5%82%A8%E7%9B%B8%E5%BD%93%E4%BA%8E%E5%88%9B%E5%BB%BA%E4%BA%86%E4%B8%80%E4%B8%AA%E7%A3%81%E7%9B%98%E7%A7%B0%E4%B8%BAattach)
+    - [2、将这个磁盘设备挂载到宿主机的挂载点，称为Mount](#2%E5%B0%86%E8%BF%99%E4%B8%AA%E7%A3%81%E7%9B%98%E8%AE%BE%E5%A4%87%E6%8C%82%E8%BD%BD%E5%88%B0%E5%AE%BF%E4%B8%BB%E6%9C%BA%E7%9A%84%E6%8C%82%E8%BD%BD%E7%82%B9%E7%A7%B0%E4%B8%BAmount)
+    - [3、绑定](#3%E7%BB%91%E5%AE%9A)
+  - [持久化卷声明的保护](#%E6%8C%81%E4%B9%85%E5%8C%96%E5%8D%B7%E5%A3%B0%E6%98%8E%E7%9A%84%E4%BF%9D%E6%8A%A4)
+  - [PV类型](#pv%E7%B1%BB%E5%9E%8B)
+  - [PV卷阶段状态](#pv%E5%8D%B7%E9%98%B6%E6%AE%B5%E7%8A%B6%E6%80%81)
+  - [基本的使用](#%E5%9F%BA%E6%9C%AC%E7%9A%84%E4%BD%BF%E7%94%A8)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -59,6 +67,128 @@ pv和pvc遵循以下生命周期：
 - 回收策略：将执行清除操作，之后可以被新的pvc使用，需要插件支持。
 
 目前只有NFS和HostPath类型卷支持回收策略，`AWS EBS,GCE PD,Azure Disk`和`Cinder`支持删除`(Delete)`策略。  
+
+### PV创建的流程
+
+大多数情况，持久化`Volume`的实现，依赖于远程存储服务，如远程文件存储（NFS、GlusterFS）、远程块存储（公有云提供的远程磁盘）等。  
+
+K8s需要使用这些存储服务，来为容器准备一个持久化的宿主机目录，以供以后挂载使用，创建这个目录分为两阶段：  
+
+#### 1、创建一个远程块存储，相当于创建了一个磁盘，称为Attach
+
+由`Volume Controller`负责维护，不断地检查 每个Pod对应的PV和所在的宿主机的挂载情况。可以理解为创建了一块NFS磁盘，相当于执行  
+
+```
+gcloud compute instances attach-disk < 虚拟机名字 > --disk < 远程磁盘名字 >
+```
+
+为了使用这块磁盘，还需要挂载操作  
+
+#### 2、将这个磁盘设备挂载到宿主机的挂载点，称为Mount
+
+将远程磁盘挂载到宿主机上，发生在Pod对应的宿主机上，是kubelet组件一部分，利用goroutine执行  
+
+相当于执行  
+
+```
+mount -t nfs <NFS 服务器地址 >:/ /var/lib/kubelet/pods/<Pod 的 ID>/volumes/kubernetes.io~<Volume 类型 >/<Volume 名字 > 
+```
+
+通过这个挂载操作，Volume的宿主机目录就成为了一个远程NFS目录的挂载点，以后写入的所有文件，都会被保存在NFS服务器上  
+
+如果是已经有NFS磁盘，第一步可以省略.  
+
+同样，删除PV的时候，也需要Umount和Dettach两个阶段处理   
+
+#### 3、绑定
+
+master中的控制环路监视新的PVC，寻找匹配的PV（如果可能），并将它们绑定在一起。如果为新的PVC动态调配PV，则该环路将始终将该PV绑定到PVC。否则，用户总会得到他们所请求的存储，但是容量可能超出要求的数量，一旦PV和PVC绑定后，Persistent Volume Claim绑定是排它性的，不管它们是如何绑定的，PVC和PV绑定是一对一映射的。  
+
+### 持久化卷声明的保护
+
+PVC保护的目的是确保由Pod正在使用的PVC不会冲系统中移除，因为如果被移除的话可能会导致数据的丢失，当启用PVC保护alpha功能时，如果用户删除了一个Pod正在使用的PVC，则该PVC不会被立即删除，PVC的删除将会被推迟，直到PVC不再被任何Pod使用  
+
+注意：当Pod状态为Pending，并且Pod已经分配给节点或Pod为Running状态时，PVC处于活动状态。  
+
+### PV类型
+
+```
+awsElasticBlockStore - AWS 弹性块存储（EBS）
+azureDisk - Azure Disk
+azureFile - Azure File
+cephfs - CephFS volume
+cinder - Cinder （OpenStack 块存储） (弃用)
+csi - 容器存储接口 (CSI)
+fc - Fibre Channel (FC) 存储
+flexVolume - FlexVolume
+flocker - Flocker 存储
+gcePersistentDisk - GCE 持久化盘
+glusterfs - Glusterfs 卷
+hostPath - HostPath 卷 （仅供单节点测试使用；不适用于多节点集群； 请尝试使用 local 卷作为替代）
+iscsi - iSCSI (SCSI over IP) 存储
+local - 节点上挂载的本地存储设备
+nfs - 网络文件系统 (NFS) 存储
+photonPersistentDisk - Photon 控制器持久化盘。 （这个卷类型已经因对应的云提供商被移除而被弃用）。
+portworxVolume - Portworx 卷
+quobyte - Quobyte 卷
+rbd - Rados 块设备 (RBD) 卷
+scaleIO - ScaleIO 卷 (弃用)
+storageos - StorageOS 卷
+vsphereVolume - vSphere VMDK 卷
+ ```
+
+### PV卷阶段状态
+
+ - Available: 资源尚未被claim使用
+ 
+ - Bound: 卷已经被绑定到claim了
+ 
+ - Released: claim被删除，卷处于释放状态，但未被集群回收
+ 
+ - Failed: 卷自动回收失败
+ 
+### 基本的使用  
+
+定义NFS PV 资源(静态):  
+
+```yaml
+#pv定义如下:
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nfs
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    server: 10.244.1.4
+    path: "/"
+```
+
+定义pvc资源:  
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nfs
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: manual
+  resources:
+    requests:
+      storage: 1Gi
+```
+
+pvc和pv匹配规则：  
+
+- PV 和 PVC 的 spec 字段。比如，PV 的存储（storage）大小，必须满足 PVC的要求。
+
+- PV 和 PVC 的 storageClassName 字段必须一样。
 
 
 ### 参考
