@@ -3,6 +3,7 @@
 
 - [pv和pvc](#pv%E5%92%8Cpvc)
   - [什么是pv和PVC](#%E4%BB%80%E4%B9%88%E6%98%AFpv%E5%92%8Cpvc)
+  - [生命周期](#%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -33,9 +34,31 @@
 
 <img src="/img/pv_pvc-2.png" alt="pv_pvc" align=center />
 
-
 ### 生命周期
 
+pv和pvc遵循以下生命周期：  
+
+1、 供应准备。通过集群外的存储系统或者云平台来提供存储持久化支持。  
+
+- 静态提供：管理员手动创建多个PV，供PVC使用。
+
+- 动态提供：动态创建PVC特定的PV，并绑定。
+
+2、绑定。用户创建pvc并指定需要的资源和访问模式。在找到可用pv之前，pvc会保持未绑定状态。  
+
+3、使用。用户可在pod中像volume一样使用pvc。  
+
+4、释放。用户删除pvc来回收存储资源，pv将变成“released”状态。由于还保留着之前的数据，这些数据需要根据不同的策略来处理，否则这些存储资源无法被其他pvc使用。  
+
+5、回收(Reclaiming)。pv可以设置三种回收策略：保留（Retain），回收（Recycle）和删除（Delete）。  
+
+- 保留策略：允许人工处理保留的数据。  
+
+- 删除策略：将删除pv和外部关联的存储资源，需要插件支持。  
+
+- 回收策略：将执行清除操作，之后可以被新的pvc使用，需要插件支持。
+
+目前只有NFS和HostPath类型卷支持回收策略，`AWS EBS,GCE PD,Azure Disk`和`Cinder`支持删除`(Delete)`策略。  
 
 
 ### 参考
