@@ -24,13 +24,9 @@
 
 持久卷申领（PersistentVolumeClaim，PVC）表达的是用户对存储的请求。概念上与Pod类似。Pod会耗用节点资源，而PVC申领会耗用PV资源。Pod可以请求特定数量的资源（CPU 和内存）；同样 PVC 申领也可以请求特定的大小和访问模式 （例如，可以要求PV卷能够以 ReadWriteOnce、ReadOnlyMany 或 ReadWriteMany 模式之一来挂载）。  
 
-<img src="/img/pv_pvc_1.png" alt="pv_pvc" align=center />
-
-
 虽然`PersistentVolumeClaims`允许用户使用抽象存储资源，但是PersistentVolumes对于不同的问题，用户通常需要具有不同属性（例如性能）。群集管理员需要能够提供各种`PersistentVolumes`不同的方式，而不仅仅是大小和访问模式，而不会让用户了解这些卷的实现方式。对于这些需求，有StorageClass 资源。  
 
 `StorageClass`为管理员提供了一种描述他们提供的存储的“类”的方法。 不同的类可能映射到服务质量级别，或备份策略，或者由群集管理员确定的任意策略。 `Kubernetes`本身对于什么类别代表是不言而喻的。 这个概念有时在其他存储系统中称为“配置文件”。
-
 
 总结下来就是
 
@@ -190,6 +186,13 @@ pvc和pv匹配规则：
 
 - PV 和 PVC 的 storageClassName 字段必须一样。
 
+### 总结
+
+1、PVC和PV相当于面向对象的接口和实现  
+
+2、用户创建的Pod声明了PVC，K8S会找一个PV配对，如果没有PV，就去找对应的StorageClass，帮它创建一个PV，然后和PVC完成绑定  
+
+3、新创建的PV，要经过Master节点Attach为宿主机创建远程磁盘，再经过每个节点kubelet组件把Attach的远程磁盘Mount到宿主机目录  
 
 ### 参考
 
