@@ -12,6 +12,7 @@
   - [PV类型](#pv%E7%B1%BB%E5%9E%8B)
   - [PV卷阶段状态](#pv%E5%8D%B7%E9%98%B6%E6%AE%B5%E7%8A%B6%E6%80%81)
   - [基本的使用](#%E5%9F%BA%E6%9C%AC%E7%9A%84%E4%BD%BF%E7%94%A8)
+  - [总结](#%E6%80%BB%E7%BB%93)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -143,6 +144,26 @@ vsphereVolume - vSphere VMDK 卷
  
  - Failed: 卷自动回收失败
  
+ ### PV访问模式
+
+`Persistent Volume`可以以资源提供者支持的任何方式挂载到主机上，如下所示，供应商具有不同的功能，每个PV的访问模式都将被设置为该卷支持的特定模式。例如，NFS可以支持多个读/写客户端，但特定的NFS PV可能以只读方式导出到服务器上，每个PV都有一套自己用来描述特定功能的访问模式  
+
+- ReadWriteOnce：该卷可以被单个节点以读/写模式挂载
+
+- ReadOnlyMany：该卷可以被多个节点以只读模式挂载
+
+- ReadWriteMany：该卷可以被多个节点以读/写模式挂载
+
+在命令行中，访问模式缩写为：
+
+- RWO -- ReadWriteOnce  
+
+- ROX -- ReadOnlyMany  
+
+- RWX -- ReadWriteMany  
+
+**注意：**一个卷一次只能使用一种访问模式挂载，即使它支持很多种访问模式。例如：GCEPersistentDisk可以由单个节点作为ReadWriteOnce模式挂载，或由多个节点以ReadOnlyMany模式挂载，但不能同时挂载。
+
 ### 基本的使用  
 
 定义NFS PV 资源(静态):  
