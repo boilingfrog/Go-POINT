@@ -46,6 +46,8 @@ ETCD是一个分布式、可靠的`key-value`存储的分布式系统，用于�
 
 3、**一种查找和连接服务的机制**。通过在 etcd 指定的主题下注册的服务也能在对应的主题下查找到。为了确保连接，我们可以在每个服务机器上都部署一个Proxy模式的etcd，这样就可以确保能访问etcd集群的服务都能互相连接。    
 
+<img src="/img/etcd_1.png" alt="etcd" align=center />
+
 ### 参考
 
 【一文入门ETCD】https://juejin.cn/post/6844904031186321416   
