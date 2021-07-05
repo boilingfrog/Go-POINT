@@ -48,9 +48,11 @@ ETCD是一个分布式、可靠的`key-value`存储的分布式系统，用于�
 
 <img src="/img/etcd_1.png" alt="etcd" align=center/>
 
-**多个服务的注册发现**
+一个用户的api请求，可能调用多个微服务资源，这些服务我们可以使用etcd进行服务注册和服务发现，当每个服务启动的时候就注册到etcd中，当我们需要使用的时候，直接在etcd中寻找，调用即可。  
 
-<img src="/img/etcd-register_1.png" alt="etcd" align=center/>
+当然，每个服务的实例不止一个，比如我们的用户服务，我们可能启动了多个实例，这些实例在服务启动过程中全部注册到了etcd中，但是某个实例可能出现故障重启，这时候就etcd在进行转发的时候，就会屏蔽到故障的实例节点，只向正常运行的实例，进行请求转发。   
+
+<img src="/img/etcd-register.png" alt="etcd" align=center/>
 
 ### 参考
 
