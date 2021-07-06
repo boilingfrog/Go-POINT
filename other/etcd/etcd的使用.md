@@ -32,6 +32,12 @@ ETCD是一个分布式、可靠的`key-value`存储的分布式系统，用于�
 
 ### etcd的应用场景
 
+
+
+### etcd部署
+
+在使用之前先构建一个etcd
+
 #### 服务注册与发现
 
 服务发现还能注册
@@ -54,8 +60,135 @@ ETCD是一个分布式、可靠的`key-value`存储的分布式系统，用于�
 
 <img src="/img/etcd-register.png" alt="etcd" align=center/>
 
+来看个服务注册发现的demo
+
+这里放一段比较核心的代码，这里摘录了我们线上正在使用的etcd实现grpc服务注册和发现的，具体的实现可参考,[etcd实现grpc的服务注册和服务发现](https://github.com/boilingfrog/daily-test/tree/master/etcd/discovery)  
+
+对于etcd中的连接，我们每个都维护一个租约，通过KeepAlive自动续保。如果租约过期则所有附加在租约上的key将过期并被删除，即所对应的服务被拿掉。  
+
+```go
+// Register for grpc server
+type Register struct {
+	EtcdAddrs   []string
+	DialTimeout int
+
+	closeCh     chan struct{}
+	leasesID    clientv3.LeaseID
+	keepAliveCh <-chan *clientv3.LeaseKeepAliveResponse
+
+	srvInfo Server
+	srvTTL  int64
+	cli     *clientv3.Client
+	logger  *zap.Logger
+}
+
+// NewRegister create a register base on etcd
+func NewRegister(etcdAddrs []string, logger *zap.Logger) *Register {
+	return &Register{
+		EtcdAddrs:   etcdAddrs,
+		DialTimeout: 3,
+		logger:      logger,
+	}
+}
+
+// Register a service
+func (r *Register) Register(srvInfo Server, ttl int64) (chan<- struct{}, error) {
+	var err error
+
+	if strings.Split(srvInfo.Addr, ":")[0] == "" {
+		return nil, errors.New("invalid ip")
+	}
+
+	if r.cli, err = clientv3.New(clientv3.Config{
+		Endpoints:   r.EtcdAddrs,
+		DialTimeout: time.Duration(r.DialTimeout) * time.Second,
+	}); err != nil {
+		return nil, err
+	}
+
+	r.srvInfo = srvInfo
+	r.srvTTL = ttl
+
+	if err = r.register(); err != nil {
+		return nil, err
+	}
+
+	r.closeCh = make(chan struct{})
+
+	go r.keepAlive()
+
+	return r.closeCh, nil
+}
+
+// Stop stop register
+func (r *Register) Stop() {
+	r.closeCh <- struct{}{}
+}
+
+// register 注册节点
+func (r *Register) register() error {
+	leaseCtx, cancel := context.WithTimeout(context.Background(), time.Duration(r.DialTimeout)*time.Second)
+	defer cancel()
+
+	// 分配一个租约
+	leaseResp, err := r.cli.Grant(leaseCtx, r.srvTTL)
+	if err != nil {
+		return err
+	}
+	r.leasesID = leaseResp.ID 
+	// 自动定时的续约某个租约。
+	if r.keepAliveCh, err = r.cli.KeepAlive(context.Background(), leaseResp.ID); err != nil {
+		return err
+	}
+
+	data, err := json.Marshal(r.srvInfo)
+	if err != nil {
+		return err
+	}
+	_, err = r.cli.Put(context.Background(), BuildRegPath(r.srvInfo), string(data), clientv3.WithLease(r.leasesID))
+	return err
+}
+
+// unregister 删除节点
+func (r *Register) unregister() error {
+	_, err := r.cli.Delete(context.Background(), BuildRegPath(r.srvInfo))
+	return err
+}
+
+// keepAlive
+func (r *Register) keepAlive() {
+	ticker := time.NewTicker(time.Duration(r.srvTTL) * time.Second)
+	for {
+		select {
+		case <-r.closeCh:
+			if err := r.unregister(); err != nil {
+				r.logger.Error("unregister failed", zap.Error(err))
+			}
+			if _, err := r.cli.Revoke(context.Background(), r.leasesID); err != nil {
+				r.logger.Error("revoke failed", zap.Error(err))
+			}
+			return
+		case res := <-r.keepAliveCh:
+			if res == nil {
+				if err := r.register(); err != nil {
+					r.logger.Error("register failed", zap.Error(err))
+				}
+			}
+		case <-ticker.C:
+			if r.keepAliveCh == nil {
+				if err := r.register(); err != nil {
+					r.logger.Error("register failed", zap.Error(err))
+				}
+			}
+		}
+	}
+}
+```
+
+
 ### 参考
 
 【一文入门ETCD】https://juejin.cn/post/6844904031186321416   
 【etcd：从应用场景到实现原理的全方位解读】https://www.infoq.cn/article/etcd-interpretation-application-scenario-implement-principle   
 【Etcd 架构与实现解析】http://jolestar.com/etcd-architecture/   
+【linux单节点和集群的etcd】https://www.jianshu.com/p/07ca88b6ff67  
