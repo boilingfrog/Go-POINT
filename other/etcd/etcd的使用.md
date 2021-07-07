@@ -244,6 +244,90 @@ etcd的 Watch 机制、Lease 机制、Revision 机制和 Prefix 机制，这些�
 
 即监听机制，Watch机制支持监听某个固定的Key，也支持监听一个范围（前缀机制），当被监听的Key或范围发生变化，客户端将收到通知；在实现分布式锁时，如果抢锁失败，可通过Prefix机制返回的Key-Value列表获得Revision比自己小且相差最小的 Key（称为 Pre-Key），对Pre-Key进行监听，因为只有它释放锁，自己才能获得锁，如果监听到Pre-Key的DELETE事件，则说明Pre-Key已经释放，自己已经持有锁。      
 
+来看下etcd中锁是如何实现的  
+
+`client/v3/concurrency/mutex.go`  
+
+```go
+// Mutex implements the sync Locker interface with etcd
+type Mutex struct {
+	s *Session
+
+	pfx   string // 前缀
+	myKey string // key
+	myRev int64 // 自增的Revision
+	hdr   *pb.ResponseHeader
+}
+
+// Lock 使用可取消的context锁定互斥锁。如果context被取消
+// 在尝试获取锁时，互斥锁会尝试清除其过时的锁条目。
+func (m *Mutex) Lock(ctx context.Context) error {
+	resp, err := m.tryAcquire(ctx)
+	if err != nil {
+		return err
+	}
+	// if no key on prefix / the minimum rev is key, already hold the lock
+	ownerKey := resp.Responses[1].GetResponseRange().Kvs
+	if len(ownerKey) == 0 || ownerKey[0].CreateRevision == m.myRev {
+		m.hdr = resp.Header
+		return nil
+	}
+	client := m.s.Client()
+
+	// waitDeletes 有效地等待，直到所有键匹配前缀且不大于
+	// 创建的version。
+	_, werr := waitDeletes(ctx, client, m.pfx, m.myRev-1)
+	// release lock key if wait failed
+	if werr != nil {
+		m.Unlock(client.Ctx())
+		return werr
+	}
+
+	// make sure the session is not expired, and the owner key still exists.
+	gresp, werr := client.Get(ctx, m.myKey)
+	if werr != nil {
+		m.Unlock(client.Ctx())
+		return werr
+	}
+
+	if len(gresp.Kvs) == 0 { // is the session key lost?
+		return ErrSessionExpired
+	}
+	m.hdr = gresp.Header
+
+	return nil
+}
+
+func (m *Mutex) tryAcquire(ctx context.Context) (*v3.TxnResponse, error) {
+	s := m.s
+	client := m.s.Client()
+	// s.Lease()租约
+	m.myKey = fmt.Sprintf("%s%x", m.pfx, s.Lease())
+	// 比较Revision, 这里构建了一个比较表达式
+	// 具体的比较逻辑在下面的client.Txn用到
+	// 如果等于0，写入当前的key，否则则读取这个key
+	cmp := v3.Compare(v3.CreateRevision(m.myKey), "=", 0)
+	//通过 myKey 将自己锁在waiters；最早的waiters将获得锁
+	put := v3.OpPut(m.myKey, "", v3.WithLease(s.Lease()))
+	// 获取已经拿到锁的key的信息
+	get := v3.OpGet(m.myKey)
+	// 仅使用一个 RPC 获取当前持有者以完成无竞争路径
+	getOwner := v3.OpGet(m.pfx, v3.WithFirstCreate()...)
+	// 这里是比较的逻辑，如果等于0，写入当前的key，否则则读取这个key
+	// 大佬的代码写的就是奇妙
+	resp, err := client.Txn(ctx).If(cmp).Then(put, getOwner).Else(get, getOwner).Commit()
+	if err != nil {
+		return nil, err
+	}
+
+	// 根据比较操作的结果写入Revision到m.myRev中
+	m.myRev = resp.Header.Revision
+	if !resp.Succeeded {
+		m.myRev = resp.Responses[0].GetResponseRange().Kvs[0].CreateRevision
+	}
+	return resp, nil
+}
+```
 
 
 
