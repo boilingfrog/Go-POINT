@@ -62,7 +62,7 @@ ETCD是一个分布式、可靠的`key-value`存储的分布式系统，用于�
 
 来看个服务注册发现的demo
 
-这里放一段比较核心的代码，这里摘录了我们线上正在使用的etcd实现grpc服务注册和发现的，具体的实现可参考,[etcd实现grpc的服务注册和服务发现](https://github.com/boilingfrog/daily-test/tree/master/etcd/discovery)  
+这里放一段比较核心的代码，这里摘录了我们线上正在使用的etcd实现grpc服务注册和发现的实现，具体的实现可参考，[etcd实现grpc的服务注册和服务发现](https://github.com/boilingfrog/daily-test/tree/master/etcd/discovery)  
 
 对于etcd中的连接，我们每个都维护一个租约，通过KeepAlive自动续保。如果租约过期则所有附加在租约上的key将过期并被删除，即所对应的服务被拿掉。  
 
@@ -185,6 +185,23 @@ func (r *Register) keepAlive() {
 }
 ```
 
+#### 消息发布和订阅
+
+在分布式系统中，最适用的一种组件间通信方式就是消息发布与订阅。即构建一个配置共享中心，数据提供者在这个配置中心发布消息，而消息使用者则订阅他们关心的主题，一旦主题有消息发布，就会实时通知订阅者。通过这种方式可以做到分布式系统配置的集中式管理与动态更新  
+
+#### 负载均衡
+
+关于负载均衡，通常意义上有两种  
+
+- 软负载，顾名思义就是靠软件手段来实现的负载均衡。软负载也通常被称为 4层或 7 层负载！  
+
+- 硬负载，就是靠硬件实现的负载均衡，数据包转发功能。常见的就是 F5。  
+
+通过etcd实现的负载均衡就是软负载，在分布式系统中，高并发的场景下，我们通常会构建服务的集群，当某一个机器宕机了，别的机器可以马上顶替上来。   
+
+etcd中实现负载均衡，例如我们上文的例子服务注册和发现，对于一个用户服务来讲，后面的用户服务的实例可能是多个，每个都有自己的ip和port，这些服务会在项目启动的时候全部注册到etcd中，所以当使用的时候，每次etcd会轮询出一个健康的服务实例，来处理用户的请求。  
+
+<img src="/img/etcd-balance.png" alt="etcd" align=center/>
 
 ### 参考
 
@@ -192,3 +209,4 @@ func (r *Register) keepAlive() {
 【etcd：从应用场景到实现原理的全方位解读】https://www.infoq.cn/article/etcd-interpretation-application-scenario-implement-principle   
 【Etcd 架构与实现解析】http://jolestar.com/etcd-architecture/   
 【linux单节点和集群的etcd】https://www.jianshu.com/p/07ca88b6ff67  
+【软负载均衡与硬负载均衡、4层与7层负载均衡】https://cloud.tencent.com/developer/article/1446391  
