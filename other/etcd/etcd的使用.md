@@ -192,83 +192,6 @@ func (r *Register) keepAlive() {
 }
 ```
 
-来实现一个etcd的锁   
-
-```go
-package main
-
-import (
-	"context"
-	"fmt"
-	"log"
-	"time"
-
-	clientv3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/client/v3/concurrency"
-)
-
-func main() {
-	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   []string{"localhost:2379"},
-		DialTimeout: 5 * time.Second,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer cli.Close()
-
-	// m1来抢锁
-	go func() {
-		s1, err := concurrency.NewSession(cli)
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer s1.Close()
-		m1 := concurrency.NewMutex(s1, "/my-lock/")
-
-		// acquire lock for s1
-		if err := m1.Lock(context.TODO()); err != nil {
-			log.Fatal(err)
-		}
-		fmt.Println("m1---获得了锁")
-
-		time.Sleep(time.Second * 3)
-
-		// 释放锁
-		if err := m1.Unlock(context.TODO()); err != nil {
-			log.Fatal(err)
-		}
-		fmt.Println("m1++释放了锁")
-	}()
-
-	// m2来抢锁
-	go func() {
-		s2, err := concurrency.NewSession(cli)
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer s2.Close()
-		m2 := concurrency.NewMutex(s2, "/my-lock/")
-		if err := m2.Lock(context.TODO()); err != nil {
-			log.Fatal(err)
-		}
-		fmt.Println("m2---获得了锁")
-
-		// mock业务执行的时间
-		time.Sleep(time.Second * 3)
-
-		// 释放锁
-		if err := m2.Unlock(context.TODO()); err != nil {
-			log.Fatal(err)
-		}
-
-		fmt.Println("m2++释放了锁")
-	}()
-
-	time.Sleep(time.Second * 10)
-}
-```
-
 #### 消息发布和订阅
 
 在分布式系统中，最适用的一种组件间通信方式就是消息发布与订阅。即构建一个配置共享中心，数据提供者在这个配置中心发布消息，而消息使用者则订阅他们关心的主题，一旦主题有消息发布，就会实时通知订阅者。通过这种方式可以做到分布式系统配置的集中式管理与动态更新  
@@ -403,6 +326,83 @@ func (m *Mutex) tryAcquire(ctx context.Context) (*v3.TxnResponse, error) {
 		m.myRev = resp.Responses[0].GetResponseRange().Kvs[0].CreateRevision
 	}
 	return resp, nil
+}
+```
+
+来实现一个etcd的锁   
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"time"
+
+	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3/concurrency"
+)
+
+func main() {
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   []string{"localhost:2379"},
+		DialTimeout: 5 * time.Second,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer cli.Close()
+
+	// m1来抢锁
+	go func() {
+		s1, err := concurrency.NewSession(cli)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer s1.Close()
+		m1 := concurrency.NewMutex(s1, "/my-lock/")
+
+		// acquire lock for s1
+		if err := m1.Lock(context.TODO()); err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println("m1---获得了锁")
+
+		time.Sleep(time.Second * 3)
+
+		// 释放锁
+		if err := m1.Unlock(context.TODO()); err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println("m1++释放了锁")
+	}()
+
+	// m2来抢锁
+	go func() {
+		s2, err := concurrency.NewSession(cli)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer s2.Close()
+		m2 := concurrency.NewMutex(s2, "/my-lock/")
+		if err := m2.Lock(context.TODO()); err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println("m2---获得了锁")
+
+		// mock业务执行的时间
+		time.Sleep(time.Second * 3)
+
+		// 释放锁
+		if err := m2.Unlock(context.TODO()); err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Println("m2++释放了锁")
+	}()
+
+	time.Sleep(time.Second * 10)
 }
 ```
 
