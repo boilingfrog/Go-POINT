@@ -5,7 +5,6 @@
   - [什么是etcd](#%E4%BB%80%E4%B9%88%E6%98%AFetcd)
   - [etcd的特点](#etcd%E7%9A%84%E7%89%B9%E7%82%B9)
   - [etcd的应用场景](#etcd%E7%9A%84%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF)
-  - [etcd部署](#etcd%E9%83%A8%E7%BD%B2)
     - [服务注册与发现](#%E6%9C%8D%E5%8A%A1%E6%B3%A8%E5%86%8C%E4%B8%8E%E5%8F%91%E7%8E%B0)
     - [消息发布和订阅](#%E6%B6%88%E6%81%AF%E5%8F%91%E5%B8%83%E5%92%8C%E8%AE%A2%E9%98%85)
     - [负载均衡](#%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1)
@@ -13,6 +12,7 @@
     - [分布式锁](#%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81)
     - [分布式队列](#%E5%88%86%E5%B8%83%E5%BC%8F%E9%98%9F%E5%88%97)
     - [集群监控与Leader竞选](#%E9%9B%86%E7%BE%A4%E7%9B%91%E6%8E%A7%E4%B8%8Eleader%E7%AB%9E%E9%80%89)
+  - [etcd部署](#etcd%E9%83%A8%E7%BD%B2)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -38,12 +38,6 @@ ETCD是一个分布式、可靠的`key-value`存储的分布式系统，用于�
 - 可靠：使用Raft算法实现了强一致、高可用的服务存储目录
 
 ### etcd的应用场景
-
-
-
-### etcd部署
-
-在使用之前先构建一个etcd
 
 #### 服务注册与发现
 
@@ -305,9 +299,12 @@ func (m *Mutex) tryAcquire(ctx context.Context) (*v3.TxnResponse, error) {
 	m.myKey = fmt.Sprintf("%s%x", m.pfx, s.Lease())
 	// 比较Revision, 这里构建了一个比较表达式
 	// 具体的比较逻辑在下面的client.Txn用到
-	// 如果等于0，写入当前的key，否则则读取这个key
+	// 如果等于0，写入当前的key，并设置租约，
+	// 否则获取这个key,重用租约中的锁(这里主要目的是在于重入)
+	// 通过第二次获取锁,判断锁是否存在来支持重入
+	// 所以只要租约一致,那么是可以重入的.
 	cmp := v3.Compare(v3.CreateRevision(m.myKey), "=", 0)
-	//通过 myKey 将自己锁在waiters；最早的waiters将获得锁
+	// 通过 myKey 将自己锁在waiters；最早的waiters将获得锁
 	put := v3.OpPut(m.myKey, "", v3.WithLease(s.Lease()))
 	// 获取已经拿到锁的key的信息
 	get := v3.OpGet(m.myKey)
@@ -327,7 +324,32 @@ func (m *Mutex) tryAcquire(ctx context.Context) (*v3.TxnResponse, error) {
 	}
 	return resp, nil
 }
+
+// 抽象出了一个session对象来持续保持租约不过期
+func NewSession(client *v3.Client, opts ...SessionOption) (*Session, error) {
+	...
+	ctx, cancel := context.WithCancel(ops.ctx)
+	// 保证锁，在线程的活动期间，实现锁的的续租
+	keepAlive, err := client.KeepAlive(ctx, id)
+	if err != nil || keepAlive == nil {
+		cancel()
+		return nil, err
+	}
+
+	...
+	return s, nil
+}
 ```
+
+设计思路： 
+
+1、多个请求来前抢占锁，通过Revision来判断锁的先后顺序；    
+
+2、如果有比当前key的Revision小的Revision存在，说明有key已经获得了锁；  
+
+3、等待直到前面的key被删除，然后自己就获得了锁。   
+
+通过etcd实现的锁，直接包含了锁的续租，如果使用Redis还要自己去实现，相比较使用更简单。  
 
 来实现一个etcd的锁   
 
@@ -406,12 +428,24 @@ func main() {
 }
 ```
 
+打印下输出
+
+```
+m2---获得了锁
+m2++释放了锁
+m1---获得了锁
+m1++释放了锁
+```
+
 
 
 #### 分布式队列
 
 #### 集群监控与Leader竞选
 
+### etcd部署
+
+在使用之前先构建一个etcd
 
 ### 参考
 
@@ -419,4 +453,5 @@ func main() {
 【etcd：从应用场景到实现原理的全方位解读】https://www.infoq.cn/article/etcd-interpretation-application-scenario-implement-principle   
 【Etcd 架构与实现解析】http://jolestar.com/etcd-architecture/   
 【linux单节点和集群的etcd】https://www.jianshu.com/p/07ca88b6ff67  
-【软负载均衡与硬负载均衡、4层与7层负载均衡】https://cloud.tencent.com/developer/article/1446391  
+【软负载均衡与硬负载均衡、4层与7层负载均衡】https://cloud.tencent.com/developer/article/1446391 
+【Etcd Lock详解】https://tangxusc.github.io/blog/2019/05/etcd-lock%E8%AF%A6%E8%A7%A3/   
