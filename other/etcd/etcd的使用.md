@@ -437,9 +437,68 @@ m1---获得了锁
 m1++释放了锁
 ```
 
-
-
 #### 分布式队列
+
+即创建一个先进先出的队列保持顺序。另一种比较有意思的实现是在保证队列达到某个条件时再统一按顺序执行。这种方法的实现可以在`/queue`这个目录中另外建立一个`/queue/condition`节点。  
+
+- condition 可以表示队列大小。比如一个大的任务需要很多小任务就绪的情况下才能执行，每次有一个小任务就绪，就给这个 condition 数字加 1，直到达到大任务规定的数字，再开始执行队列里的一系列小任务，最终执行大任务。  
+
+- condition 可以表示某个任务在不在队列。这个任务可以是所有排序任务的首个执行程序，也可以是拓扑结构中没有依赖的点。通常，必须执行这些任务后才能执行队列中的其他任务。  
+
+- condition 还可以表示其它的一类开始执行任务的通知。可以由控制程序指定，当 condition 出现变化时，开始执行队列任务。  
+
+来个demo  
+
+```go
+package main
+
+import (
+	"fmt"
+	"log"
+	"time"
+
+	clientv3 "go.etcd.io/etcd/client/v3"
+	recipe "go.etcd.io/etcd/client/v3/experimental/recipes"
+)
+
+func main() {
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints: []string{"localhost:2379"},
+	})
+	if err != nil {
+		log.Fatalf("error New (%v)", err)
+	}
+
+	go func() {
+		q := recipe.NewQueue(cli, "testq")
+		for i := 0; i < 5; i++ {
+			if err := q.Enqueue(fmt.Sprintf("%d", i)); err != nil {
+				log.Fatalf("error enqueuing (%v)", err)
+			}
+		}
+	}()
+
+	go func() {
+		q := recipe.NewQueue(cli, "testq")
+		for i := 10; i < 100; i++ {
+			if err := q.Enqueue(fmt.Sprintf("%d", i)); err != nil {
+				log.Fatalf("error enqueuing (%v)", err)
+			}
+		}
+	}()
+
+	q := recipe.NewQueue(cli, "testq")
+	for i := 0; i < 100; i++ {
+		s, err := q.Dequeue()
+		if err != nil {
+			log.Fatalf("error dequeueing (%v)", err)
+		}
+		fmt.Println(s)
+	}
+
+	time.Sleep(time.Second * 3)
+}
+```
 
 #### 集群监控与Leader竞选
 
@@ -455,3 +514,4 @@ m1++释放了锁
 【linux单节点和集群的etcd】https://www.jianshu.com/p/07ca88b6ff67  
 【软负载均衡与硬负载均衡、4层与7层负载均衡】https://cloud.tencent.com/developer/article/1446391 
 【Etcd Lock详解】https://tangxusc.github.io/blog/2019/05/etcd-lock%E8%AF%A6%E8%A7%A3/   
+【etcd基础与使用】https://zhuyasen.com/post/etcd.html    
