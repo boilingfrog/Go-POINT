@@ -447,6 +447,93 @@ m1++释放了锁
 
 - condition 还可以表示其它的一类开始执行任务的通知。可以由控制程序指定，当 condition 出现变化时，开始执行队列任务。  
 
+来看下实现  
+
+入队  
+
+```go
+func newUniqueKV(kv v3.KV, prefix string, val string) (*RemoteKV, error) {
+	for {
+		newKey := fmt.Sprintf("%s/%v", prefix, time.Now().UnixNano())
+		// 创建对应的key
+		rev, err := putNewKV(kv, newKey, val, v3.NoLease)
+		if err == nil {
+			return &RemoteKV{kv, newKey, rev, val}, nil
+		}
+		// 如果之前已经创建了，就返回
+		if err != ErrKeyExists {
+			return nil, err
+		}
+	}
+}
+
+// 只有在没有创建的时候才能创建成功
+func putNewKV(kv v3.KV, key, val string, leaseID v3.LeaseID) (int64, error) {
+	cmp := v3.Compare(v3.Version(key), "=", 0)
+	req := v3.OpPut(key, val, v3.WithLease(leaseID))
+	// 这里还用到了这种比较的逻辑
+	txnresp, err := kv.Txn(context.TODO()).If(cmp).Then(req).Commit()
+	if err != nil {
+		return 0, err
+	}
+	// 已经存在则返回错误
+	if !txnresp.Succeeded {
+		return 0, ErrKeyExists
+	}
+	return txnresp.Header.Revision, nil
+}
+```
+
+出队  
+
+```go
+// Dequeue处理的是一个先进新出的队列
+// 如果队列为空，Dequeue将会阻塞直到里面有值塞入
+func (q *Queue) Dequeue() (string, error) {
+	resp, err := q.client.Get(q.ctx, q.keyPrefix, v3.WithFirstRev()...)
+	if err != nil {
+		return "", err
+	}
+
+	kv, err := claimFirstKey(q.client, resp.Kvs)
+	if err != nil {
+		return "", err
+	} else if kv != nil {
+		return string(kv.Value), nil
+		// more 表示在请求的范围内是否还有更多的键要返回。
+		// 则进行Dequeue重试
+	} else if resp.More {
+		// missed some items, retry to read in more
+		return q.Dequeue()
+	}
+
+	// nothing yet; wait on elements
+	ev, err := WaitPrefixEvents(
+		q.client,
+		q.keyPrefix,
+		resp.Header.Revision,
+		[]mvccpb.Event_EventType{mvccpb.PUT})
+	if err != nil {
+		return "", err
+	}
+
+	ok, err := deleteRevKey(q.client, string(ev.Kv.Key), ev.Kv.ModRevision)
+	if err != nil {
+		return "", err
+	} else if !ok {
+		// 如果删除失败，重试
+		return q.Dequeue()
+	}
+	return string(ev.Kv.Value), err
+}
+```
+
+总结  
+
+1、这里的入队是一个先进新出的队列；  
+
+2、出队的实现也很简单，如果队列为空，Dequeue将会阻塞直到里面有值塞入；  
+
 来个demo  
 
 ```go
