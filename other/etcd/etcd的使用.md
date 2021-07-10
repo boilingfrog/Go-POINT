@@ -351,6 +351,8 @@ func NewSession(client *v3.Client, opts ...SessionOption) (*Session, error) {
 
 通过etcd实现的锁，直接包含了锁的续租，如果使用Redis还要自己去实现，相比较使用更简单。  
 
+<img src="/img/etcd-lock.png" alt="etcd" align=center/>
+
 来实现一个etcd的锁   
 
 ```go
