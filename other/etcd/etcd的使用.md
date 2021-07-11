@@ -289,7 +289,7 @@ func (c *PubClientImpl) Pub(ctx context.Context, key string, val string) error {
 type Watcher interface {
 	// 在键或前缀上监听。将监听的事件
 	// 通过定义的返回的channel进行返回。如果修订等待通过
-	// 手表被压缩，然后监听将被服务器取消，
+	// 监听被压缩，然后监听将被服务器取消，
 	// 客户端将发布压缩的错误观察响应，并且通道将关闭。
 	// 如果请求的修订为 0 或未指定，则返回的通道将
 	// 返回服务器收到监视请求后发生的监视事件。
@@ -324,6 +324,57 @@ type Watcher interface {
 	Close() error
 }
 
+// watcher implements the Watcher interface
+type watcher struct {
+	remote   pb.WatchClient
+	callOpts []grpc.CallOption
+
+	// mu protects the grpc streams map
+	mu sync.Mutex
+
+	// streams 保存所有由 ctx 值键控的活动 grpc 流。
+	streams map[string]*watchGrpcStream
+	lg      *zap.Logger
+}
+
+// watchGrpcStream 跟踪附加到单个 grpc 流的所有watch资源。
+type watchGrpcStream struct {
+	owner    *watcher
+	remote   pb.WatchClient
+	callOpts []grpc.CallOption
+
+	// ctx 控制内部的remote.Watch requests
+	ctx context.Context
+	// ctxKey 用来找流的上下文信息
+	ctxKey string
+	cancel context.CancelFunc
+
+	// substreams 持有此 grpc 流上的所有活动的watchers
+	substreams map[int64]*watcherStream
+	// 恢复保存此 grpc 流上的所有正在恢复的观察者
+	resuming []*watcherStream
+
+	// reqc 从 Watch() 向主协程发送观察请求
+	reqc chan watchStreamRequest
+	// respc 从 watch 客户端接收数据
+	respc chan *pb.WatchResponse
+	// donec 通知广播进行退出
+	donec chan struct{}
+	// errc transmits errors from grpc Recv to the watch stream reconnect logic
+	errc chan error
+	// Closec 获取关闭观察者的观察者流
+	closingc chan *watcherStream
+	// 当所有子流 goroutine 都退出时，wg 完成
+	wg sync.WaitGroup
+
+	// resumec 关闭以表示所有子流都应开始恢复
+	resumec chan struct{}
+	// closeErr 是关闭监视流的错误
+	closeErr error
+
+	lg *zap.Logger
+}
+
 // Watch posts a watch request to run() and waits for a new watcher channel
 func (w *watcher) Watch(ctx context.Context, key string, opts ...OpOption) WatchChan {
 	ow := opWatch(key, opts...)
@@ -354,7 +405,7 @@ func (w *watcher) Watch(ctx context.Context, key string, opts ...OpOption) Watch
 
 	var closeCh chan WatchResponse
 	for {
-		// find or allocate appropriate grpc watch stream
+		// 查找或分配适当的 grpc 监视流
 		w.mu.Lock()
 		if w.streams == nil {
 			// closed
@@ -363,6 +414,9 @@ func (w *watcher) Watch(ctx context.Context, key string, opts ...OpOption) Watch
 			close(ch)
 			return ch
 		}
+
+		// streams是一个map,保存所有由 ctx 值键控的活动 grpc 流
+		// 如果该请求对应的流为空,则新建
 		wgs := w.streams[ctxKey]
 		if wgs == nil {
 			wgs = w.newWatcherGrpcStream(ctx)
@@ -377,8 +431,9 @@ func (w *watcher) Watch(ctx context.Context, key string, opts ...OpOption) Watch
 			closeCh = make(chan WatchResponse, 1)
 		}
 
-		// submit request
+		// 等待接收值
 		select {
+		// reqc 从 Watch() 向主协程发送观察请求
 		case reqc <- wr:
 			ok = true
 		case <-wr.ctx.Done():
@@ -389,7 +444,7 @@ func (w *watcher) Watch(ctx context.Context, key string, opts ...OpOption) Watch
 				closeCh <- WatchResponse{Canceled: true, closeErr: wgs.closeErr}
 				break
 			}
-			// retry; may have dropped stream from no ctxs
+			// 重试，可能已经从没有 ctxs 中删除了流
 			continue
 		}
 
@@ -404,7 +459,7 @@ func (w *watcher) Watch(ctx context.Context, key string, opts ...OpOption) Watch
 					closeCh <- WatchResponse{Canceled: true, closeErr: wgs.closeErr}
 					break
 				}
-				// retry; may have dropped stream from no ctxs
+				// 重试，可能已经从没有 ctxs 中删除了流
 				continue
 			}
 		}
