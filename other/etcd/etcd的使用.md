@@ -68,6 +68,21 @@ ETCD是一个分布式、可靠的`key-value`存储的分布式系统，用于�
 对于etcd中的连接，我们每个都维护一个租约，通过KeepAlive自动续保。如果租约过期则所有附加在租约上的key将过期并被删除，即所对应的服务被拿掉。  
 
 ```go
+package discovery
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+
+	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.uber.org/zap"
+)
+
 // Register for grpc server
 type Register struct {
 	EtcdAddrs   []string
@@ -131,13 +146,11 @@ func (r *Register) register() error {
 	leaseCtx, cancel := context.WithTimeout(context.Background(), time.Duration(r.DialTimeout)*time.Second)
 	defer cancel()
 
-	// 分配一个租约
 	leaseResp, err := r.cli.Grant(leaseCtx, r.srvTTL)
 	if err != nil {
 		return err
 	}
-	r.leasesID = leaseResp.ID 
-	// 自动定时的续约某个租约。
+	r.leasesID = leaseResp.ID
 	if r.keepAliveCh, err = r.cli.KeepAlive(context.Background(), leaseResp.ID); err != nil {
 		return err
 	}
@@ -189,6 +202,219 @@ func (r *Register) keepAlive() {
 #### 消息发布和订阅
 
 在分布式系统中，最适用的一种组件间通信方式就是消息发布与订阅。即构建一个配置共享中心，数据提供者在这个配置中心发布消息，而消息使用者则订阅他们关心的主题，一旦主题有消息发布，就会实时通知订阅者。通过这种方式可以做到分布式系统配置的集中式管理与动态更新  
+
+- **应用中用到的一些配置信息放到 etcd 上进行集中管理**。这类场景的使用方式通常是这样：应用在启动的时候主动从etcd获取一次配置信息，同时，在etcd节点上注册一个Watcher并等待，以后每次配置有更新的时候，etcd都会实时通知订阅者，以此达到获取最新配置信息的目的。  
+
+- **分布式搜索服务中，索引的元信息和服务器集群机器的节点状态存放在etcd中**，供各个客户端订阅使用。使用etcd的`key TTL`功能可以确保机器状态是实时更新的。  
+
+- **分布式日志收集系统**。这个系统的核心工作是收集分布在不同机器的日志。收集器通常是按照应用（或主题）来分配收集任务单元，因此可以在 etcd 上创建一个以应用（主题）命名的目录 P，并将这个应用（主题相关）的所有机器 ip，以子目录的形式存储到目录 P 上，然后设置一个etcd递归的Watcher，递归式的监控应用（主题）目录下所有信息的变动。这样就实现了机器 IP（消息）变动的时候，能够实时通知到收集器调整任务分配。 
+
+- **系统中信息需要动态自动获取与人工干预修改信息请求内容的情况**。通常是暴露出接口，例如 JMX 接口，来获取一些运行时的信息。引入 etcd 之后，就不用自己实现一套方案了，只要将这些信息存放到指定的 etcd 目录中即可，etcd 的这些目录就可以通过 HTTP 的接口在外部访问。   
+
+消息发布被订阅的实际应用  
+
+我们一个性能要求比较高的项目，所需要的配置信息，存放到本地的localCache中，通过etcd的消息发布和订阅实现，实现配置信息在不同节点同步更新。  
+
+来看下如何实现  
+
+```go
+func init() {
+	handleMap = make(map[string]func([]byte) error)
+}
+
+var handleMap map[string]func([]byte) error
+
+func RegisterUpdateHandle(key string, f func([]byte) error) {
+	handleMap[key] = f
+}
+
+type PubClient interface {
+	Pub(ctx context.Context, key string, val string) error
+}
+
+var Pub PubClient
+
+type PubClientImpl struct {
+	client *clientv3.Client
+	logger *zap.Logger
+	prefix string
+}
+
+// 监听变化，实时更新到本地的map中
+func (c *PubClientImpl) Watcher() {
+	ctx, cancel := context.WithCancel(context.Background())
+	rch := c.client.Watch(ctx, c.prefix, clientv3.WithPrefix())
+	defer cancel()
+
+	for wresp := range rch {
+		for _, ev := range wresp.Events {
+			switch ev.Type {
+			case mvccpb.PUT:
+				c.logger.Warn("Cache Update", zap.Any("value", ev.Kv))
+				err := handleCacheUpdate(ev.Kv)
+				if err != nil {
+					c.logger.Error("Cache Update", zap.Error(err))
+				}
+			case mvccpb.DELETE:
+				c.logger.Error("Cache Delete NOT SUPPORT")
+			}
+		}
+	}
+}
+
+func handleCacheUpdate(val *mvccpb.KeyValue) error {
+	if val == nil {
+		return nil
+	}
+	f := handleMap[string(val.Key)]
+	if f != nil {
+		return f(val.Value)
+	}
+	return nil
+}
+
+func (c *PubClientImpl) Pub(ctx context.Context, key string, val string) error {
+	ctx, _ = context.WithTimeout(ctx, time.Second*10)
+	_, err := c.client.Put(ctx, key, val)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+```
+
+来看下Watch的代码实现  
+
+```go
+type Watcher interface {
+	// 在键或前缀上监听。将监听的事件
+	// 通过定义的返回的channel进行返回。如果修订等待通过
+	// 手表被压缩，然后监听将被服务器取消，
+	// 客户端将发布压缩的错误观察响应，并且通道将关闭。
+	// 如果请求的修订为 0 或未指定，则返回的通道将
+	// 返回服务器收到监视请求后发生的监视事件。
+	// 如果上下文“ctx”被取消或超时，返回的“WatchChan”关闭，
+	// 并且来自此关闭通道的“WatchResponse”具有零事件且为零“Err()”。
+	// 一旦不再使用观察者，上下文“ctx”必须被取消，
+	// 释放相关资源。
+	//
+	// 如果上下文是“context.Background/TODO”，则返回“WatchChan”
+	// 不会被关闭和阻塞直到事件被触发，除非服务器
+	// 返回一个不可恢复的错误（例如 ErrCompacted）。
+	// 例如，当上下文通过“WithRequireLeader”和
+	// 连接的服务器没有领导者（例如，由于网络分区），
+	// 将返回错误“etcdserver: no leader”（ErrNoLeader），
+	// 然后 "WatchChan" 以非零 "Err()" 关闭。
+	// 为了防止观察流卡在分区节点中，
+	// 确保使用“WithRequireLeader”包装上下文。
+	//
+	// 否则，只要上下文没有被取消或超时，
+	// watch 将永远重试其他可恢复的错误，直到重新连接。
+	//
+	// TODO：在最后一个“WatchResponse”消息中显式设置上下文错误并关闭通道？
+	// 目前，客户端上下文被永远不会关闭的“valCtx”覆盖。
+	// TODO(v3.4): 配置watch重试策略，限制最大重试次数
+	//（参见 https://github.com/etcd-io/etcd/issues/8980）
+	Watch(ctx context.Context, key string, opts ...OpOption) WatchChan
+
+	// RequestProgress requests a progress notify response be sent in all watch channels.
+	RequestProgress(ctx context.Context) error
+
+	// Close closes the watcher and cancels all watch requests.
+	Close() error
+}
+
+// Watch posts a watch request to run() and waits for a new watcher channel
+func (w *watcher) Watch(ctx context.Context, key string, opts ...OpOption) WatchChan {
+	ow := opWatch(key, opts...)
+
+	var filters []pb.WatchCreateRequest_FilterType
+	if ow.filterPut {
+		filters = append(filters, pb.WatchCreateRequest_NOPUT)
+	}
+	if ow.filterDelete {
+		filters = append(filters, pb.WatchCreateRequest_NODELETE)
+	}
+
+	wr := &watchRequest{
+		ctx:            ctx,
+		createdNotify:  ow.createdNotify,
+		key:            string(ow.key),
+		end:            string(ow.end),
+		rev:            ow.rev,
+		progressNotify: ow.progressNotify,
+		fragment:       ow.fragment,
+		filters:        filters,
+		prevKV:         ow.prevKV,
+		retc:           make(chan chan WatchResponse, 1),
+	}
+
+	ok := false
+	ctxKey := streamKeyFromCtx(ctx)
+
+	var closeCh chan WatchResponse
+	for {
+		// find or allocate appropriate grpc watch stream
+		w.mu.Lock()
+		if w.streams == nil {
+			// closed
+			w.mu.Unlock()
+			ch := make(chan WatchResponse)
+			close(ch)
+			return ch
+		}
+		wgs := w.streams[ctxKey]
+		if wgs == nil {
+			wgs = w.newWatcherGrpcStream(ctx)
+			w.streams[ctxKey] = wgs
+		}
+		donec := wgs.donec
+		reqc := wgs.reqc
+		w.mu.Unlock()
+
+		// couldn't create channel; return closed channel
+		if closeCh == nil {
+			closeCh = make(chan WatchResponse, 1)
+		}
+
+		// submit request
+		select {
+		case reqc <- wr:
+			ok = true
+		case <-wr.ctx.Done():
+			ok = false
+		case <-donec:
+			ok = false
+			if wgs.closeErr != nil {
+				closeCh <- WatchResponse{Canceled: true, closeErr: wgs.closeErr}
+				break
+			}
+			// retry; may have dropped stream from no ctxs
+			continue
+		}
+
+		// receive channel
+		if ok {
+			select {
+			case ret := <-wr.retc:
+				return ret
+			case <-ctx.Done():
+			case <-donec:
+				if wgs.closeErr != nil {
+					closeCh <- WatchResponse{Canceled: true, closeErr: wgs.closeErr}
+					break
+				}
+				// retry; may have dropped stream from no ctxs
+				continue
+			}
+		}
+		break
+	}
+
+	close(closeCh)
+	return closeCh
+}
+```
 
 #### 负载均衡
 
