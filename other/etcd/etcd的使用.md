@@ -285,6 +285,10 @@ func (c *PubClientImpl) Pub(ctx context.Context, key string, val string) error {
 
 来看下Watch的代码实现  
 
+etcd是一个cs网络架构，源码分析应该涉及到client端，server端。client主要是提供操作来请求对key监听，并且接收key变更时的通知。server要能做到接收key监听请求，并且启动定时器等方法来对key进行监听，有变更时通知client。  
+
+先分析下client端的实现  
+
 ```go
 type Watcher interface {
 	// 在键或前缀上监听。将监听的事件
@@ -419,6 +423,8 @@ func (w *watcher) Watch(ctx context.Context, key string, opts ...OpOption) Watch
 		// 如果该请求对应的流为空,则新建
 		wgs := w.streams[ctxKey]
 		if wgs == nil {
+            // newWatcherGrpcStream new一个watch grpc stream来传输watch请求
+            // 创建goroutine来处理监听key的watch各种事件
 			wgs = w.newWatcherGrpcStream(ctx)
 			w.streams[ctxKey] = wgs
 		}
@@ -469,7 +475,41 @@ func (w *watcher) Watch(ctx context.Context, key string, opts ...OpOption) Watch
 	close(closeCh)
 	return closeCh
 }
+
+// newWatcherGrpcStream new一个watch grpc stream来传输watch请求
+func (w *watcher) newWatcherGrpcStream(inctx context.Context) *watchGrpcStream {
+    ctx, cancel := context.WithCancel(&valCtx{inctx})
+
+    //构造watchGrpcStream
+    wgs := &watchGrpcStream{
+        owner:      w,
+        remote:     w.remote,
+        callOpts:   w.callOpts,
+        ctx:        ctx,
+        ctxKey:     streamKeyFromCtx(inctx),
+        cancel:     cancel,
+        substreams: make(map[int64]*watcherStream),
+        respc:      make(chan *pb.WatchResponse),
+        reqc:       make(chan watchStreamRequest),
+        donec:      make(chan struct{}),
+        errc:       make(chan error, 1),
+        closingc:   make(chan *watcherStream),
+        resumec:    make(chan struct{}),
+    }
+
+    // 创建goroutine来处理监听key的watch各种事件
+    go wgs.run()
+    return wgs
+}
 ```
+
+总结：  
+
+1、`etcd v3 API`采用了gRPC ，而 gRPC 又利用了`HTTP/2 TCP` 链接多路复用（` multiple stream per tcp connection ）`，这样同一个Client的不同watch可以共享同一个TCP连接。  
+
+2、watch支持指定单个 key，也可以指定一个 key 的前缀；  
+
+3、Watch观察将要发生或者已经发生的事件，输入和输出都是流，输入流用于创建和取消观察，输出流发送事件；  
 
 #### 负载均衡
 
@@ -884,4 +924,6 @@ func main() {
 【linux单节点和集群的etcd】https://www.jianshu.com/p/07ca88b6ff67  
 【软负载均衡与硬负载均衡、4层与7层负载均衡】https://cloud.tencent.com/developer/article/1446391 
 【Etcd Lock详解】https://tangxusc.github.io/blog/2019/05/etcd-lock%E8%AF%A6%E8%A7%A3/   
-【etcd基础与使用】https://zhuyasen.com/post/etcd.html    
+【etcd基础与使用】https://zhuyasen.com/post/etcd.html   
+【ETCD核心机制解析】https://www.cnblogs.com/FG123/p/13632095.html      
+【etcd watch机制】http://liangjf.top/2019/12/31/110.etcd-watch%E6%9C%BA%E5%88%B6%E5%88%86%E6%9E%90/    
