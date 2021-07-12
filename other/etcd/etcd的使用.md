@@ -211,6 +211,8 @@ func (r *Register) keepAlive() {
 
 - **系统中信息需要动态自动获取与人工干预修改信息请求内容的情况**。通常是暴露出接口，例如 JMX 接口，来获取一些运行时的信息。引入 etcd 之后，就不用自己实现一套方案了，只要将这些信息存放到指定的 etcd 目录中即可，etcd 的这些目录就可以通过 HTTP 的接口在外部访问。   
 
+<img src="/img/etcd-watch.png" alt="etcd" align=center/>
+
 消息发布被订阅的实际应用  
 
 我们一个性能要求比较高的项目，所需要的配置信息，存放到本地的localCache中，通过etcd的消息发布和订阅实现，实现配置信息在不同节点同步更新。  
@@ -377,6 +379,27 @@ type watchGrpcStream struct {
 	closeErr error
 
 	lg *zap.Logger
+}
+
+// watcherStream 代表注册的观察者
+// watch()时，构造watchgrpcstream时构造的watcherStream，用于封装一个watch rpc请求，包含订阅监听key，通知key变更通道，一些重要标志。
+type watcherStream struct {
+	// initReq 是发起这个请求的请求
+	initReq watchRequest
+
+	// outc 向订阅者发布watch响应
+	outc chan WatchResponse
+	// recvc buffers watch responses before publishing
+	recvc chan *WatchResponse
+	// 当 watcherStream goroutine 停止时 donec 关闭
+	donec chan struct{}
+	// 当应该安排流关闭时，closures 设置为 true。
+	closing bool
+	// id 是在 grpc 流上注册的 watch id
+	id int64
+
+	// buf 保存从 etcd 收到但尚未被客户端消费的所有事件
+	buf []*WatchResponse
 }
 
 // 1、key是否满足watch的条件
@@ -586,6 +609,14 @@ func (w *watchGrpcStream) newWatchClient() (pb.Watch_WatchClient, error) {
 2、watch支持指定单个 key，也可以指定一个 key 的前缀；  
 
 3、Watch观察将要发生或者已经发生的事件，输入和输出都是流，输入流用于创建和取消观察，输出流发送事件；  
+
+4、WatcherGrpcStream会启动一个协程专门用于通过 gRPC client stream 接收Server端的 watch response，然后将watch response send 到WatcherGrpcStream的watch response channel。  
+ 
+5、 WatcherGrpcStream 也有一个专门的 协程专门用于从watch response channel 读数据，拿到watch response之后，会根据response里面的watchId 从WatcherGrpcStream的map[watchID] WatcherStream 中拿到对应的WatcherStream，并send到WatcherStream里面的WatchReponse channel。  
+
+6、这里的watchId其实是Server端返回给client端的，当client Send Watch request给Server端时候，response会带上watchId, 这个watchId是与watch key是一一对应关系，然后client会建立WatchId与WatcherStream的映射关系。  
+
+7、WatcherStream是具体的 watch response的处理结构，对于每个watch key，WatcherGrpcStream 也会启动一个专门的协程处理WatcherStream里面的watch response channel。  
 
 #### 负载均衡
 
