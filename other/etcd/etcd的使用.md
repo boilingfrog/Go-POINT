@@ -379,7 +379,12 @@ type watchGrpcStream struct {
 	lg *zap.Logger
 }
 
-// Watch posts a watch request to run() and waits for a new watcher channel
+// 1、key是否满足watch的条件
+// 2、过滤监听事件
+// 3、构造watch请求
+// 4、查找或分配新的grpc watch stream
+// 5、发送watch请求到reqc通道
+// 6、返回WatchResponse 接收chan给客户端
 func (w *watcher) Watch(ctx context.Context, key string, opts ...OpOption) WatchChan {
 	ow := opWatch(key, opts...)
 
@@ -502,6 +507,7 @@ func (w *watcher) newWatcherGrpcStream(inctx context.Context) *watchGrpcStream {
     return wgs
 }
 
+// 通过etcd grpc服务器启动一个watch stream
 // run 管理watch 的事件chan
 func (w *watchGrpcStream) run() {
 	var wc pb.Watch_WatchClient
@@ -521,6 +527,55 @@ func (w *watchGrpcStream) run() {
 			...
 		}
 	}
+}
+
+// 1、将所有订阅的stream标记为恢复
+// 2、连接到grpc stream，并且接受watch取消
+// 3、关闭出错的client stream，并且创建goroutine，用于转发从run()得到的响应给订阅者
+// 4、创建goroutine接收来自新grpc流的数据
+func (w *watchGrpcStream) newWatchClient() (pb.Watch_WatchClient, error) {
+	// 将所有订阅的stream标记为恢复
+	close(w.resumec)
+	w.resumec = make(chan struct{})
+	w.joinSubstreams()
+	for _, ws := range w.substreams {
+		ws.id = -1
+		w.resuming = append(w.resuming, ws)
+	}
+	// 去掉无用，即为nil的stream
+	var resuming []*watcherStream
+	for _, ws := range w.resuming {
+		if ws != nil {
+			resuming = append(resuming, ws)
+		}
+	}
+	w.resuming = resuming
+	w.substreams = make(map[int64]*watcherStream)
+
+	// 连接到grpc stream，并且接受watch取消
+	stopc := make(chan struct{})
+	donec := w.waitCancelSubstreams(stopc)
+	wc, err := w.openWatchClient()
+	close(stopc)
+	<-donec
+
+	// 对于client出错的stream，可以关闭，并且创建一个goroutine，用于转发从run()得到的响应给订阅者
+	for _, ws := range w.resuming {
+		if ws.closing {
+			continue
+		}
+		ws.donec = make(chan struct{})
+		w.wg.Add(1)
+		go w.serveSubstream(ws, w.resumec)
+	}
+
+	if err != nil {
+		return nil, v3rpc.Error(err)
+	}
+
+	// 创建goroutine接收来自新grpc流的数据
+	go w.serveWatchClient(wc)
+	return wc, nil
 }
 ```
 
