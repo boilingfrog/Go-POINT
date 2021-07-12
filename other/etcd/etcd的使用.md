@@ -619,6 +619,39 @@ func (w *watchGrpcStream) newWatchClient() (pb.Watch_WatchClient, error) {
 
 7、WatcherStream是具体的 watch response的处理结构，对于每个watch key，WatcherGrpcStream 也会启动一个专门的协程处理WatcherStream里面的watch response channel。  
 
+看些server端的代码实现  
+
+```go
+type WatchStream interface {
+	// Watch 创建了一个观察者. 观察者监听发生在给定的键或范围[key, end]上的事件的变化。
+	//
+	// 整个事件历史可以被观察，除非压缩。
+	// 如果"startRev" <=0, watch观察当前之后的事件。
+
+	// 将返回watcher的id，它显示为WatchID
+	// 通过流通道发送给创建的监视器的事件。
+	// watch ID在不等于AutoWatchID的时候被使用，否则将会返回一个自增的id
+	Watch(id WatchID, key, end []byte, startRev int64, fcs ...FilterFunc) (WatchID, error)
+
+	// Chan返回一个Chan。所有的观察响应将被发送到返回的chan。
+	Chan() <-chan WatchResponse
+
+	// RequestProgress请求给定ID的观察者的进度。响应只在观察者当前同步时发送。
+	// 响应将通过附加的WatchRespone Chan发送,使用这个流来确保正确的排序。
+	// 相应不包含事件。响应中的修订是进度的观察者，因为观察者当前已同步。
+	RequestProgress(id WatchID)
+
+	// Cancel 通过给出它的 ID 来取消一个观察者。如果 watcher 不存在，则会报错
+	Cancel(id WatchID) error
+
+	// Close closes Chan and release all related resources.
+	Close()
+
+	// Rev 返回流监视的 KV 的当前版本。
+	Rev() int64
+}
+```
+
 #### 负载均衡
 
 关于负载均衡，通常意义上有两种  
@@ -1049,8 +1082,8 @@ func main() {
 【一文入门ETCD】https://juejin.cn/post/6844904031186321416   
 【etcd：从应用场景到实现原理的全方位解读】https://www.infoq.cn/article/etcd-interpretation-application-scenario-implement-principle   
 【Etcd 架构与实现解析】http://jolestar.com/etcd-architecture/   
-【linux单节点和集群的etcd】https://www.jianshu.com/p/07ca88b6ff67  
-【软负载均衡与硬负载均衡、4层与7层负载均衡】https://cloud.tencent.com/developer/article/1446391 
+【linux单节点和集群的etcd】https://www.jianshu.com/p/07ca88b6ff67   
+【软负载均衡与硬负载均衡、4层与7层负载均衡】https://cloud.tencent.com/developer/article/1446391   
 【Etcd Lock详解】https://tangxusc.github.io/blog/2019/05/etcd-lock%E8%AF%A6%E8%A7%A3/   
 【etcd基础与使用】https://zhuyasen.com/post/etcd.html   
 【ETCD核心机制解析】https://www.cnblogs.com/FG123/p/13632095.html      
