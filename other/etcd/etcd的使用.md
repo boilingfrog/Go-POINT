@@ -501,6 +501,27 @@ func (w *watcher) newWatcherGrpcStream(inctx context.Context) *watchGrpcStream {
     go wgs.run()
     return wgs
 }
+
+// run 管理watch 的事件chan
+func (w *watchGrpcStream) run() {
+	var wc pb.Watch_WatchClient
+	var closeErr error
+	...
+	// 创建一个grpc client连接etcd grpc server。
+	if wc, closeErr = w.newWatchClient(); closeErr != nil {
+		return
+	}
+
+	cancelSet := make(map[int64]struct{})
+
+	// select检测各个chan的事件（reqc、respc、errc、closingc）
+	var cur *pb.WatchResponse
+	for {
+		select {
+			...
+		}
+	}
+}
 ```
 
 总结：  
