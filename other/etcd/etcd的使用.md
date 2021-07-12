@@ -644,7 +644,7 @@ etcd中实现负载均衡，例如我们上文的例子服务注册和发现，�
 
 - **通过etcd完成工作汇报**。大部分类似的任务分发系统，子任务启动后，到etcd来注册一个临时工作目录，并且定时将自己的进度进行汇报（将进度写入到这个临时目录），这样任务管理者就能够实时知道任务进度。    
 
-<img src="/img/etcd-notify.png.png" alt="etcd" align=center/>
+<img src="/img/etcd-notify.png" alt="etcd" align=center/>
 
 #### 分布式锁
 
