@@ -621,6 +621,134 @@ func (w *watchGrpcStream) newWatchClient() (pb.Watch_WatchClient, error) {
 
 看些server端的代码实现  
 
+主要的文件  
+
+```
+/etcdserver/api/v3rpc/watch.go    watch 服务端实现
+
+/mvcc/watcher.go  主要封装 watchStream 的实现
+
+/mvcc/watchable_store.go  watch 版本的 KV 存储实现
+
+/mvcc/watchable_store_txn.go  主要实现事务提交后 End() 函数的处理
+
+/mvcc/watcher_group.go
+```
+
+```go
+// 文件：/etcdserver/api/v3rpc/watch.go
+type watchServer struct {
+	...
+	watchable mvcc.WatchableKV // 键值存储
+	....
+}
+
+type serverWatchStream struct {
+	...
+	watchable mvcc.WatchableKV //kv 存储
+	...
+	// 与客户端进行连接的 Stream
+	gRPCStream  pb.Watch_WatchServer
+	// key 变动的消息管道
+	watchStream mvcc.WatchStream
+	// 响应客户端请求的消息管道
+	ctrlStream  chan *pb.WatchResponse
+	...
+	// 该类型的 watch，服务端会定时发送类似心跳消息
+	progress map[mvcc.WatchID]bool
+	// 该类型表明，对于/a/b 这样的监听范围, 如果 b 变化了， 前缀/a也需要通知
+	prevKV map[mvcc.WatchID]bool
+	// 该类型表明，传输数据量大于阈值，需要拆分发送
+	fragment map[mvcc.WatchID]bool
+} 
+```
+
+```go
+// 文件：/mvcc/watcher.go 
+// 响应结构体
+type WatchResponse struct {
+	WatchID WatchID
+	// 当前 watchResponse 实例创建时对应的 revision 值
+	Revision int64
+	// 压缩操作对应的 revison
+	CompactRevision int64
+}
+
+type watchStream struct {
+	// 用来记录关联的 watchableStore
+	watchable watchable
+	// event 事件写入通道
+	ch        chan WatchResponse
+	...
+	cancels  map[WatchID]cancelFunc
+	// 用来记录唯一标识与 watcher 的实例的关系
+	watchers map[WatchID]*watcher
+}
+```
+
+```go
+// 文件：/mvcc/watcher_group.go 
+type eventBatch struct {
+	// 其中记录的 Event 实例是按照 revision 排序的
+	evs []mvccpb.Event
+	// 记录当前 eventBatch 中，有多少个来自不同的 main revison,
+	revs int
+	// 当前 eventBatch 记录的 Event 个数达到上限之后，后续 Event 实例无法加入该 eventBatch 中
+	// 该字段记录了无法加入该 eventBatch 实例的第一个main revision
+	moreRev int64
+}
+
+type watcherBatch map[*watcher]*eventBatch
+type watcherSet map[*watcher]struct{}
+type watcherSetByKey map[string]watcherSet
+
+type watcherGroup struct {
+	// 记录监听单个 Key 的 watch 实例
+	keyWatchers watcherSetByKey
+	// 记录进行范围监听的 watcher 实例。
+	ranges adt.IntervalTree
+	// 记录当前 wathcer 的全部实例
+	watchers watcherSet
+}
+```
+
+```go
+// 文件 /mvcc/watchable_store.go
+type watchableStore struct {
+	*store
+	mu sync.RWMutex
+	// 当ch被阻塞时，对应 watcherBatch 实例会暂时记录到这个字段
+	victims []watcherBatch
+	// 当有新的 watcherBatch 实例添加到 victims 字段时，会向该通道发送消息
+	victimc chan struct{}
+	// 未同步的 watcher
+	unsynced watcherGroup
+	// 已完成同步的 watcher
+	synced watcherGroup
+	stopc chan struct{}
+	wg sync.WaitGroup
+}
+
+type watcher struct {
+	// 监听起始值
+	key []byte
+	// 监听终止值，  key 和 end 共同组成一个键值范围
+	end []byte
+	// 是否被阻塞
+	victim bool
+	// 是否压缩
+	compacted bool
+	...
+	// 最小的 revision main
+	minRev int64
+	id     WatchID
+	...
+	ch chan<- WatchResponse
+}
+```
+
+
+
 ```go
 type WatchStream interface {
 	// Watch 创建了一个观察者. 观察者监听发生在给定的键或范围[key, end]上的事件的变化。
@@ -649,6 +777,69 @@ type WatchStream interface {
 
 	// Rev 返回流监视的 KV 的当前版本。
 	Rev() int64
+}
+
+// Watch 在流中创建一个新的 watcher 并返回它的 WatchID。
+func (ws *watchStream) Watch(id WatchID, key, end []byte, startRev int64, fcs ...FilterFunc) (WatchID, error) {
+	// prevent wrong range where key >= end lexicographically
+	// watch request with 'WithFromKey' has empty-byte range end
+	if len(end) != 0 && bytes.Compare(key, end) != -1 {
+		return -1, ErrEmptyWatcherRange
+	}
+
+	ws.mu.Lock()
+	defer ws.mu.Unlock()
+	if ws.closed {
+		return -1, ErrEmptyWatcherRange
+	}
+
+	// watch ID在不等于AutoWatchID的时候被使用，否则将会返回一个自增的id
+	if id == AutoWatchID {
+		for ws.watchers[ws.nextID] != nil {
+			ws.nextID++
+		}
+		id = ws.nextID
+		ws.nextID++
+	} else if _, ok := ws.watchers[id]; ok {
+		return -1, ErrWatcherDuplicateID
+	}
+
+	w, c := ws.watchable.watch(key, end, startRev, id, ws.ch, fcs...)
+
+	ws.cancels[id] = c
+	ws.watchers[id] = w
+	return id, nil
+}
+```
+
+看下主要函数额实现  
+
+```go
+// server/mvcc/watchable_store.go
+
+func newWatchableStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg StoreConfig) *watchableStore {
+	if lg == nil {
+		lg = zap.NewNop()
+	}
+	s := &watchableStore{
+		store:    NewStore(lg, b, le, cfg),
+		victimc:  make(chan struct{}, 1),
+		unsynced: newWatcherGroup(),
+		synced:   newWatcherGroup(),
+		stopc:    make(chan struct{}),
+	}
+	s.store.ReadView = &readView{s}
+	s.store.WriteView = &writeView{s}
+	if s.le != nil {
+		// use this store as the deleter so revokes trigger watch events
+		s.le.SetRangeDeleter(func() lease.TxnDelete { return s.Write(traceutil.TODO()) })
+	}
+	s.wg.Add(2)
+    // syncWatchersLoop 每 100 毫秒同步一次未同步映射中的观察者。
+	go s.syncWatchersLoop()
+    // syncVictimsLoop 尝试将预先计算的观察者响应写入到观察者频道被阻止的观察者
+	go s.syncVictimsLoop()
+	return s
 }
 ```
 
@@ -1087,4 +1278,5 @@ func main() {
 【Etcd Lock详解】https://tangxusc.github.io/blog/2019/05/etcd-lock%E8%AF%A6%E8%A7%A3/   
 【etcd基础与使用】https://zhuyasen.com/post/etcd.html   
 【ETCD核心机制解析】https://www.cnblogs.com/FG123/p/13632095.html      
-【etcd watch机制】http://liangjf.top/2019/12/31/110.etcd-watch%E6%9C%BA%E5%88%B6%E5%88%86%E6%9E%90/    
+【etcd watch机制】http://liangjf.top/2019/12/31/110.etcd-watch%E6%9C%BA%E5%88%B6%E5%88%86%E6%9E%90/   
+【ETCD 源码学习--Watch(server)】https://www.codeleading.com/article/15455457381/   
