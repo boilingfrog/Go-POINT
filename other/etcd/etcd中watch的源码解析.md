@@ -1,3 +1,14 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+
+- [etcd中watch的源码解析](#etcd%E4%B8%ADwatch%E7%9A%84%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90)
+  - [前言](#%E5%89%8D%E8%A8%80)
+  - [client端的代码](#client%E7%AB%AF%E7%9A%84%E4%BB%A3%E7%A0%81)
+  - [server端的代码实现](#server%E7%AB%AF%E7%9A%84%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B0)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## etcd中watch的源码解析
 
 ### 前言
@@ -355,23 +366,6 @@ func (w *watchGrpcStream) newWatchClient() (pb.Watch_WatchClient, error) {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 主要的文件  
 
 ```
@@ -462,9 +456,6 @@ type watcherGroup struct {
 	watchers watcherSet
 }
 ```
-
-
-
 
 ```go
 type WatchStream interface {
