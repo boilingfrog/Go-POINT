@@ -23,9 +23,9 @@ type test struct {
 
 func (t test) read() {
 	t.r.RLock()
-	t.r.Lock()
+	t.r.RLock()
 	fmt.Println(t.data)
-	t.r.Unlock()
+	t.r.RUnlock()
 	t.r.RUnlock()
 }
 
