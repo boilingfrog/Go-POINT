@@ -10,7 +10,9 @@
     - [syncWatchers](#syncwatchers)
     - [syncVictimsLoop](#syncvictimsloop)
     - [moveVictims](#movevictims)
-    - [](#)
+    - [watchServer](#watchserver)
+    - [recvLoop](#recvloop)
+    - [sendLoop](#sendloop)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -706,15 +708,213 @@ func (s *watchableStore) moveVictims() (moved int) {
 3、判断这些发送完成的版本号是否小于当前版本号，如果是说明者个过程中有数据更新，还没有同步完成，需要添加到 unsynced 中，等待下次同步。如果不是，说明已经同步完成。  
 
 
-#### 
-
-
-
-
-
-
+#### watchServer
 
 ```go
+// 文件：/etcdserver/api/v3rpc/watch.go
+type watchServer struct {
+	...
+	watchable mvcc.WatchableKV // 键值存储
+	....
+}
+
+type serverWatchStream struct {
+	...
+	watchable mvcc.WatchableKV //kv 存储
+	...
+	// 与客户端进行连接的 Stream
+	gRPCStream  pb.Watch_WatchServer
+	// key 变动的消息管道
+	watchStream mvcc.WatchStream
+	// 响应客户端请求的消息管道
+	ctrlStream  chan *pb.WatchResponse
+	...
+	// 该类型的 watch，服务端会定时发送类似心跳消息
+	progress map[mvcc.WatchID]bool
+	// 该类型表明，对于/a/b 这样的监听范围, 如果 b 变化了， 前缀/a也需要通知
+	prevKV map[mvcc.WatchID]bool
+	// 该类型表明，传输数据量大于阈值，需要拆分发送
+	fragment map[mvcc.WatchID]bool
+} 
+
+func (ws *watchServer) Watch(stream pb.Watch_WatchServer) (err error) {
+	sws := serverWatchStream{
+		lg: ws.lg,
+
+		clusterID: ws.clusterID,
+		memberID:  ws.memberID,
+
+		maxRequestBytes: ws.maxRequestBytes,
+
+		sg:        ws.sg,
+		watchable: ws.watchable,
+		ag:        ws.ag,
+
+		gRPCStream:  stream,
+		watchStream: ws.watchable.NewWatchStream(),
+		// chan for sending control response like watcher created and canceled.
+		ctrlStream: make(chan *pb.WatchResponse, ctrlStreamBufLen),
+
+		progress: make(map[mvcc.WatchID]bool),
+		prevKV:   make(map[mvcc.WatchID]bool),
+		fragment: make(map[mvcc.WatchID]bool),
+
+		closec: make(chan struct{}),
+	}
+
+	sws.wg.Add(1)
+	go func() {
+        // 启动sendLoop
+		sws.sendLoop()
+		sws.wg.Done()
+	}()
+
+	errc := make(chan error, 1)
+    // 理想情况下，recvLoop 也会使用 sws.wg 来表示它的完成
+    // 但是当 stream.Context().Done() 关闭时，流的 recv
+    // 可能会继续阻塞，因为它使用不同的上下文，导致
+    // 调用 sws.close() 时死锁。
+	go func() {
+        // 启动recvLoop
+		if rerr := sws.recvLoop(); rerr != nil {
+			if isClientCtxErr(stream.Context().Err(), rerr) {
+				sws.lg.Debug("failed to receive watch request from gRPC stream", zap.Error(rerr))
+			} else {
+				sws.lg.Warn("failed to receive watch request from gRPC stream", zap.Error(rerr))
+				streamFailures.WithLabelValues("receive", "watch").Inc()
+			}
+			errc <- rerr
+		}
+	}()
+
+    // 如果 recv goroutine 在 send goroutine 之前完成，则底层错误（例如 gRPC 流错误）可能会通过 errc 返回和处理。
+    // 当 recv goroutine 获胜时，流错误被保留。当 recv 失去竞争时，底层错误就会丢失（除非根错误通过 Context.Err() 传播，但情况并非总是如此（因为调用者必须决定实现自定义上下文才能这样做）
+    // stdlib 上下文包内置可能不足以携带语义上有用的错误，应该被重新审视。
+	select {
+	case err = <-errc:
+		if err == context.Canceled {
+			err = rpctypes.ErrGRPCWatchCanceled
+		}
+		close(sws.ctrlStream)
+	case <-stream.Context().Done():
+		err = stream.Context().Err()
+		if err == context.Canceled {
+			err = rpctypes.ErrGRPCWatchCanceled
+		}
+	}
+
+	sws.close()
+	return err
+}
+```
+
+watchServer在上面启动了recvLoop和sendLoop，分别来处理和接收客户度的请求  
+
+#### recvLoop
+
+recvLoop接收客户端请求  
+
+```go
+func (sws *serverWatchStream) recvLoop() error {
+	for {
+		req, err := sws.gRPCStream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+
+		switch uv := req.RequestUnion.(type) {
+		// 处理CreateRequest的请求
+		case *pb.WatchRequest_CreateRequest:
+			if uv.CreateRequest == nil {
+				break
+			}
+
+			creq := uv.CreateRequest
+			...
+			if !sws.isWatchPermitted(creq) {
+				// 封装WatchResponse强求
+				wr := &pb.WatchResponse{
+					Header:       sws.newResponseHeader(sws.watchStream.Rev()),
+					WatchId:      creq.WatchId,
+					Canceled:     true,
+					Created:      true,
+					CancelReason: rpctypes.ErrGRPCPermissionDenied.Error(),
+				}
+
+				select {
+				// ctrlStream响应客户端请求的消息管道
+				// 传递WatchResponse请求
+				case sws.ctrlStream <- wr:
+					continue
+				case <-sws.closec:
+					return nil
+				}
+			}
+
+			filters := FiltersFromRequest(creq)
+
+			wsrev := sws.watchStream.Rev()
+			rev := creq.StartRevision
+			if rev == 0 {
+				rev = wsrev + 1
+			}
+			// Watch 在流中创建一个新的 watcher 并返回它的 WatchID。
+			id, err := sws.watchStream.Watch(mvcc.WatchID(creq.WatchId), creq.Key, creq.RangeEnd, rev, filters...)
+			...
+			wr := &pb.WatchResponse{
+				Header:   sws.newResponseHeader(wsrev),
+				WatchId:  int64(id),
+				Created:  true,
+				Canceled: err != nil,
+			}
+			if err != nil {
+				wr.CancelReason = err.Error()
+			}
+			select {
+			// ctrlStream响应客户端请求的消息管道
+			// 传递WatchResponse请求
+			case sws.ctrlStream <- wr:
+			case <-sws.closec:
+				return nil
+			}
+			// 处理CancelRequest的请求
+		case *pb.WatchRequest_CancelRequest:
+			if uv.CancelRequest != nil {
+				id := uv.CancelRequest.WatchId
+				err := sws.watchStream.Cancel(mvcc.WatchID(id))
+				if err == nil {
+					sws.ctrlStream <- &pb.WatchResponse{
+						Header:   sws.newResponseHeader(sws.watchStream.Rev()),
+						WatchId:  id,
+						Canceled: true,
+					}
+					sws.mu.Lock()
+					delete(sws.progress, mvcc.WatchID(id))
+					delete(sws.prevKV, mvcc.WatchID(id))
+					delete(sws.fragment, mvcc.WatchID(id))
+					sws.mu.Unlock()
+				}
+			}
+			// 处理ProgressRequest的请求
+		case *pb.WatchRequest_ProgressRequest:
+			if uv.ProgressRequest != nil {
+				sws.ctrlStream <- &pb.WatchResponse{
+					Header:  sws.newResponseHeader(sws.watchStream.Rev()),
+					WatchId: -1, // response is not associated with any WatchId and will be broadcast to all watch channels
+				}
+			}
+		default:
+			// 我们可能不应该在以下情况下关闭整个流
+			// 接收有效命令。
+			// 什么都不做。
+			continue
+		}
+	}
+}
+
 // server/mvcc/watcher.go
 type watchStream struct {
 	// 用来记录关联的 watchableStore
@@ -797,107 +997,99 @@ func (s *watchableStore) watch(key, end []byte, startRev int64, id WatchID, ch c
 }
 ```
 
+总结  
+
+1、接受客户端的请求；  
+
+2、根据不同的请求数据类型进行处理；  
+
+3、主要是通过watchStream来关联watcher，来处理每一个请求。     
+
+#### sendLoop 
 
 
-
-
-
-
-
-
-
-主要的文件  
-
-```
-/etcdserver/api/v3rpc/watch.go    watch 服务端实现
-
-/mvcc/watcher.go  主要封装 watchStream 的实现
-
-/mvcc/watchable_store.go  watch 版本的 KV 存储实现
-
-/mvcc/watchable_store_txn.go  主要实现事务提交后 End() 函数的处理
-
-/mvcc/watcher_group.go
-```
 
 ```go
-// 文件：/etcdserver/api/v3rpc/watch.go
-type watchServer struct {
+func (sws *serverWatchStream) sendLoop() {
+	// watch ids that are currently active
+	ids := make(map[mvcc.WatchID]struct{})
+	// watch 响应等待 watch id 创建消息
+	pending := make(map[mvcc.WatchID][]*pb.WatchResponse)
 	...
-	watchable mvcc.WatchableKV // 键值存储
-	....
+
+	for {
+		select {
+		// 监听key 变动的消息管道
+		case wresp, ok := <-sws.watchStream.Chan():
+			if !ok {
+				return
+			}
+			...
+			canceled := wresp.CompactRevision != 0
+			wr := &pb.WatchResponse{
+				Header:          sws.newResponseHeader(wresp.Revision),
+				WatchId:         int64(wresp.WatchID),
+				Events:          events,
+				CompactRevision: wresp.CompactRevision,
+				Canceled:        canceled,
+			}
+
+			if _, okID := ids[wresp.WatchID]; !okID {
+				// buffer if id not yet announced
+				wrs := append(pending[wresp.WatchID], wr)
+				pending[wresp.WatchID] = wrs
+				continue
+			}
+
+			mvcc.ReportEventReceived(len(evs))
+
+			sws.mu.RLock()
+			fragmented, ok := sws.fragment[wresp.WatchID]
+			sws.mu.RUnlock()
+
+			var serr error
+			if !fragmented && !ok {
+				// 通过rpc发送响应给客户端
+				serr = sws.gRPCStream.Send(wr)
+			} else {
+				serr = sendFragments(wr, sws.maxRequestBytes, sws.gRPCStream.Send)
+			}
+
+			...
+			// 监听响应客户端请求的消息管道
+		case c, ok := <-sws.ctrlStream:
+			if !ok {
+				return
+			}
+
+			if err := sws.gRPCStream.Send(c); err != nil {
+				if isClientCtxErr(sws.gRPCStream.Context().Err(), err) {
+					sws.lg.Debug("failed to send watch control response to gRPC stream", zap.Error(err))
+				} else {
+					sws.lg.Warn("failed to send watch control response to gRPC stream", zap.Error(err))
+					streamFailures.WithLabelValues("send", "watch").Inc()
+				}
+				return
+			}
+			....
+		case <-progressTicker.C:
+			sws.mu.Lock()
+			for id, ok := range sws.progress {
+				if ok {
+                    // WatchStream
+                    // 定时发送 RequestProgress，类似心跳包
+					sws.watchStream.RequestProgress(id)
+				}
+				sws.progress[id] = true
+			}
+			sws.mu.Unlock()
+
+		case <-sws.closec:
+			return
+		}
+	}
 }
 
-type serverWatchStream struct {
-	...
-	watchable mvcc.WatchableKV //kv 存储
-	...
-	// 与客户端进行连接的 Stream
-	gRPCStream  pb.Watch_WatchServer
-	// key 变动的消息管道
-	watchStream mvcc.WatchStream
-	// 响应客户端请求的消息管道
-	ctrlStream  chan *pb.WatchResponse
-	...
-	// 该类型的 watch，服务端会定时发送类似心跳消息
-	progress map[mvcc.WatchID]bool
-	// 该类型表明，对于/a/b 这样的监听范围, 如果 b 变化了， 前缀/a也需要通知
-	prevKV map[mvcc.WatchID]bool
-	// 该类型表明，传输数据量大于阈值，需要拆分发送
-	fragment map[mvcc.WatchID]bool
-} 
-```
-
-```go
-// 文件：/mvcc/watcher.go 
-// 响应结构体
-type WatchResponse struct {
-	WatchID WatchID
-	// 当前 watchResponse 实例创建时对应的 revision 值
-	Revision int64
-	// 压缩操作对应的 revison
-	CompactRevision int64
-}
-
-type watchStream struct {
-	// 用来记录关联的 watchableStore
-	watchable watchable
-	// event 事件写入通道
-	ch        chan WatchResponse
-	...
-	cancels  map[WatchID]cancelFunc
-	// 用来记录唯一标识与 watcher 的实例的关系
-	watchers map[WatchID]*watcher
-}
-```
-
-```go
-// 文件：/mvcc/watcher_group.go 
-type eventBatch struct {
-	// 其中记录的 Event 实例是按照 revision 排序的
-	evs []mvccpb.Event
-	// 记录当前 eventBatch 中，有多少个来自不同的 main revison,
-	revs int
-	// 当前 eventBatch 记录的 Event 个数达到上限之后，后续 Event 实例无法加入该 eventBatch 中
-	// 该字段记录了无法加入该 eventBatch 实例的第一个main revision
-	moreRev int64
-}
-
-type watcherBatch map[*watcher]*eventBatch
-type watcherSet map[*watcher]struct{}
-type watcherSetByKey map[string]watcherSet
-
-type watcherGroup struct {
-	// 记录监听单个 Key 的 watch 实例
-	keyWatchers watcherSetByKey
-	// 记录进行范围监听的 watcher 实例。
-	ranges adt.IntervalTree
-	// 记录当前 wathcer 的全部实例
-	watchers watcherSet
-}
-```
-
-```go
 type WatchStream interface {
 	// Watch 创建了一个观察者. 观察者监听发生在给定的键或范围[key, end]上的事件的变化。
 	//
@@ -928,10 +1120,10 @@ type WatchStream interface {
 }
 ```
 
-看下主要函数的实现  
+总结：  
 
-整体的设计思路  
+1、通过watchStream.Chan监听key值的变更； 
 
-1、etcd服务端创建newWatchableStore开启group监听；  
+2、处理 ctrlStream 的消息(客户端请求，返回响应)；  
 
-2、
+3、定时发送 RequestProgress 类似心跳包。  
