@@ -372,7 +372,7 @@ func (w *watchGrpcStream) newWatchClient() (pb.Watch_WatchClient, error) {
 6、grpc proxy提供对同一个key的多次watch合并减少etcd server中重复watcher创建，以提高etcd server稳定性。  
 
 
-<img src="/img/etcd-server-1.png" alt="etcd" align=center/>
+<img src="/img/etcd-server.png" alt="etcd" align=center/>
 
 #### watchableStore
 
