@@ -735,7 +735,7 @@ type serverWatchStream struct {
 	prevKV map[mvcc.WatchID]bool
 	// 该类型表明，传输数据量大于阈值，需要拆分发送
 	fragment map[mvcc.WatchID]bool
-} 
+}
 
 func (ws *watchServer) Watch(stream pb.Watch_WatchServer) (err error) {
 	sws := serverWatchStream{
@@ -764,18 +764,18 @@ func (ws *watchServer) Watch(stream pb.Watch_WatchServer) (err error) {
 
 	sws.wg.Add(1)
 	go func() {
-        // 启动sendLoop
+		// 启动sendLoop
 		sws.sendLoop()
 		sws.wg.Done()
 	}()
 
 	errc := make(chan error, 1)
-    // 理想情况下，recvLoop 也会使用 sws.wg 来表示它的完成
-    // 但是当 stream.Context().Done() 关闭时，流的 recv
-    // 可能会继续阻塞，因为它使用不同的上下文，导致
-    // 调用 sws.close() 时死锁。
+	// 理想情况下，recvLoop 也会使用 sws.wg 来表示它的完成
+	// 但是当 stream.Context().Done() 关闭时，流的 recv
+	// 可能会继续阻塞，因为它使用不同的上下文，导致
+	// 调用 sws.close() 时死锁。
 	go func() {
-        // 启动recvLoop
+		// 启动recvLoop
 		if rerr := sws.recvLoop(); rerr != nil {
 			if isClientCtxErr(stream.Context().Err(), rerr) {
 				sws.lg.Debug("failed to receive watch request from gRPC stream", zap.Error(rerr))
@@ -787,9 +787,9 @@ func (ws *watchServer) Watch(stream pb.Watch_WatchServer) (err error) {
 		}
 	}()
 
-    // 如果 recv goroutine 在 send goroutine 之前完成，则底层错误（例如 gRPC 流错误）可能会通过 errc 返回和处理。
-    // 当 recv goroutine 获胜时，流错误被保留。当 recv 失去竞争时，底层错误就会丢失（除非根错误通过 Context.Err() 传播，但情况并非总是如此（因为调用者必须决定实现自定义上下文才能这样做）
-    // stdlib 上下文包内置可能不足以携带语义上有用的错误，应该被重新审视。
+	// 如果 recv goroutine 在 send goroutine 之前完成，则底层错误（例如 gRPC 流错误）可能会通过 errc 返回和处理。
+	// 当 recv goroutine 获胜时，流错误被保留。当 recv 失去竞争时，底层错误就会丢失（除非根错误通过 Context.Err() 传播，但情况并非总是如此（因为调用者必须决定实现自定义上下文才能这样做）
+	// stdlib 上下文包内置可能不足以携带语义上有用的错误，应该被重新审视。
 	select {
 	case err = <-errc:
 		if err == context.Canceled {
@@ -1007,7 +1007,7 @@ func (s *watchableStore) watch(key, end []byte, startRev int64, id WatchID, ch c
 
 #### sendLoop 
 
-
+响应客户端的请求  
 
 ```go
 func (sws *serverWatchStream) sendLoop() {
@@ -1076,8 +1076,8 @@ func (sws *serverWatchStream) sendLoop() {
 			sws.mu.Lock()
 			for id, ok := range sws.progress {
 				if ok {
-                    // WatchStream
-                    // 定时发送 RequestProgress，类似心跳包
+					// WatchStream
+					// 定时发送 RequestProgress，类似心跳包
 					sws.watchStream.RequestProgress(id)
 				}
 				sws.progress[id] = true
