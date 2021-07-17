@@ -464,7 +464,7 @@ func (s *watchableStore) syncWatchersLoop() {
 		s.mu.RUnlock()
 
 		unsyncedWatchers := 0
-        //如果 unsynced 中存在数据，进行同步
+		//如果 unsynced 中存在数据，进行同步
 		if lastUnsyncedWatchers > 0 {
 			unsyncedWatchers = s.syncWatchers()
 		}
@@ -605,7 +605,7 @@ func (s *watchableStore) syncVictimsLoop() {
 	defer s.wg.Done()
 
 	for {
-        // 将 victims 中的数据尝试发送出去
+		// 将 victims 中的数据尝试发送出去
 		for s.moveVictims() != 0 {
 			// try to update all victim watchers
 		}
