@@ -22,6 +22,8 @@
 
 etcd是一个cs网络架构，源码分析应该涉及到client端，server端。client主要是提供操作来请求对key监听，并且接收key变更时的通知。server要能做到接收key监听请求，并且启动定时器等方法来对key进行监听，有变更时通知client。  
 
+这里主要分析了v3版本的实现  
+
 ### client端的代码  
 
 ```go
@@ -241,28 +243,28 @@ func (w *watcher) Watch(ctx context.Context, key string, opts ...OpOption) Watch
 
 // newWatcherGrpcStream new一个watch grpc stream来传输watch请求
 func (w *watcher) newWatcherGrpcStream(inctx context.Context) *watchGrpcStream {
-    ctx, cancel := context.WithCancel(&valCtx{inctx})
+	ctx, cancel := context.WithCancel(&valCtx{inctx})
 
-    //构造watchGrpcStream
-    wgs := &watchGrpcStream{
-        owner:      w,
-        remote:     w.remote,
-        callOpts:   w.callOpts,
-        ctx:        ctx,
-        ctxKey:     streamKeyFromCtx(inctx),
-        cancel:     cancel,
-        substreams: make(map[int64]*watcherStream),
-        respc:      make(chan *pb.WatchResponse),
-        reqc:       make(chan watchStreamRequest),
-        donec:      make(chan struct{}),
-        errc:       make(chan error, 1),
-        closingc:   make(chan *watcherStream),
-        resumec:    make(chan struct{}),
-    }
+	//构造watchGrpcStream
+	wgs := &watchGrpcStream{
+		owner:      w,
+		remote:     w.remote,
+		callOpts:   w.callOpts,
+		ctx:        ctx,
+		ctxKey:     streamKeyFromCtx(inctx),
+		cancel:     cancel,
+		substreams: make(map[int64]*watcherStream),
+		respc:      make(chan *pb.WatchResponse),
+		reqc:       make(chan watchStreamRequest),
+		donec:      make(chan struct{}),
+		errc:       make(chan error, 1),
+		closingc:   make(chan *watcherStream),
+		resumec:    make(chan struct{}),
+	}
 
-    // 创建goroutine来处理监听key的watch各种事件
-    go wgs.run()
-    return wgs
+	// 创建goroutine来处理监听key的watch各种事件
+	go wgs.run()
+	return wgs
 }
 
 // 通过etcd grpc服务器启动一个watch stream
@@ -1127,3 +1129,128 @@ type WatchStream interface {
 2、处理 ctrlStream 的消息(客户端请求，返回响应)；  
 
 3、定时发送 RequestProgress 类似心跳包。  
+
+### 连接复用
+
+上面我们提到了连接复用，我们来看看如何实现复用的  
+
+```go
+// 其中Watch()函数发送watch请求，第一次发送后递归调用Watch实现持续监听
+func (w *watcher) Watch(ctx context.Context, key string, opts ...OpOption) WatchChan {
+	ow := opWatch(key, opts...)
+
+	var filters []pb.WatchCreateRequest_FilterType
+	if ow.filterPut {
+		filters = append(filters, pb.WatchCreateRequest_NOPUT)
+	}
+	if ow.filterDelete {
+		filters = append(filters, pb.WatchCreateRequest_NODELETE)
+	}
+
+	wr := &watchRequest{
+		ctx:            ctx,
+		createdNotify:  ow.createdNotify,
+		key:            string(ow.key),
+		end:            string(ow.end),
+		rev:            ow.rev,
+		progressNotify: ow.progressNotify,
+		fragment:       ow.fragment,
+		filters:        filters,
+		prevKV:         ow.prevKV,
+		retc:           make(chan chan WatchResponse, 1),
+	}
+
+	ok := false
+	ctxKey := streamKeyFromCtx(ctx)
+
+	var closeCh chan WatchResponse
+	for {
+		// 查找或分配适当的 grpc 监视流
+		w.mu.Lock()
+		if w.streams == nil {
+			// closed
+			w.mu.Unlock()
+			ch := make(chan WatchResponse)
+			close(ch)
+			return ch
+		}
+
+		// streams是一个map,保存所有由 ctx 值键控的活动 grpc 流
+		// 如果该请求对应的流为空,则新建
+		wgs := w.streams[ctxKey]
+		if wgs == nil {
+            // newWatcherGrpcStream new一个watch grpc stream来传输watch请求
+            // 创建goroutine来处理监听key的watch各种事件
+			wgs = w.newWatcherGrpcStream(ctx)
+			w.streams[ctxKey] = wgs
+		}
+		donec := wgs.donec
+		reqc := wgs.reqc
+		w.mu.Unlock()
+
+		// couldn't create channel; return closed channel
+		if closeCh == nil {
+			closeCh = make(chan WatchResponse, 1)
+		}
+
+		// 等待接收值
+		select {
+		// reqc 从 Watch() 向主协程发送观察请求
+		case reqc <- wr:
+			ok = true
+		case <-wr.ctx.Done():
+			ok = false
+		case <-donec:
+			ok = false
+			if wgs.closeErr != nil {
+				closeCh <- WatchResponse{Canceled: true, closeErr: wgs.closeErr}
+				break
+			}
+			// 重试，可能已经从没有 ctxs 中删除了流
+			continue
+		}
+
+		// receive channel
+		if ok {
+			select {
+			case ret := <-wr.retc:
+				return ret
+			case <-ctx.Done():
+			case <-donec:
+				if wgs.closeErr != nil {
+					closeCh <- WatchResponse{Canceled: true, closeErr: wgs.closeErr}
+					break
+				}
+				// 重试，可能已经从没有 ctxs 中删除了流
+				continue
+			}
+		}
+		break
+	}
+
+	close(closeCh)
+	return closeCh
+}
+```
+
+例如这个client的watch  
+
+1、`newWatcherGrpcStream new`一个watchGrpcStream来传输watch请求；  
+
+2、监听watchGrpcStream的reqc.c,来发送请求； 
+
+这俩实现了连接复用，只要没有关闭，就能一直监听发送请求信息。  
+
+### 总结
+
+上面主要总结了etcd中watch机制，client端比较简答，server端的实现比较复杂；   
+
+client主要是提供操作来请求对key监听，并且接收key变更时的通知。server要能做到接收key监听请求，并且启动定时器等方法来对key进行监听，有变更时通知client。  
+
+v3版本中watch依赖gRPC接口，实现连接复用。  
+
+
+
+
+
+
