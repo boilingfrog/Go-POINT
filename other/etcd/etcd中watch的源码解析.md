@@ -1,11 +1,16 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-
 - [etcd中watch的源码解析](#etcd%E4%B8%ADwatch%E7%9A%84%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90)
   - [前言](#%E5%89%8D%E8%A8%80)
   - [client端的代码](#client%E7%AB%AF%E7%9A%84%E4%BB%A3%E7%A0%81)
   - [server端的代码实现](#server%E7%AB%AF%E7%9A%84%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B0)
+    - [watchableStore](#watchablestore)
+    - [syncWatchersLoop](#syncwatchersloop)
+    - [syncWatchers](#syncwatchers)
+    - [syncVictimsLoop](#syncvictimsloop)
+    - [moveVictims](#movevictims)
+    - [](#)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -365,6 +370,442 @@ func (w *watchGrpcStream) newWatchClient() (pb.Watch_WatchClient, error) {
 
 <img src="/img/etcd-server-1.png" alt="etcd" align=center/>
 
+#### watchableStore
+
+先来看下`watchableStore`   
+
+```go
+// 文件 /mvcc/watchable_store.go
+type watchableStore struct {
+	*store
+	mu sync.RWMutex
+	// 当ch被阻塞时，对应 watcherBatch 实例会暂时记录到这个字段
+	victims []watcherBatch
+	// 当有新的 watcherBatch 实例添加到 victims 字段时，会向该通道发送消息
+	victimc chan struct{}
+	// 未同步的 watcher
+	unsynced watcherGroup
+	// 已完成同步的 watcher
+	synced watcherGroup
+	stopc chan struct{}
+	wg sync.WaitGroup
+}
+
+type watcher struct {
+	// 监听起始值
+	key []byte
+	// 监听终止值，  key 和 end 共同组成一个键值范围
+	end []byte
+	// 是否被阻塞
+	victim bool
+	// 是否压缩
+	compacted bool
+	...
+	// 最小的 revision main
+	minRev int64
+	id     WatchID
+	...
+	ch chan<- WatchResponse
+}
+
+// server/mvcc/watchable_store.go
+func newWatchableStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg StoreConfig) *watchableStore {
+	if lg == nil {
+		lg = zap.NewNop()
+	}
+	s := &watchableStore{
+		store:    NewStore(lg, b, le, cfg),
+		victimc:  make(chan struct{}, 1),
+		unsynced: newWatcherGroup(),
+		synced:   newWatcherGroup(),
+		stopc:    make(chan struct{}),
+	}
+	s.store.ReadView = &readView{s}
+	s.store.WriteView = &writeView{s}
+	if s.le != nil {
+		// use this store as the deleter so revokes trigger watch events
+		s.le.SetRangeDeleter(func() lease.TxnDelete { return s.Write(traceutil.TODO()) })
+	}
+	s.wg.Add(2)
+	// 开2个协程
+    // syncWatchersLoop 每 100 毫秒同步一次未同步映射中的观察者。
+	go s.syncWatchersLoop()
+    // syncVictimsLoop 同步预先发送未成功的watchers
+	go s.syncVictimsLoop()
+	return s
+}
+```
+
+总结
+
+1、初始化一个watchableStore；  
+
+2、启动了两个协程  
+
+- syncWatchersLoop:每 100 毫秒同步一次未同步映射中的观察者；  
+
+- syncVictimsLoop:同步预先发送未成功的watchers；  
+
+#### syncWatchersLoop
+
+`syncWatchersLoop`会调用`syncWatchers`来进行`watcher`的同步操作    
+
+```go
+// syncWatchersLoop 每 100 毫秒同步一次未同步映射中的观察者。
+func (s *watchableStore) syncWatchersLoop() {
+	defer s.wg.Done()
+
+	for {
+		s.mu.RLock()
+		st := time.Now()
+		lastUnsyncedWatchers := s.unsynced.size()
+		s.mu.RUnlock()
+
+		unsyncedWatchers := 0
+        //如果 unsynced 中存在数据，进行同步
+		if lastUnsyncedWatchers > 0 {
+			unsyncedWatchers = s.syncWatchers()
+		}
+		syncDuration := time.Since(st)
+
+		waitDuration := 100 * time.Millisecond
+		// more work pending?
+		if unsyncedWatchers != 0 && lastUnsyncedWatchers > unsyncedWatchers {
+			// be fair to other store operations by yielding time taken
+			waitDuration = syncDuration
+		}
+
+		select {
+		case <-time.After(waitDuration):
+		case <-s.stopc:
+			return
+		}
+	}
+}
+```
+
+总结：  
+
+1、如果unsynced中存在数据，进行同步；  
+
+2、`100 * time.Millisecond`循环调用一次。  
+
+#### syncWatchers
+
+再来看下`syncWatchers`  
+
+```go
+// syncWatchers 通过以下方式同步未同步的观察者：
+// 1. 从未同步的观察者组中选择一组观察者
+// 2. 迭代集合以获得最小修订并移除压缩的观察者
+// 3. 使用最小修订来获取所有键值对并将这些事件发送给观察者
+// 4. 从未同步组中移除集合中的同步观察者并移至同步组
+func (s *watchableStore) syncWatchers() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.unsynced.size() == 0 {
+		return 0
+	}
+
+	s.store.revMu.RLock()
+	defer s.store.revMu.RUnlock()
+
+	// 为了从未同步的观察者中找到键值对，我们需要
+	// 找到最小修订索引，这些修订可用于
+	// 查询键值对的后端存储
+	curRev := s.store.currentRev
+	compactionRev := s.store.compactMainRev
+
+	wg, minRev := s.unsynced.choose(maxWatchersPerSync, curRev, compactionRev)
+	minBytes, maxBytes := newRevBytes(), newRevBytes()
+	revToBytes(revision{main: minRev}, minBytes)
+	revToBytes(revision{main: curRev + 1}, maxBytes)
+
+	// UnsafeRange 返回键和值。在 boltdb 中，键是revisions。
+	// 值是后端的实际键值对。
+	tx := s.store.b.ReadTx()
+	tx.RLock()
+	revs, vs := tx.UnsafeRange(buckets.Key, minBytes, maxBytes, 0)
+	tx.RUnlock()
+	evs := kvsToEvents(s.store.lg, wg, revs, vs)
+
+	var victims watcherBatch
+	// newWatcherBatch 将观察者映射到它们匹配的事件。也就是一个map中，可以使观察者快速找到匹配的事件
+	wb := newWatcherBatch(wg, evs)
+	for w := range wg.watchers {
+		w.minRev = curRev + 1
+
+		eb, ok := wb[w]
+		if !ok {
+			// 同步未同步的观察者
+			s.synced.add(w)
+			s.unsynced.delete(w)
+			continue
+		}
+
+		if eb.moreRev != 0 {
+			w.minRev = eb.moreRev
+		}
+
+		// 将前面创建的 Event 事件封装成 WatchResponse,然后写入 watcher.ch 通道中
+		if w.send(WatchResponse{WatchID: w.id, Events: eb.evs, Revision: curRev}) {
+			pendingEventsGauge.Add(float64(len(eb.evs)))
+		} else {
+			// 如果阻塞，操作放回到victims中
+			if victims == nil {
+				victims = make(watcherBatch)
+			}
+			w.victim = true
+		}
+
+		if w.victim {
+			victims[w] = eb
+		} else {
+			// 表示后面还有更多的事件
+			if eb.moreRev != 0 {
+				// 保持未同步，继续
+				continue
+			}
+			// 标注已经同步
+			s.synced.add(w)
+		}
+		// 从未同步中移除
+		s.unsynced.delete(w)
+	}
+	// 添加阻塞
+	s.addVictim(victims)
+
+	vsz := 0
+	for _, v := range s.victims {
+		vsz += len(v)
+	}
+	slowWatcherGauge.Set(float64(s.unsynced.size() + vsz))
+
+	return s.unsynced.size()
+}
+```
+
+总结：  
+
+1、`syncWatchers`中的主要作用是同步未同步的观察者；
+
+2、同时也会将前面创建的Event事件封装成`WatchResponse`,然后写入`watcher.ch`通道中，`sendLoop`监听channel就能，及时通知客户端key的变更。  
+
+#### syncVictimsLoop
+
+再来看下`syncVictimsLoop`  
+
+```go
+// syncVictimsLoop tries to write precomputed watcher responses to
+// watchers that had a blocked watcher channel
+func (s *watchableStore) syncVictimsLoop() {
+	defer s.wg.Done()
+
+	for {
+        // 将 victims 中的数据尝试发送出去
+		for s.moveVictims() != 0 {
+			// try to update all victim watchers
+		}
+		s.mu.RLock()
+		isEmpty := len(s.victims) == 0
+		s.mu.RUnlock()
+
+		var tickc <-chan time.Time
+		if !isEmpty {
+			tickc = time.After(10 * time.Millisecond)
+		}
+
+		select {
+		case <-tickc:
+		case <-s.victimc:
+		case <-s.stopc:
+			return
+		}
+	}
+}
+```
+
+主要是调用了moveVictims，接下来看下moveVictims的实现  
+
+#### moveVictims
+
+```go
+// moveVictims 尝试watches,如果有pending的event
+func (s *watchableStore) moveVictims() (moved int) {
+	s.mu.Lock()
+	victims := s.victims
+	s.victims = nil
+	s.mu.Unlock()
+
+	var newVictim watcherBatch
+	for _, wb := range victims {
+		// 尝试再次发送
+		for w, eb := range wb {
+			// watcher has observed the store up to, but not including, w.minRev
+			rev := w.minRev - 1
+			// 将前面创建的 Event 事件封装成 WatchResponse,然后写入 watcher.ch 通道中
+			if w.send(WatchResponse{WatchID: w.id, Events: eb.evs, Revision: rev}) {
+				pendingEventsGauge.Add(float64(len(eb.evs)))
+			} else {
+				// 如果阻塞继续放回victims
+				if newVictim == nil {
+					newVictim = make(watcherBatch)
+				}
+				newVictim[w] = eb
+				continue
+			}
+			moved++
+		}
+
+		// 将victim分配到 unsync/sync中
+		s.mu.Lock()
+		s.store.revMu.RLock()
+		curRev := s.store.currentRev
+		for w, eb := range wb {
+			if newVictim != nil && newVictim[w] != nil {
+				// 无法发送继续放回到victim中
+				continue
+			}
+			w.victim = false
+			if eb.moreRev != 0 {
+				w.minRev = eb.moreRev
+			}
+			// currentRev 是最后完成的事务的revision。
+			// minRev 是观察者将接受的最小revision的更新
+			// 说明这一部分还没有同步到
+			if w.minRev <= curRev {
+				// 如果未同步，放到unsynced中
+				s.unsynced.add(w)
+			} else {
+				// 同步了直接放入到synced中
+				slowWatcherGauge.Dec()
+				s.synced.add(w)
+			}
+		}
+		s.store.revMu.RUnlock()
+		s.mu.Unlock()
+	}
+
+	if len(newVictim) > 0 {
+		s.mu.Lock()
+		s.victims = append(s.victims, newVictim)
+		s.mu.Unlock()
+	}
+
+	return moved
+}
+```
+
+总结：  
+
+1、将 victims 中的数据尝试发送出去；  
+
+2、如果发送仍然阻塞，需要重新放回 victims；  
+
+3、判断这些发送完成的版本号是否小于当前版本号，如果是说明者个过程中有数据更新，还没有同步完成，需要添加到 unsynced 中，等待下次同步。如果不是，说明已经同步完成。  
+
+
+#### 
+
+
+
+
+
+
+
+```go
+// server/mvcc/watcher.go
+type watchStream struct {
+	// 用来记录关联的 watchableStore
+	watchable watchable
+	// event 事件写入通道
+	ch        chan WatchResponse
+	...
+	cancels  map[WatchID]cancelFunc
+	// 用来记录唯一标识与 watcher 的实例的关系
+	watchers map[WatchID]*watcher
+}
+
+// Watch 在流中创建一个新的 watcher 并返回它的 WatchID。
+func (ws *watchStream) Watch(id WatchID, key, end []byte, startRev int64, fcs ...FilterFunc) (WatchID, error) {
+	// prevent wrong range where key >= end lexicographically
+	// watch request with 'WithFromKey' has empty-byte range end
+	if len(end) != 0 && bytes.Compare(key, end) != -1 {
+		return -1, ErrEmptyWatcherRange
+	}
+
+	ws.mu.Lock()
+	defer ws.mu.Unlock()
+	if ws.closed {
+		return -1, ErrEmptyWatcherRange
+	}
+
+	// watch ID在不等于AutoWatchID的时候被使用，否则将会返回一个自增的id
+	if id == AutoWatchID {
+		for ws.watchers[ws.nextID] != nil {
+			ws.nextID++
+		}
+		id = ws.nextID
+		ws.nextID++
+	} else if _, ok := ws.watchers[id]; ok {
+		return -1, ErrWatcherDuplicateID
+	}
+
+	w, c := ws.watchable.watch(key, end, startRev, id, ws.ch, fcs...)
+
+	ws.cancels[id] = c
+	ws.watchers[id] = w
+	return id, nil
+}
+
+func (s *watchableStore) watch(key, end []byte, startRev int64, id WatchID, ch chan<- WatchResponse, fcs ...FilterFunc) (*watcher, cancelFunc) {
+	wa := &watcher{
+		key:    key,
+		end:    end,
+		minRev: startRev,
+		id:     id,
+		ch:     ch,
+		fcs:    fcs,
+	}
+    // 先上一把大的互斥锁
+    // 多个watch操作，通过这个互斥锁，保证数据的顺序
+	s.mu.Lock()
+    // 里面上一把小的读锁
+    // 读操作优先，保护读操作
+	s.revMu.RLock()
+	// 比较 startRev 和 currentRev，决定添加的 watcher 实例是否已经同步
+	synced := startRev > s.store.currentRev || startRev == 0
+	if synced {
+		wa.minRev = s.store.currentRev + 1
+		if startRev > wa.minRev {
+			wa.minRev = startRev
+		}
+        // 添加到已同步的 watcher中
+		s.synced.add(wa)
+	} else {
+		slowWatcherGauge.Inc()
+        // 添加到未同步的 watcher中
+		s.unsynced.add(wa)
+	}
+	s.revMu.RUnlock()
+	s.mu.Unlock()
+
+	watcherGauge.Inc()
+
+	return wa, func() { s.cancelWatcher(wa) }
+}
+```
+
+
+
+
+
+
+
+
+
+
 主要的文件  
 
 ```
@@ -494,164 +935,3 @@ type WatchStream interface {
 1、etcd服务端创建newWatchableStore开启group监听；  
 
 2、
-
-```go
-// 文件 /mvcc/watchable_store.go
-type watchableStore struct {
-	*store
-	mu sync.RWMutex
-	// 当ch被阻塞时，对应 watcherBatch 实例会暂时记录到这个字段
-	victims []watcherBatch
-	// 当有新的 watcherBatch 实例添加到 victims 字段时，会向该通道发送消息
-	victimc chan struct{}
-	// 未同步的 watcher
-	unsynced watcherGroup
-	// 已完成同步的 watcher
-	synced watcherGroup
-	stopc chan struct{}
-	wg sync.WaitGroup
-}
-
-type watcher struct {
-	// 监听起始值
-	key []byte
-	// 监听终止值，  key 和 end 共同组成一个键值范围
-	end []byte
-	// 是否被阻塞
-	victim bool
-	// 是否压缩
-	compacted bool
-	...
-	// 最小的 revision main
-	minRev int64
-	id     WatchID
-	...
-	ch chan<- WatchResponse
-}
-
-// server/mvcc/watchable_store.go
-func newWatchableStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg StoreConfig) *watchableStore {
-	if lg == nil {
-		lg = zap.NewNop()
-	}
-	s := &watchableStore{
-		store:    NewStore(lg, b, le, cfg),
-		victimc:  make(chan struct{}, 1),
-		unsynced: newWatcherGroup(),
-		synced:   newWatcherGroup(),
-		stopc:    make(chan struct{}),
-	}
-	s.store.ReadView = &readView{s}
-	s.store.WriteView = &writeView{s}
-	if s.le != nil {
-		// use this store as the deleter so revokes trigger watch events
-		s.le.SetRangeDeleter(func() lease.TxnDelete { return s.Write(traceutil.TODO()) })
-	}
-	s.wg.Add(2)
-	// 开2个协程
-    // syncWatchersLoop 每 100 毫秒同步一次未同步映射中的观察者。
-	go s.syncWatchersLoop()
-    // syncVictimsLoop 同步预先发送未成功的watchers
-	go s.syncVictimsLoop()
-	return s
-}
-```
-
-总结
-
-1、初始化一个watchableStore；  
-
-2、启动了两个协程  
-
-- syncWatchersLoop:每 100 毫秒同步一次未同步映射中的观察者；  
-
-- 
-
-
-
-
-
-
-
-```go
-// server/mvcc/watcher.go
-type watchStream struct {
-	// 用来记录关联的 watchableStore
-	watchable watchable
-	// event 事件写入通道
-	ch        chan WatchResponse
-	...
-	cancels  map[WatchID]cancelFunc
-	// 用来记录唯一标识与 watcher 的实例的关系
-	watchers map[WatchID]*watcher
-}
-
-// Watch 在流中创建一个新的 watcher 并返回它的 WatchID。
-func (ws *watchStream) Watch(id WatchID, key, end []byte, startRev int64, fcs ...FilterFunc) (WatchID, error) {
-	// prevent wrong range where key >= end lexicographically
-	// watch request with 'WithFromKey' has empty-byte range end
-	if len(end) != 0 && bytes.Compare(key, end) != -1 {
-		return -1, ErrEmptyWatcherRange
-	}
-
-	ws.mu.Lock()
-	defer ws.mu.Unlock()
-	if ws.closed {
-		return -1, ErrEmptyWatcherRange
-	}
-
-	// watch ID在不等于AutoWatchID的时候被使用，否则将会返回一个自增的id
-	if id == AutoWatchID {
-		for ws.watchers[ws.nextID] != nil {
-			ws.nextID++
-		}
-		id = ws.nextID
-		ws.nextID++
-	} else if _, ok := ws.watchers[id]; ok {
-		return -1, ErrWatcherDuplicateID
-	}
-
-	w, c := ws.watchable.watch(key, end, startRev, id, ws.ch, fcs...)
-
-	ws.cancels[id] = c
-	ws.watchers[id] = w
-	return id, nil
-}
-
-func (s *watchableStore) watch(key, end []byte, startRev int64, id WatchID, ch chan<- WatchResponse, fcs ...FilterFunc) (*watcher, cancelFunc) {
-	wa := &watcher{
-		key:    key,
-		end:    end,
-		minRev: startRev,
-		id:     id,
-		ch:     ch,
-		fcs:    fcs,
-	}
-    // 先上一把大的互斥锁
-    // 多个watch操作，通过这个互斥锁，保证数据的顺序
-	s.mu.Lock()
-    // 里面上一把小的读锁
-    // 读操作优先，保护读操作
-	s.revMu.RLock()
-	// 比较 startRev 和 currentRev，决定添加的 watcher 实例是否已经同步
-	synced := startRev > s.store.currentRev || startRev == 0
-	if synced {
-		wa.minRev = s.store.currentRev + 1
-		if startRev > wa.minRev {
-			wa.minRev = startRev
-		}
-        // 添加到已同步的 watcher中
-		s.synced.add(wa)
-	} else {
-		slowWatcherGauge.Inc()
-        // 添加到未同步的 watcher中
-		s.unsynced.add(wa)
-	}
-	s.revMu.RUnlock()
-	s.mu.Unlock()
-
-	watcherGauge.Inc()
-
-	return wa, func() { s.cancelWatcher(wa) }
-}
-```
