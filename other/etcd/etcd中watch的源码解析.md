@@ -13,6 +13,8 @@
     - [watchServer](#watchserver)
     - [recvLoop](#recvloop)
     - [sendLoop](#sendloop)
+  - [连接复用](#%E8%BF%9E%E6%8E%A5%E5%A4%8D%E7%94%A8)
+  - [总结](#%E6%80%BB%E7%BB%93)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
