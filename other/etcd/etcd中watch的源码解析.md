@@ -4,6 +4,11 @@
 - [etcd中watch的源码解析](#etcd%E4%B8%ADwatch%E7%9A%84%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90)
   - [前言](#%E5%89%8D%E8%A8%80)
   - [client端的代码](#client%E7%AB%AF%E7%9A%84%E4%BB%A3%E7%A0%81)
+    - [Watch](#watch)
+    - [newWatcherGrpcStream](#newwatchergrpcstream)
+    - [run](#run)
+    - [newWatchClient](#newwatchclient)
+    - [serveSubstream](#servesubstream)
   - [server端的代码实现](#server%E7%AB%AF%E7%9A%84%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B0)
     - [watchableStore](#watchablestore)
     - [syncWatchersLoop](#syncwatchersloop)
@@ -27,6 +32,10 @@ etcd是一个cs网络架构，源码分析应该涉及到client端，server端�
 这里主要分析了v3版本的实现  
 
 ### client端的代码  
+
+#### Watch
+
+server端的实现相对简单，我们主要来看下这个Watch的实现  
 
 ```go
 // client/v3/watch.go
@@ -242,7 +251,27 @@ func (w *watcher) Watch(ctx context.Context, key string, opts ...OpOption) Watch
 	close(closeCh)
 	return closeCh
 }
+```
 
+总结：  
+
+1、判断key是否满足watch的条件；  
+
+2、过滤监听事件；  
+
+3、构造watch请求；  
+
+4、查找或分配新的grpc watch stream；  
+
+5、发送watch请求到reqc通道；  
+
+6、返回WatchResponse 接收chan给客户端；  
+
+#### newWatcherGrpcStream
+
+new一个watch grpc stream来传输watch请求
+
+```go
 // newWatcherGrpcStream new一个watch grpc stream来传输watch请求
 func (w *watcher) newWatcherGrpcStream(inctx context.Context) *watchGrpcStream {
 	ctx, cancel := context.WithCancel(&valCtx{inctx})
@@ -268,7 +297,19 @@ func (w *watcher) newWatcherGrpcStream(inctx context.Context) *watchGrpcStream {
 	go wgs.run()
 	return wgs
 }
+```
 
+总结：  
+
+1、构造watchGrpcStream；  
+
+2、创建goroutine也就是run来处理监听key的watch各种事件；  
+
+#### run
+
+处理监听key的watch各种事件
+
+```go
 // 通过etcd grpc服务器启动一个watch stream
 // run 管理watch 的事件chan
 func (w *watchGrpcStream) run() {
@@ -291,10 +332,46 @@ func (w *watchGrpcStream) run() {
 	}
 }
 
-// 1、将所有订阅的stream标记为恢复
-// 2、连接到grpc stream，并且接受watch取消
-// 3、关闭出错的client stream，并且创建goroutine，用于转发从run()得到的响应给订阅者
-// 4、创建goroutine接收来自新grpc流的数据
+// dispatchEvent 将 WatchResponse 发送到适当的观察者流
+func (w *watchGrpcStream) dispatchEvent(pbresp *pb.WatchResponse) bool {
+	events := make([]*Event, len(pbresp.Events))
+	for i, ev := range pbresp.Events {
+		events[i] = (*Event)(ev)
+	}
+	// TODO: return watch ID?
+	wr := &WatchResponse{
+		Header:          *pbresp.Header,
+		Events:          events,
+		CompactRevision: pbresp.CompactRevision,
+		Created:         pbresp.Created,
+		Canceled:        pbresp.Canceled,
+		cancelReason:    pbresp.CancelReason,
+	}
+
+	// 如果watch IDs 索引是0, 所以watch resp 的watch ID 分配为 -1 ，并广播这个watch response
+	if wr.IsProgressNotify() && pbresp.WatchId == -1 {
+		return w.broadcastResponse(wr)
+	}
+
+	return w.unicastResponse(wr, pbresp.WatchId)
+
+}
+```
+
+总结：  
+
+1、通过etcd grpc服务器启动一个watch stream；  
+
+2、select检测各个chan的事件（reqc、respc、errc、closingc）；  
+
+3、dispatchEvent 分发事件，处理；  
+
+
+#### newWatchClient
+
+再来看下`newWatchClient`，创建一个`grpc client`连接`etcd grpc server`   
+
+```go
 func (w *watchGrpcStream) newWatchClient() (pb.Watch_WatchClient, error) {
 	// 将所有订阅的stream标记为恢复
 	close(w.resumec)
@@ -338,6 +415,141 @@ func (w *watchGrpcStream) newWatchClient() (pb.Watch_WatchClient, error) {
 	// 创建goroutine接收来自新grpc流的数据
 	go w.serveWatchClient(wc)
 	return wc, nil
+}
+
+// serveWatchClient 将从grpc stream收到的消息转发到run()
+func (w *watchGrpcStream) serveWatchClient(wc pb.Watch_WatchClient) {
+	for {
+		resp, err := wc.Recv()
+		if err != nil {
+			select {
+			case w.errc <- err:
+			case <-w.donec:
+			}
+			return
+		}
+		select {
+		case w.respc <- resp:
+		case <-w.donec:
+			return
+		}
+	}
+}
+```
+
+总结：  
+
+1、将所有订阅的stream标记为恢复；  
+
+2、连接到grpc stream，并且接受watch取消；  
+
+3、关闭出错的client stream，并且创建goroutine，用于转发从run()得到的响应给订阅者；  
+
+4、创建goroutine接收来自新grpc流的数据。
+
+#### serveSubstream
+
+```go
+// serveSubstream 将 watch 响应从 run() 转发给订阅者
+func (w *watchGrpcStream) serveSubstream(ws *watcherStream, resumec chan struct{}) {
+	if ws.closing {
+		panic("created substream goroutine but substream is closing")
+	}
+
+	// nextRev is the minimum expected next revision
+	nextRev := ws.initReq.rev
+	resuming := false
+	defer func() {
+		if !resuming {
+			ws.closing = true
+		}
+		close(ws.donec)
+		if !resuming {
+			w.closingc <- ws
+		}
+		w.wg.Done()
+	}()
+
+	emptyWr := &WatchResponse{}
+	for {
+		curWr := emptyWr
+		outc := ws.outc
+
+		if len(ws.buf) > 0 {
+			curWr = ws.buf[0]
+		} else {
+			outc = nil
+		}
+		select {
+		case outc <- *curWr:
+			if ws.buf[0].Err() != nil {
+				return
+			}
+			ws.buf[0] = nil
+			ws.buf = ws.buf[1:]
+
+			// 一旦观察者建立，retc 就会收到一个 chan WatchResponse
+			// 读取recvc里面的值
+		case wr, ok := <-ws.recvc:
+			if !ok {
+				// shutdown from closeSubstream
+				return
+			}
+			// 创建
+			if wr.Created {
+				if ws.initReq.retc != nil {
+					ws.initReq.retc <- ws.outc
+					// 防止下一次写入占用缓冲通道中的插槽并发布重复的创建事件
+					ws.initReq.retc = nil
+
+
+					// 仅在请求时发送第一个创建事件
+					if ws.initReq.createdNotify {
+						ws.outc <- *wr
+					}
+					// once the watch channel is returned, a current revision
+					// watch must resume at the store revision. This is necessary
+					// 只要watch channel返回，当前revision的watch一定会在store revision是恢复
+					// 对于以下情况按预期工作：
+					//	wch := m1.Watch("a")
+					//	m2.Put("a", "b")
+					//	<-wch
+					// 如果修订只绑定在第一个观察到的事件上，
+					// 如果在发出 Put 之前 wch 断开连接，则重新连接
+					// 提交后，它将错过 Put。
+					if ws.initReq.rev == 0 {
+						nextRev = wr.Header.Revision
+					}
+				}
+			} else {
+				// current progress of watch; <= store revision
+				nextRev = wr.Header.Revision
+			}
+
+			if len(wr.Events) > 0 {
+				nextRev = wr.Events[len(wr.Events)-1].Kv.ModRevision + 1
+			}
+			ws.initReq.rev = nextRev
+
+			// 上面已经发送了创建的事件，
+			// 观察者不应发布重复的事件
+			if wr.Created {
+				continue
+			}
+
+			// TODO pause channel if buffer gets too large
+			ws.buf = append(ws.buf, wr)
+		case <-w.ctx.Done():
+			return
+		case <-ws.initReq.ctx.Done():
+			return
+		case <-resumec:
+			resuming = true
+			return
+		}
+	}
+
+	// 如果缺少 id 的事件，则延迟发送取消消息
 }
 ```
 
