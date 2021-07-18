@@ -9,18 +9,21 @@ import (
 )
 
 func main() {
-	s1 := []int{2, 3, 6, 2, 4, 5, 6, 7}
-	s2 := s1[6:7]
-	fmt.Println("原切片", s1)
-	fmt.Println("新切片", s2)
+	ch := make(chan int, 1)
+	go func() {
+		ch <- 1
+	}()
 
-	s2 = append(s2, 100)
-	fmt.Println("append之后的新切片", s2)
-	fmt.Println("老切片", s1)
+	go func() {
+		ch <- 2
+	}()
 
-	s2 = append(s2, 888)
-	fmt.Println("append之后的新切片", s2)
-	fmt.Println("老切片", s1)
+	close(ch)
+
+	select {
+	case item := <-ch:
+		fmt.Println(item)
+	}
 }
 
 func test1() error {
