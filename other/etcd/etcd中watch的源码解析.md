@@ -199,8 +199,8 @@ func (w *watcher) Watch(ctx context.Context, key string, opts ...OpOption) Watch
 		// 如果该请求对应的流为空,则新建
 		wgs := w.streams[ctxKey]
 		if wgs == nil {
-            // newWatcherGrpcStream new一个watch grpc stream来传输watch请求
-            // 创建goroutine来处理监听key的watch各种事件
+			// newWatcherGrpcStream new一个watch grpc stream来传输watch请求
+			// 创建goroutine来处理监听key的watch各种事件
 			wgs = w.newWatcherGrpcStream(ctx)
 			w.streams[ctxKey] = wgs
 		}
@@ -501,8 +501,6 @@ func (w *watchGrpcStream) serveSubstream(ws *watcherStream, resumec chan struct{
 					ws.initReq.retc <- ws.outc
 					// 防止下一次写入占用缓冲通道中的插槽并发布重复的创建事件
 					ws.initReq.retc = nil
-
-
 					// 仅在请求时发送第一个创建事件
 					if ws.initReq.createdNotify {
 						ws.outc <- *wr
