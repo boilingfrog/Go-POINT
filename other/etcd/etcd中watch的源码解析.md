@@ -35,7 +35,7 @@ etcd是一个cs网络架构，源码分析应该涉及到client端，server端�
 
 #### Watch
 
-server端的实现相对简单，我们主要来看下这个Watch的实现  
+client端的实现相对简单，我们主要来看下这个Watch的实现  
 
 ```go
 // client/v3/watch.go
@@ -315,19 +315,193 @@ func (w *watcher) newWatcherGrpcStream(inctx context.Context) *watchGrpcStream {
 func (w *watchGrpcStream) run() {
 	var wc pb.Watch_WatchClient
 	var closeErr error
-	...
-	// 创建一个grpc client连接etcd grpc server。
+
+	closing := make(map[*watcherStream]struct{})
+
+	defer func() {
+		w.closeErr = closeErr
+		// shutdown substreams and resuming substreams
+		for _, ws := range w.substreams {
+			if _, ok := closing[ws]; !ok {
+				close(ws.recvc)
+				closing[ws] = struct{}{}
+			}
+		}
+		for _, ws := range w.resuming {
+			if _, ok := closing[ws]; ws != nil && !ok {
+				close(ws.recvc)
+				closing[ws] = struct{}{}
+			}
+		}
+		w.joinSubstreams()
+		for range closing {
+			w.closeSubstream(<-w.closingc)
+		}
+		w.wg.Wait()
+		w.owner.closeStream(w)
+	}()
+
+	// 使用 etcd grpc 服务器启动一个流
 	if wc, closeErr = w.newWatchClient(); closeErr != nil {
 		return
 	}
 
 	cancelSet := make(map[int64]struct{})
 
-	// select检测各个chan的事件（reqc、respc、errc、closingc）
 	var cur *pb.WatchResponse
 	for {
 		select {
-			...
+		// Watch() 请求
+		case req := <-w.reqc:
+			switch wreq := req.(type) {
+			case *watchRequest:
+				outc := make(chan WatchResponse, 1)
+				// TODO: pass custom watch ID?
+				ws := &watcherStream{
+					initReq: *wreq,
+					id:      -1,
+					outc:    outc,
+					// unbuffered so resumes won't cause repeat events
+					recvc: make(chan *WatchResponse),
+				}
+
+				ws.donec = make(chan struct{})
+				w.wg.Add(1)
+				go w.serveSubstream(ws, w.resumec)
+
+				// queue up for watcher creation/resume
+				w.resuming = append(w.resuming, ws)
+				if len(w.resuming) == 1 {
+					// head of resume queue, can register a new watcher
+					if err := wc.Send(ws.initReq.toPB()); err != nil {
+						w.lg.Debug("error when sending request", zap.Error(err))
+					}
+				}
+			case *progressRequest:
+				if err := wc.Send(wreq.toPB()); err != nil {
+					w.lg.Debug("error when sending request", zap.Error(err))
+				}
+			}
+
+			// 来自watch client的新事件
+		case pbresp := <-w.respc:
+			if cur == nil || pbresp.Created || pbresp.Canceled {
+				cur = pbresp
+			} else if cur != nil && cur.WatchId == pbresp.WatchId {
+				// merge new events
+				// 合并新事件
+				cur.Events = append(cur.Events, pbresp.Events...)
+				// update "Fragment" field; last response with "Fragment" == false
+				cur.Fragment = pbresp.Fragment
+			}
+
+			switch {
+			// 表示是创建的请求
+			case pbresp.Created:
+				// response to head of queue creation
+				if len(w.resuming) != 0 {
+					if ws := w.resuming[0]; ws != nil {
+						w.addSubstream(pbresp, ws)
+						w.dispatchEvent(pbresp)
+						w.resuming[0] = nil
+					}
+				}
+
+				if ws := w.nextResume(); ws != nil {
+					if err := wc.Send(ws.initReq.toPB()); err != nil {
+						w.lg.Debug("error when sending request", zap.Error(err))
+					}
+				}
+
+				// 为下一次迭代重置
+				cur = nil
+				// 表示取消的请求
+			case pbresp.Canceled && pbresp.CompactRevision == 0:
+				delete(cancelSet, pbresp.WatchId)
+				if ws, ok := w.substreams[pbresp.WatchId]; ok {
+					// signal to stream goroutine to update closingc
+					close(ws.recvc)
+					closing[ws] = struct{}{}
+				}
+
+				// reset for next iteration
+				cur = nil
+
+				//因为是流的方式传输，所以支持分片传输，遇到分片事件直接跳过
+			case cur.Fragment:
+				continue
+
+			default:
+				// dispatch to appropriate watch stream
+				ok := w.dispatchEvent(cur)
+
+				// reset for next iteration
+				cur = nil
+
+				if ok {
+					break
+				}
+
+				// watch response on unexpected watch id; cancel id
+				if _, ok := cancelSet[pbresp.WatchId]; ok {
+					break
+				}
+
+				cancelSet[pbresp.WatchId] = struct{}{}
+				cr := &pb.WatchRequest_CancelRequest{
+					CancelRequest: &pb.WatchCancelRequest{
+						WatchId: pbresp.WatchId,
+					},
+				}
+				req := &pb.WatchRequest{RequestUnion: cr}
+				w.lg.Debug("sending watch cancel request for failed dispatch", zap.Int64("watch-id", pbresp.WatchId))
+				if err := wc.Send(req); err != nil {
+					w.lg.Debug("failed to send watch cancel request", zap.Int64("watch-id", pbresp.WatchId), zap.Error(err))
+				}
+			}
+
+			// 查看client Recv失败。如果可能，生成另一个，重新尝试发送watch请求
+		// 证明发送watch请求失败，会创建watch client再次尝试发送
+		case err := <-w.errc:
+			if isHaltErr(w.ctx, err) || toErr(w.ctx, err) == v3rpc.ErrNoLeader {
+				closeErr = err
+				return
+			}
+			if wc, closeErr = w.newWatchClient(); closeErr != nil {
+				return
+			}
+			if ws := w.nextResume(); ws != nil {
+				if err := wc.Send(ws.initReq.toPB()); err != nil {
+					w.lg.Debug("error when sending request", zap.Error(err))
+				}
+			}
+			cancelSet = make(map[int64]struct{})
+
+		case <-w.ctx.Done():
+			return
+			// closurec 获取关闭观察者的观察者流
+		case ws := <-w.closingc:
+			w.closeSubstream(ws)
+			delete(closing, ws)
+			// no more watchers on this stream, shutdown, skip cancellation
+			if len(w.substreams)+len(w.resuming) == 0 {
+				return
+			}
+			if ws.id != -1 {
+				// 客户端正在关闭一个已建立的监视；在服务器上主动关闭它而不是等待
+				// 在下一条消息到达时关闭
+				cancelSet[ws.id] = struct{}{}
+				cr := &pb.WatchRequest_CancelRequest{
+					CancelRequest: &pb.WatchCancelRequest{
+						WatchId: ws.id,
+					},
+				}
+				req := &pb.WatchRequest{RequestUnion: cr}
+				w.lg.Debug("sending watch cancel request for closed watcher", zap.Int64("watch-id", ws.id))
+				if err := wc.Send(req); err != nil {
+					w.lg.Debug("failed to send watch cancel request", zap.Int64("watch-id", ws.id), zap.Error(err))
+				}
+			}
 		}
 	}
 }
