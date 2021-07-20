@@ -33,6 +33,8 @@ etcd是一个cs网络架构，源码分析应该涉及到client端，server端�
 
 ### client端的代码  
 
+<img src="/img/etcd-watch-client.png" alt="etcd" align=center/>
+
 #### Watch
 
 client端的实现相对简单，我们主要来看下这个Watch的实现  
@@ -150,12 +152,7 @@ type watcherStream struct {
 	buf []*WatchResponse
 }
 
-// 1、key是否满足watch的条件
-// 2、过滤监听事件
-// 3、构造watch请求
-// 4、查找或分配新的grpc watch stream
-// 5、发送watch请求到reqc通道
-// 6、返回WatchResponse 接收chan给客户端
+// Watch post一个watch请求，通过run()来监听watch新创建的watch通道，等待watch事件
 func (w *watcher) Watch(ctx context.Context, key string, opts ...OpOption) WatchChan {
 	ow := opWatch(key, opts...)
 
@@ -460,7 +457,7 @@ func (w *watchGrpcStream) run() {
 				}
 			}
 
-			// 查看client Recv失败。如果可能，生成另一个，重新尝试发送watch请求
+		// 查看client Recv失败。如果可能，生成另一个，重新尝试发送watch请求
 		// 证明发送watch请求失败，会创建watch client再次尝试发送
 		case err := <-w.errc:
 			if isHaltErr(w.ctx, err) || toErr(w.ctx, err) == v3rpc.ErrNoLeader {
