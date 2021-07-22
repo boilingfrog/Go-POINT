@@ -1,10 +1,11 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-
 - [etcd服务发现源码实现](#etcd%E6%9C%8D%E5%8A%A1%E5%8F%91%E7%8E%B0%E6%BA%90%E7%A0%81%E5%AE%9E%E7%8E%B0)
   - [前言](#%E5%89%8D%E8%A8%80)
   - [分析下源码](#%E5%88%86%E6%9E%90%E4%B8%8B%E6%BA%90%E7%A0%81)
+    - [服务注册](#%E6%9C%8D%E5%8A%A1%E6%B3%A8%E5%86%8C)
+    - [服务发现](#%E6%9C%8D%E5%8A%A1%E5%8F%91%E7%8E%B0)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -18,7 +19,7 @@
 
 先来看下使用的demo  
 
-服务注册  
+#### 服务注册  
 
 ```go
 package discovery
@@ -196,7 +197,215 @@ func (r *Register) GetServerInfo() (Server, error) {
 }
 ```
 
-服务发现  
+当启动一个grpc的时候我们注册到etcd中
+
+```go
+	etcdRegister := discovery.NewRegister(config.Etcd.Addrs, log.Logger)
+	node := discovery.Server{
+		Name: app,
+		Addr: utils.InternalIP() + config.Port.GRPC,
+	}
+
+	if _, err := etcdRegister.Register(node, 10); err != nil {
+		panic(fmt.Sprintf("server register failed: %v", err))
+	}
+```
+
+调用服务注册的时候首先分配了一个租约  
+
+```go
+func (l *lessor) Grant(ctx context.Context, ttl int64) (*LeaseGrantResponse, error) {
+	r := &pb.LeaseGrantRequest{TTL: ttl}
+	resp, err := l.remote.LeaseGrant(ctx, r, l.callOpts...)
+	if err == nil {
+		gresp := &LeaseGrantResponse{
+			ResponseHeader: resp.GetHeader(),
+			ID:             LeaseID(resp.ID),
+			TTL:            resp.TTL,
+			Error:          resp.Error,
+		}
+		return gresp, nil
+	}
+	return nil, toErr(ctx, err)
+}
+```
+
+然后通过保活  
+
+```go
+// KeepAlive尝试保持给定的租约永久alive
+func (l *lessor) KeepAlive(ctx context.Context, id LeaseID) (<-chan *LeaseKeepAliveResponse, error) {
+	ch := make(chan *LeaseKeepAliveResponse, LeaseResponseChSize)
+
+	l.mu.Lock()
+	// ensure that recvKeepAliveLoop is still running
+	select {
+	case <-l.donec:
+		err := l.loopErr
+		l.mu.Unlock()
+		close(ch)
+		return ch, ErrKeepAliveHalted{Reason: err}
+	default:
+	}
+	ka, ok := l.keepAlives[id]
+	if !ok {
+		// create fresh keep alive
+		ka = &keepAlive{
+			chs:           []chan<- *LeaseKeepAliveResponse{ch},
+			ctxs:          []context.Context{ctx},
+			deadline:      time.Now().Add(l.firstKeepAliveTimeout),
+			nextKeepAlive: time.Now(),
+			donec:         make(chan struct{}),
+		}
+		l.keepAlives[id] = ka
+	} else {
+		// add channel and context to existing keep alive
+		ka.ctxs = append(ka.ctxs, ctx)
+		ka.chs = append(ka.chs, ch)
+	}
+	l.mu.Unlock()
+
+	go l.keepAliveCtxCloser(ctx, id, ka.donec)
+	// 使用once只在第一次调用
+	l.firstKeepAliveOnce.Do(func() {
+		// 500毫秒一次，不断的发送保持活动请求
+		go l.recvKeepAliveLoop()
+		// 删除等待太久没反馈的租约
+		go l.deadlineLoop()
+	})
+
+	return ch, nil
+}
+
+// deadlineLoop获取在租约TTL中没有收到响应的任何保持活动的通道
+func (l *lessor) deadlineLoop() {
+	for {
+		select {
+		case <-time.After(time.Second):
+			// donec 关闭，当 recvKeepAliveLoop 停止时设置 loopErr
+		case <-l.donec:
+			return
+		}
+		now := time.Now()
+		l.mu.Lock()
+		for id, ka := range l.keepAlives {
+			if ka.deadline.Before(now) {
+				// 等待响应太久；租约可能已过期
+				ka.close()
+				delete(l.keepAlives, id)
+			}
+		}
+		l.mu.Unlock()
+	}
+}
+
+func (l *lessor) recvKeepAliveLoop() (gerr error) {
+	defer func() {
+		l.mu.Lock()
+		close(l.donec)
+		l.loopErr = gerr
+		for _, ka := range l.keepAlives {
+			ka.close()
+		}
+		l.keepAlives = make(map[LeaseID]*keepAlive)
+		l.mu.Unlock()
+	}()
+
+	for {
+		// resetRecv 打开一个新的lease stream并开始发送保持活动请求。
+		stream, err := l.resetRecv()
+		if err != nil {
+			if canceledByCaller(l.stopCtx, err) {
+				return err
+			}
+		} else {
+			for {
+				// 接收lease stream的返回返回
+				resp, err := stream.Recv()
+				if err != nil {
+					if canceledByCaller(l.stopCtx, err) {
+						return err
+					}
+
+					if toErr(l.stopCtx, err) == rpctypes.ErrNoLeader {
+						l.closeRequireLeader()
+					}
+					break
+				}
+				// 根据LeaseKeepAliveResponse更新租约
+				l.recvKeepAlive(resp)
+			}
+		}
+
+		select {
+		case <-time.After(retryConnWait):
+			continue
+		case <-l.stopCtx.Done():
+			return l.stopCtx.Err()
+		}
+	}
+}
+
+// resetRecv 打开一个新的lease stream并开始发送保持活动请求。
+func (l *lessor) resetRecv() (pb.Lease_LeaseKeepAliveClient, error) {
+	sctx, cancel := context.WithCancel(l.stopCtx)
+	// 建立服务端和客户端连接的lease stream
+	stream, err := l.remote.LeaseKeepAlive(sctx, l.callOpts...)
+	if err != nil {
+		cancel()
+		return nil, err
+	}
+
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.stream != nil && l.streamCancel != nil {
+		l.streamCancel()
+	}
+
+	l.streamCancel = cancel
+	l.stream = stream
+
+	go l.sendKeepAliveLoop(stream)
+	return stream, nil
+}
+
+// sendKeepAliveLoop 在给定流的生命周期内发送保持活动请求
+func (l *lessor) sendKeepAliveLoop(stream pb.Lease_LeaseKeepAliveClient) {
+	for {
+		var tosend []LeaseID
+
+		now := time.Now()
+		l.mu.Lock()
+		for id, ka := range l.keepAlives {
+			if ka.nextKeepAlive.Before(now) {
+				tosend = append(tosend, id)
+			}
+		}
+		l.mu.Unlock()
+
+		for _, id := range tosend {
+			r := &pb.LeaseKeepAliveRequest{ID: int64(id)}
+			if err := stream.Send(r); err != nil {
+				// TODO do something with this error?
+				return
+			}
+		}
+
+		select {
+		// 每500毫秒执行一次
+		case <-time.After(500 * time.Millisecond):
+		case <-stream.Context().Done():
+			return
+		case <-l.donec:
+			return
+		case <-l.stopCtx.Done():
+			return
+		}
+	}
+}
+```
+
+#### 服务发现  
 
 ```go
 package discovery
