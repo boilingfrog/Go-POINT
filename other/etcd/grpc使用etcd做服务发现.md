@@ -230,7 +230,7 @@ func (l *lessor) Grant(ctx context.Context, ttl int64) (*LeaseGrantResponse, err
 }
 ```
 
-然后通过保活  
+然后通过KeepAlive保活   
 
 ```go
 // KeepAlive尝试保持给定的租约永久alive
@@ -404,6 +404,18 @@ func (l *lessor) sendKeepAliveLoop(stream pb.Lease_LeaseKeepAliveClient) {
 	}
 }
 ```
+
+总结：  
+
+1、每次注册一个服务的分配一个租约；  
+
+2、之后KeepAlive尝试保持给定的租约永久alive；  
+
+3、KeepAlive会500毫秒进行一次lease stream的发送；  
+
+4、然后接收到KeepAlive发送信息回执，处理更新租约，服务处于活动状态；  
+
+5、如果在租约TTL中没有收到响应的任何保持活动的请求，删除租约，
 
 #### 服务发现  
 
