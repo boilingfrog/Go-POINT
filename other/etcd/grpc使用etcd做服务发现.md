@@ -333,6 +333,7 @@ func (l *lessor) recvKeepAliveLoop() (gerr error) {
 					break
 				}
 				// 根据LeaseKeepAliveResponse更新租约
+				// 如果租约过期删除所有alive channels
 				l.recvKeepAlive(resp)
 			}
 		}
@@ -403,21 +404,35 @@ func (l *lessor) sendKeepAliveLoop(stream pb.Lease_LeaseKeepAliveClient) {
 		}
 	}
 }
+
+// 撤销给定的租约，所有附加到租约的key将过期并被删除  
+func (l *lessor) Revoke(ctx context.Context, id LeaseID) (*LeaseRevokeResponse, error) {
+	r := &pb.LeaseRevokeRequest{ID: int64(id)}
+	resp, err := l.remote.LeaseRevoke(ctx, r, l.callOpts...)
+	if err == nil {
+		return (*LeaseRevokeResponse)(resp), nil
+	}
+	return nil, toErr(ctx, err)
+}
 ```
 
 总结：  
 
 1、每次注册一个服务的分配一个租约；  
 
-2、之后KeepAlive尝试保持给定的租约永久alive；  
+2、KeepAlive通过从客户端到服务器端的流化的`keep alive`请求和从服务器端到客户端的流化的`keep alive`应答来维持租约；  
 
 3、KeepAlive会500毫秒进行一次lease stream的发送；  
 
 4、然后接收到KeepAlive发送信息回执，处理更新租约，服务处于活动状态；  
 
-5、如果在租约TTL中没有收到响应的任何保持活动的请求，删除租约，
+5、如果在租约TTL中没有收到响应的任何保持活动的请求，删除租约；  
+
+6、Revoke撤销一个租约，所有附加到租约的key将过期并被删除。  
 
 #### 服务发现  
+
+grpc在resolver中提供了Builder和Resolver接口，我们只需要使用etcd实现对应的接口就好了   
 
 ```go
 package discovery
@@ -584,3 +599,4 @@ func (r *Resolver) sync() error {
 	return nil
 }
 ```
+
