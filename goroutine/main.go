@@ -11,10 +11,6 @@ import (
 	"sync"
 	"syscall"
 	"time"
-
-	"gopkg.in/go-playground/pool.v3"
-
-	"github.com/panjf2000/ants"
 )
 
 //
@@ -22,142 +18,142 @@ import (
 //	pool2()
 //}
 
-func pool2() {
-	p := pool.NewLimited(10)
-	defer p.Close()
-
-	batch := p.Batch()
-
-	// for max speed Queue in another goroutine
-	// but it is not required, just can't start reading results
-	// until all items are Queued.
-
-	go func() {
-		for i := 0; i < 10; i++ {
-			batch.Queue(sendEmail("email content"))
-		}
-
-		// DO NOT FORGET THIS OR GOROUTINES WILL DEADLOCK
-		// if calling Cancel() it calles QueueComplete() internally
-		batch.QueueComplete()
-	}()
-
-	for email := range batch.Results() {
-
-		if err := email.Error(); err != nil {
-			// handle error
-			// maybe call batch.Cancel()
-		}
-
-		// use return value
-		fmt.Println(email.Value().(bool))
-	}
-}
-
-func sendEmail(email string) pool.WorkFunc {
-	return func(wu pool.WorkUnit) (interface{}, error) {
-
-		// simulate waiting for something, like TCP connection to be established
-		// or connection from pool grabbed
-		time.Sleep(time.Second * 1)
-
-		if wu.IsCancelled() {
-			// return values not used
-			return nil, nil
-		}
-
-		// ready for processing...
-
-		return true, nil // everything ok, send nil, error if not
-	}
-}
-
-func pool1() {
-
-	p := pool.NewLimited(10)
-	defer p.Close()
-
-	user := p.Queue(getUser(13))
-	other := p.Queue(getOtherInfo(13))
-
-	user.Wait()
-	if err := user.Error(); err != nil {
-		// handle error
-	}
-
-	// do stuff with user
-	username := user.Value().(string)
-	fmt.Println(username)
-
-	other.Wait()
-	if err := other.Error(); err != nil {
-		// handle error
-	}
-
-	// do stuff with other
-	otherInfo := other.Value().(string)
-	fmt.Println(otherInfo)
-}
-
-func getUser(id int) pool.WorkFunc {
-
-	return func(wu pool.WorkUnit) (interface{}, error) {
-
-		// simulate waiting for something, like TCP connection to be established
-		// or connection from pool grabbed
-		time.Sleep(time.Second * 1)
-
-		if wu.IsCancelled() {
-			// return values not used
-			return nil, nil
-		}
-		// ready for processing...
-		return "Joeybloggs", nil
-	}
-}
-
-func getOtherInfo(id int) pool.WorkFunc {
-
-	return func(wu pool.WorkUnit) (interface{}, error) {
-		// simulate waiting for something, like TCP connection to be established
-		// or connection from pool grabbed
-		time.Sleep(time.Second * 1)
-
-		if wu.IsCancelled() {
-			// return values not used
-			return nil, nil
-		}
-
-		// ready for processing...
-		return "Other Info", nil
-	}
-}
-
-func demoFunc() {
-	time.Sleep(10 * time.Millisecond)
-	fmt.Println("Hello World!")
-}
-
-var sum int32
-
-func dd() {
-	defer ants.Release()
-
-	runTimes := 1000
-
-	var wg sync.WaitGroup
-	syncCalculateSum := func() {
-		demoFunc()
-		wg.Done()
-	}
-	for i := 0; i < runTimes; i++ {
-		wg.Add(1)
-		_ = ants.Submit(syncCalculateSum)
-	}
-	wg.Wait()
-	fmt.Printf("running goroutines: %d\n", ants.Running())
-	fmt.Printf("finish all tasks.\n")
-}
+//func pool2() {
+//	p := pool.NewLimited(10)
+//	defer p.Close()
+//
+//	batch := p.Batch()
+//
+//	// for max speed Queue in another goroutine
+//	// but it is not required, just can't start reading results
+//	// until all items are Queued.
+//
+//	go func() {
+//		for i := 0; i < 10; i++ {
+//			batch.Queue(sendEmail("email content"))
+//		}
+//
+//		// DO NOT FORGET THIS OR GOROUTINES WILL DEADLOCK
+//		// if calling Cancel() it calles QueueComplete() internally
+//		batch.QueueComplete()
+//	}()
+//
+//	for email := range batch.Results() {
+//
+//		if err := email.Error(); err != nil {
+//			// handle error
+//			// maybe call batch.Cancel()
+//		}
+//
+//		// use return value
+//		fmt.Println(email.Value().(bool))
+//	}
+//}
+//
+//func sendEmail(email string) pool.WorkFunc {
+//	return func(wu pool.WorkUnit) (interface{}, error) {
+//
+//		// simulate waiting for something, like TCP connection to be established
+//		// or connection from pool grabbed
+//		time.Sleep(time.Second * 1)
+//
+//		if wu.IsCancelled() {
+//			// return values not used
+//			return nil, nil
+//		}
+//
+//		// ready for processing...
+//
+//		return true, nil // everything ok, send nil, error if not
+//	}
+//}
+//
+//func pool1() {
+//
+//	p := pool.NewLimited(10)
+//	defer p.Close()
+//
+//	user := p.Queue(getUser(13))
+//	other := p.Queue(getOtherInfo(13))
+//
+//	user.Wait()
+//	if err := user.Error(); err != nil {
+//		// handle error
+//	}
+//
+//	// do stuff with user
+//	username := user.Value().(string)
+//	fmt.Println(username)
+//
+//	other.Wait()
+//	if err := other.Error(); err != nil {
+//		// handle error
+//	}
+//
+//	// do stuff with other
+//	otherInfo := other.Value().(string)
+//	fmt.Println(otherInfo)
+//}
+//
+//func getUser(id int) pool.WorkFunc {
+//
+//	return func(wu pool.WorkUnit) (interface{}, error) {
+//
+//		// simulate waiting for something, like TCP connection to be established
+//		// or connection from pool grabbed
+//		time.Sleep(time.Second * 1)
+//
+//		if wu.IsCancelled() {
+//			// return values not used
+//			return nil, nil
+//		}
+//		// ready for processing...
+//		return "Joeybloggs", nil
+//	}
+//}
+//
+//func getOtherInfo(id int) pool.WorkFunc {
+//
+//	return func(wu pool.WorkUnit) (interface{}, error) {
+//		// simulate waiting for something, like TCP connection to be established
+//		// or connection from pool grabbed
+//		time.Sleep(time.Second * 1)
+//
+//		if wu.IsCancelled() {
+//			// return values not used
+//			return nil, nil
+//		}
+//
+//		// ready for processing...
+//		return "Other Info", nil
+//	}
+//}
+//
+//func demoFunc() {
+//	time.Sleep(10 * time.Millisecond)
+//	fmt.Println("Hello World!")
+//}
+//
+//var sum int32
+//
+//func dd() {
+//	defer ants.Release()
+//
+//	runTimes := 1000
+//
+//	var wg sync.WaitGroup
+//	syncCalculateSum := func() {
+//		demoFunc()
+//		wg.Done()
+//	}
+//	for i := 0; i < runTimes; i++ {
+//		wg.Add(1)
+//		_ = ants.Submit(syncCalculateSum)
+//	}
+//	wg.Wait()
+//	fmt.Printf("running goroutines: %d\n", ants.Running())
+//	fmt.Printf("finish all tasks.\n")
+//}
 
 //func main() {
 //	defer ants.Release()

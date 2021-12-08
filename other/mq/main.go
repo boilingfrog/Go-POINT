@@ -1,5 +1,8 @@
 package main
 
+import "fmt"
+
 func main() {
-	var _ = [][]int{[]int{1}}
+
+	fmt.Println(-(2 - 3))
 }
