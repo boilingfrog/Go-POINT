@@ -9,7 +9,8 @@
     - [使用顺序读提高磁盘的 IO 性能](#%E4%BD%BF%E7%94%A8%E9%A1%BA%E5%BA%8F%E8%AF%BB%E6%8F%90%E9%AB%98%E7%A3%81%E7%9B%98%E7%9A%84-io-%E6%80%A7%E8%83%BD)
     - [利用 PageCache 加速消息读写](#%E5%88%A9%E7%94%A8-pagecache-%E5%8A%A0%E9%80%9F%E6%B6%88%E6%81%AF%E8%AF%BB%E5%86%99)
     - [ZeroCopy：零拷贝技术](#zerocopy%E9%9B%B6%E6%8B%B7%E8%B4%9D%E6%8A%80%E6%9C%AF)
-- [参考](#%E5%8F%82%E8%80%83)
+  - [使用硬件同步原语（CAS）替代锁](#%E4%BD%BF%E7%94%A8%E7%A1%AC%E4%BB%B6%E5%90%8C%E6%AD%A5%E5%8E%9F%E8%AF%ADcas%E6%9B%BF%E4%BB%A3%E9%94%81)
+  - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -107,7 +108,13 @@ Kafka 的服务端在消费过程中，还使用了一种“零拷贝”的操�
 
 Kafka 使用零拷贝技术可以把这个复制次数减少一次，上面的 2、3 步骤两次复制合并成一次复制。直接从 PageCache 中把数据复制到 Socket 缓冲区中，这样不仅减少一次数据复制，更重要的是，由于不用把数据复制到用户内存空间，DMA 控制器可以直接完成数据复制，不需要 CPU 参与，速度更快。   
 
-## 参考  
+### 使用硬件同步原语（CAS）替代锁  
+
+CAS（Compare and Swap），它的字面意思是：先比较，再交换。  
+
+对于原语来讲，它们都是由计算机硬件，具体说就是 CPU 提供的实现，可以保证操作的原子性。原子操作本就是不可分割的，所以不存在并发的安全问题。   
+
+### 参考  
 
 【消息队列高手课】https://time.geekbang.org/column/intro/100032301       
 【磁盘I/O那些事】https://tech.meituan.com/2017/05/19/about-desk-io.html     
