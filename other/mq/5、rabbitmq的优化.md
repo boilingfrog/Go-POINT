@@ -27,11 +27,18 @@ AMQP 协议引入了信道(channel)，多个 channel 使用同一个 TCP 连接�
 
 这时候`prefetch Count`就登场了，通过引入`prefetch Count`来避免消费能力有限的消息队列分配过多的消息，而消息处理能力较好的消费者没有消息处理的情况。   
 
-RabbitM 会保存一个消费者的列表，每发送一条消息都会为对应的消费者计数，如果达到了所设定的上限，那么 RabbitMQ 就不会向这个消费者再发送任何消息。直到消费者确认了某条消息之后 RabbitMQ 将相应的计数减1，之后消费者可以继续接收消息，直到再次到达计数上限。这种机制可以类比于 TCP!IP中的"滑动窗口"。   
+RabbitM 会保存一个消费者的列表，每发送一条消息都会为对应的消费者计数，如果达到了所设定的上限，那么 RabbitMQ 就不会向这个消费者再发送任何消息。直到消费者确认了某条消息之后 RabbitMQ 将相应的计数减1，之后消费者可以继续接收消息，直到再次到达计数上限。这种机制可以类比于 TCP!IP中的"滑动窗口"。  
 
-通俗的说就是消费者最多从 RabbitMQ 中获取的未消费消息的数量。     
+所以消息不会被处理速度很慢的消费者过多霸占，能够很好的分配到其它处理速度较好的消费者中。通俗的说就是消费者最多从 RabbitMQ 中获取的未消费消息的数量。          
 
 `prefetch Count`数量设置为多少合适呢？大概就是30吧，具体可以参见[Finding bottlenecks with RabbitMQ 3.3](https://blog.rabbitmq.com/posts/2014/04/finding-bottlenecks-with-rabbitmq-3-3)  
+
+谈到了`prefetch Count`，我们还要看了 global 这个参数,RabbitMQ 为了提升相关的性能，在` AMQPO-9-1` 协议之上重新定义了 global 这个参数  
+
+| global 参数 |         AMQPO-9-1                                               | RabbitMQ |
+| ------     | ------------------------------------------                       | ------------------------------------------------ |
+| false      | 信道上所有的消费者都需要遵从 prefetchC unt 的限                       | 信道上新的消费者需要遵从 prefetchCount 的限定值定值 |
+| true       | 当前通信链路( Connection) 上所有的消费者都要遵从 prefetchCount 的限定值 | 信道上所有的消费者都需要遵从 prefetchC unt 的限 |
 
 ### 参考
 
