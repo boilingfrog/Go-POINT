@@ -40,6 +40,9 @@ RabbitM 会保存一个消费者的列表，每发送一条消息都会为对应
 | false      | 信道上所有的消费者都需要遵从 prefetchC unt 的限                       | 信道上新的消费者需要遵从 prefetchCount 的限定值定值 |
 | true       | 当前通信链路( Connection) 上所有的消费者都要遵从 prefetchCount 的限定值 | 信道上所有的消费者都需要遵从 prefetchC unt 的限 |
 
+线上遇到的问题   
+
+
 ### 参考
 
 【Finding bottlenecks with RabbitMQ 3.3】https://blog.rabbitmq.com/posts/2014/04/finding-bottlenecks-with-rabbitmq-3-3  
