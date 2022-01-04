@@ -28,6 +28,8 @@
 
 - [bazel 的学习笔记](https://github.com/boilingfrog/Go-POINT/tree/master/bazel)   
 
+- [etcd 的学习笔记](https://github.com/boilingfrog/etcd-learning)   
+
 ### 网络学习笔记
 
 - [tcp 的学习笔记](https://github.com/boilingfrog/Go-POINT/tree/master/tcp)   
@@ -42,9 +44,7 @@
 
 - [设计模式 的学习笔记](https://github.com/boilingfrog/design-pattern-learning)   
 
-### etcd学习笔记
-
-- [etcd 的学习笔记](https://github.com/boilingfrog/etcd-learning)   
+### 其他技术点学习  
 
 - [Git 的学习笔记](https://github.com/boilingfrog/Go-POINT/tree/master/git)   
 
