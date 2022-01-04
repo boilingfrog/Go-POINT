@@ -4,6 +4,10 @@
 - [RabbitMQ 的优化](#rabbitmq-%E7%9A%84%E4%BC%98%E5%8C%96)
   - [channel](#channel)
   - [prefetch Count](#prefetch-count)
+  - [死信队列](#%E6%AD%BB%E4%BF%A1%E9%98%9F%E5%88%97)
+    - [什么是死信队列](#%E4%BB%80%E4%B9%88%E6%98%AF%E6%AD%BB%E4%BF%A1%E9%98%9F%E5%88%97)
+  - [延迟队列](#%E5%BB%B6%E8%BF%9F%E9%98%9F%E5%88%97)
+  - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -51,6 +55,28 @@ prefetchSize：预读取的单条消息内容大小上限(包含)，可以简单
 但是发现消费速度还是很慢，有大量的消息处于 unacked 。如果明白`prefetch Count`的含义其实就已经可以猜到问题的原因了。   
 
 老的消费者`prefetch Count`为0，所以很多 unacked 消息都被它持有了，虽然新加了几个新的消费者，但是都处于空闲状态，最后停掉了`prefetch Count`为0的消费者，很快消费速度就正常了。   
+
+### 死信队列
+
+#### 什么是死信队列
+
+一般消息满足下面几种情况就会消息变成死信  
+
+- 消息被否定确认，使用 `channel.basicNack` 或 `channel.basicReject` ，并且此时 requeue 属性被设置为false； 
+
+- 消息过期，消息在队列的存活时间超过设置的 TT L时间；  
+
+- 队列达到最大长度，消息队列的消息数量已经超过最大队列长度。   
+
+当一个消息满足上面的几种条件变成死信(dead message)之后，会被重新推送到死信交换器(DLX ，全称为 Dead-Letter-Exchange)。绑定 DLX 的队列就是私信队列。   
+
+所以死信队列也并不是什么特殊的队列，只是绑定到了死信交换机中了，死信交换机也没有什么特殊，我们只是用这个来处理死信队列了，和别的交换机没有本质上的区别。   
+
+对于需要处理私信队列的业务，跟我们正常的业务处理一样，也是定义一个独有的路由key，并对应的配置一个死信队列进行监听，然后 key 绑定的死信交换机中。   
+
+### 延迟队列
+
+
 
 ### 参考
 
