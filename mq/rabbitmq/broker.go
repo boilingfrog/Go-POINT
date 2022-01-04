@@ -1,7 +1,7 @@
 package rabbitmq
 
 import (
-	"encoding/json"
+	"Go-POINT/mq/rabbitmq/help"
 	"errors"
 	"fmt"
 	"log"
@@ -27,7 +27,6 @@ type ExchangeConfig struct {
 }
 
 func NewBroker(url string, cfg *ExchangeConfig) *Broker {
-
 	conn, err := amqp.Dial(url)
 	if err != nil {
 		panic(err)
@@ -104,34 +103,69 @@ const (
 	HandleRequeue HandleFLag = "requeue"
 )
 
-type Jober interface {
+type Jobber interface {
 	Queue() string
 	Handle([]byte) HandleFLag
 }
 
-func (b *Broker) LaunchJob(key string, concurrency int, job Jober) {
+func NewDefaultJobber(key string, functor func([]byte) error, params ...Param) *params {
+	var defaultParam = []Param{
+		WithConcurrency(5),
+		WithPrefetch(10),
+		WithRetry(help.FIBONACCI, help.Retry{
+			Delay: "2s",
+			Max:   5,
+			Queue: nil,
+		}),
+	}
+	ps := evaParam(append(defaultParam, params...))
+	ps.key = key
+	ps.handler = DefaultHandler(key, functor)
+	return ps
+}
+
+func (b *Broker) LaunchJobs(jobs ...*params) {
+	var num = len(jobs)
+	if num < 1 {
+		return
+	}
+
+	for i := range jobs {
+		go func(i int) {
+			job := jobs[i]
+			b.launchJobs(job)
+		}(i)
+	}
+}
+
+func (b *Broker) launchJobs(ps *params) {
+	var key = ps.key
+
 	for {
-		log.Printf("job %s starting...", job.Queue())
-		retry, err := b.readyConsume(key, concurrency, job)
+		log.Printf("job %s starting...", key)
+		retry, err := b.readyConsumes(ps)
 		if retry {
 			log.Printf("job %s failed with error: %s, retrying start after 30 seconds...", key, err)
-			time.Sleep(30 * time.Second)
 		}
 	}
 }
 
-func (b *Broker) readyConsume(key string, concurrency int, job Jober) (bool, error) {
+func (b *Broker) readyConsumes(ps *params) (bool, error) {
+	var (
+		key = ps.key
+	)
+
 	channel, err := b.getChannel(key)
 	if err != nil {
 		return true, err
 	}
 
-	queue, err := b.declare(channel, key, job)
+	queue, err := b.declare(channel, key, ps)
 	if err != nil {
 		return true, err
 	}
 
-	if err := channel.Qos(10, 0, false); err != nil {
+	if err := channel.Qos(ps.prefetch, 0, false); err != nil {
 		return true, fmt.Errorf("channel qos error: %s", err)
 	}
 
@@ -142,10 +176,10 @@ func (b *Broker) readyConsume(key string, concurrency int, job Jober) (bool, err
 
 	channelClose := channel.NotifyClose(make(chan *amqp.Error))
 
-	pool := make(chan struct{}, concurrency)
+	pool := make(chan struct{}, ps.concurrency)
 
 	go func() {
-		for i := 0; i < concurrency; i++ {
+		for i := 0; i < ps.concurrency; i++ {
 			pool <- struct{}{}
 		}
 	}()
@@ -156,24 +190,28 @@ func (b *Broker) readyConsume(key string, concurrency int, job Jober) (bool, err
 			b.channels.Delete(key)
 			return true, fmt.Errorf("channel close: %s", err)
 		case d := <-deliveries:
-			if concurrency > 0 {
+			if ps.concurrency > 0 {
 				<-pool
 			}
 			go func() {
 				var flag HandleFLag
 
-				switch flag = job.Handle(d.Body); flag {
+				switch flag = ps.Handle(d.Body); flag {
 				case HandleSuccess:
 					d.Ack(false)
 				case HandleDrop:
 					d.Nack(false, false)
 				case HandleRequeue:
-					d.Nack(false, true)
+					if err := b.retry(ps, d); err != nil {
+						d.Nack(false, true)
+					} else {
+						d.Ack(false)
+					}
 				default:
 					d.Nack(false, false)
 				}
 
-				if concurrency > 0 {
+				if ps.concurrency > 0 {
 					pool <- struct{}{}
 				}
 			}()
@@ -181,69 +219,38 @@ func (b *Broker) readyConsume(key string, concurrency int, job Jober) (bool, err
 	}
 }
 
-func (b *Broker) Publish(key string, data interface{}) error {
-
-	var err error
-	channel, err := b.createChannel()
+func (b *Broker) retry(ps *params, d amqp.Delivery) error {
+	channel, err := b.conn.Channel()
 	if err != nil {
 		return err
 	}
 	defer channel.Close()
 
-	var body []byte
-	if d, ok := data.(string); ok {
-		body = []byte(d)
-	} else {
-		body, err = json.Marshal(data)
-		if err != nil {
-			return err
-		}
+	retryCount, _ := d.Headers["x-retry-count"].(int32)
+	if int(retryCount) >= len(ps.retryQueue) {
+		return nil
 	}
-	if err := channel.ExchangeDeclare(b.exchange, b.exchangeType, true, false, false, false, nil); err != nil {
+
+	delay := ps.retryQueue[retryCount]
+	delayDuration := time.Duration(delay) * time.Millisecond
+	delayQ := fmt.Sprintf("delay.%s.%s.%s", delayDuration.String(), b.exchange, ps.key)
+
+	if _, err := channel.QueueDeclare(delayQ,
+		true, false, false, false, amqp.Table{
+			"x-dead-letter-exchange":    b.exchange,
+			"x-dead-letter-routing-key": ps.key,
+			"x-message-ttl":             delay,
+			"x-expires":                 delay * 2,
+		},
+	); err != nil {
 		return err
 	}
 
-	return channel.Publish(b.exchange, key, false, false, amqp.Publishing{
-		Headers:      amqp.Table{},
-		ContentType:  "",
-		Body:         body,
+	return channel.Publish("", delayQ, false, false, amqp.Publishing{
+		Headers:      amqp.Table{"x-retry-count": retryCount + 1},
+		Body:         d.Body,
 		DeliveryMode: amqp.Persistent,
 	})
-}
-
-func (b *Broker) BatchPublish(key string, dataList []interface{}) error {
-	channel, err := b.createChannel()
-	if err != nil {
-		return err
-	}
-	defer channel.Close()
-
-	var body []byte
-
-	for _, data := range dataList {
-		if d, ok := data.(string); ok {
-			body = []byte(d)
-		} else {
-			body, err = json.Marshal(data)
-			if err != nil {
-				return err
-			}
-		}
-		if err := channel.ExchangeDeclare(b.exchange, b.exchangeType, true, false, false, false, nil); err != nil {
-			return err
-		}
-
-		if err := channel.Publish(b.exchange, key, false, false, amqp.Publishing{
-			Headers:      amqp.Table{},
-			ContentType:  "",
-			Body:         body,
-			DeliveryMode: amqp.Persistent,
-		}); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func (b *Broker) createChannel() (*amqp.Channel, error) {
@@ -274,7 +281,7 @@ func (b *Broker) getChannel(key string) (*amqp.Channel, error) {
 	return channel, nil
 }
 
-func (b *Broker) declare(channel *amqp.Channel, key string, job Jober) (amqp.Queue, error) {
+func (b *Broker) declare(channel *amqp.Channel, key string, job Jobber) (amqp.Queue, error) {
 	if err := channel.ExchangeDeclare(b.exchange, b.exchangeType, true, false, false, false, nil); err != nil {
 		return amqp.Queue{}, fmt.Errorf("exchange declare error: %s", err)
 	}

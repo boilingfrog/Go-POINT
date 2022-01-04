@@ -59,8 +59,8 @@ func GetRetryQueue(delay int64, max int, strategy RetryStrategy) []int64 {
 	if !ok {
 		fn = retryStrategies[FIBONACCI]
 	}
-	queue := []int64{}
 
+	queue := make([]int64, 0, max)
 	for i := 0; i < max; i++ {
 		queue = append(queue, delay*fn(int32(i)))
 	}
