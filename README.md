@@ -4,11 +4,11 @@
 
 本人的博客园地址：https://www.cnblogs.com/ricklz/  
 
-### golang笔记
+### golang学习笔记
 
 - [golang 的学习笔记](https://github.com/boilingfrog/Go-POINT/tree/master/golang)   
 
-### 数据库笔记
+### 数据库学习笔记
 
 - [mysql 的学习笔记](https://github.com/boilingfrog/Go-POINT/tree/master/mysql)   
 
@@ -16,7 +16,7 @@
 
 - [elasticsearch 的学习笔记](https://github.com/boilingfrog/Go-POINT/tree/master/elasticsearch)   
 
-### 容器笔记
+### 容器学习笔记
 
 - [docker 的学习笔记](https://github.com/boilingfrog/Go-POINT/tree/master/docker)   
 
@@ -28,7 +28,7 @@
 
 - [bazel 的学习笔记](https://github.com/boilingfrog/Go-POINT/tree/master/bazel)   
 
-### 网络笔记
+### 网络学习笔记
 
 - [tcp 的学习笔记](https://github.com/boilingfrog/Go-POINT/tree/master/tcp)   
 
@@ -42,7 +42,7 @@
 
 - [设计模式 的学习笔记](https://github.com/boilingfrog/design-pattern-learning)   
 
-### etcd学笔记
+### etcd学习笔记
 
 - [etcd 的学习笔记](https://github.com/boilingfrog/etcd-learning)   
 
