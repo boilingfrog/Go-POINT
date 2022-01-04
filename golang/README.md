@@ -1,38 +1,42 @@
 ## Golang源码阅读  
 
-[bufio](https://github.com/boilingfrog/Go-POINT/tree/master/golang/bufio)  
+### 前言
 
-[bytes.buffer](https://github.com/boilingfrog/Go-POINT/tree/master/golang/bytes.buffer)  
+golang 中常用组件的学习
 
-[channel](https://github.com/boilingfrog/Go-POINT/blob/master/golang/channel/channel.md)  
+- [bufio](https://github.com/boilingfrog/Go-POINT/tree/master/golang/bufio)  
 
-[context](https://github.com/boilingfrog/Go-POINT/blob/master/golang/context/context.md)  
+- [bytes.buffer](https://github.com/boilingfrog/Go-POINT/tree/master/golang/bytes.buffer)  
 
-[defer](https://github.com/boilingfrog/Go-POINT/blob/master/golang/defer/defer.md)  
+- [channel](https://github.com/boilingfrog/Go-POINT/blob/master/golang/channel/channel.md)  
 
-[errors](https://github.com/boilingfrog/Go-POINT/tree/master/golang/errors)   
+- [context](https://github.com/boilingfrog/Go-POINT/blob/master/golang/context/context.md)  
 
-[gc](https://github.com/boilingfrog/Go-POINT/tree/master/golang/gc)  
+- [defer](https://github.com/boilingfrog/Go-POINT/blob/master/golang/defer/defer.md)  
 
-[go_environment](https://github.com/boilingfrog/Go-POINT/tree/master/golang/go_environment)  
+- [errors](https://github.com/boilingfrog/Go-POINT/tree/master/golang/errors)   
 
-[goroutine](https://github.com/boilingfrog/Go-POINT/tree/master/golang/goroutine)  
+- [gc](https://github.com/boilingfrog/Go-POINT/tree/master/golang/gc)  
 
-[interface](https://github.com/boilingfrog/Go-POINT/blob/master/golang/interface/go%E4%B8%ADinterface%E8%BD%AC%E6%88%90%E5%85%B6%E4%BB%96%E7%B1%BB%E5%9E%8B.md)  
+- [go_environment](https://github.com/boilingfrog/Go-POINT/tree/master/golang/go_environment)  
 
-[map](https://github.com/boilingfrog/Go-POINT/tree/master/golang/map)  
+- [goroutine](https://github.com/boilingfrog/Go-POINT/tree/master/golang/goroutine)  
 
-[panic](https://github.com/boilingfrog/Go-POINT/tree/master/golang/panic)  
+- [interface](https://github.com/boilingfrog/Go-POINT/blob/master/golang/interface/go%E4%B8%ADinterface%E8%BD%AC%E6%88%90%E5%85%B6%E4%BB%96%E7%B1%BB%E5%9E%8B.md)  
 
-[printf用法](https://github.com/boilingfrog/Go-POINT/blob/master/golang/printf/printf%E7%9A%84%E7%94%A8%E6%B3%95.md)  
+- [map](https://github.com/boilingfrog/Go-POINT/tree/master/golang/map)  
 
-[slice](https://github.com/boilingfrog/Go-POINT/tree/master/golang/slice)  
+- [panic](https://github.com/boilingfrog/Go-POINT/tree/master/golang/panic)  
 
-[string](https://github.com/boilingfrog/Go-POINT/tree/master/golang/string)  
+- [printf用法](https://github.com/boilingfrog/Go-POINT/blob/master/golang/printf/printf%E7%9A%84%E7%94%A8%E6%B3%95.md)  
 
-[sync包的源码分析](https://github.com/boilingfrog/Go-POINT/tree/master/golang/sync)  
+- [slice](https://github.com/boilingfrog/Go-POINT/tree/master/golang/slice)  
 
-[unsafe](https://github.com/boilingfrog/Go-POINT/tree/master/golang/unsafe)   
+- [string](https://github.com/boilingfrog/Go-POINT/tree/master/golang/string)  
+
+- [sync包的源码分析](https://github.com/boilingfrog/Go-POINT/tree/master/golang/sync)  
+
+- [unsafe](https://github.com/boilingfrog/Go-POINT/tree/master/golang/unsafe)   
 
 
 
