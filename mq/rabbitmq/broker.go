@@ -9,9 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
-
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/streadway/amqp"
 )
 
@@ -22,7 +19,6 @@ type Broker struct {
 	conn         *amqp.Connection
 	connClose    chan *amqp.Error
 	channels     sync.Map
-	duration     *prometheus.SummaryVec
 }
 
 type ExchangeConfig struct {
@@ -96,26 +92,6 @@ func (b *Broker) healthCheck() http.Handler {
 	})
 }
 
-func (b *Broker) Monitoring(address string) {
-
-	b.duration = prometheus.NewSummaryVec(prometheus.SummaryOpts{
-		Name:       "rabbitmq_job_summary",
-		Help:       "rabbitmq job summary",
-		Objectives: map[float64]float64{0.5: 0.05, 0.75: 0.025, 0.9: 0.01, 0.99: 0.001, 0.999: 0.0001},
-	}, []string{"taskName", "state"})
-
-	prometheus.MustRegister(b.duration)
-
-	debugMux := http.NewServeMux()
-	debugMux.Handle("/metrics", promhttp.Handler())
-	debugMux.Handle("/healthz", b.healthCheck())
-
-	go func() {
-		log.Printf("monitoring server listen on port %s...\n", address)
-		http.ListenAndServe(address, debugMux)
-	}()
-}
-
 type HandleFLag string
 
 func (h HandleFLag) Error() string {
@@ -185,11 +161,6 @@ func (b *Broker) readyConsume(key string, concurrency int, job Jober) (bool, err
 			}
 			go func() {
 				var flag HandleFLag
-
-				defer func(begin time.Time) {
-					b.duration.With(prometheus.Labels{"taskName": key, "state": string(flag)}).
-						Observe(float64(time.Since(begin) / time.Millisecond))
-				}(time.Now())
 
 				switch flag = job.Handle(d.Body); flag {
 				case HandleSuccess:

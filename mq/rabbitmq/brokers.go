@@ -6,7 +6,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/streadway/amqp"
 )
 
@@ -97,11 +96,6 @@ func (b *Broker) readyConsumes(ps *params) (bool, error) {
 			}
 			go func() {
 				var flag HandleFLag
-
-				defer func(begin time.Time) {
-					b.duration.With(prometheus.Labels{"taskName": key, "state": string(flag)}).
-						Observe(float64(time.Since(begin) / time.Millisecond))
-				}(time.Now())
 
 				switch flag = ps.Handle(d.Body); flag {
 				case HandleSuccess:
