@@ -120,7 +120,80 @@ prefetchSize：预读取的单条消息内容大小上限(包含)，可以简单
 
 #### 代码实现
 
-RabbitMQ 中本身并没有直接延迟队列的功能，可以通过死信队列和 TTL 。来实现延迟队的功能。   
+RabbitMQ 中本身并没有直接提供延迟队列的功能，可以通过死信队列和 TTL 。来实现延迟队的功能。   
+
+先来了解下过期时间 TTL，消息一旦超过设置的 TTL 值，就会变成死信。这里需要注意的是 TTL 的单位是毫秒。设置过期时间一般与两种方式     
+
+- 1、通过队列属性设置，队列中的消息有相同的过期时间；  
+
+- 2、通过消息本身单独设置，每条消息有自己的的过期时间。   
+
+如果两种一起设置，消息的 TTL 以两者之间较小的那个数值为准。    
+
+上面两种 TTL 过期时间，消息队列的处理是不同的。第一种，消息一旦过期就会从消息队列中删除，第二种，消息过期了不会马上进行删除操作，删除的操作，是在投递到消费者之前进行判断的。 
+
+第一种方式中相同过期时间的消息是在同一个队列中，所以过期的消息总是在头部，只要在头部进行扫描就好了。第二种方式，过期的时间不同，但是消息是在同一个消息队列中的，如果要清理掉所有过期的时间就需要遍历所有的消息，当然这也是不合理的，所以会在消息被消费的时候，进行过期的判断。这个处理思想和 redis 过期 key 的清理有点神似。   
+
+**Queue TTL**    
+
+通过 `channel.queueDeclare` 方法中的 `x-expires` 参数可以控制队列被自动删除前处于未使用状态的时间。未使用的意思是队列上没有任何的消费者，队列也没有被重新声明，并且在过期时间段内也未调用过 `Basic.Get` 命令。   
+
+```go
+	if _, err := channel.QueueDeclare("delay.3s.test",
+		true, false, false, false, amqp.Table{
+			"x-dead-letter-exchange":    b.exchange,
+			"x-dead-letter-routing-key": ps.key,
+			"x-expires":                 3000,
+		},
+	); err != nil {
+		return err
+	}
+```
+
+**Message TTL**
+
+对于 `Message TTL` 设置有两种方式     
+
+- `Per-Queue Message TTL`  
+
+通过在 `queue.declare` 中设置 `x-message-ttl` 参数，可以控制在当前队列中，消息的过期时间。不过同一个消息被投到多个队列中，设置`x-message-ttl`的队列，里面消息的过期，不会对其他队列中相同的消息有影响。不同队列处理消息的过期是隔离的。  
+
+```go
+	if _, err := channel.QueueDeclare("delay.3s.test",
+		true, false, false, false, amqp.Table{
+			"x-dead-letter-exchange":    b.exchange,
+			"x-dead-letter-routing-key": ps.key,
+			"x-message-ttl":             3000,
+		},
+	); err != nil {
+		return err
+	}
+```
+
+- `Per-Message TTL`
+
+通过 expiration 就可以设置每条消息的过期时间,需要注意的是 expiration 是字符串类型。    
+
+```go
+	delayQ := "delay.3s.test"
+	if _, err := channel.QueueDeclare(delayQ,
+		true, false, false, false, amqp.Table{
+			"x-dead-letter-exchange":    b.exchange,
+			"x-dead-letter-routing-key": ps.key,
+		},
+	); err != nil {
+		return err
+	}
+
+	if err := channel.Publish("", delayQ, false, false, amqp.Publishing{
+		Headers:      amqp.Table{"x-retry-count": retryCount + 1},
+		Body:         d.Body,
+		DeliveryMode: amqp.Persistent,
+		Expiration:   "3000",
+	}); err != nil {
+		return err
+	}
+```
 
 
 
