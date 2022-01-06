@@ -403,9 +403,11 @@ func HandleMessage(data []byte) error {
 
 <img src="/img/rabbitmq-test-1.jpg"  alt="mq" align="center" />
 
-之后通过控制面板 push 一条数据，然后观察先延迟队列的创建过程   
+通过控制面板 push 一条数据
 
 <img src="/img/rabbitmq-test-2.jpg"  alt="mq" align="center" />
+
+可以看到消息在延迟队列中的执行过程，并且没有再用的延迟队列，会在设置的过期时间点，进行自动删除   
 
 <img src="/img/rabbitmq-test-3.jpg"  alt="mq" align="center" />
 
