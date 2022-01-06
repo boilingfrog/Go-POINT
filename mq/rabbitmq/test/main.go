@@ -25,7 +25,7 @@ func main() {
 	})
 
 	broker.LaunchJobs(
-		rabbitmq.NewDefaultJober(
+		rabbitmq.NewDefaultJobber(
 			"dead-test-exchange",
 			HandleMessage,
 			rabbitmq.WithPrefetch(30),

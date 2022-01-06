@@ -28,6 +28,15 @@ AMQP 协议引入了信道(channel)，多个 channel 使用同一个 TCP 连接�
 
 不过 channel 的连接数是有上限的，过多的连接会导致复用的 TCP 拥堵。   
 
+```
+const (
+	maxChannelMax = (2 << 15) - 1
+	defaultChannelMax = (2 << 10) - 1
+)
+```
+
+通过`http://github.com/streadway/amqp`这个client来连接 RabbitMQ,这里面定义了最大值65535和默认最大值2047。   
+
 ### prefetch Count  
 
 什么是`prefetch Count`，先举个栗子：  
@@ -49,7 +58,7 @@ RabbitM 会保存一个消费者的列表，每发送一条消息都会为对应
 | global 参数 |         AMQPO-9-1                                               | RabbitMQ |
 | ------     | ------------------------------------------                       | ------------------------------------------------ |
 | false      | 信道上所有的消费者都需要遵从 prefetchC unt 的限                       | 信道上新的消费者需要遵从 prefetchCount 的限定值定值 |
-| true       | 当前通信链路( Connection) 上所有的消费者都要遵从 prefetchCount 的限定值 | 信道上所有的消费者都需要遵从 prefetchCunt 的上限，就是同一信道上的消费者共享 |
+| true       | 当前通信链路(Connection) 上所有的消费者都要遵从 prefetchCount 的限定值，就是同一Connection上的消费者共享 | 信道上所有的消费者都需要遵从 prefetchCunt 的上限，就是同一信道上的消费者共享 |
 
 prefetchSize：预读取的单条消息内容大小上限(包含)，可以简单理解为消息有效载荷字节数组的最大长度限制，0表示无上限，单位为 B。   
 
@@ -361,7 +370,7 @@ func main() {
 	})
 
 	broker.LaunchJobs(
-		rabbitmq.NewDefaultJober(
+		rabbitmq.NewDefaultJobber(
 			"dead-test-exchange",
 			HandleMessage,
 			rabbitmq.WithPrefetch(30),
