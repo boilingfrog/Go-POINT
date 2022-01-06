@@ -222,7 +222,7 @@ RabbitMQ 中本身并没有直接提供延迟队列的功能，可以通过死�
 
 5、所以消费者只需要监听处理 work-queue 队列就可以了。  
 
-上代码  
+上代码，[文中 Demo 的地址](https://github.com/boilingfrog/Go-POINT/tree/master/mq/rabbitmq)  👏🏻   
 
 ```go
 func (b *Broker) readyConsumes(ps *params) (bool, error) {
@@ -416,6 +416,8 @@ func HandleMessage(data []byte) error {
 最后可以看到这条消息被反复重试了多次
 
 <img src="/img/rabbitmq-test-5.jpg"  alt="mq" align="center" />
+
+最后达到我们设置的重试上限之后，消息就会被丢失了    
 
 ### 参考
 
