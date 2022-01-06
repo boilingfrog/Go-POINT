@@ -20,7 +20,7 @@ type Retry struct {
 }
 
 func fibonacci() func() int {
-	var x, y int = 0, 1
+	var x, y = 0, 1
 	return func() int {
 		x, y = y, x+y
 		return y

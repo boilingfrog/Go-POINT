@@ -12,6 +12,8 @@
     - [什么是延迟队列](#%E4%BB%80%E4%B9%88%E6%98%AF%E5%BB%B6%E8%BF%9F%E9%98%9F%E5%88%97)
     - [使用场景](#%E4%BD%BF%E7%94%A8%E5%9C%BA%E6%99%AF-1)
     - [代码实现](#%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B0-1)
+      - [Queue TTL](#queue-ttl)
+      - [Message TTL](#message-ttl)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -134,7 +136,7 @@ RabbitMQ 中本身并没有直接提供延迟队列的功能，可以通过死�
 
 第一种方式中相同过期时间的消息是在同一个队列中，所以过期的消息总是在头部，只要在头部进行扫描就好了。第二种方式，过期的时间不同，但是消息是在同一个消息队列中的，如果要清理掉所有过期的时间就需要遍历所有的消息，当然这也是不合理的，所以会在消息被消费的时候，进行过期的判断。这个处理思想和 redis 过期 key 的清理有点神似。   
 
-**Queue TTL**    
+##### Queue TTL
 
 通过 `channel.queueDeclare` 方法中的 `x-expires` 参数可以控制队列被自动删除前处于未使用状态的时间。未使用的意思是队列上没有任何的消费者，队列也没有被重新声明，并且在过期时间段内也未调用过 `Basic.Get` 命令。   
 
@@ -150,7 +152,7 @@ RabbitMQ 中本身并没有直接提供延迟队列的功能，可以通过死�
 	}
 ```
 
-**Message TTL**
+##### Message TTL
 
 对于 `Message TTL` 设置有两种方式     
 
@@ -195,12 +197,15 @@ RabbitMQ 中本身并没有直接提供延迟队列的功能，可以通过死�
 	}
 ```
 
+通过延迟队列来处理延迟消费的场景，可以借助于死信队列来处理  
 
+消费者订阅死信队列 deadQueue，然后需要延迟处理的消息都发送到 delayNormal 中。然后 delayNormal 中的消息 TTL 过期时间到了，消息会被存储到死信队列 deadQueue。我们只需要正常消费，死信队列 deadQueue 中的数据就行了，这样就达到对数据延迟消费的逻辑了。   
 
+<img src="/img/mq-dead-queue.png"  alt="mq" align="center" />
 
 ### 参考
 
 【Finding bottlenecks with RabbitMQ 3.3】https://blog.rabbitmq.com/posts/2014/04/finding-bottlenecks-with-rabbitmq-3-3  
 【你真的了解延时队列吗】https://juejin.cn/post/6844903648397525006    
-
+【RabbitMQ实战指南】https://book.douban.com/subject/27591386/     
 
