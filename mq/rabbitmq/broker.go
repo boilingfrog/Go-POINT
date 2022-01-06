@@ -26,6 +26,22 @@ type ExchangeConfig struct {
 	Type string
 }
 
+func NewDefaultJober(key string, functor func([]byte) error, params ...Param) *params {
+	var defaultParam = []Param{
+		WithConcurrency(5),
+		WithPrefetch(10),
+		WithRetry(help.FIBONACCI, help.Retry{
+			Delay: "2s",
+			Max:   5,
+			Queue: nil,
+		}),
+	}
+	ps := evaParam(append(defaultParam, params...))
+	ps.key = key
+	ps.handler = DefaultHandler(key, functor)
+	return ps
+}
+
 func NewBroker(url string, cfg *ExchangeConfig) *Broker {
 	conn, err := amqp.Dial(url)
 	if err != nil {
@@ -151,10 +167,7 @@ func (b *Broker) launchJobs(ps *params) {
 }
 
 func (b *Broker) readyConsumes(ps *params) (bool, error) {
-	var (
-		key = ps.key
-	)
-
+	key := ps.key
 	channel, err := b.getChannel(key)
 	if err != nil {
 		return true, err

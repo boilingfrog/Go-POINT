@@ -222,6 +222,199 @@ RabbitMQ 中本身并没有直接提供延迟队列的功能，可以通过死�
 
 5、所以消费者只需要监听处理 work-queue 队列就可以了。  
 
+上代码  
+
+```go
+func (b *Broker) readyConsumes(ps *params) (bool, error) {
+	key := ps.key
+	channel, err := b.getChannel(key)
+	if err != nil {
+		return true, err
+	}
+
+	queue, err := b.declare(channel, key, ps)
+	if err != nil {
+		return true, err
+	}
+
+	if err := channel.Qos(ps.prefetch, 0, false); err != nil {
+		return true, fmt.Errorf("channel qos error: %s", err)
+	}
+
+	deliveries, err := channel.Consume(queue.Name, "", false, false, false, false, nil)
+	if err != nil {
+		return true, fmt.Errorf("queue consume error: %s", err)
+	}
+
+	channelClose := channel.NotifyClose(make(chan *amqp.Error))
+
+	pool := make(chan struct{}, ps.concurrency)
+
+	go func() {
+		for i := 0; i < ps.concurrency; i++ {
+			pool <- struct{}{}
+		}
+	}()
+
+	for {
+		select {
+		case err := <-channelClose:
+			b.channels.Delete(key)
+			return true, fmt.Errorf("channel close: %s", err)
+		case d := <-deliveries:
+			if ps.concurrency > 0 {
+				<-pool
+			}
+			go func() {
+				var flag HandleFLag
+
+				switch flag = ps.Handle(d.Body); flag {
+				case HandleSuccess:
+					d.Ack(false)
+				case HandleDrop:
+					d.Nack(false, false)
+					// 处理需要延迟重试的消息
+				case HandleRequeue:
+					if err := b.retry(ps, d); err != nil {
+						d.Nack(false, true)
+					} else {
+						d.Ack(false)
+					}
+				default:
+					d.Nack(false, false)
+				}
+
+				if ps.concurrency > 0 {
+					pool <- struct{}{}
+				}
+			}()
+		}
+	}
+}
+
+func (b *Broker) retry(ps *params, d amqp.Delivery) error {
+	channel, err := b.conn.Channel()
+	if err != nil {
+		return err
+	}
+	defer channel.Close()
+
+	retryCount, _ := d.Headers["x-retry-count"].(int32)
+	// 判断尝试次数的上限
+	if int(retryCount) >= len(ps.retryQueue) {
+		return nil
+	}
+
+	delay := ps.retryQueue[retryCount]
+	delayDuration := time.Duration(delay) * time.Millisecond
+	delayQ := fmt.Sprintf("delay.%s.%s.%s", delayDuration.String(), b.exchange, ps.key)
+
+	if _, err := channel.QueueDeclare(delayQ,
+		true, false, false, false, amqp.Table{
+			// 配置死信发送的exchange和routing-key
+			"x-dead-letter-exchange":    b.exchange,
+			"x-dead-letter-routing-key": ps.key,
+			// 消息的过期时间
+			"x-message-ttl":             delay,
+			// 延迟队列自动删除的时间设置
+			"x-expires":                 delay * 2,
+		},
+	); err != nil {
+		return err
+	}
+
+	// exchange为空使用Default Exchange
+	return channel.Publish("", delayQ, false, false, amqp.Publishing{
+		// 设置尝试的次数
+		Headers:      amqp.Table{"x-retry-count": retryCount + 1},
+		Body:         d.Body,
+		DeliveryMode: amqp.Persistent,
+	})
+}
+```
+
+测试一下  
+
+先使用docker 启动一个 RabbitMQ   
+
+```go
+$ sudo mkdir -p /usr/local/docker-rabbitmq/data
+
+$ docker run -d --name rabbitmq3.7.7 -p 5672:5672 -p 15672:15672 -v /usr/local/docker-rabbitmq/data:/var/lib/rabbitmq --hostname rabbitmq -e RABBITMQ_DEFAULT_VHOST=/ -e RABBITMQ_DEFAULT_USER=admin -e RABBITMQ_DEFAULT_PASS=admin rabbitmq:3.7.7-management
+```
+
+账号，密码是 admin  
+
+```go
+const (
+	DeadTestExchangeQueue = "dead-test-exchange_queue"
+)
+
+func main() {
+
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT)
+
+	broker := rabbitmq.NewBroker("amqp://admin:admin@127.0.0.1:5672", &rabbitmq.ExchangeConfig{
+		Name: "worker-exchange",
+		Type: "direct",
+	})
+
+	broker.LaunchJobs(
+		rabbitmq.NewDefaultJober(
+			"dead-test-exchange",
+			HandleMessage,
+			rabbitmq.WithPrefetch(30),
+			rabbitmq.WithQueue(DeadTestExchangeQueue),
+			rabbitmq.WithRetry(help.FIBONACCI, help.Retry{
+				Delay: "5s",
+				Max:   6,
+				Queue: []string{
+					DeadTestExchangeQueue,
+				},
+			}),
+		),
+	)
+
+	for {
+		s := <-ch
+		switch s {
+		case syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT:
+			fmt.Println("job-test-exchange service exit")
+			time.Sleep(time.Second)
+			return
+		case syscall.SIGHUP:
+		default:
+			return
+		}
+	}
+}
+
+func HandleMessage(data []byte) error {
+	fmt.Println("receive message", "message", string(data))
+
+	return rabbitmq.HandleRequeue
+}
+```
+
+接收到的消息，直接进行重试，我们来看下，延迟队列的执行   
+
+启动之后，先来看下消息队列的面板     
+
+<img src="/img/rabbitmq-test-1.jpg"  alt="mq" align="center" />
+
+之后通过控制面板 push 一条数据，然后观察先延迟队列的创建过程   
+
+<img src="/img/rabbitmq-test-2.jpg"  alt="mq" align="center" />
+
+<img src="/img/rabbitmq-test-3.jpg"  alt="mq" align="center" />
+
+<img src="/img/rabbitmq-test-4.jpg"  alt="mq" align="center" />
+
+最后可以看到这条消息被反复重试了多次
+
+<img src="/img/rabbitmq-test-5.jpg"  alt="mq" align="center" />
+
 ### 参考
 
 【Finding bottlenecks with RabbitMQ 3.3】https://blog.rabbitmq.com/posts/2014/04/finding-bottlenecks-with-rabbitmq-3-3  
