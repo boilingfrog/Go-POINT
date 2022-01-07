@@ -446,6 +446,41 @@ func HandleMessage(data []byte) error {
 
 安装插件后会生成新的Exchange类型`x-delayed-message`，处理的原则是延迟投递。当接收到延迟消息之后，并不是直接投递到目标队列中，而是会把消息存储到 mnesia 数据库中，什么是 mnesia 可参考[Mnesia 数据库](https://elixirschool.com/zh-hans/lessons/storage/mnesia)。当延迟时间到了的时候，通过`x-delayed-message`推送到目标队列中。然后去消费目标队列，就能避免过期的时序问题了。    
 
+来看下如何使用   
+
+这是使用一台虚拟机来演示，首先安装 RabbitMQ,安装过程可参考[RabbitMQ 3.8.5](https://blog.csdn.net/weixin_40584261/article/details/106826044)  
+
+然后下载下载 rabbitmq-delayed-message-exchange 插件  
+
+```
+https://github.com/rabbitmq/rabbitmq-delayed-message-exchange/releases/download/3.9.0/rabbitmq_delayed_message_exchange-3.9.0.ez
+
+$ cp rabbitmq_delayed_message_exchange-3.9.0.ez /usr/lib/rabbitmq/lib/rabbitmq_server-3.8.5/plugins
+
+# 查看安装的插件
+$ rabbitmq-plugins list
+  Listing plugins with pattern ".*" ...
+   Configured: E = explicitly enabled; e = implicitly enabled
+   | Status: * = running on rabbit@centos7-1
+   |/
+  [  ] rabbitmq_amqp1_0                  3.8.5
+  [  ] rabbitmq_auth_backend_cache       3.8.5
+  [  ] rabbitmq_auth_backend_http        3.8.5
+  [  ] rabbitmq_auth_backend_ldap        3.8.5
+  [  ] rabbitmq_auth_backend_oauth2      3.8.5
+  [  ] rabbitmq_auth_mechanism_ssl       3.8.5
+  [  ] rabbitmq_consistent_hash_exchange 3.8.5
+  [E*] rabbitmq_delayed_message_exchange 3.9.0
+  [  ] rabbitmq_event_exchange           3.8.5
+  [  ] rabbitmq_federation               3.8.5
+
+$ rabbitmq-plugins enable rabbitmq_delayed_message_exchange
+```
+
+修改上面的栗子，使用`x-delayed-message`  
+
+
+
 ### 参考
 
 【Finding bottlenecks with RabbitMQ 3.3】https://blog.rabbitmq.com/posts/2014/04/finding-bottlenecks-with-rabbitmq-3-3  
@@ -454,4 +489,5 @@ func HandleMessage(data []byte) error {
 【人工智能 rabbitmq 基于rabbitmq】https://www.dazhuanlan.com/ajin121212/topics/1209139    
 【rabbitmq-delayed-message-exchange】https://blog.51cto.com/kangfs/4115341  
 【Scheduling Messages with RabbitMQ】https://blog.rabbitmq.com/posts/2015/04/scheduling-messages-with-rabbitmq    
+【Centos7安装RabbitMQ最新版3.8.5，史上最简单实用安装步骤】https://blog.csdn.net/weixin_40584261/article/details/106826044    
 
