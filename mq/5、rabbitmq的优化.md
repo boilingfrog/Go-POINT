@@ -362,7 +362,7 @@ $ docker run -d --name rabbitmq3.7.7 -p 5672:5672 -p 15672:15672 -v /usr/local/d
 
 ```go
 const (
-	DeadTestExchangeQueue = "dead-test-exchange_queue"
+	DeadTestExchangeQueue = "dead-test-_queue"
 )
 
 func main() {
@@ -475,11 +475,12 @@ $ rabbitmq-plugins list
   [  ] rabbitmq_federation               3.8.5
 
 $ rabbitmq-plugins enable rabbitmq_delayed_message_exchange
+$ systemctl restart rabbitmq-server
 ```
 
 修改上面的栗子，使用`x-delayed-message`  
 
-上代码  
+上代码，[demo地址](https://github.com/boilingfrog/Go-POINT/tree/master/mq/rabbitmq_delayed_message_exchange)
 
 ```go
 func (b *Broker) declareDelay(key string, job Jobber) error {
@@ -547,7 +548,7 @@ func (b *Broker) retry(ps *params, d amqp.Delivery) error {
 
 <img src="/img/rabbitmq-test-delay-1.jpg"  alt="mq" align="center" />
 
-其中`dead-test-delayed-message_queue`就是我们正常业务消费额队列，`delay.dead-test-delayed-message_queue`存储的是需要进行延迟消费的消息，这里面的消息，会在过期的时候通过死信的机制，被重推到`dead-test-delayed-message_queue`中   
+其中`dead-test-delayed-message_queue`就是我们正常业务消费的队列，`delay.dead-test-delayed-message_queue`存储的是需要进行延迟消费的消息，这里面的消息，会在过期的时候通过死信的机制，被重推到`dead-test-delayed-message_queue`中   
 
 看下控制台的输出信息  
 

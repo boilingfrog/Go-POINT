@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	DeadTestExchangeQueue = "dead-test-exchange_queue"
+	DeadTestExchangeQueue = "dead-test-delayed-queue_queue"
 )
 
 func main() {

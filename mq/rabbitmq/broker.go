@@ -227,6 +227,7 @@ func (b *Broker) retry(ps *params, d amqp.Delivery) error {
 	if int(retryCount) >= len(ps.retryQueue) {
 		return nil
 	}
+	fmt.Println("消息重试次数", retryCount+1)
 
 	delay := ps.retryQueue[retryCount]
 	delayDuration := time.Duration(delay) * time.Millisecond
