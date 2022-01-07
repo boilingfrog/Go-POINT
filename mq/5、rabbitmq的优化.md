@@ -11,9 +11,11 @@
   - [延迟队列](#%E5%BB%B6%E8%BF%9F%E9%98%9F%E5%88%97)
     - [什么是延迟队列](#%E4%BB%80%E4%B9%88%E6%98%AF%E5%BB%B6%E8%BF%9F%E9%98%9F%E5%88%97)
     - [使用场景](#%E4%BD%BF%E7%94%A8%E5%9C%BA%E6%99%AF-1)
-    - [代码实现](#%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B0-1)
+    - [实现延迟队列的方式](#%E5%AE%9E%E7%8E%B0%E5%BB%B6%E8%BF%9F%E9%98%9F%E5%88%97%E7%9A%84%E6%96%B9%E5%BC%8F)
       - [Queue TTL](#queue-ttl)
       - [Message TTL](#message-ttl)
+    - [使用 Queue TTL 设置过期时间](#%E4%BD%BF%E7%94%A8-queue-ttl-%E8%AE%BE%E7%BD%AE%E8%BF%87%E6%9C%9F%E6%97%B6%E9%97%B4)
+    - [使用 Message TTL 设置过期时间](#%E4%BD%BF%E7%94%A8-message-ttl-%E8%AE%BE%E7%BD%AE%E8%BF%87%E6%9C%9F%E6%97%B6%E9%97%B4)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -130,7 +132,7 @@ prefetchSize：预读取的单条消息内容大小上限(包含)，可以简单
 
 总结下来就是一些延迟处理的业务场景  
 
-#### 代码实现
+#### 实现延迟队列的方式
 
 RabbitMQ 中本身并没有直接提供延迟队列的功能，可以通过死信队列和 TTL 。来实现延迟队的功能。   
 
@@ -211,7 +213,9 @@ RabbitMQ 中本身并没有直接提供延迟队列的功能，可以通过死�
 
 延迟队列通常的使用：消费者订阅死信队列 deadQueue，然后需要延迟处理的消息都发送到 delayNormal 中。然后 delayNormal 中的消息 TTL 过期时间到了，消息会被存储到死信队列 deadQueue。我们只需要正常消费，死信队列 deadQueue 中的数据就行了，这样就实现对数据延迟消费的逻辑了。   
 
-举个线上使用的栗子：   
+#### 使用 Queue TTL 设置过期时间
+
+举个线上处理消息重传的的栗子：    
 
 消费者处理队列中的消息，一个消息在处理的过程中，会出现错误，针对某些特性的错误，希望这些消息能够退回到队列中，过一段时间在进行消费。当然，如果不进行 Ack,或者 Ack 之后重推到队列中，消费者就能再次进行重试消费。但是这样会有一个问题，消费队列中消息消费很快，刚重推的消息马上就到了队列头部，消费者可能马上又拿到这个消息，然后一直处于重试的死循环，影响其他消息的消费。这时候延迟队列就登场了，我们可以借助于延迟队列，设置特定的延迟时间，让这些消息的重试，发生到之后某个时间点。并且重试一定次数之后，就可以选择丢弃这个消息了。      
 
@@ -229,7 +233,9 @@ RabbitMQ 中本身并没有直接提供延迟队列的功能，可以通过死�
 
 4、延迟队列会绑定一个死信系列，死信队列的 exchange 和 routing-key，就是上面正常处理业务 work-queue 消息队里的 exchange 和 routing-key，这样过期的消息就能够重推到业务的队列中，每次重推到延迟队列的时候会记录消息重推的次数，如果达到我们设定的上限，就可以丢弃数据，落库或其他的操作了；      
 
-5、所以消费者只需要监听处理 work-queue 队列就可以了。  
+5、所以消费者只需要监听处理 work-queue 队列就可以了；  
+
+6、无用的延迟队列，到了删除的时间节点，会进行自动的删除。     
 
 上代码，[文中 Demo 的地址](https://github.com/boilingfrog/Go-POINT/tree/master/mq/rabbitmq)  👏🏻   
 
@@ -428,9 +434,24 @@ func HandleMessage(data []byte) error {
 
 最后达到我们设置的重试上限之后，消息就会被丢失了    
 
+#### 使用 Message TTL 设置过期时间
+
+使用 `Message TTL`这种方式，我们的队列会存在时序的问题，这里来展开分析下：     
+
+使用 `Message TTL`这种方式，所有设置过期的消息是会放到一个队列中的。因为消息的出队是一条一条出的，只有第一个消息被消费了，才能处理第二条消息。如果第一条消息过期10s,第二条过期1s。第二条肯定比第一条先过期，理论上，应该先处理第二条。但是有上面讨论的限制，如果第一条没有被消费，第二条消息是不能被处理的。这就造成了时序问题，当然如果使用`Queue TTL`就不会有这种情况了，应为相同过期时间的消息在同一个队列中，所以队列头部的消息总是最先过期的消息。那么这种情况如何去避免呢？   
+
+可以使用`rabbitmq-delayed-message-exchange`插件处理。[rabbitmq-delayed-message-exchange插件地址](https://github.com/rabbitmq/rabbitmq-delayed-message-exchange)  
+
+实现原理：  
+
+安装插件后会生成新的Exchange类型`x-delayed-message`，处理的原则是延迟投递。当接收到延迟消息之后，并不是直接投递到目标队列中，而是会把消息存储到 mnesia 数据库中，什么是 mnesia 可参考[Mnesia 数据库](https://elixirschool.com/zh-hans/lessons/storage/mnesia)。当延迟时间到了的时候，通过`x-delayed-message`推送到目标队列中。然后去消费目标队列，就能避免过期的时序问题了。    
+
 ### 参考
 
 【Finding bottlenecks with RabbitMQ 3.3】https://blog.rabbitmq.com/posts/2014/04/finding-bottlenecks-with-rabbitmq-3-3  
 【你真的了解延时队列吗】https://juejin.cn/post/6844903648397525006    
 【RabbitMQ实战指南】https://book.douban.com/subject/27591386/     
+【人工智能 rabbitmq 基于rabbitmq】https://www.dazhuanlan.com/ajin121212/topics/1209139    
+【rabbitmq-delayed-message-exchange】https://blog.51cto.com/kangfs/4115341  
+【Scheduling Messages with RabbitMQ】https://blog.rabbitmq.com/posts/2015/04/scheduling-messages-with-rabbitmq    
 
