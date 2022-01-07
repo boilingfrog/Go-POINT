@@ -363,7 +363,7 @@ $ docker run -d --name rabbitmq3.7.7 -p 5672:5672 -p 15672:15672 -v /usr/local/d
 
 ```go
 const (
-	DeadTestExchangeQueue = "dead-test-_queue"
+	DeadTestExchangeQueue = "dead-test-delayed-queue_queue"
 )
 
 func main() {
@@ -378,7 +378,7 @@ func main() {
 
 	broker.LaunchJobs(
 		rabbitmq.NewDefaultJobber(
-			"dead-test-exchange",
+			"dead-test-key",
 			HandleMessage,
 			rabbitmq.WithPrefetch(30),
 			rabbitmq.WithQueue(DeadTestExchangeQueue),
@@ -563,7 +563,7 @@ rabbitmq-delayed-message-exchange 相关限制：
    
 - 2、目前该插件只支持在磁盘节点上使用，当前还不支持ram节点；  
 
-- 3. 不适合具有大量延迟消息的情况(例如:数千或数百万的延迟消息)。  
+- 3、不适合具有大量延迟消息的情况(例如:数千或数百万的延迟消息)。  
 
 > This plugin is considered to be experimental yet fairly stable and potential suitable for production use as long as the user is aware of its limitations.  
 > This plugin is not commercially supported by Pivotal at the moment but it doesn't mean that it will be abandoned or team RabbitMQ is not interested in improving it in the future. It is not, however, a high priority for our small team.
@@ -571,7 +571,7 @@ rabbitmq-delayed-message-exchange 相关限制：
 
 这是官方对此的解释，大概意思就是，这个还处于试验阶段，但还是相对稳定的。团队对此插件的更新优先级不是很高，所以如果我们遇到问题了，可能还需要自己去修改。   
 
-如果有能力更改这个插件，毕竟换个是erlang写的，那么就可以选择这个了。   
+如果有能力更改这个插件，毕竟这个是 erlang 写的，那么就可以选择这个了。   
 
 `Queue TTL`相关限制  
 
