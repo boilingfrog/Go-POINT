@@ -479,7 +479,79 @@ $ rabbitmq-plugins enable rabbitmq_delayed_message_exchange
 
 修改上面的栗子，使用`x-delayed-message`  
 
+上代码  
 
+```go
+func (b *Broker) declareDelay(key string, job Jobber) error {
+	keyNew := fmt.Sprintf("delay.%s", key)
+
+	channel, err := b.getChannel(fmt.Sprintf("delay.%s", key))
+	if err != nil {
+		return err
+	}
+	defer channel.Close()
+
+	exchangeNew := fmt.Sprintf("delay.%s", b.exchange)
+
+	if err := channel.ExchangeDeclare(exchangeNew, "x-delayed-message", true, false, false, false, nil); err != nil {
+		return fmt.Errorf("exchange declare error: %s", err)
+	}
+
+	queue, err := channel.QueueDeclare(fmt.Sprintf("delay.%s", job.Queue()), true, false, false, false, amqp.Table{
+		"x-dead-letter-exchange":    b.exchange,
+		"x-dead-letter-routing-key": key,
+	})
+	if err != nil {
+		return fmt.Errorf("queue declare error: %s", err)
+	}
+	if err = channel.QueueBind(queue.Name, keyNew, exchangeNew, false, nil); err != nil {
+		return fmt.Errorf("queue bind error: %s", err)
+	}
+	return nil
+}
+
+func (b *Broker) retry(ps *params, d amqp.Delivery) error {
+	channel, err := b.conn.Channel()
+	if err != nil {
+		return err
+	}
+	defer channel.Close()
+
+	retryCount, _ := d.Headers["x-retry-count"].(int32)
+
+	if int(retryCount) >= len(ps.retryQueue) {
+		return nil
+	}
+	fmt.Println("消息重试次数", retryCount+1)
+
+	delay := ps.retryQueue[retryCount]
+
+	if err := channel.ExchangeDeclare(fmt.Sprintf("delay.%s", b.exchange), "x-delayed-message", true, false, false, false, amqp.Table{
+		"x-delayed-type": "direct",
+	}); err != nil {
+		return err
+	}
+
+	return channel.Publish(fmt.Sprintf("delay.%s", b.exchange), fmt.Sprintf("delay.%s", ps.key), false, false, amqp.Publishing{
+		Headers:      amqp.Table{"x-retry-count": retryCount + 1},
+		Body:         d.Body,
+		DeliveryMode: amqp.Persistent,
+		Expiration:   fmt.Sprintf("%d", delay),
+	})
+}
+```
+
+设置重试队列中的消息类型是`x-delayed-message`，这样就能使用刚刚下来的插件了。   
+
+通过面板推送一条消息之后，看下运行的结果    
+
+<img src="/img/rabbitmq-test-delay-1.jpg"  alt="mq" align="center" />
+
+其中`dead-test-delayed-message_queue`就是我们正常业务消费额队列，`delay.dead-test-delayed-message_queue`存储的是需要进行延迟消费的消息，这里面的消息，会在过期的时候通过死信的机制，被重推到`dead-test-delayed-message_queue`中   
+
+看下控制台的输出信息  
+
+<img src="/img/rabbitmq-test-delay-2.jpg"  alt="mq" align="center" />
 
 ### 参考
 
