@@ -50,7 +50,7 @@ const (
 
 这时候`prefetch Count`就登场了，通过引入`prefetch Count`来避免消费能力有限的消息队列分配过多的消息，而消息处理能力较好的消费者没有消息处理的情况。   
 
-RabbitM 会保存一个消费者的列表，每发送一条消息都会为对应的消费者计数，如果达到了所设定的上限，那么 RabbitMQ 就不会向这个消费者再发送任何消息。直到消费者确认了某条消息之后 RabbitMQ 将相应的计数减1，之后消费者可以继续接收消息，直到再次到达计数上限。这种机制可以类比于 TCP!IP中的"滑动窗口"。  
+RabbitM 会保存一个消费者的列表，每发送一条消息都会为对应的消费者计数，如果达到了所设定的上限，那么 RabbitMQ 就不会向这个消费者再发送任何消息。直到消费者确认了某条消息之后 RabbitMQ 将相应的计数减1，之后消费者可以继续接收消息，直到再次到达计数上限。这种机制可以类比于 `TCP/IP` 中的"滑动窗口"。  
 
 所以消息不会被处理速度很慢的消费者过多霸占，能够很好的分配到其它处理速度较好的消费者中。通俗的说就是消费者最多从 RabbitMQ 中获取的未消费消息的数量。          
 
@@ -87,11 +87,11 @@ prefetchSize：预读取的单条消息内容大小上限(包含)，可以简单
 
 - 队列达到最大长度，消息队列的消息数量已经超过最大队列长度。   
 
-当一个消息满足上面的几种条件变成死信(dead message)之后，会被重新推送到死信交换器(DLX ，全称为 Dead-Letter-Exchange)。绑定 DLX 的队列就是私信队列。   
+当一个消息满足上面的几种条件变成死信(dead message)之后，会被重新推送到死信交换器(DLX ，全称为 Dead-Letter-Exchange)。绑定 DLX 的队列就是死信队列。   
 
 所以死信队列也并不是什么特殊的队列，只是绑定到了死信交换机中了，死信交换机也没有什么特殊，我们只是用这个来处理死信队列了，和别的交换机没有本质上的区别。   
 
-对于需要处理私信队列的业务，跟我们正常的业务处理一样，也是定义一个独有的路由key，并对应的配置一个死信队列进行监听，然后 key 绑定的死信交换机中。   
+对于需要处理死信队列的业务，跟我们正常的业务处理一样，也是定义一个独有的路由key，并对应的配置一个死信队列进行监听，然后 key 绑定的死信交换机中。   
 
 #### 使用场景
 
@@ -449,9 +449,9 @@ func HandleMessage(data []byte) error {
 
 来看下如何使用   
 
-这是使用一台虚拟机来演示，首先安装 RabbitMQ,安装过程可参考[RabbitMQ 3.8.5](https://blog.csdn.net/weixin_40584261/article/details/106826044)  
+这里使用一台虚拟机来演示，首先安装 RabbitMQ,安装过程可参考[RabbitMQ 3.8.5](https://blog.csdn.net/weixin_40584261/article/details/106826044)  
 
-然后下载下载 rabbitmq-delayed-message-exchange 插件  
+然后下载 rabbitmq-delayed-message-exchange 插件  
 
 ```
 https://github.com/rabbitmq/rabbitmq-delayed-message-exchange/releases/download/3.9.0/rabbitmq_delayed_message_exchange-3.9.0.ez
@@ -567,11 +567,13 @@ rabbitmq-delayed-message-exchange 相关限制：
 
 > This plugin is considered to be experimental yet fairly stable and potential suitable for production use as long as the user is aware of its limitations.  
 > This plugin is not commercially supported by Pivotal at the moment but it doesn't mean that it will be abandoned or team RabbitMQ is not interested in improving it in the future. It is not, however, a high priority for our small team.
->So, give it a try with your workload and decide for yourself.
+> So, give it a try with your workload and decide for yourself.
 
 这是官方对此的解释，大概意思就是，这个还处于试验阶段，但还是相对稳定的。团队对此插件的更新优先级不是很高，所以如果我们遇到问题了，可能还需要自己去修改。   
 
 如果有能力更改这个插件，毕竟这个是 erlang 写的，那么就可以选择这个了。   
+
+优点也是很明显，开箱即用，处理逻辑比较简单。   
 
 `Queue TTL`相关限制  
 
