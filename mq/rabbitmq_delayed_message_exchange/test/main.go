@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	DeadTestExchangeQueue = "dead-test-exchange_queue_test1"
+	DeadTestExchangeQueue = "dead-test-delayed-message_queue"
 )
 
 func main() {
@@ -26,7 +26,7 @@ func main() {
 
 	broker.LaunchJobs(
 		rabbitmq.NewDefaultJobber(
-			"dead-test-exchange",
+			"dead-test-delayed-key",
 			HandleMessage,
 			rabbitmq.WithPrefetch(30),
 			rabbitmq.WithQueue(DeadTestExchangeQueue),

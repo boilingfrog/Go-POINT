@@ -157,8 +157,9 @@ func (b *Broker) readyConsumes(ps *params) (bool, error) {
 	if err != nil {
 		return true, err
 	}
-
-	b.declareDelay(channel, key, ps)
+	if err := b.declareDelay(key, ps); err != nil {
+		return true, err
+	}
 
 	queue, err := b.declare(channel, key, ps)
 	if err != nil {
@@ -228,14 +229,12 @@ func (b *Broker) retry(ps *params, d amqp.Delivery) error {
 
 	retryCount, _ := d.Headers["x-retry-count"].(int32)
 
-	fmt.Println(retryCount)
 	if int(retryCount) >= len(ps.retryQueue) {
 		return nil
 	}
-	fmt.Println("xxxx", retryCount)
+	fmt.Println("消息重试次数", retryCount+1)
 
 	delay := ps.retryQueue[retryCount]
-	//delayQ := fmt.Sprintf("delay.%s.%s", b.exchange, ps.key)
 
 	if err := channel.ExchangeDeclare(fmt.Sprintf("delay.%s", b.exchange), "x-delayed-message", true, false, false, false, amqp.Table{
 		"x-delayed-type": "direct",
@@ -243,22 +242,8 @@ func (b *Broker) retry(ps *params, d amqp.Delivery) error {
 		return err
 	}
 
-	//if _, err := channel.QueueDeclare(delayQ,
-	//	true, false, false, false, amqp.Table{
-	//		"x-dead-letter-exchange":    b.exchange,
-	//		"x-dead-letter-routing-key": ps.key,
-	//	},
-	//); err != nil {
-	//	return err
-	//}
-	//
-	//if err = channel.QueueBind(delayQ, "test-delayed-message-rou", "test-delayed-message-1", false, nil); err != nil {
-	//	return fmt.Errorf("queue bind error: %s", err)
-	//}
-
 	return channel.Publish(fmt.Sprintf("delay.%s", b.exchange), fmt.Sprintf("delay.%s", ps.key), false, false, amqp.Publishing{
-		Headers: amqp.Table{"x-retry-count": retryCount + 1},
-		//Headers:      amqp.Table{"x-retry-count": retryCount + 1, "x-delay": 1000},
+		Headers:      amqp.Table{"x-retry-count": retryCount + 1},
 		Body:         d.Body,
 		DeliveryMode: amqp.Persistent,
 		Expiration:   fmt.Sprintf("%d", delay),
@@ -293,19 +278,32 @@ func (b *Broker) getChannel(key string) (*amqp.Channel, error) {
 	return channel, nil
 }
 
-func (b *Broker) declareDelay(channel *amqp.Channel, key string, job Jobber) (amqp.Queue, error) {
-	if err := channel.ExchangeDeclare(fmt.Sprintf("delay.%s", b.exchange), "x-delayed-message", true, false, false, false, nil); err != nil {
-		return amqp.Queue{}, fmt.Errorf("exchange declare error: %s", err)
+func (b *Broker) declareDelay(key string, job Jobber) error {
+	keyNew := fmt.Sprintf("delay.%s", key)
+
+	channel, err := b.getChannel(fmt.Sprintf("delay.%s", key))
+	if err != nil {
+		return err
+	}
+	defer channel.Close()
+
+	exchangeNew := fmt.Sprintf("delay.%s", b.exchange)
+
+	if err := channel.ExchangeDeclare(exchangeNew, "x-delayed-message", true, false, false, false, nil); err != nil {
+		return fmt.Errorf("exchange declare error: %s", err)
 	}
 
-	queue, err := channel.QueueDeclare(fmt.Sprintf("delay.%s", job.Queue()), true, false, false, false, nil)
+	queue, err := channel.QueueDeclare(fmt.Sprintf("delay.%s", job.Queue()), true, false, false, false, amqp.Table{
+		"x-dead-letter-exchange":    b.exchange,
+		"x-dead-letter-routing-key": key,
+	})
 	if err != nil {
-		return queue, fmt.Errorf("queue declare error: %s", err)
+		return fmt.Errorf("queue declare error: %s", err)
 	}
-	if err = channel.QueueBind(queue.Name, fmt.Sprintf("delay.%s", key), fmt.Sprintf("delay.%s", b.exchange), false, nil); err != nil {
-		return queue, fmt.Errorf("queue bind error: %s", err)
+	if err = channel.QueueBind(queue.Name, keyNew, exchangeNew, false, nil); err != nil {
+		return fmt.Errorf("queue bind error: %s", err)
 	}
-	return queue, nil
+	return nil
 }
 
 func (b *Broker) declare(channel *amqp.Channel, key string, job Jobber) (amqp.Queue, error) {
