@@ -16,6 +16,7 @@
       - [Message TTL](#message-ttl)
     - [使用 Queue TTL 设置过期时间](#%E4%BD%BF%E7%94%A8-queue-ttl-%E8%AE%BE%E7%BD%AE%E8%BF%87%E6%9C%9F%E6%97%B6%E9%97%B4)
     - [使用 Message TTL 设置过期时间](#%E4%BD%BF%E7%94%A8-message-ttl-%E8%AE%BE%E7%BD%AE%E8%BF%87%E6%9C%9F%E6%97%B6%E9%97%B4)
+    - [使用插件还是Queue TTL处理延迟队列呢？](#%E4%BD%BF%E7%94%A8%E6%8F%92%E4%BB%B6%E8%BF%98%E6%98%AFqueue-ttl%E5%A4%84%E7%90%86%E5%BB%B6%E8%BF%9F%E9%98%9F%E5%88%97%E5%91%A2)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -553,6 +554,28 @@ func (b *Broker) retry(ps *params, d amqp.Delivery) error {
 看下控制台的输出信息  
 
 <img src="/img/rabbitmq-test-delay-2.jpg"  alt="mq" align="center" />
+
+#### 使用插件还是Queue TTL处理延迟队列呢？
+
+rabbitmq-delayed-message-exchange 相关限制：
+
+- 1、该插件不支持延迟消息的复制，在 RabbitMQ 镜像集群模式下,如果其中的一个节点宕机，会存在消息不可用，只能等该节点重新启动，才可以恢复；   
+   
+- 2、目前该插件只支持在磁盘节点上使用，当前还不支持ram节点；  
+
+- 3. 不适合具有大量延迟消息的情况(例如:数千或数百万的延迟消息)。  
+
+> This plugin is considered to be experimental yet fairly stable and potential suitable for production use as long as the user is aware of its limitations.  
+> This plugin is not commercially supported by Pivotal at the moment but it doesn't mean that it will be abandoned or team RabbitMQ is not interested in improving it in the future. It is not, however, a high priority for our small team.
+>So, give it a try with your workload and decide for yourself.
+
+这是官方对此的解释，大概意思就是，这个还处于试验阶段，但还是相对稳定的。团队对此插件的更新优先级不是很高，所以如果我们遇到问题了，可能还需要自己去修改。   
+
+如果有能力更改这个插件，毕竟换个是erlang写的，那么就可以选择这个了。   
+
+`Queue TTL`相关限制  
+
+如果我们需要处理的延迟数据的时间类型很多，那么就需要创建很多的队列。当然，这个方案的优点就是透明，稳定，遇到问题容易排查。   
 
 ### 参考
 
