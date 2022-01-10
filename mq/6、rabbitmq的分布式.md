@@ -31,7 +31,7 @@ cluster 有两种模式，分别是普通模式和镜像模式
 
 cluster 普通模式中，所有节点中的元数据是一致的，RabbitMQ 中的元数据会被复制到每一个节点上。   
 
-<img src="/img/mq-rabbitmq-exchange.png"  alt="mq" align="center" />
+<img src="/img/mq-rabbitmq-cluster.png"  alt="mq" align="center" />
 
 ##### 镜像模式
 
