@@ -29,9 +29,22 @@ cluster 有两种模式，分别是普通模式和镜像模式
 
 ##### 普通模式
 
-cluster 普通模式中，所有节点中的元数据是一致的，RabbitMQ 中的元数据会被复制到每一个节点上。   
+cluster 普通模式(默认的集群模式)，所有节点中的元数据是一致的，RabbitMQ 中的元数据会被复制到每一个节点上。  
+
+队列里面的数据只会存在创建它的节点上，其他节点除了存储元数据，还存储了指向 Queue 的主节点(owner node)的指针。  
+
+集群中节点之间没有主从节点之分。      
 
 <img src="/img/mq-rabbitmq-cluster.png"  alt="mq" align="center" />
+
+举个栗子来说明下普通模式的消息传输：  
+
+假设我们 RabbitMQ 中有是三个节点，分别是 `node1,node2,node3`。如果队列 queue1 的连接创建发生在 node1 中，那么该队列的元数据会被同步到所有的节点中，但是 queue1 中的消息，只会在 node1 中。    
+
+- 如果一个消费者通过 node2 连接，然后来消费 queue1 中的消息?  
+
+RabbitMQ 会临时在 node1、node2 间进行消息传输，因为非 owner 节点除了存储元数据，还会存储指向 Queue 的主节点(owner node)的指针。RabbitMQ 把 node1 中的消息实体取出并经过 node2 发送给 consumer 。  
+
 
 ##### 镜像模式
 
@@ -51,5 +64,6 @@ cluster 普通模式中，所有节点中的元数据是一致的，RabbitMQ 中
 【RabbitMQ分布式集群架构和高可用性（HA）】http://chyufly.github.io/blog/2016/04/10/rabbitmq-cluster/   
 【RabbitMQ分布式部署方案简介】https://www.jianshu.com/p/c7a1a63b745d   
 【RabbitMQ实战指南】https://book.douban.com/subject/27591386/      
+【RabbitMQ两种集群模式配置管理】https://blog.csdn.net/fgf00/article/details/79558498    
 
 
