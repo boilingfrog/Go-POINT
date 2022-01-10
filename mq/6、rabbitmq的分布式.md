@@ -43,8 +43,13 @@ cluster 普通模式(默认的集群模式)，所有节点中的元数据是一�
 
 - 如果一个消费者通过 node2 连接，然后来消费 queue1 中的消息?  
 
-RabbitMQ 会临时在 node1、node2 间进行消息传输，因为非 owner 节点除了存储元数据，还会存储指向 Queue 的主节点(owner node)的指针。RabbitMQ 把 node1 中的消息实体取出并经过 node2 发送给 consumer 。  
+RabbitMQ 会临时在 node1、node2 间进行消息传输，因为非 owner 节点除了存储元数据，还会存储指向 Queue 的主节点(owner node)的指针。RabbitMQ 会根据这个指向，把 node1 中的消息实体取出并经过 node2 发送给 consumer 。 
 
+- 如果一个生产者通过 node2 连接，然后来向 queue1 中生产数据?  
+ 
+同理，RabbitMQ 会根据 node2 中的主节点(owner node)的指针，把消息转发送给 owner 节点 node1,最后插入的数据还是在 node1 中。  
+ 
+<img src="/img/mq-rabbitmq-cluster-data.png"  alt="mq" align="center" />
 
 ##### 镜像模式
 
