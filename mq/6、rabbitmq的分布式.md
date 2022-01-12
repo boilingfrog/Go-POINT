@@ -91,11 +91,19 @@ RabbitMQ 会临时在 node1、node2 间进行消息传输，因为非 owner 节�
 
 它的实现大致为:将所有的节点形成一个循环链表，每个节点都会监控位于自己左右两边的节点，当有节点新增时，相邻的节点保证当前广播的消息会复制到新的节点上 当有节点失效时，相邻的节点会接管以保证本次广播的消息会复制到所有的节点。  
 
-因为是一个循环链表，所以 master 发出去的消息最后也会返回到 master 中，master 如果收到了自己发出的操作明亮，这时候就可以确定命令已经同步到了所有的节点。  
+因为是一个循环链表，所以 master 发出去的消息最后也会返回到 master 中，master 如果收到了自己发出的操作命令，这时候就可以确定命令已经同步到了所有的节点。  
 
 <img src="/img/mq-rabbitmq-cluster-mirror.png"  alt="mq" align="center" />
 
 #### federation
+
+federation 插件的设计目标是使 RabbitMQ 在不同的 Broker 节点之间进行消息传递而无需建立集群。  
+
+看了定义还是很迷糊，来举举栗子吧   
+
+假设我们有一个 RabbitMQ 的集群，分别部署在不同的城市，那么我们假定分别是在北京，上海，广州。  
+
+<img src="/img/mq-rabbitmq-federation.png"  alt="mq" align="center" />
 
 #### shovel
 
