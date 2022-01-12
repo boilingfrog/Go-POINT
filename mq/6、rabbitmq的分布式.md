@@ -105,6 +105,14 @@ federation 插件的设计目标是使 RabbitMQ 在不同的 Broker 节点之间
 
 <img src="/img/mq-rabbitmq-federation.png"  alt="mq" align="center" />
 
+如果一个现在有一个业务 clientA，部署的机器在北京，然后连接到北京节点的 broke1 。然后网络连通性也很好，所以发送消息到 broke1 中 exchange1 中，能够很快的发送到，就算在开启了 `publisher confirm` 机制或者事务机制的情况下，也能快速确认信息，这种情况下是没有问题的。  
+
+如果一个现在有一个业务 clientB，部署的机器在上海，然后连接到北京节点的 broke1 。然后网络连通性不好，所以发送消息到 broke1 中 exchange1 中，因为网络不好，所以消息的确认有一定的延迟，这对于我们无疑使灾难，消息量大情况下，必然造成数据的阻塞，在开启了 `publisher confirm` 机制或者事务机制的情况下，这种情况将会更严重。     
+
+当然如果把 clientB ，部署在北京的机房中，这个问题就解决了，但是多地容灾就不能实现了。   
+
+针对这种情况如何解决呢，这时候 federation 就登场了。  
+
 #### shovel
 
 ### 参考
