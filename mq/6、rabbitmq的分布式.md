@@ -135,6 +135,20 @@ federation 插件的设计目标是使 RabbitMQ 在不同的 Broker 节点之间
 
 #### shovel
 
+连接方式与 federation 的连接方式类似，不过 shovel 工作更低一层。federation 是从一个交换器中转发消息到另一个交换器中，而 shovel 只是简单的从某个 broker 中的队列中消费数据，然后转发消息到另一个 broker 上的交换器中。   
+
+shovel 主要是：保证可靠连续地将 message 从某个 broker 上的 queue （作为源端）中取出，再将其 publish 到另外一个 broker 中的相应 exchange 上（作为目的端）。  
+
+作为源的 queue 和作为目的的 exchange 可以同时位于一个 broker 上，也可以位于不同 broker 上。Shovel 行为就像优秀的客户端应用程序能够负责连接源和目的地、负责消息的读写及负责连接失败问题的处理。   
+
+Shovel 的主要优势在于：  
+
+1、松祸合：Shovel 可以移动位于不同管理域中的 Broker (或者集群)上的消息，这些 Broker (或者集群〉可以包含不同的用户和 vhost ，也可以使用不同的 RabbitMQ 和 Erlang 版本；  
+
+2、支持广域网：Shovel 插件同样基于 AMQP 协议 Broker 之间进行通信 被设计成可以容忍时断时续的连通情形 井且能够保证消息的可靠性；  
+
+3、高度定制：当 Shove 成功连接后，可以对其进行配置以执行相关的 AMQP 命令。   
+
 ### 参考
 
 【RabbitMQ分布式集群架构和高可用性（HA）】http://chyufly.github.io/blog/2016/04/10/rabbitmq-cluster/   
