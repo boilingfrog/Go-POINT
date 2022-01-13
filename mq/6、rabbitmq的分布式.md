@@ -131,6 +131,7 @@ federation 插件的设计目标是使 RabbitMQ 在不同的 Broker 节点之间
 
 这样位于上海的业务 clientB 链接到上海的节点 broker2，然后发送消息到该节点中的 exchangeA，这个消息会通过`Federation link`，发送到北京节点 broker1 中的 exchangeA，所以可以减少网络连通性的问题。   
 
+<img src="/img/mq-rabbitmq-federation-link.png"  alt="mq" align="center" />
 
 #### shovel
 
