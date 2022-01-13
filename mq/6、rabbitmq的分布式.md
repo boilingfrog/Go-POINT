@@ -115,13 +115,21 @@ federation 插件的设计目标是使 RabbitMQ 在不同的 Broker 节点之间
 
 比如位于上海的业务 clientB，连接北京节点的 broker1。然后发送消息到 broker1 中的 exchangeA 中。这时候是存在网络连通性的问题的。   
 
-1、让上海的业务 clientB，连接上海的节点 broker2；  
+- 1、让上海的业务 clientB，连接上海的节点 broker2；  
 
-2、通过 Federation ，在北京节点的 broker1 和上海节点的 broker2 之间建立一条单向的 `Federation link`；  
+- 2、通过 Federation ，在北京节点的 broker1 和上海节点的 broker2 之间建立一条单向的 `Federation link`；  
 
-3、Federation 插件会在上海节点的 broker2 中创建一个同名的交换器 exchangeA (具体名字可配置，默认同名), 
+- 3、Federation 插件会在上海节点的 broker2 中创建一个同名的交换器 exchangeA (具体名字可配置，默认同名), 同时也会创建一个内部交换器，通过路由键 rkA ,将这两个交换器进行绑定，同时也会在 broker2 中创建一个
 
-4、
+    1、Federation 插件会在上海节点的 broker2 中创建一个同名的交换器 exchangeA (具体名字可配置，默认同名)；  
+    
+    2、Federation 插件会在上海节点的 broker2 中创建一个内部交换器，通过路由键 rkA ,将 exchangeA 和内部交换器进行绑定；   
+    
+    3、Federation 插件会在上海节点的 broker2 中创建队列，和内部交换器进行绑定，同时这个队列会和北京节点的 broker1 中的 exchangeA，建立一条 AMQP 链接，来实时的消费队列中的消息了；  
+
+- 4、经过上面的流程，就相当于在上海节点 broker2 中的 exchangeA 和北京节点 broker1 中的 exchangeA 建立了`Federation link`；  
+
+这样位于上海的业务 clientB 链接到上海的节点 broker2，然后发送消息到该节点中的 exchangeA，这个消息会通过`Federation link`，发送到北京节点 broker1 中的 exchangeA，所以可以减少网络连通性的问题。   
 
 
 #### shovel
