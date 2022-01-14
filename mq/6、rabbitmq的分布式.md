@@ -9,6 +9,10 @@
       - [镜像模式](#%E9%95%9C%E5%83%8F%E6%A8%A1%E5%BC%8F)
     - [federation](#federation)
     - [shovel](#shovel)
+  - [节点类型](#%E8%8A%82%E7%82%B9%E7%B1%BB%E5%9E%8B)
+    - [RAM node](#ram-node)
+    - [Disk node](#disk-node)
+  - [集群的搭建](#%E9%9B%86%E7%BE%A4%E7%9A%84%E6%90%AD%E5%BB%BA)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -26,6 +30,14 @@ RabbitMQ 中集群的部署方案有三种 cluster,federation,shovel。
 #### cluster
 
 cluster 有两种模式，分别是普通模式和镜像模式   
+
+cluster 的特点：    
+
+1、不支持跨网段，用于同一个网段内的局域网；  
+
+2、可以随意的动态增加或者减少；  
+
+3、节点之间需要运行相同版本的 RabbitMQ 和 Erlang 。     
 
 ##### 普通模式
 
@@ -143,11 +155,32 @@ shovel 主要是：保证可靠连续地将 message 从某个 broker 上的 queu
 
 Shovel 的主要优势在于：  
 
-1、松祸合：Shovel 可以移动位于不同管理域中的 Broker (或者集群)上的消息，这些 Broker (或者集群〉可以包含不同的用户和 vhost ，也可以使用不同的 RabbitMQ 和 Erlang 版本；  
+1、松藕合：Shovel 可以移动位于不同管理域中的 Broker (或者集群)上的消息，这些 Broker (或者集群〉可以包含不同的用户和 vhost ，也可以使用不同的 RabbitMQ 和 Erlang 版本；  
 
 2、支持广域网：Shovel 插件同样基于 AMQP 协议 Broker 之间进行通信 被设计成可以容忍时断时续的连通情形 井且能够保证消息的可靠性；  
 
 3、高度定制：当 Shove 成功连接后，可以对其进行配置以执行相关的 AMQP 命令。   
+
+### 节点类型
+
+#### RAM node  
+
+内存节点将所有的队列、交换机、绑定、用户、权限和 vhost 的元数据定义存储在内存中，好处是可以使得像交换机和队列声明等操作更加的快速。  
+
+#### Disk node  
+
+元数据存储在磁盘中，单节点系统只允许磁盘类型的节点，防止重启RabbitMQ的时候，丢失系统的配置信息  
+
+RabbitMQ要求在集群中至少有一个磁盘节点，所有其他节点可以是内存节点，当节点加入或者离开集群时，必须要将该变更通知到至少一个磁盘节点。  
+
+如果集群中唯一的一个磁盘节点崩溃的话，集群仍然可以保持运行，但是无法进行其他操作（增删改查），直到节点恢复。针对这种情况可以设置两个磁盘节点、至少保证一个是可用的，就能保证元数据的修改了。     
+
+### 集群的搭建 
+
+这是搭建一个普通的 cluster 模式    
+
+
+
 
 ### 参考
 
