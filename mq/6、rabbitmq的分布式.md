@@ -183,7 +183,7 @@ RabbitMQ要求在集群中至少有一个磁盘节点，所有其他节点可以
 
 ### 集群的搭建 
 
-这是搭建一个普通的 cluster 模式    
+这是搭建一个普通的 cluster 模式,使用 vagrant 构建三台 centos7 虚拟机，[vagrant构建centos虚拟环境](https://www.cnblogs.com/ricklz/p/14724934.html)       
 
 #### 1、局域网配置
 
@@ -232,6 +232,12 @@ $ scp /var/lib/rabbitmq/.erlang.cookie 192.168.56.112:/var/lib/rabbitmq
 $ scp /var/lib/rabbitmq/.erlang.cookie 192.168.56.113:/var/lib/rabbitmq
 ```
 
+复制`Erlang Cookie`之后重启 rabbitmq 
+
+```
+$ systemctl restart rabbitmq-server
+```
+
 #### 4、使用 -detached运行各节点
 
 ```
@@ -241,11 +247,29 @@ rabbitmq-server -detached
 
 #### 5、将节点加入到集群中
 
+在 `rabbitmqcluster2` 和 `rabbitmqcluster3` 中执行
+
 ```
 $ rabbitmqctl stop_app
-$ rabbitmqctl join_cluster rabbit@rabbitmqCluster
+$ rabbitmqctl join_cluster rabbit@rabbitmqcluster1
 $ rabbitmqctl start_app
 ```
+
+默认 rabbitmq 启动后是磁盘节点，所以可以看到集群启动之后，节点类型都是磁盘类型   
+
+<img src="/img/rabbitmq-cluster-disc.jpg"  alt="mq" align="center" />
+
+一般添加1到2个磁盘节点，别的节点节点为内存节点，这里我们将 `rabbitmqcluster3` 设置成磁盘节点，其他节点设置成内存节点   
+
+修改 `rabbitmqcluster1` 和 `rabbitmqcluster2` 节点类型为内存节点  
+
+```
+$ rabbitmqctl stop_app
+$ rabbitmqctl change_cluster_node_type ram
+$ rabbitmqctl start_app
+```
+
+<img src="/img/rabbitmq-cluster-ram.jpg"  alt="mq" align="center" />
 
 #### 6、查看集群状态
 
