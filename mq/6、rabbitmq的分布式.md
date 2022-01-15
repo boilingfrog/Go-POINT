@@ -13,6 +13,12 @@
     - [RAM node](#ram-node)
     - [Disk node](#disk-node)
   - [集群的搭建](#%E9%9B%86%E7%BE%A4%E7%9A%84%E6%90%AD%E5%BB%BA)
+    - [1、局域网配置](#1%E5%B1%80%E5%9F%9F%E7%BD%91%E9%85%8D%E7%BD%AE)
+    - [2、每台及其中安装 RabbitMQ](#2%E6%AF%8F%E5%8F%B0%E5%8F%8A%E5%85%B6%E4%B8%AD%E5%AE%89%E8%A3%85-rabbitmq)
+    - [3、设置不同节点间同一认证的Erlang Cookie](#3%E8%AE%BE%E7%BD%AE%E4%B8%8D%E5%90%8C%E8%8A%82%E7%82%B9%E9%97%B4%E5%90%8C%E4%B8%80%E8%AE%A4%E8%AF%81%E7%9A%84erlang-cookie)
+    - [4、使用 -detached运行各节点](#4%E4%BD%BF%E7%94%A8--detached%E8%BF%90%E8%A1%8C%E5%90%84%E8%8A%82%E7%82%B9)
+    - [5、将节点加入到集群中](#5%E5%B0%86%E8%8A%82%E7%82%B9%E5%8A%A0%E5%85%A5%E5%88%B0%E9%9B%86%E7%BE%A4%E4%B8%AD)
+    - [6、查看集群状态](#6%E6%9F%A5%E7%9C%8B%E9%9B%86%E7%BE%A4%E7%8A%B6%E6%80%81)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -179,8 +185,73 @@ RabbitMQ要求在集群中至少有一个磁盘节点，所有其他节点可以
 
 这是搭建一个普通的 cluster 模式    
 
+#### 1、局域网配置
 
+首先配置 hostname  
 
+```
+$ hostnamectl set-hostname rabbitmqcluster1 --static
+```
+
+重启即可查看最新的 hostname  
+
+```
+$ hostnamectl
+   Static hostname: rabbitmqcluster1
+         Icon name: computer-vm
+           Chassis: vm
+        Machine ID: e147b422673549a3b4fda77127bd4bcd
+           Boot ID: aa195e0427d74d079ea39f344719f59b
+    Virtualization: oracle
+  Operating System: CentOS Linux 7 (Core)
+       CPE OS Name: cpe:/o:centos:centos:7
+            Kernel: Linux 3.10.0-327.4.5.el7.x86_64
+      Architecture: x86-64
+```
+
+然后在三个节点的`/etc/hosts`下设置相同的配置信息  
+
+```
+192.168.56.111 rabbitmqcluster1
+192.168.56.112 rabbitmqcluster2
+192.168.56.113 rabbitmqcluster3
+```
+
+#### 2、每台及其中安装 RabbitMQ  
+
+具体的安装过程可参见[Centos7安装RabbitMQ最新版3.8.5，史上最简单实用安装步骤](https://blog.csdn.net/weixin_40584261/article/details/106826044)   
+
+#### 3、设置不同节点间同一认证的Erlang Cookie   
+
+每台机器中安装 RabbitMQ ,都会生成单独的`Erlang Cookie`。`Erlang Cookie`是保证不同节点可以相互通信的密钥，要保证集群中的不同节点相互通信必须共享相同的`Erlang Cookie`。具体的目录存放在`/var/lib/rabbitmq/.erlang.cookie`。  
+
+所以这里把 `rabbitmqcluster1` 中的`Erlang Cookie`，复制到其他机器中，覆盖原来的`Erlang Cookie`。  
+
+```
+$ scp /var/lib/rabbitmq/.erlang.cookie 192.168.56.112:/var/lib/rabbitmq
+$ scp /var/lib/rabbitmq/.erlang.cookie 192.168.56.113:/var/lib/rabbitmq
+```
+
+#### 4、使用 -detached运行各节点
+
+```
+rabbitmqctl stop
+rabbitmq-server -detached 
+```
+
+#### 5、将节点加入到集群中
+
+```
+$ rabbitmqctl stop_app
+$ rabbitmqctl join_cluster rabbit@rabbitmqCluster
+$ rabbitmqctl start_app
+```
+
+#### 6、查看集群状态
+
+```
+$ rabbitmqctl cluster_status
+```
 
 ### 参考
 
