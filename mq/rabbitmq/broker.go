@@ -2,6 +2,7 @@ package rabbitmq
 
 import (
 	"Go-POINT/mq/rabbitmq/help"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -292,4 +293,34 @@ func (b *Broker) declare(channel *amqp.Channel, key string, job Jobber) (amqp.Qu
 		return queue, fmt.Errorf("queue bind error: %s", err)
 	}
 	return queue, nil
+}
+
+func (b *Broker) Publish(key string, data interface{}) error {
+
+	var err error
+	channel, err := b.createChannel()
+	if err != nil {
+		return err
+	}
+	defer channel.Close()
+
+	var body []byte
+	if d, ok := data.(string); ok {
+		body = []byte(d)
+	} else {
+		body, err = json.Marshal(data)
+		if err != nil {
+			return err
+		}
+	}
+	if err := channel.ExchangeDeclare(b.exchange, b.exchangeType, true, false, false, false, nil); err != nil {
+		return err
+	}
+
+	return channel.Publish(b.exchange, key, false, false, amqp.Publishing{
+		Headers:      amqp.Table{},
+		ContentType:  "",
+		Body:         body,
+		DeliveryMode: amqp.Persistent,
+	})
 }
