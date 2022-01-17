@@ -175,7 +175,7 @@ Shovel 的主要优势在于：
 
 可以通过 Shove 将阻塞的消息，移交给另一个备份队列，等到本队列的消息没有队列了，然后将备份队列中的消息重新'铲'过来  
 
-<img src="/img/mq-rabbitmq-cluster-slove.png"  alt="mq" align="center" />
+<img src="/img/mq-rabbitmq-cluster-shove.png"  alt="mq" align="center" />
 
 ### 节点类型
 
