@@ -187,9 +187,15 @@ RabbitMQ要求在集群中至少有一个磁盘节点，所有其他节点可以
 
 这里构建了一个普通的 cluster 集群(见下文)，选择其中的一个内存节点，推送消息到该节点中，并且每条消息都选择持久化，来看下，这个节点的内存变化   
 
+来看下没有消息时，节点中的内存占用  
+
+<img src="/img/rabbitmq-cluster-data-empty.jpg"  alt="mq" align="center" />
+
+这里向`rabbitmqcluster1`推送了 397330 条消息，发现磁盘内存从原来的 6.1GiB 变成了 3.9GiB，而磁盘节点的内存没有变化   
+
 <img src="/img/rabbitmq-cluster-data.jpg"  alt="mq" align="center" />
 
-这里向`rabbitmqcluster1`推送了 397330 条消息，发现磁盘内存从原来的 6.2GiB 变成了 3.9GiB，而磁盘节点的内存没有变化   
+对于内存节点，如果消息进行了持久化的操作，持久化的消息会存储在该节点中的磁盘中，而不是磁盘节点的磁盘中。     
 
 ### 集群的搭建 
 

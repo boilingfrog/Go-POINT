@@ -9,3 +9,6 @@
 4、[mq中的常用的优化策略](https://github.com/boilingfrog/Go-POINT/blob/master/mq/4%E3%80%81mq%E4%B8%AD%E7%9A%84%E5%B8%B8%E7%94%A8%E7%9A%84%E4%BC%98%E5%8C%96%E7%AD%96%E7%95%A5.md)   
 
 5、[rabbitmq中的几个优化的点](https://github.com/boilingfrog/Go-POINT/blob/master/mq/5%E3%80%81rabbitmq%E7%9A%84%E4%BC%98%E5%8C%96.md)    
+
+6、[rabbitmq的分布式](https://github.com/boilingfrog/Go-POINT/blob/master/mq/6%E3%80%81rabbitmq%E7%9A%84%E5%88%86%E5%B8%83%E5%BC%8F.md)      
+
