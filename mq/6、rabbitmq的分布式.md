@@ -309,5 +309,6 @@ $ rabbitmqctl cluster_status
 【RabbitMQ分布式部署方案简介】https://www.jianshu.com/p/c7a1a63b745d   
 【RabbitMQ实战指南】https://book.douban.com/subject/27591386/      
 【RabbitMQ两种集群模式配置管理】https://blog.csdn.net/fgf00/article/details/79558498    
+【RabbitMQ 中的分布式模式，普通 cluster 模式的构建】https://boilingfrog.github.io/2022/01/07/rabbitmq%E4%B8%AD%E7%9A%84%E5%88%86%E5%B8%83%E5%BC%8F/  
 
 
