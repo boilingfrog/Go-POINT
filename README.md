@@ -16,6 +16,8 @@
 
 - [elasticsearch 的学习笔记](https://github.com/boilingfrog/Go-POINT/tree/master/elasticsearch)   
 
+- [Redis 的学习笔记](https://github.com/boilingfrog/Go-POINT/tree/master/redis)     
+
 ### 容器学习笔记
 
 - [docker 的学习笔记](https://github.com/boilingfrog/Go-POINT/tree/master/docker)   
