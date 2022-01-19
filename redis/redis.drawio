@@ -1,6 +1,67 @@
 <mxfile host="65bd71144e">
+    <diagram id="0slgYLueV5A-YZOQDIgs" name="choose-multiple">
+        <mxGraphModel dx="898" dy="680" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3300" pageHeight="4681" math="0" shadow="0">
+            <root>
+                <mxCell id="joW-rxKYUDlhL6ryJ4Ly-0"/>
+                <mxCell id="joW-rxKYUDlhL6ryJ4Ly-1" parent="joW-rxKYUDlhL6ryJ4Ly-0"/>
+                <mxCell id="hrdI-iU9j-UghueUI-Ib-0" value="" style="verticalLabelPosition=bottom;verticalAlign=top;html=1;shape=mxgraph.basic.rect;fillColor2=none;strokeWidth=1;size=20;indent=5;fillColor=none;dashed=1;" vertex="1" parent="joW-rxKYUDlhL6ryJ4Ly-1">
+                    <mxGeometry x="335" y="730" width="360" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="hrdI-iU9j-UghueUI-Ib-14" value="I/0多路复用程序" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fillWeight=4;hachureGap=8;hachureAngle=45;fillColor=#5FAD56;sketch=1;fontSize=16;" vertex="1" parent="joW-rxKYUDlhL6ryJ4Ly-1">
+                    <mxGeometry x="440" y="610" width="150" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="hrdI-iU9j-UghueUI-Ib-24" style="edgeStyle=orthogonalEdgeStyle;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;fontSize=15;" edge="1" parent="joW-rxKYUDlhL6ryJ4Ly-1" source="hrdI-iU9j-UghueUI-Ib-16" target="hrdI-iU9j-UghueUI-Ib-14">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="480" y="700"/>
+                            <mxPoint x="515" y="700"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="hrdI-iU9j-UghueUI-Ib-16" value="epoll" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fillWeight=2;hachureGap=8;hachureAngle=45;fillColor=#E9C46A;sketch=1;fontSize=16;fillStyle=dots;" vertex="1" parent="joW-rxKYUDlhL6ryJ4Ly-1">
+                    <mxGeometry x="445" y="740" width="70" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="hrdI-iU9j-UghueUI-Ib-25" style="edgeStyle=orthogonalEdgeStyle;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;fontSize=15;" edge="1" parent="joW-rxKYUDlhL6ryJ4Ly-1" source="hrdI-iU9j-UghueUI-Ib-17" target="hrdI-iU9j-UghueUI-Ib-14">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="560" y="700"/>
+                            <mxPoint x="515" y="700"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="hrdI-iU9j-UghueUI-Ib-17" value="evport" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fillWeight=2;hachureGap=8;hachureAngle=45;fillColor=#E9C46A;sketch=1;fontSize=16;fillStyle=dots;" vertex="1" parent="joW-rxKYUDlhL6ryJ4Ly-1">
+                    <mxGeometry x="525" y="740" width="70" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="hrdI-iU9j-UghueUI-Ib-23" style="edgeStyle=orthogonalEdgeStyle;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;fontSize=15;" edge="1" parent="joW-rxKYUDlhL6ryJ4Ly-1" source="hrdI-iU9j-UghueUI-Ib-18" target="hrdI-iU9j-UghueUI-Ib-14">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="645" y="700"/>
+                            <mxPoint x="515" y="700"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="hrdI-iU9j-UghueUI-Ib-18" value="kqueue" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fillWeight=2;hachureGap=8;hachureAngle=45;fillColor=#E9C46A;sketch=1;fontSize=16;fillStyle=dots;" vertex="1" parent="joW-rxKYUDlhL6ryJ4Ly-1">
+                    <mxGeometry x="610" y="740" width="70" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="hrdI-iU9j-UghueUI-Ib-22" style="edgeStyle=orthogonalEdgeStyle;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;fontSize=15;" edge="1" parent="joW-rxKYUDlhL6ryJ4Ly-1" source="hrdI-iU9j-UghueUI-Ib-21" target="hrdI-iU9j-UghueUI-Ib-14">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="380" y="700"/>
+                            <mxPoint x="515" y="700"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="hrdI-iU9j-UghueUI-Ib-21" value="select" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fillWeight=2;hachureGap=8;hachureAngle=45;fillColor=#E9C46A;sketch=1;fontSize=16;fillStyle=dots;" vertex="1" parent="joW-rxKYUDlhL6ryJ4Ly-1">
+                    <mxGeometry x="355" y="740" width="70" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="hrdI-iU9j-UghueUI-Ib-26" value="底层实现" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=15;" vertex="1" parent="joW-rxKYUDlhL6ryJ4Ly-1">
+                    <mxGeometry x="475" y="810" width="80" height="20" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
     <diagram id="d7wYdvXdE9nHoiHe4cBe" name="multiple">
-        <mxGraphModel dx="855" dy="546" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3300" pageHeight="4681" math="0" shadow="0">
+        <mxGraphModel dx="855" dy="648" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3300" pageHeight="4681" math="0" shadow="0">
             <root>
                 <mxCell id="nZqQR4pAr8_zJrDv7Qbp-0"/>
                 <mxCell id="nZqQR4pAr8_zJrDv7Qbp-1" parent="nZqQR4pAr8_zJrDv7Qbp-0"/>

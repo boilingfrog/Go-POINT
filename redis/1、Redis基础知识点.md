@@ -46,6 +46,12 @@ Linux 中的IO多路复用机制是指一个线程处理多个IO流。简单来�
 
 <img src="/img/redis-multiple.png"  alt="redis" align="center" />
 
+Redis 封装了 4 种多路复用程序，每种封装实现都提供了相同的 API 实现。编译时，会按照性能和系统平台，选择最佳的 IO 多路复用函数作为底层实现，选择顺序是，首先尝试选择 Solaries 中的 evport，如果没有，就尝试选择 Linux 中的 epoll，否则就选择大多 UNIX 系统都支持的 kqueue，这 3 个多路复用函数都直接使用系统内核内部的结构，可以服务数十万的文件描述符。  
+
+如果当前编译环境没有上述函数，就会选择 select 作为底层实现方案。select 方案的性能较差，事件发生时，会扫描全部监听的描述符，事件复杂度是 O(n)，并且只能同时服务有限个文件描述符，32 位机默认是 1024 个，64 位机默认是 2048 个，所以一般情况下，并不会选择 select 作为线上运行方案。  
+
+<img src="/img/redis-choose-multiple.png"  alt="redis" align="center" />
+
 #### 单线程处理IO请求性能瓶颈
 
 **1、后台 Redis 通过监听处理事件队列中的消息，来单线程的处理命令，如果一个命令的执行时间很久，就会影响整个 server 的性能；**  
