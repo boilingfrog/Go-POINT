@@ -3,9 +3,9 @@
 
 - [Redis 基础知识点](#redis-%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86%E7%82%B9)
   - [为什么 Redis 比较快](#%E4%B8%BA%E4%BB%80%E4%B9%88-redis-%E6%AF%94%E8%BE%83%E5%BF%AB)
-    - [为什么单线程还能很快](#%E4%B8%BA%E4%BB%80%E4%B9%88%E5%8D%95%E7%BA%BF%E7%A8%8B%E8%BF%98%E8%83%BD%E5%BE%88%E5%BF%AB)
-    - [基于多路复用的高性能I/O模型](#%E5%9F%BA%E4%BA%8E%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8%E7%9A%84%E9%AB%98%E6%80%A7%E8%83%BDio%E6%A8%A1%E5%9E%8B)
-    - [单线程处理IO请求性能瓶颈](#%E5%8D%95%E7%BA%BF%E7%A8%8B%E5%A4%84%E7%90%86io%E8%AF%B7%E6%B1%82%E6%80%A7%E8%83%BD%E7%93%B6%E9%A2%88)
+  - [为什么单线程还能很快](#%E4%B8%BA%E4%BB%80%E4%B9%88%E5%8D%95%E7%BA%BF%E7%A8%8B%E8%BF%98%E8%83%BD%E5%BE%88%E5%BF%AB)
+  - [基于多路复用的高性能I/O模型](#%E5%9F%BA%E4%BA%8E%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8%E7%9A%84%E9%AB%98%E6%80%A7%E8%83%BDio%E6%A8%A1%E5%9E%8B)
+  - [单线程处理IO请求性能瓶颈](#%E5%8D%95%E7%BA%BF%E7%A8%8B%E5%A4%84%E7%90%86io%E8%AF%B7%E6%B1%82%E6%80%A7%E8%83%BD%E7%93%B6%E9%A2%88)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -24,7 +24,15 @@ Redis 中的查询速度为什么那么快呢？
 
 4、Redis 中使用了多路复用。  
 
-#### 为什么单线程还能很快
+### Redis 中的数据结构
+
+#### 简单动态字符串
+
+Redis 中并没有使用 C 中 char 来表示字符串，而是引入了 简单动态字符串（Simple Dynamic Strings，SDS）来存储字符串和整型数据。那么 SDS 对比传统的字符串有什么优点呢？   
+
+
+
+### 为什么单线程还能很快
 
 Redis 是单线程，主要是指 Redis 的网络IO和键值对读写是由一个线程来完成的，这也是 Redis 对外提供键值存储服务的主要流程。   
 
@@ -32,7 +40,7 @@ Redis 是单线程，主要是指 Redis 的网络IO和键值对读写是由一�
 
 同时多线程也会引入同步原语来保护共享资源的并发访问，代码的可维护性和易读性将会下降。   
 
-#### 基于多路复用的高性能I/O模型
+### 基于多路复用的高性能I/O模型
 
 Linux 中的IO多路复用机制是指一个线程处理多个IO流。简单来说，在 Redis 只运行单线程的情况下，该机制允许内核中，同时存在多个监听套接字和已连接套接字。内核会一直监听这些套接字上的连接请求或数据请求。一旦有请求到达，就会交给 Redis 线程处理，这就实现了一个 Redis 线程处理多个IO流的效果。  
 
@@ -52,7 +60,7 @@ Redis 封装了 4 种多路复用程序，每种封装实现都提供了相同�
 
 <img src="/img/redis-choose-multiple.png"  alt="redis" align="center" />
 
-#### 单线程处理IO请求性能瓶颈
+### 单线程处理IO请求性能瓶颈
 
 **1、后台 Redis 通过监听处理事件队列中的消息，来单线程的处理命令，如果一个命令的执行时间很久，就会影响整个 server 的性能；**  
 
@@ -82,3 +90,5 @@ Redis 封装了 4 种多路复用程序，每种封装实现都提供了相同�
 
 【Redis核心技术与实战】https://time.geekbang.org/column/intro/100056701    
 【Redis6.0为什么引入多线程？】https://juejin.cn/post/7004683161695158309    
+【Redis设计与实现】https://book.douban.com/subject/25900156/  
+【redis---sds（简单动态字符串）详解】https://blog.csdn.net/u010765526/article/details/89065607    
