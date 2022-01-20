@@ -3,6 +3,8 @@
 
 - [Redis 基础知识点](#redis-%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86%E7%82%B9)
   - [为什么 Redis 比较快](#%E4%B8%BA%E4%BB%80%E4%B9%88-redis-%E6%AF%94%E8%BE%83%E5%BF%AB)
+  - [Redis 中的数据结构](#redis-%E4%B8%AD%E7%9A%84%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84)
+    - [简单动态字符串](#%E7%AE%80%E5%8D%95%E5%8A%A8%E6%80%81%E5%AD%97%E7%AC%A6%E4%B8%B2)
   - [为什么单线程还能很快](#%E4%B8%BA%E4%BB%80%E4%B9%88%E5%8D%95%E7%BA%BF%E7%A8%8B%E8%BF%98%E8%83%BD%E5%BE%88%E5%BF%AB)
   - [基于多路复用的高性能I/O模型](#%E5%9F%BA%E4%BA%8E%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8%E7%9A%84%E9%AB%98%E6%80%A7%E8%83%BDio%E6%A8%A1%E5%9E%8B)
   - [单线程处理IO请求性能瓶颈](#%E5%8D%95%E7%BA%BF%E7%A8%8B%E5%A4%84%E7%90%86io%E8%AF%B7%E6%B1%82%E6%80%A7%E8%83%BD%E7%93%B6%E9%A2%88)
@@ -30,6 +32,23 @@ Redis 中的查询速度为什么那么快呢？
 
 Redis 中并没有使用 C 中 char 来表示字符串，而是引入了 简单动态字符串（Simple Dynamic Strings，SDS）来存储字符串和整型数据。那么 SDS 对比传统的字符串有什么优点呢？   
 
+先来看下 SDS 的结构  
+
+```
+struct sdshdr {
+    // 记录 buf 数组中已使用字节的数量
+    // 等于 SDS 保存字符串的长度，不包含'\0'
+    long len;
+    
+    // 记录buf数组中未使用字节的数量
+    long free;
+    
+    // 字节数组，用于保存字符串
+    char buf[];
+};
+```
+
+<img src="/img/redis-sds.png"  alt="redis" align="center" />
 
 
 ### 为什么单线程还能很快
