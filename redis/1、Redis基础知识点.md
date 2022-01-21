@@ -166,6 +166,37 @@ typedef struct intset{
 
 <img src="/img/ziplist.png"  alt="redis" align="center" />
 
+**ziplist 的结构：**    
+
+1、zlbytes : 是压缩列表所占用的总内存字节数;   
+
+2、Zltail : 尾节点到起始位置的字节数，（目的是为了直接定位到尾节点，方便反向查询）;    
+
+3、Zllen : 总共包含的节点/内存块数，也就是压缩列表的节点数量;  
+
+4、Entry : 是 ziplist 保存的各个数据节点，这些数据点长度随意;  
+
+5、Zlend : 是一个魔数 255，用来标记压缩列表的结束。
+
+**压缩列表 ziplist 的存储节点 Entry 数据节点的结构：**      
+
+1、prevRawLen : 是前置节点的长度；  
+
+2、preRawLenSize : 编码 preRawLen 需要的字节数；  
+
+3、len : 当前节点的长度；  
+
+4、lensize : 编码 len 所需要的字节数；  
+
+5、encoding : 当前节点所用的编码类型；  
+
+6、entryData : 当前节点数据。
+
+由于 ziplist 是连续紧凑存储，没有冗余空间，所以插入新的元素需要 realloc 扩展内存，所以如果 ziplist 占用空间太大，realloc 重新分配内存和拷贝的开销就会很大，所以 ziplist 不适合存储过多元素，也不适合存储过大的字符串。    
+
+因此只有在元素数和 value 数都不大的时候，ziplist 才作为 hash 和 zset 的内部数据结构。其中 hash 使用 ziplist 作为内部数据结构的限制时，元素数默认不超过 512 个，value 值默认不超过 64 字节。可以通过修改配置来调整 `hash_max_ziplist_entries 、hash_max_ziplist_value` 这两个阀值的大小。    
+
+zset 有序集合，使用 ziplist 作为内部数据结构的限制元素数默认不超过 128 个，value 值默认不超过 64 字节。可以通过修改配置来调整 zset_max_ziplist_entries 和 zset_max_ziplist_value 这两个阀值的大小。    
 
 ### 为什么单线程还能很快
 
