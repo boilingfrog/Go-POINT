@@ -164,7 +164,7 @@ typedef struct intset{
 
 压缩列表(ziplist)的目的是为了节约内存，通过一片连续的内存空间来存储数据。这样看起来好像和数组很像，数组中每个节点的内存大小是一样的，对于压缩列表，每个节点的内存大小是不同的，每个节点可以保存字节数组或一个整数值。通过可变的节点内存大小，来节约内存的使用。   
 
-<img src="/img/ziplist.png"  alt="redis" align="center" />
+<img src="/img/redis-ziplist.png"  alt="redis" align="center" />
 
 **ziplist 的结构：**    
 
@@ -178,20 +178,6 @@ typedef struct intset{
 
 5、Zlend : 是一个魔数 255，用来标记压缩列表的结束。
 
-**压缩列表 ziplist 的存储节点 Entry 数据节点的结构：**      
-
-1、prevRawLen : 是前置节点的长度；  
-
-2、preRawLenSize : 编码 preRawLen 需要的字节数；  
-
-3、len : 当前节点的长度；  
-
-4、lensize : 编码 len 所需要的字节数；  
-
-5、encoding : 当前节点所用的编码类型；  
-
-6、entryData : 当前节点数据。
-
 由于 ziplist 是连续紧凑存储，没有冗余空间，所以插入新的元素需要 realloc 扩展内存，所以如果 ziplist 占用空间太大，realloc 重新分配内存和拷贝的开销就会很大，所以 ziplist 不适合存储过多元素，也不适合存储过大的字符串。    
 
 因此只有在元素数和 value 数都不大的时候，ziplist 才作为 hash 和 zset 的内部数据结构。其中 hash 使用 ziplist 作为内部数据结构的限制时，元素数默认不超过 512 个，value 值默认不超过 64 字节。可以通过修改配置来调整 `hash_max_ziplist_entries 、hash_max_ziplist_value` 这两个阀值的大小。    
@@ -202,7 +188,19 @@ zset 有序集合，使用 ziplist 作为内部数据结构的限制元素数默
 
 连锁更新  
 
+**压缩列表 ziplist 的存储节点 Entry 数据节点的结构：**      
 
+<img src="/img/redis-ziplist-entry.png.png"  alt="redis" align="center" />
+
+1、previous_entry_length : 记录了前一个节点的长度  
+
+- 如果前一节点的长度小于 254 字节， 那么 previous_entry_length 属性的长度为 1 字节： 前一节点的长度就保存在这一个字节里面；  
+
+- 如果前一节点的长度大于等于 254 字节， 那么 previous_entry_length 属性的长度为 5 字节： 其中属性的第一字节会被设置为 0xFE （十进制值 254）， 而之后的四个字节则用于保存前一节点的长度。  
+
+2、encoding : 记录了节点的 content 属性所保存数据的类型以及长度  
+
+3、content : 节点的 content 属性负责保存节点的值， 节点值可以是一个字节数组或者整数， 值的类型和长度由节点的 encoding 属性决定。    
 
 ### 为什么单线程还能很快
 
