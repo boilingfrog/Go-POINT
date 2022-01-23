@@ -190,17 +190,23 @@ zset 有序集合，使用 ziplist 作为内部数据结构的限制元素数默
 
 **压缩列表 ziplist 的存储节点 Entry 数据节点的结构：**      
 
-<img src="/img/redis-ziplist-entry.png.png"  alt="redis" align="center" />
+<img src="/img/redis-ziplist-entry.png"  alt="redis" align="center" />
 
 1、previous_entry_length : 记录了前一个节点的长度  
 
 - 如果前一节点的长度小于 254 字节， 那么 previous_entry_length 属性的长度为 1 字节： 前一节点的长度就保存在这一个字节里面；  
 
-- 如果前一节点的长度大于等于 254 字节， 那么 previous_entry_length 属性的长度为 5 字节： 其中属性的第一字节会被设置为 0xFE （十进制值 254）， 而之后的四个字节则用于保存前一节点的长度。  
+- 如果前一节点的长度大于等于 254 字节， 那么 previous_entry_length 属性的长度为 5 字节： 其中属性的第一字节会被设置为 0xFE （十进制值 254）， 而之后的四个字节则用于保存前一节点的长度。   
 
 2、encoding : 记录了节点的 content 属性所保存数据的类型以及长度  
 
-3、content : 节点的 content 属性负责保存节点的值， 节点值可以是一个字节数组或者整数， 值的类型和长度由节点的 encoding 属性决定。    
+3、content : 节点的 content 属性负责保存节点的值， 节点值可以是一个字节数组或者整数， 值的类型和长度由节点的 encoding 属性决定。  
+
+举个栗子：  
+
+如果压缩列表中每个节点的长度都是250，因为是小于254，所以每个节点中的 previous_entry_length 长度1字节就能够保存了。  
+
+这时候，在头部节点插入了一个新的元素 entryNew，然后长度是大于254，那么后面的节点中 entry1 的 previous_entry_length 长度为1字节，就不能保存了，需要扩容成5字节，然后 entry1 节点进行扩容了，变成了254，所以后面的节点也就需要一次扩容，这就引发一连串的扩容。也就是连锁更新。      
 
 ### 为什么单线程还能很快
 
