@@ -1,7 +1,7 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [Redis 基础知识点](#redis-%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86%E7%82%B9)
+- [Redis 如何保证高效的查询效率](#redis-%E5%A6%82%E4%BD%95%E4%BF%9D%E8%AF%81%E9%AB%98%E6%95%88%E7%9A%84%E6%9F%A5%E8%AF%A2%E6%95%88%E7%8E%87)
   - [为什么 Redis 比较快](#%E4%B8%BA%E4%BB%80%E4%B9%88-redis-%E6%AF%94%E8%BE%83%E5%BF%AB)
   - [Redis 中的数据结构](#redis-%E4%B8%AD%E7%9A%84%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84)
     - [1、简单动态字符串](#1%E7%AE%80%E5%8D%95%E5%8A%A8%E6%80%81%E5%AD%97%E7%AC%A6%E4%B8%B2)
@@ -19,11 +19,12 @@
   - [为什么单线程还能很快](#%E4%B8%BA%E4%BB%80%E4%B9%88%E5%8D%95%E7%BA%BF%E7%A8%8B%E8%BF%98%E8%83%BD%E5%BE%88%E5%BF%AB)
   - [基于多路复用的高性能I/O模型](#%E5%9F%BA%E4%BA%8E%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8%E7%9A%84%E9%AB%98%E6%80%A7%E8%83%BDio%E6%A8%A1%E5%9E%8B)
   - [单线程处理IO请求性能瓶颈](#%E5%8D%95%E7%BA%BF%E7%A8%8B%E5%A4%84%E7%90%86io%E8%AF%B7%E6%B1%82%E6%80%A7%E8%83%BD%E7%93%B6%E9%A2%88)
+  - [总结](#%E6%80%BB%E7%BB%93)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-## Redis 基础知识点
+## Redis 如何保证高效的查询效率
 
 ### 为什么 Redis 比较快 
 
@@ -290,7 +291,11 @@ Redis 封装了 4 种多路复用程序，每种封装实现都提供了相同�
 
 使用 Redis 时，几乎不存在 CPU 成为瓶颈的情况， Redis 主要受限于内存和网络。随着硬件水平的提升，Redis 中的性能慢慢主要出现在网络 IO 的读写上。虽然采用 IO 多路复用机制，但是读写客户端数据依旧是同步IO，只能单线程依次读取客户端的数据，无法利用到CPU多核。   
 
-为了提升网络 IO 的读写性能，Redis 在6.0推出了多线程，同过多线程的 IO 来处理网络请求。不过需要注意的是这里的多线程仅仅是针对客户端的读写是并行的，Redis 处理事件队列中的明亮，还是单线程处理的。   
+为了提升网络 IO 的读写性能，Redis 在6.0推出了多线程，同过多线程的 IO 来处理网络请求。不过需要注意的是这里的多线程仅仅是针对客户端的读写是并行的，Redis 处理事件队列中的命令，还是单线程处理的。   
+
+### 总结
+
+Redis 使用单线程，来避免共享资源的竞争，使用多路复用实现高性能的I/O，它是内存数据库，所有操作都在内存上完成，使用哈希表，跳表等一系列高效的数据结构，这些特性保证了 Redis 的高性能。   
 
 ### 参考
 
