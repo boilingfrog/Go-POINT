@@ -153,7 +153,7 @@ Redis 解决哈希冲突的方式，就是链式哈希。链式哈希也很容�
 
 对于一个单链表来讲，即便链表中存储的数据是有序的，如果我们要想在其中查找某个数据，也只能从头到尾遍历链表。这样查找效率就会很低，时间复杂度会很高，是O(n)。
 
-<img src="/img/redis-skiplist.png"  alt="redis" align="center" />
+<img src="/img/skip-table.jpeg"  alt="redis" align="center" />
 
 链表加多级索引的结构，就是跳表,跳表查询的时间复杂度是`O(logn)`。通过在每个节点中维持多个指向其他节点的指针，从而实现快速访问的节点的目的。 
 
