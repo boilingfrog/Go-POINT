@@ -1,0 +1,56 @@
+config = {
+  :disksize     => '10GB',
+  :box          => 'centos7.2',
+}
+
+nodes = [
+  {
+    :name => 'node1',
+    :cpus     => 1,
+    :memory   => 2048,
+    :box      => config[:box],
+    :ip       => '192.168.56.111'
+  },
+  {
+    :name => 'node2',
+    :cpus     => 1,
+    :memory   => 2048,
+    :box      => config[:box],
+    :ip       => '192.168.56.112'
+  },
+  {
+    :name => 'node3',
+    :cpus     => 1,
+    :memory   => 2048,
+    :box      => config[:box],
+    :ip       => '192.168.56.113'
+  },
+]
+
+Vagrant.configure("2") do |cfg|
+  nodes.each do |node|
+   cfg.vm.define node[:name] do |node_config|
+      node_config.vm.provider "virtualbox" do |v|
+        v.name = node[:name]
+        v.cpus = node[:cpus]
+        v.memory = node[:memory]
+      end
+      node_config.vm.provision "file", run: "always", source: "./CentOS-Base.repo", destination: "/tmp/CentOS-Base.repo"
+      node_config.vm.provision "file", run: "always", source: "./authorized_keys", destination: "/tmp/authorized_keys"
+      node_config.vm.provision "shell", run: "always", inline: <<-SHELL
+          mkdir -p /root/.ssh/ && cat /tmp/authorized_keys > /root/.ssh/authorized_keys
+     SHELL
+     node_config.vm.provision "shell", inline: <<-SHELL
+        yum install -y epel-release
+        sed -e 's!^mirrorlist=!#mirrorlist=!g' \
+                -e 's!^#baseurl=!baseurl=!g' \
+                -e 's!//download\.fedoraproject\.org/pub!//mirrors.tuna.tsinghua.edu.cn!g' \
+                -e 's!http://mirrors\.tuna!https://mirrors.tuna!g' \
+                -i /etc/yum.repos.d/epel.repo /etc/yum.repos.d/epel-testing.repo
+     SHELL
+     node_config.vm.host_name = node[:name]
+     node_config.vm.network "private_network", ip: node[:ip]
+     node_config.vm.box = "centos7.2"
+    end
+  end
+end
