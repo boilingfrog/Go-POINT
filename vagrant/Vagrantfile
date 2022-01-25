@@ -48,10 +48,8 @@ Vagrant.configure("2") do |cfg|
         v.cpus = node[:cpus]
         v.memory = node[:memory]
       end
-     node_config.vm.provision "file", run: "always", source: "./CentOS-Base.repo", destination: "/tmp/CentOS-Base.repo"
      node_config.vm.provision "file", run: "always", source: "./authorized_keys", destination: "/tmp/authorized_keys"
      node_config.vm.provision "shell", run: "always", inline: <<-SHELL
-          cat /tmp/CentOS-Base.repo > /etc/yum.repos.d/CentOS-Base.repo
           mkdir -p /root/.ssh/ && cat /tmp/authorized_keys > /root/.ssh/authorized_keys
      SHELL
 
