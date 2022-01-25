@@ -1,6 +1,8 @@
 ## Redis 知识点学习
 
+- [1、为什么Redis的查询比较快](https://github.com/boilingfrog/Go-POINT/blob/master/redis/1%E3%80%81Redis%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86%E7%82%B9.md)  
 
+   
 
 
 
