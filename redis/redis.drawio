@@ -1,17 +1,17 @@
 <mxfile host="65bd71144e">
     <diagram id="ZlNNVwcSNKi0tTDlnwsl" name="aof">
-        <mxGraphModel dx="898" dy="573" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3300" pageHeight="4681" math="0" shadow="0">
+        <mxGraphModel dx="898" dy="680" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3300" pageHeight="4681" math="0" shadow="0">
             <root>
                 <mxCell id="_hjz3OKLouB6XNm0Tv3v-0"/>
                 <mxCell id="_hjz3OKLouB6XNm0Tv3v-1" parent="_hjz3OKLouB6XNm0Tv3v-0"/>
                 <mxCell id="QkniN7DQdTVx86NrtnfB-1" value="客户端" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="_hjz3OKLouB6XNm0Tv3v-1">
-                    <mxGeometry x="205" y="440" width="50" height="20" as="geometry"/>
+                    <mxGeometry x="240" y="440" width="50" height="20" as="geometry"/>
                 </mxCell>
                 <mxCell id="QkniN7DQdTVx86NrtnfB-2" value="AOF 文件" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="_hjz3OKLouB6XNm0Tv3v-1">
                     <mxGeometry x="570" y="440" width="70" height="20" as="geometry"/>
                 </mxCell>
                 <mxCell id="QkniN7DQdTVx86NrtnfB-5" value="发送命令" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="_hjz3OKLouB6XNm0Tv3v-1">
-                    <mxGeometry x="300" y="380" width="60" height="20" as="geometry"/>
+                    <mxGeometry x="310" y="380" width="60" height="20" as="geometry"/>
                 </mxCell>
                 <mxCell id="sNmnjWZDHs_1EP9mmixE-4" style="edgeStyle=none;html=1;exitX=0.88;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;" edge="1" parent="_hjz3OKLouB6XNm0Tv3v-1" source="sNmnjWZDHs_1EP9mmixE-0">
                     <mxGeometry relative="1" as="geometry">
@@ -19,10 +19,10 @@
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="sNmnjWZDHs_1EP9mmixE-0" value="" style="fontColor=#0066CC;verticalAlign=top;verticalLabelPosition=bottom;labelPosition=center;align=center;html=1;outlineConnect=0;fillColor=#CCCCCC;strokeColor=#6881B3;gradientColor=none;gradientDirection=north;strokeWidth=2;shape=mxgraph.networks.server_storage;" vertex="1" parent="_hjz3OKLouB6XNm0Tv3v-1">
-                    <mxGeometry x="400" y="350" width="105" height="105" as="geometry"/>
+                    <mxGeometry x="380" y="348.75" width="105" height="105" as="geometry"/>
                 </mxCell>
                 <mxCell id="sNmnjWZDHs_1EP9mmixE-1" value="Redis 服务器" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="_hjz3OKLouB6XNm0Tv3v-1">
-                    <mxGeometry x="395" y="450" width="90" height="20" as="geometry"/>
+                    <mxGeometry x="380" y="453.75" width="90" height="20" as="geometry"/>
                 </mxCell>
                 <mxCell id="sNmnjWZDHs_1EP9mmixE-3" style="edgeStyle=none;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="_hjz3OKLouB6XNm0Tv3v-1" source="sNmnjWZDHs_1EP9mmixE-2" target="sNmnjWZDHs_1EP9mmixE-0">
                     <mxGeometry relative="1" as="geometry"/>
@@ -34,7 +34,7 @@
                     <mxGeometry x="570" y="367.5" width="60" height="67.5" as="geometry"/>
                 </mxCell>
                 <mxCell id="sNmnjWZDHs_1EP9mmixE-8" value="保存执行的&lt;br&gt;命令" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="_hjz3OKLouB6XNm0Tv3v-1">
-                    <mxGeometry x="490" y="367.5" width="80" height="30" as="geometry"/>
+                    <mxGeometry x="480" y="370" width="80" height="30" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>
