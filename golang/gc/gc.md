@@ -93,7 +93,7 @@ go中使用的是三色标记法
 
 三色标记规则：黑色不能指向白色对象。即黑色可以指向灰色，灰色可以指向白色。
 
-![gc](/img/gc_1.gif?raw=true)
+![gc](/img/golang/gc_1.gif?raw=true)
 
 #### 根对象
 
@@ -110,7 +110,7 @@ go中使用的是三色标记法
 
 在垃圾收集器开始工作时，程序中不存在任何的黑色对象，垃圾收集的根对象会被标记成灰色，垃圾收集器只会从灰色对象集合中取出对象开始扫描，当灰色集合中不存在任何对象时，标记阶段就会结束。  
 
-<img src="/img/gc_1.png" width = "600" height = "489" alt="gc" align="center" />
+<img src="/img/golang/gc_1.png" width = "600" height = "489" alt="gc" align="center" />
 
 三色标记垃圾收集器的工作原理很简单，我们可以将其归纳成以下几个步骤：  
 
@@ -124,7 +124,7 @@ go中使用的是三色标记法
 
 因为用户程序可能在标记执行的过程中修改对象的指针，所以三色标记清除算法本身是不可以并发或者增量执行的。   
 
-<img src="/img/gc_2.png" width = "356" height = "244" alt="gc" align="center" />
+<img src="/img/golang/gc_2.png" width = "356" height = "244" alt="gc" align="center" />
 
 比如上面所示的三色标记过程中，用户程序建立了从 A 对象到 D 对象的引用，但是因为程序中已经不存在灰色对象了，所以 D 对象会被垃圾收集器错误地回收。  
 
@@ -171,7 +171,7 @@ writePointer(slot, ptr):
 
 比如上面黑色A指向白色D，A在引用D的时候直接将D标记为灰色就可以了。   
 
-<img src="/img/gc_3.png" width = "500" height = "563" alt="gc" align="center" />
+<img src="/img/golang/gc_3.png" width = "500" height = "563" alt="gc" align="center" />
 
 1、垃圾回收器将A对象标记为黑色，然后A对象指向的B对象标记为灰色；  
 2、用户程序修改A对象的指针，将原本指向B对象的指针，指向了C对象，触发写屏障，根据强三色不变式，黑色不能直接指向白色，更改C对象的颜色为灰色；  
@@ -195,7 +195,7 @@ writePointer(slot, ptr):
 
 删除屏障也是拦截写操作的，但是是通过保护灰色对象到白色对象的路径不会断来实现的。也就是若三色不变式。     
 
-<img src="/img/gc_4.png" width = "500" height = "573" alt="gc" align="center" />
+<img src="/img/golang/gc_4.png" width = "500" height = "573" alt="gc" align="center" />
 
 1、首先将A对象标记成黑色，然后A对象指向的B对象标记为灰色；  
 2、程序将A对象指向C对象，触发删除写屏障，根据若三色不变式，因为C对象有灰色对象B的指向，所以不用做改变；  

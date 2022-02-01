@@ -77,7 +77,7 @@ Pod 是 Kubernetes 集群中能够被创建和管理的最小部署单元,它是
 为什么要共享存储呢?  
 pod的生命周期短暂的，随时可能被删除和重启，当一个pod被删除了，又启动一个pod，共享公共的存储卷，以至于信息不会丢失。
 
-![pod](/img/pod_6.png?raw=true)
+![pod](/img/k8s/pod_6.png?raw=true)
 
 ##### 共享网络
 同一个pod的多个容器，会被共同分配到同一个Host上共享网络栈。所以pod里面的容器通过localhost就可以通信了。当然这也从侧面
@@ -86,7 +86,7 @@ docker的4中网络模式，其中有一种模式是container模式，它能够�
 启动的其他容器纷纷使用container模式将网络环境绑定到这第一个容器上。这样这些容器的网络就连接到了一起，他们互相可以使用
 localhost这种方式进行网络通信。  
   
-<img src="../img/pod_2.png" width = "500" height = "300" alt="图片名称" align=center />
+<img src="../img/k8s/pod_2.png" width = "500" height = "300" alt="图片名称" align=center />
 
 如上图所示，这个 Pod 里有两个用户容器 A 和 B，还有一个infra container， 它也叫做pause容器，也被称为sandbox， 意思是沙箱，这个沙箱为其他
 容器提供共享的网络和文件挂载资源。 pod在启动的时候Infrastructure Container是第一个启动的容器，也叫做pause容器，也被称为sandbox。之后才启动

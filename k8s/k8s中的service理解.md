@@ -84,7 +84,7 @@ NAME             STATUS   ROLES    AGE   VERSION
 $ kubectl describe node nodeName
 ```
 
-![service](/img/service_11.jpg?raw=true)
+![service](/img/k8s/service_11.jpg?raw=true)
 
 #### Pod IP
 
@@ -116,7 +116,7 @@ nginx-ds-695685c55-rp5bb   1/1     Running   8          13d
 $ kubectl describe pod  go-app-5d584885d7-2gf2b
 ```
 
-![service](/img/service_12.jpg?raw=true)
+![service](/img/k8s/service_12.jpg?raw=true)
 
 #### Cluster IP
 
@@ -160,7 +160,7 @@ service地址和pod地址在不同网段，service地址为虚拟地址，不配
 
 Kubernetes在其所有节点上开放一个端口给外部访问（所有节点上都使用相同的端口号）， 并将传入的连接转发给作为Service服务对象的pod。这样我们的pod就可以被外部请求访问到。   
 
-![service](/img/service_16.jpg?raw=true)
+![service](/img/k8s/service_16.jpg?raw=true)
 
 ### Service几种类型
 
@@ -183,7 +183,7 @@ Kube-proxy是一个运行在每个节点上的go应用程序，支持三种工�
 
 该模式下，Kube-proxy充当了一个四层Load balancer的角色。由于kube-proxy运行在userspace中，在进行转发处理时会增加两次内核和用户空间之间的数据拷贝，效率较另外两种模式低一些；好处是当后端的Pod不可用时，kube-proxy可以重试其他Pod。  
 
-![service](/img/service_6.jpg?raw=true)
+![service](/img/k8s/service_6.jpg?raw=true)
 
 **iptables**
 
@@ -191,13 +191,13 @@ Kube-proxy是一个运行在每个节点上的go应用程序，支持三种工�
 
 该模式下Kube-proxy不承担四层代理的角色，只负责创建iptables规则。该模式的优点是较userspace模式效率更高，但不能提供灵活的LB策略，当后端Pod不可用时也无法进行重试。  
 
-![service](/img/service_7.jpg?raw=true)
+![service](/img/k8s/service_7.jpg?raw=true)
 
 **ipvs**
 
 该模式和iptables类似，kube-proxy监控Pod的变化并创建相应的ipvs rules。ipvs也是在kernel模式下通过netfilter实现的，但采用了hash table来存储规则，因此在规则较多的情况下，Ipvs相对iptables转发效率更高。除此以外，ipvs支持更多的LB算法。如果要设置kube-proxy为ipvs模式，必须在操作系统中安装IPVS内核模块。  
 
-![service](/img/service_8.png?raw=true)
+![service](/img/k8s/service_8.png?raw=true)
 
 #### NodePort
 
@@ -221,7 +221,7 @@ LoadBalancer解决了这些问题，通过将Service定义为LoadBalancer类型�
 - 通过仅向在线服务器发送请求来确保高可用性和可靠性
 - 提供根据需求指示添加或减少服务器的灵活性
 
-![service](/img/service_9.png?raw=true)
+![service](/img/k8s/service_9.png?raw=true)
 
 >备注：LoadBalancer类型需要云服务提供商的支持，Service中的定义只是在Kubernetes配置文件中提出了一个要求，即为该Service创建Load Balancer，至于如何创建则是由Google Cloud或Amazon Cloud等云服务商提供的，创建的Load Balancer的过程不在Kubernetes Cluster的管理范围中。
 

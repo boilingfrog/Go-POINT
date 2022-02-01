@@ -60,21 +60,21 @@ $ gitlab-runner register
 
 地址信息和token我们在下面可以看到
 
-<img src="/img/gitlab-runner_1.jpg" alt="gitlab-runner" align=center />
+<img src="/img/k8s/gitlab-runner_1.jpg" alt="gitlab-runner" align=center />
 
 根据提示输入信息,需要注意的是里面的`tags`就是我们编写`.gitlab-ci.yml`对应填写的tag
 
-<img src="/img/gitlab-runner_2.jpg" alt="gitlab-runner" align=center />
+<img src="/img/k8s/gitlab-runner_2.jpg" alt="gitlab-runner" align=center />
 
 之后在`gitlab`的`runner`中就可以看到我们注册的`gitlab-runner`了  
 
-<img src="/img/gitlab-runner_3.jpg" alt="gitlab-runner" align=center />
+<img src="/img/k8s/gitlab-runner_3.jpg" alt="gitlab-runner" align=center />
 
 ### 配置Variables
 
 在gitlab中可以配置我们gitlab-runner需要的变量，比如我们的docker-hub的密码，gitlab的账号密码等信息  
 
-<img src="/img/gitlab-runner_4.jpg" alt="gitlab-runner" align=center />
+<img src="/img/k8s/gitlab-runner_4.jpg" alt="gitlab-runner" align=center />
 
 ### 简单先来个测试
 
@@ -111,7 +111,7 @@ test:
     - golang-runner
 ```
 
-<img src="/img/gitlab-runner_5.jpg" alt="gitlab-runner" align=center />
+<img src="/img/k8s/gitlab-runner_5.jpg" alt="gitlab-runner" align=center />
 
 ### 开始构建
 
@@ -266,7 +266,7 @@ done
 
 最后附上deploy的截图
 
-<img src="/img/gitlab-runner_9.jpg" alt="gitlab-runner" align=center />
+<img src="/img/k8s/gitlab-runner_9.jpg" alt="gitlab-runner" align=center />
 
 对应的项目已经部署上去了
 

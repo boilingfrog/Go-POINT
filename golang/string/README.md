@@ -410,7 +410,7 @@ func main() {
 
 我们可以看到里面对应的是UTF-8的十进制数字。对于英文来讲UTF-8的码点，就是对应的ASCII。  
 
-<img src="/img/string_6.jpg"  alt="string" align="center" />
+<img src="/img/golang/string_6.jpg"  alt="string" align="center" />
 
 ```go
 // byte is an alias for uint8 and is equivalent to uint8 in all ways. It is

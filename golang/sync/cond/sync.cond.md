@@ -68,7 +68,7 @@ func main() {
 
 上面是个简单的例子，我们启动了60个线程，然后都被`cond`阻塞，主函数通过`Signal()`通知一个`goroutine`接触阻塞，通过`Broadcast()`通知所有被阻塞的全部解除阻塞。  
 
-<img src="/img/sync_cond_1.png" width = "446" height = "246" alt="sync_cond" align=center />
+<img src="/img/golang/sync_cond_1.png" width = "446" height = "246" alt="sync_cond" align=center />
 
 ### 看下源码
 
@@ -209,7 +209,7 @@ func notifyListWait(l *notifyList, t uint32) {
 
 3、然后调用`runtime_notifyListWait`把当前的`wait`封装成链表的一个节点，插入到`notifyList`维护的链表的尾部。  
 
-<img src="/img/sync_cond_wait.png" width = "299" height = "314" alt="sync_cond" align=center />
+<img src="/img/golang/sync_cond_wait.png" width = "299" height = "314" alt="sync_cond" align=center />
 
 #### Signal
 
@@ -286,7 +286,7 @@ func notifyListNotifyOne(l *notifyList) {
 
 4、掉起`goroutine`，完成通知。  
 
-<img src="/img/sync_cond_sin.png" width = "299" height = "413" alt="sync_cond" align=center />
+<img src="/img/golang/sync_cond_sin.png" width = "299" height = "413" alt="sync_cond" align=center />
 
 #### Broadcast
 
@@ -336,7 +336,7 @@ func notifyListNotifyAll(l *notifyList) {
 
 4、循环链表，一个个唤醒`goroutine`。  
 
-<img src="/img/sync_cond_bro.png" width = "408" height = "434" alt="sync_cond" align=center />
+<img src="/img/golang/sync_cond_bro.png" width = "408" height = "434" alt="sync_cond" align=center />
 
 ### 总结
 

@@ -16,7 +16,7 @@
 
 最近业务中，同事使用`map`来接收返回的结果，使用`waitGroup`来并发的处理执行返回的结果，结果上线之后，直接崩了。  
 
-<img src="/img/map_1.jpg"  alt="map" align=center />
+<img src="/img/golang/map_1.jpg"  alt="map" align=center />
 
 日志大量的数据库缓存池连接失败
 

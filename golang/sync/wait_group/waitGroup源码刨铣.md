@@ -174,7 +174,7 @@ $ go vet main.go
 
 `counter`位于高地址位，`waiter`位于地址位  
 
-<img src="/img/waitgroup_state1_1.png" width = "558" height = "237" alt="waitgroup" align=center />
+<img src="/img/golang/waitgroup_state1_1.png" width = "558" height = "237" alt="waitgroup" align=center />
 
 下面是state的代码  
 ```go
@@ -388,7 +388,7 @@ func (wg *WaitGroup) Wait() {
 
 7、整个`WaitGroup`执行成功。  
 
-<img src="/img/waitgroup_all_1.png" width = "501" height = "438" alt="waitgroup" align=center />
+<img src="/img/golang/waitgroup_all_1.png" width = "501" height = "438" alt="waitgroup" align=center />
 
 ### 总结
 

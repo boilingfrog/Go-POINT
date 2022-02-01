@@ -57,7 +57,7 @@ Flannel是作为一个二进制文件的方式部署在每个node上，主要实
 - Flannel 致力于给 Kubernetes 集群中的 Node 提供一个三层网络，它并不控制 Node 中的容器是如何进行组网的，仅仅关心流量如何在 Node 之间流转。  
 - 建立一个覆盖网络（overlay network），这个覆盖网络会将数据包原封不动的传递到目标容器中。覆盖网络是建立在另一个网络之上并由其基础设施支持的虚拟网络。覆盖网络通过将一个分组封装在另一个分组内来将网络服务与底层基础设施分离。在将封装的数据包转发到端点后，将其解封装；  
 
-![channel](/img/k8s_flannel_1.png?raw=true)
+![channel](/img/k8s/k8s_flannel_1.png?raw=true)
 
 我们来分析这个图片的流程  
 

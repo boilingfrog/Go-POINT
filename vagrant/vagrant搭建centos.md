@@ -133,7 +133,7 @@ $ ssh -p 2200 root@127.0.0.1
 
 上面启动的时候已经告诉我们地址和端口了
 
-<img src="/img/vagrant_1.jpg" alt="vagrant" align=center />
+<img src="/img/k8s/vagrant_1.jpg" alt="vagrant" align=center />
 
 ```
 账号:root  
@@ -229,7 +229,7 @@ vb1.vm.network "private_network", ip: "192.168.56.112"
 
 公有网络的`iP`网络要和主机的网段一致。  
 
-<img src="/img/vagrant_2.jpg" alt="vagrant" align=center />
+<img src="/img/k8s/vagrant_2.jpg" alt="vagrant" align=center />
 
 ```go
 vb.vm.network "public_network", ip: "192.168.44.111",bridge: "en0: Wi-Fi (AirPort)"

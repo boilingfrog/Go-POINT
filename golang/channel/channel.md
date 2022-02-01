@@ -173,7 +173,7 @@ chan内部实现了一个环形队列作为其缓冲区，队列的长度是创�
 
 看下实现的图片：  
 
-![channel](/img/channel.jpg?raw=true)
+![channel](/img/golang/channel.jpg?raw=true)
 
 - dataqsiz指示了队列长度为6，即可缓存6个元素；
 - buf指向队列的内存，队列中还剩余两个元素；
@@ -372,7 +372,7 @@ func chansend(c *hchan, ep unsafe.Pointer, block bool, callerpc uintptr) bool {
 
 简单的流程图如下：  
 
-![channel](/img/channel_send1.png?raw=true)
+![channel](/img/golang/channel_send1.png?raw=true)
 
 ### 读取数据
 
@@ -526,7 +526,7 @@ func chanrecv(c *hchan, ep unsafe.Pointer, block bool) (selected, received bool)
 
 梳理下流程图： 
 
-![channel](/img/channel_read.png?raw=true)
+![channel](/img/golang/channel_read.png?raw=true)
 
 ### channel的关闭
 

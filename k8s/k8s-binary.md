@@ -376,7 +376,7 @@ $ systemctl enable docker
 
 ### Flannel网络
 
-![channel](/img/k8s_flannel_1.png?raw=true)
+![channel](/img/k8s/k8s_flannel_1.png?raw=true)
 
 Flannel是部署在node中的，每个node都需要安装，master节点无需安装   
 
@@ -834,7 +834,7 @@ etcd-1               Healthy   {"health": "true"}
 
 认证大致工作流程如图所示：  
 
-![k8s](/img/k8s_apiserver_1.png?raw=true)
+![k8s](/img/k8s/k8s_apiserver_1.png?raw=true)
 
 将master节点将kubelet-bootstrap用户绑定到系统集群角色
 

@@ -102,6 +102,8 @@ OK
 AOF 重写也有一个缓冲区，当服务节接收到新的命令的是，如果在正在进行 AOF 重写，命令同样也会被发送到 AOF 缓冲区   
 
 <img src="/img/redis/redis-aof-rewrite.png"  alt="redis" align="center" />
+
+
  
 
 

@@ -42,7 +42,7 @@ Redis 中的查询速度为什么那么快呢？
 
 这里借用一张来自[Redis核心技术与实战] Redis 中数据结构和底层结构的对应图片  
 
-<img src="/img/redis-data.jpeg"  alt="redis" align="center" />
+<img src="/img/redis/redis-data.jpeg"  alt="redis" align="center" />
 
 #### 1、简单动态字符串
 
@@ -68,7 +68,7 @@ struct sdshdr {
 
 使用 SDS 存储了一个字符串 hello,对应的 len 就是5，同时也申请了5个为未使用的空间，所以 free 就是5。   
 
-<img src="/img/redis-sds.png"  alt="redis" align="center" />
+<img src="/img/redis/redis-sds.png"  alt="redis" align="center" />
 
 在 3.2 版本后，sds 会根据字符串实际的长度，选择不同的数据结构，以更好的提升内存效率。当前 sdshdr 结构分为 5 种子类型，分别为 `sdshdr5、sdshdr8、sdshdr16、sdshdr32、sdshdr64`。其中 sdshdr5 只有 flags 和 buf 字段，其他几种类型的 len 和 alloc 采用从 uint8_t 到 uint64_t 的不同类型，以节省内存空间。  
 
@@ -142,7 +142,7 @@ Redis 解决哈希冲突的方式，就是链式哈希。链式哈希也很容�
 
 3、释放哈希表1的空间。  
 
-<img src="/img/rehash.jpeg"  alt="redis" align="center" />
+<img src="/img/redis/rehash.jpeg"  alt="redis" align="center" />
 
 当然数据很大的话，一次迁移所有的数据，显然是不合理的，会造成Redis线程阻塞，无法服务其他请求。这里 Redis 使用的是渐进式 rehash。  
 
@@ -156,7 +156,7 @@ Redis 解决哈希冲突的方式，就是链式哈希。链式哈希也很容�
 
 对于一个单链表来讲，即便链表中存储的数据是有序的，如果我们要想在其中查找某个数据，也只能从头到尾遍历链表。这样查找效率就会很低，时间复杂度会很高，是O(n)。
 
-<img src="/img/skip-table.jpeg"  alt="redis" align="center" />
+<img src="/img/golang/skip-table.jpeg"  alt="redis" align="center" />
 
 链表加多级索引的结构，就是跳表,跳表查询的时间复杂度是`O(logn)`。通过在每个节点中维持多个指向其他节点的指针，从而实现快速访问的节点的目的。 
 
@@ -195,7 +195,7 @@ typedef struct intset{
 
 压缩列表(ziplist)的目的是为了节约内存，通过一片连续的内存空间来存储数据。这样看起来好像和数组很像，数组中每个节点的内存大小是一样的，对于压缩列表，每个节点的内存大小是不同的，每个节点可以保存字节数组或一个整数值。通过可变的节点内存大小，来节约内存的使用。   
 
-<img src="/img/redis-ziplist.png"  alt="redis" align="center" />
+<img src="/img/redis/redis-ziplist.png"  alt="redis" align="center" />
 
 **ziplist 的结构：**    
 
@@ -221,7 +221,7 @@ zset 有序集合，使用 ziplist 作为内部数据结构的限制元素数默
 
 **压缩列表 ziplist 的存储节点 Entry 数据节点的结构：**      
 
-<img src="/img/redis-ziplist-entry.png"  alt="redis" align="center" />
+<img src="/img/redis/redis-ziplist-entry.png"  alt="redis" align="center" />
 
 1、previous_entry_length : 记录了前一个节点的长度  
 
@@ -259,13 +259,13 @@ Linux 中的IO多路复用机制是指一个线程处理多个IO流。简单来�
 
 服务器会为执行不同任务的套接字关联不同的事件处理器，这些处理器是一个个的函数，他们定义了这个事件发生时，服务器应该执行的动作。  
 
-<img src="/img/redis-multiple.png"  alt="redis" align="center" />
+<img src="/img/redis/redis-multiple.png"  alt="redis" align="center" />
 
 Redis 封装了 4 种多路复用程序，每种封装实现都提供了相同的 API 实现。编译时，会按照性能和系统平台，选择最佳的 IO 多路复用函数作为底层实现，选择顺序是，首先尝试选择 Solaries 中的 evport，如果没有，就尝试选择 Linux 中的 epoll，否则就选择大多 UNIX 系统都支持的 kqueue，这 3 个多路复用函数都直接使用系统内核内部的结构，可以服务数十万的文件描述符。  
 
 如果当前编译环境没有上述函数，就会选择 select 作为底层实现方案。select 方案的性能较差，事件发生时，会扫描全部监听的描述符，事件复杂度是 O(n)，并且只能同时服务有限个文件描述符，32 位机默认是 1024 个，64 位机默认是 2048 个，所以一般情况下，并不会选择 select 作为线上运行方案。  
 
-<img src="/img/redis-choose-multiple.png"  alt="redis" align="center" />
+<img src="/img/redis/redis-choose-multiple.png"  alt="redis" align="center" />
 
 ### 单线程处理IO请求性能瓶颈
 

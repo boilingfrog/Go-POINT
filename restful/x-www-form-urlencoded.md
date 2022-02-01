@@ -19,10 +19,10 @@
 请求的时候，请求头中的Content-Type指明了主体部分的MIME类型，当类型是`application/x-www-form-urlencoded`  
 
 请求传递参数
-![post_form](/img/post_form_1.jpg?raw=true)
+![post_form](/img/k8s/post_form_1.jpg?raw=true)
 
 会发生encoded
-![post_form](/img/post_form.jpg?raw=true)
+![post_form](/img/k8s/post_form.jpg?raw=true)
 
 服务端正常接收就好了，不用再转译了  
 

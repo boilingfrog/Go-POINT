@@ -1095,7 +1095,7 @@ func main() {
 
 当然除了grpc可以调用之外，我们同样可以请求web服务进行调用  
 
-![grpc](/img/grpc_web.jpg?raw=true)
+![grpc](/img/commom/grpc_web.jpg?raw=true)
 
 demo地址`https://github.com/boilingfrog/daily-test/tree/master/gRPC/gRPC_web`  
 
@@ -1221,7 +1221,7 @@ demo地址：`https://github.com/boilingfrog/daily-test/tree/master/gRPC/gRPC_va
 
 grpc-gateway的工作原理如下图  
 
-![grpc](/img/grpc_gateway.png?raw=true)  
+![grpc](/img/commom/grpc_gateway.png?raw=true)  
 
 通过在Protobuf文件中添加路由相关的元信息，通过自定义的代码插件生成路由相关的处理代码，最终将REST请求转给更后端的gRPC服务处理。  
 

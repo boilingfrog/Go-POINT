@@ -76,11 +76,11 @@ Kafka中采用了分段和索引的方式来解决查找效率问题。Kafka 在
 
 借用[磁盘I/O那些事](https://tech.meituan.com/2017/05/19/about-desk-io.html)中的图片   
 
-<img src="/img/mq-kafka-index-cache.png"  alt="mq" align="center" />
+<img src="/img/mq/mq-kafka-index-cache.png"  alt="mq" align="center" />
 
 #### 利用 PageCache 加速消息读写
 
-<img src="/img/mq-kafka-cache.png"  alt="mq" align="center" />
+<img src="/img/mq/mq-kafka-cache.png"  alt="mq" align="center" />
 
 引入Cache层的目的是为了提高Linux操作系统对磁盘访问的性能。Cache层在内存中缓存了磁盘上的部分数据。当数据的请求到达时，如果在Cache中存在该数据且是最新的，则直接将数据传递给用户程序，免除了对底层磁盘的操作，提高了性能。  
 

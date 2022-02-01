@@ -53,7 +53,7 @@ cluster 普通模式(默认的集群模式)，所有节点中的元数据是一�
 
 集群中节点之间没有主从节点之分。      
 
-<img src="/img/mq-rabbitmq-cluster.png"  alt="mq" align="center" />
+<img src="/img/mq/mq-rabbitmq-cluster.png"  alt="mq" align="center" />
 
 举个栗子来说明下普通模式的消息传输：  
 
@@ -67,7 +67,7 @@ RabbitMQ 会临时在 node1、node2 间进行消息传输，因为非 owner 节�
  
 同理，RabbitMQ 会根据 node2 中的主节点(owner node)的指针，把消息转发送给 owner 节点 node1,最后插入的数据还是在 node1 中。  
  
-<img src="/img/mq-rabbitmq-cluster-data.png"  alt="mq" align="center" />  
+<img src="/img/mq/mq-rabbitmq-cluster-data.png"  alt="mq" align="center" />  
 
 同时对于队列的创建，要平均的落在每个节点上，如果只在一个节点上创建队列，所有的消费，最终都会落到这个节点上，会产生瓶颈。     
 
@@ -111,7 +111,7 @@ RabbitMQ 会临时在 node1、node2 间进行消息传输，因为非 owner 节�
 
 因为是一个循环链表，所以 master 发出去的消息最后也会返回到 master 中，master 如果收到了自己发出的操作命令，这时候就可以确定命令已经同步到了所有的节点。  
 
-<img src="/img/mq-rabbitmq-cluster-mirror.png"  alt="mq" align="center" />
+<img src="/img/mq/mq-rabbitmq-cluster-mirror.png"  alt="mq" align="center" />
 
 #### federation
 
@@ -121,7 +121,7 @@ federation 插件的设计目标是使 RabbitMQ 在不同的 Broker 节点之间
 
 假设我们有一个 RabbitMQ 的集群，分别部署在不同的城市，那么我们假定分别是在北京，上海，广州。  
 
-<img src="/img/mq-rabbitmq-federation.png"  alt="mq" align="center" />
+<img src="/img/mq/mq-rabbitmq-federation.png"  alt="mq" align="center" />
 
 如果一个现在有一个业务 clientA，部署的机器在北京，然后连接到北京节点的 broker1 。然后网络连通性也很好，发送消息到 broker1 中的 exchangeA 中，消息能够很快的发送到，就算在开启了 `publisher confirm` 机制或者事务机制的情况下，也能快速确认信息，这种情况下是没有问题的。  
 
@@ -149,7 +149,7 @@ federation 插件的设计目标是使 RabbitMQ 在不同的 Broker 节点之间
 
 这样位于上海的业务 clientB 链接到上海的节点 broker2，然后发送消息到该节点中的 exchangeA，这个消息会通过`Federation link`，发送到北京节点 broker1 中的 exchangeA，所以可以减少网络连通性的问题。   
 
-<img src="/img/mq-rabbitmq-federation-link.png"  alt="mq" align="center" />
+<img src="/img/mq/mq-rabbitmq-federation-link.png"  alt="mq" align="center" />
 
 #### shovel
 
@@ -175,7 +175,7 @@ Shovel 的主要优势在于：
 
 可以通过 Shove 将阻塞的消息，移交给另一个备份队列，等到本队列的消息没有阻塞了，然后将备份队列中的消息重新'铲'过来  
 
-<img src="/img/mq-rabbitmq-cluster-shove.png"  alt="mq" align="center" />
+<img src="/img/mq/mq-rabbitmq-cluster-shove.png"  alt="mq" align="center" />
 
 ### 节点类型
 
@@ -199,11 +199,11 @@ RabbitMQ要求在集群中至少有一个磁盘节点，所有其他节点可以
 
 来看下没有消息时，节点中的内存占用  
 
-<img src="/img/rabbitmq-cluster-data-empty.jpg"  alt="mq" align="center" />
+<img src="/img/mq/rabbitmq-cluster-data-empty.jpg"  alt="mq" align="center" />
 
 这里向`rabbitmqcluster1`推送了 397330 条消息，发现磁盘内存从原来的 6.1GiB 变成了 3.9GiB，而磁盘节点的内存没有变化   
 
-<img src="/img/rabbitmq-cluster-data.jpg"  alt="mq" align="center" />
+<img src="/img/mq/rabbitmq-cluster-data.jpg"  alt="mq" align="center" />
 
 对于内存节点，如果消息进行了持久化的操作，持久化的消息会存储在该节点中的磁盘中，而不是磁盘节点的磁盘中。     
 
@@ -283,7 +283,7 @@ $ rabbitmqctl start_app
 
 默认 rabbitmq 启动后是磁盘节点，所以可以看到集群启动之后，节点类型都是磁盘类型   
 
-<img src="/img/rabbitmq-cluster-disc.jpg"  alt="mq" align="center" />
+<img src="/img/mq/rabbitmq-cluster-disc.jpg"  alt="mq" align="center" />
 
 一般添加1到2个磁盘节点，别的节点节点为内存节点，这里我们将 `rabbitmqcluster3` 设置成磁盘节点，其他节点设置成内存节点   
 
@@ -295,7 +295,7 @@ $ rabbitmqctl change_cluster_node_type ram
 $ rabbitmqctl start_app
 ```
 
-<img src="/img/rabbitmq-cluster-ram.jpg"  alt="mq" align="center" />
+<img src="/img/mq/rabbitmq-cluster-ram.jpg"  alt="mq" align="center" />
 
 #### 6、查看集群状态
 

@@ -86,7 +86,7 @@ $ kubectl get svc|grep go-app
 
 通过nodeIP加端口可以直接访问
 
-![channel](/img/ingress_8.jpg?raw=true)
+![channel](/img/k8s/ingress_8.jpg?raw=true)
 
 ### 使用ingress
 
@@ -103,7 +103,7 @@ k8s 的服务(service)时说暴露了service的三种方式ClusterIP、NodePort�
 ingress可以简单理解为service的service，他通过独立的ingress对象来制定请求转发的规则，把请求路由到一个或多个service中。这样就把服务与请求
 规则解耦了，可以从业务维度统一考虑业务的暴露，而不用为每个service单独考虑。  
 
-![channel](/img/ingress_7.jpg?raw=true)
+![channel](/img/k8s/ingress_7.jpg?raw=true)
 
 ingress根据不同的请求规则，会把请求发送到不同的service。  
 
@@ -212,7 +212,7 @@ $ sudo vi /etc/hosts
 
 访问结果
 
-![channel](/img/ingress_6.png?raw=true)
+![channel](/img/k8s/ingress_6.png?raw=true)
 
 ### 参考
 【K8S 安装 Ingress】https://www.jianshu.com/p/4370c00c040a  

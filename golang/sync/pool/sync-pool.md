@@ -355,7 +355,7 @@ func (p *Pool) Get() interface{} {
 }
 ```
 
-<img src="/img/pool_1.png" width = "537" height = "990" alt="gc" align="center" />
+<img src="/img/k8s/pool_1.png" width = "537" height = "990" alt="gc" align="center" />
 
 #### pin
 
@@ -538,7 +538,7 @@ func (p *Pool) Put(x interface{}) {
 
 总结下这个过程  
 
-<img src="/img/pool_2.png" width = "353" height = "465" alt="gc" align="center" />
+<img src="/img/k8s/pool_2.png" width = "353" height = "465" alt="gc" align="center" />
 
 其实还有点疑惑，上面的victim是如何被保留下来的呢？来分析下pool的垃圾回收机制  
 

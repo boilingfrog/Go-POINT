@@ -222,7 +222,7 @@ RabbitMQ 中本身并没有直接提供延迟队列的功能，可以通过死�
 
 来看下流程图：    
 
-<img src="/img/mq-dead-queue.png"  alt="mq" align="center" />
+<img src="/img/mq/mq-dead-queue.png"  alt="mq" align="center" />
 
 具体的处理步骤：  
 
@@ -417,21 +417,21 @@ func HandleMessage(data []byte) error {
 
 启动之后，先来看下消息队列的面板     
 
-<img src="/img/rabbitmq-test-1.jpg"  alt="mq" align="center" />
+<img src="/img/mq/rabbitmq-test-1.jpg"  alt="mq" align="center" />
 
 通过控制面板 push 一条数据
 
-<img src="/img/rabbitmq-test-2.jpg"  alt="mq" align="center" />
+<img src="/img/mq/rabbitmq-test-2.jpg"  alt="mq" align="center" />
 
 可以看到消息在延迟队列中的执行过程，并且没有再用的延迟队列，会在设置的过期时间点，进行自动删除   
 
-<img src="/img/rabbitmq-test-3.jpg"  alt="mq" align="center" />
+<img src="/img/mq/rabbitmq-test-3.jpg"  alt="mq" align="center" />
 
-<img src="/img/rabbitmq-test-4.jpg"  alt="mq" align="center" />
+<img src="/img/mq/rabbitmq-test-4.jpg"  alt="mq" align="center" />
 
 最后可以看到这条消息被反复重试了多次
 
-<img src="/img/rabbitmq-test-5.jpg"  alt="mq" align="center" />
+<img src="/img/mq/rabbitmq-test-5.jpg"  alt="mq" align="center" />
 
 最后达到我们设置的重试上限之后，消息就会被丢失了    
 
@@ -547,13 +547,13 @@ func (b *Broker) retry(ps *params, d amqp.Delivery) error {
 
 通过面板推送一条消息之后，看下运行的结果    
 
-<img src="/img/rabbitmq-test-delay-1.jpg"  alt="mq" align="center" />
+<img src="/img/mq/rabbitmq-test-delay-1.jpg"  alt="mq" align="center" />
 
 其中`dead-test-delayed-message_queue`就是我们正常业务消费的队列，`delay.dead-test-delayed-message_queue`存储的是需要进行延迟消费的消息，这里面的消息，会在过期的时候通过死信的机制，被重推到`dead-test-delayed-message_queue`中   
 
 看下控制台的输出信息  
 
-<img src="/img/rabbitmq-test-delay-2.jpg"  alt="mq" align="center" />
+<img src="/img/mq/rabbitmq-test-delay-2.jpg"  alt="mq" align="center" />
 
 #### 使用插件还是Queue TTL处理延迟队列呢？
 

@@ -112,7 +112,7 @@ type Mutex struct {
 
 - starvationThresholdNs 值为1e6纳秒，也就是1毫秒，当等待队列中队首g`oroutine`等待时间超过`starvationThresholdNs`也就是1毫秒，mutex进入饥饿模式。  
 
-<img src="/img/sync_mutex_state.png" width = "568" height = "173" alt="sync_mutex" align=center />
+<img src="/img/golang/sync_mutex_state.png" width = "568" height = "173" alt="sync_mutex" align=center />
 
 #### Lock
 
@@ -367,7 +367,7 @@ again:
 
 11、饥饿状态，当前`goroutine`来设置锁，等待者减一，如果当前`goroutine`是队列中最后一个`goroutine`设置饥饿状态为正常，拿到锁结束`Lock`。  
 
-<img src="/img/sync_mutex_lock.png" width = "625" height = "846" alt="mutex" align=center />
+<img src="/img/golang/sync_mutex_lock.png" width = "625" height = "846" alt="mutex" align=center />
 
 ##### 位运算
 
@@ -511,7 +511,7 @@ func (m *Mutex) unlockSlow(new int32) {
 
 3、饥饿模式下，通过信号量，唤醒在饥饿模式下面`Lock`操作下队列中第一个`goroutine`。  
 
-<img src="/img/sync_mutex_unlock.png" width = "331" height = "486" alt="mutex" align=center />
+<img src="/img/golang/sync_mutex_unlock.png" width = "331" height = "486" alt="mutex" align=center />
 
 ### 总结
 

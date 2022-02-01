@@ -43,7 +43,7 @@ go在Go 1.7 标准库引入context，主要用来在goroutine之间传递上下�
 
 同时context也可以传值，不过这个很少用到，使用`context.Context`进行传递参数请求的所有参数一种非常差的设计，比较常见的使用场景是传递请求对应用户的认证令牌以及用于进行分布式追踪的请求ID。  
 
-<img src="/img/context_2.jpg"  alt="context" align="center" />
+<img src="/img/golang/context_2.jpg"  alt="context" align="center" />
 
 ### context底层设计
 
@@ -79,7 +79,7 @@ type Context interface {
 
 ### 几种context
 
-<img src="/img/context_1.jpg"  alt="context" align="center" />
+<img src="/img/golang/context_1.jpg"  alt="context" align="center" />
 
 #### emptyCtx
 

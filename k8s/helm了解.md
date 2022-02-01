@@ -49,7 +49,7 @@
 
 - 4、造成多租户场景下架构设计与实现复杂。    
 
-<img src="/img/helm_1.jpeg" alt="helm" align=center />
+<img src="/img/k8s/helm_1.jpeg" alt="helm" align=center />
 
 所以对应v3版本的helm直接安装客户端就好了。   
 
@@ -163,7 +163,7 @@ nginx   LoadBalancer   xx.xxx.xxx.xx   <pending>     80:31998/TCP   6m3s
 
 访问结果
 
-<img src="/img/helm_2.jpg" alt="helm" align=center />
+<img src="/img/k8s/helm_2.jpg" alt="helm" align=center />
 
 ### helm的核心概念
 
@@ -370,11 +370,11 @@ NOTES:
   echo http://$NODE_IP:$NODE_PORT
 ```
 
-<img src="/img/helm_6.jpg" alt="helm" align=center />
+<img src="/img/k8s/helm_6.jpg" alt="helm" align=center />
 
 查看下结果
 
-<img src="/img/helm_7.jpg" alt="helm" align=center />
+<img src="/img/k8s/helm_7.jpg" alt="helm" align=center />
 
 可以看到已经成功部署了
 

@@ -110,7 +110,7 @@ func (rw *RWMutex) RLock() {
 
 3、通过`runtime_SemacquireMutex`将当前的读锁加入到阻塞队列的尾部。  
 
-<img src="/img/sync_rwmutex_rlock.png" width = "474" height = "524" alt="RWMutex" align=center />
+<img src="/img/golang/sync_rwmutex_rlock.png" width = "474" height = "524" alt="RWMutex" align=center />
 
 #### RUnlock
 
@@ -163,7 +163,7 @@ func (rw *RWMutex) rUnlockSlow(r int32) {
 
 3、通过信号量唤醒队列中第一个被阻塞的写锁。  
 
-<img src="/img/sync_rwmutex_runlock.png" width = "486" height = "513" alt="RWMutex" align=center />
+<img src="/img/golang/sync_rwmutex_runlock.png" width = "486" height = "513" alt="RWMutex" align=center />
 
 ### 写锁
 
@@ -213,7 +213,7 @@ func (rw *RWMutex) Lock() {
 
 3、如果有读锁，阻塞当前写锁；  
 
-<img src="/img/sync_rwmutex_lock.png" width = "329" height = "598" alt="RWMutex" align=center />
+<img src="/img/golang/sync_rwmutex_lock.png" width = "329" height = "598" alt="RWMutex" align=center />
 
 #### Unlock
 
@@ -256,7 +256,7 @@ func (rw *RWMutex) Unlock() {
 
 2、然后判断后面是否有读锁被阻塞，如果有一一唤醒。   
 
-<img src="/img/sync_rwmutex_unlock.png" width = "414" height = "488" alt="RWMutex" align=center />
+<img src="/img/golang/sync_rwmutex_unlock.png" width = "414" height = "488" alt="RWMutex" align=center />
 
 ### 问题要论
 
