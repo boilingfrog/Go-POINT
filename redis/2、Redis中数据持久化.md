@@ -103,6 +103,13 @@ AOF 重写也有一个缓冲区，当服务节接收到新的命令的是，如�
 
 <img src="/img/redis/redis-aof-rewrite.png"  alt="redis" align="center" />
 
+子进程执行 AOF 重写的过程  
+
+1、接收并处理客户端发送的命令；  
+
+2、将执行后的命令写入到 AOF 缓冲区；  
+
+3、将执行后的命令也写入到 AOF 重写缓冲区；   
 
  
 ### RDB 持久化
