@@ -136,6 +136,13 @@ RDB(Redis database)：实现方式是将存在 Redis 内存中的数据写入到
 
 <img src="/img/redis/redis-rdb.png"  alt="redis" align="center" />
 
+#### RDB 如何做内存快照
+
+Redis 中对于如何备份数据到 RDB 文件中，提供了两种方式  
+
+1、save: 在主线程中执行，不过这种会阻塞 Redis 服务进程；  
+
+2、bgsave: 主线程会 fork 出一个子进程来负责处理 RDB 文件的创建，不会阻塞主线程的命令操作，这也是 Redis 中 RDB 文件生成的默认配置；  
 
 ### 参考
 
