@@ -9,7 +9,9 @@
     - [AOF 的潜在风险](#aof-%E7%9A%84%E6%BD%9C%E5%9C%A8%E9%A3%8E%E9%99%A9)
     - [AOF 文件的写入和同步](#aof-%E6%96%87%E4%BB%B6%E7%9A%84%E5%86%99%E5%85%A5%E5%92%8C%E5%90%8C%E6%AD%A5)
     - [AOF 文件重写机制](#aof-%E6%96%87%E4%BB%B6%E9%87%8D%E5%86%99%E6%9C%BA%E5%88%B6)
+    - [AOF 的数据还原](#aof-%E7%9A%84%E6%95%B0%E6%8D%AE%E8%BF%98%E5%8E%9F)
   - [RDB 持久化](#rdb-%E6%8C%81%E4%B9%85%E5%8C%96)
+    - [什么是 RDB 持久化](#%E4%BB%80%E4%B9%88%E6%98%AF-rdb-%E6%8C%81%E4%B9%85%E5%8C%96)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -83,7 +85,6 @@ OK
 OK
 
 # 重写后就是
-
 192.168.56.118:6379> set name "xiaoli"
 ```
 
@@ -120,13 +121,26 @@ AOF 缓冲区和  AOF 重写缓冲区中的内容会被定期的同步到 AOF �
 2、将 AOF 重写文件替换旧的 AOF 文件；  
 
 通过 AOF 的重写操作，新的 AOF 文件不断的替换旧的 AOF 文件，这样就能控制 AOF 文件的大小  
+
+#### AOF 的数据还原
+
+AOF 文件包了重建数据库索引锁需要的全部命令，所以只需要读入并重新执行一遍 AOF 文件中保存的命令，即可还原服务关闭之前数据库的状态。  
  
 ### RDB 持久化
+
+#### 什么是 RDB 持久化  
+
+RDB(Redis database)：实现方式是将存在 Redis 内存中的数据写入到 RDB 文件中保存到磁盘上从而实现持久化的。  
+
+和 AOF 不同的是 RDB 保存的是数据而不是操作，在进行数据恢复的时候，直接把 RDB 的文件读入到内存，即可完成数据恢复。  
+
+<img src="/img/redis/redis-rdb.png"  alt="redis" align="center" />
 
 
 ### 参考
 
 【Redis核心技术与实战】https://time.geekbang.org/column/intro/100056701    
 【Redis设计与实现】https://book.douban.com/subject/25900156/  
+【过期键与持久化】https://segmentfault.com/a/1190000017526315    
 
                                  
