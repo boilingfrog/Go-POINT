@@ -15,7 +15,7 @@
     - [RDB 如何做内存快照](#rdb-%E5%A6%82%E4%BD%95%E5%81%9A%E5%86%85%E5%AD%98%E5%BF%AB%E7%85%A7)
     - [快照时发生数据修改](#%E5%BF%AB%E7%85%A7%E6%97%B6%E5%8F%91%E7%94%9F%E6%95%B0%E6%8D%AE%E4%BF%AE%E6%94%B9)
     - [多久做一次快照](#%E5%A4%9A%E4%B9%85%E5%81%9A%E4%B8%80%E6%AC%A1%E5%BF%AB%E7%85%A7)
-  - [过期的建如何持久化](#%E8%BF%87%E6%9C%9F%E7%9A%84%E5%BB%BA%E5%A6%82%E4%BD%95%E6%8C%81%E4%B9%85%E5%8C%96)
+  - [过期的键如何持久化](#%E8%BF%87%E6%9C%9F%E7%9A%84%E9%94%AE%E5%A6%82%E4%BD%95%E6%8C%81%E4%B9%85%E5%8C%96)
   - [总结](#%E6%80%BB%E7%BB%93)
   - [参考](#%E5%8F%82%E8%80%83)
 
@@ -218,7 +218,7 @@ Redis 4.0中提出了一个混合使用 AOF 日志和内存快照的方法。简
 
 <img src="/img/redis/redis-aof-and-rdb.png"  alt="redis" align="center" />
 
-### 过期的建如何持久化
+### 过期的键如何持久化
 
 在生成 RDB 文件的过程中，如果一个键已经过期，那么其不会被保存到 RDB 文件中。在载入 RDB 的时候，要分两种情况：  
 
@@ -263,5 +263,6 @@ Redis 4.0中提出了一个混合使用 AOF 日志和内存快照的方法，如
 【Redis核心技术与实战】https://time.geekbang.org/column/intro/100056701    
 【Redis设计与实现】https://book.douban.com/subject/25900156/  
 【过期键与持久化】https://segmentfault.com/a/1190000017526315    
+【Redis 中如何保证数据不丢失，持久化是如何进行的】https://boilingfrog.github.io/2022/01/07/redis%E4%B8%AD%E5%A6%82%E4%BD%95%E8%BF%9B%E8%A1%8C%E6%95%B0%E6%8D%AE%E6%8C%81%E4%B9%85%E5%8C%96/    
 
                                  
