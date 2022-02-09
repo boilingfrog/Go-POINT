@@ -12,6 +12,8 @@
     - [AOF 的数据还原](#aof-%E7%9A%84%E6%95%B0%E6%8D%AE%E8%BF%98%E5%8E%9F)
   - [RDB 持久化](#rdb-%E6%8C%81%E4%B9%85%E5%8C%96)
     - [什么是 RDB 持久化](#%E4%BB%80%E4%B9%88%E6%98%AF-rdb-%E6%8C%81%E4%B9%85%E5%8C%96)
+    - [RDB 如何做内存快照](#rdb-%E5%A6%82%E4%BD%95%E5%81%9A%E5%86%85%E5%AD%98%E5%BF%AB%E7%85%A7)
+    - [快照时发生数据修改](#%E5%BF%AB%E7%85%A7%E6%97%B6%E5%8F%91%E7%94%9F%E6%95%B0%E6%8D%AE%E4%BF%AE%E6%94%B9)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -140,9 +142,56 @@ RDB(Redis database)：实现方式是将存在 Redis 内存中的数据写入到
 
 Redis 中对于如何备份数据到 RDB 文件中，提供了两种方式  
 
-1、save: 在主线程中执行，不过这种会阻塞 Redis 服务进程；  
+- 1、save: 在主线程中执行，不过这种会阻塞 Redis 服务进程；  
 
-2、bgsave: 主线程会 fork 出一个子进程来负责处理 RDB 文件的创建，不会阻塞主线程的命令操作，这也是 Redis 中 RDB 文件生成的默认配置；  
+- 2、bgsave: 主线程会 fork 出一个子进程来负责处理 RDB 文件的创建，不会阻塞主线程的命令操作，这也是 Redis 中 RDB 文件生成的默认配置；  
+
+对于 save 和 bgsave 这两种快照方式，服务端是禁止这两种方式同时执行的，防止产生竞争条件。  
+
+Redis 中可以使用 save 选项，来配置服务端执行 BGSAVE 命令的间隔时间   
+
+```
+#
+# Save the DB on disk:
+#
+#   save <seconds> <changes>
+#
+#   Will save the DB if both the given number of seconds and the given
+#   number of write operations against the DB occurred.
+#
+#   In the example below the behaviour will be to save:
+#   after 900 sec (15 min) if at least 1 key changed
+#   after 300 sec (5 min) if at least 10 keys changed
+#   after 60 sec if at least 10000 keys changed
+#
+#   Note: you can disable saving completely by commenting out all "save" lines.
+#
+#   It is also possible to remove all the previously configured save
+#   points by adding a save directive with a single empty string argument
+#   like in the following example:
+#
+#   save ""
+
+save 900 1
+save 300 10
+save 60 10000
+```
+
+`save 900 1` 就是服务端在900秒，读数据进行了至少1次修改，就会触发一次 BGSAVE 命令  
+
+`save 300 10` 就是服务端在300秒，读数据进行了至少10次修改，就会触发一次 BGSAVE 命令    
+
+#### 快照时发生数据修改
+
+举个栗子🌰：我们在t时刻开始对内存数据内进行快照，假定目前有 2GB 的数据需要同步，磁盘写入的速度是 `0.1GB/s` 那么，快照的时间就是 20s，那就是在 `t+20s` 完成快照。     
+
+如果在 t+6s 的时候修改一个还没有写入磁盘的内存数据 test 为 test-hello。那么就会破坏快照的完整性了，因为 t 时刻备份的数据已经被修改了。当然是希望在备份期间数据不能被修改。  
+
+如果不能被修改，就意味这在快照期间不能对数据进行修改操作，就如上面的栗子，快照需要进行20s,期间不允许处理数据更新操作，这显然也是不合理的。  
+
+这里需要聊一下 bgsave 是可以避免阻塞，不过需要注意的是避免阻塞和正常读写操作是有区别的。避免阻塞主线程确实没有阻塞可以处理读操作，但是为了保护快照的完整性，是不能修改快照期间的数据的。  
+
+
 
 ### 参考
 
