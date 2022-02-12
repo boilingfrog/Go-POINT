@@ -87,6 +87,8 @@
 
 当从服务器连上主服务器之后，从服务把自己当前的 slave_repl_offset 告诉主服务器，然后主服务器根据自己的 master_repl_offset 计算出和从服务器之间的差距，然后把两者之间相差的命令操作同步给从服务器。  
 
+<img src="/img/redis/repl_backlog_buffer.jpeg"  alt="redis" align="center" />
+
 ### 参考
 
 【Redis核心技术与实战】https://time.geekbang.org/column/intro/100056701    
