@@ -81,11 +81,15 @@
 
 当主从库断连后，主库会把断连期间收到的写操作命令，写入`replication buffer`(主要用于主从数据传输的数据缓冲)，同时也会把这些操作命令也写入`repl_backlog_buffer`这个缓冲区。  
 
+
+
 `repl_backlog_buffer`是一个环形缓冲区，主库会记录自己写到的位置，从库则会记录自己已经读到的位置。  
 
 刚开始主服务器的 master_repl_offset 和从服务器 slave_repl_offset 的位置是一样的，在从库因为网络原因断连之后，随着主库写操作的进行，主从偏移量会出现偏移距离。  
 
 当从服务器连上主服务器之后，从服务把自己当前的 slave_repl_offset 告诉主服务器，然后主服务器根据自己的 master_repl_offset 计算出和从服务器之间的差距，然后把两者之间相差的命令操作同步给从服务器。  
+
+这里借用[Redis核心技术与实战的一张图片](https://time.geekbang.org/column/intro/100056701)
 
 <img src="/img/redis/repl_backlog_buffer.jpeg"  alt="redis" align="center" />
 
