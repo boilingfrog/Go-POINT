@@ -103,11 +103,15 @@ Redis 主库接收到写操作的命令，首先会写入`replication buffer`(�
 
 举个栗子  
 
-比如这里从服务器1，刚刚由于网络云因断连了一会，然后又恢复了连接，这时候，可能缺失了一段时间的命令同步，`repl_backlog_buffer`的增量同步机制就登场了。  
+比如这里从服务器1，刚刚由于网络原因断连了一会，然后又恢复了连接，这时候，可能缺失了一段时间的命令同步，`repl_backlog_buffer`的增量同步机制就登场了。  
 
-`repl_backlog_buffer`把根据主服务器的 master_repl_offset 和从服务器 slave_repl_offset ，计算出两者命令之间的差距，之后把差距同步给`replication buffer`，然后发送到从服务器中。  
+`repl_backlog_buffer`会根据主服务器的`master_repl_offset`和从服务器`slave_repl_offset`，计算出两者命令之间的差距，之后把差距同步给`replication buffer`，然后发送到从服务器中。  
 
 <img src="/img/redis/redis-repl_backlog.png"  alt="redis" align="center" />
+
+`repl_backlog_buffer`中的缓冲空间要设置的大一点，如果从库读的过慢，因为是环形缓冲区，可能出现命令覆盖的情况，如果出现命令被覆盖了，从库的增量同步就无法进行了，这时候会进行一次全量的复制。  
+
+缓冲空间的计算公式是：缓冲空间大小 = 主库写入命令速度 * 操作大小 - 主从库间网络传输命令速度 * 操作大小。在实际应用中，考虑到可能存在一些突发的请求压力，我们通常需要把这个缓冲空间扩大一倍，即 repl_backlog_size = 缓冲空间大小 * 2，这也就是 repl_backlog_size 的最终值。   
 
 ### 参考
 
