@@ -79,9 +79,9 @@
 
 在 2.8 版本之后，引入了增量同步的技术，这里主要是用到了 `repl_backlog_buffer`  
 
-当主从库断连后，主库会把断连期间收到的写操作命令，写入`replication buffer`(主要用于主从数据传输的数据缓冲)，同时也会把这些操作命令也写入`repl_backlog_buffer`这个缓冲区。  
+Redis 主库接收到写操作的命令，首先会写入`replication buffer`(主要用于主从数据传输的数据缓冲)，同时也会把这些操作命令也写入`repl_backlog_buffer`这个缓冲区。  
 
-
+<img src="/img/redis/redis-repl_backlog_buffer.png"  alt="redis" align="center" />
 
 `repl_backlog_buffer`是一个环形缓冲区，主库会记录自己写到的位置，从库则会记录自己已经读到的位置。  
 
