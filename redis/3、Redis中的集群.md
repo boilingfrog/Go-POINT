@@ -83,15 +83,31 @@ Redis 主库接收到写操作的命令，首先会写入`replication buffer`(�
 
 <img src="/img/redis/redis-repl_backlog_buffer.png"  alt="redis" align="center" />
 
+这里可能有点疑惑，已经有了`replication buffer`为什么还多余引入一个`repl_backlog_buffer`呢？  
+
+- `repl_backlog_buffer`一个主库对应一个`repl_backlog_buffer`，也就是所有从库对应一个`repl_backlog_buffer`，从库自己记录自己的`slave_repl_offset`。  
+
+- `replication buffer`用于主节点与各个从节点间，数据的批量交互。主节点为各个从节点分别创建一个缓冲区，由于各个从节点的处理能力差异，各个缓冲区数据可能不同。  
+
+如何主从断开了，当然对应的`replication buffer`也就没有了。这时候就依赖`repl_backlog_buffer`进行数据的增量同步了。  
+
 `repl_backlog_buffer`是一个环形缓冲区，主库会记录自己写到的位置，从库则会记录自己已经读到的位置。  
+
+这里借用[Redis核心技术与实战的一张图片](https://time.geekbang.org/column/intro/100056701)
+
+<img src="/img/redis/repl_backlog_buffer.jpeg"  alt="redis" align="center" />
 
 刚开始主服务器的 master_repl_offset 和从服务器 slave_repl_offset 的位置是一样的，在从库因为网络原因断连之后，随着主库写操作的进行，主从偏移量会出现偏移距离。  
 
 当从服务器连上主服务器之后，从服务把自己当前的 slave_repl_offset 告诉主服务器，然后主服务器根据自己的 master_repl_offset 计算出和从服务器之间的差距，然后把两者之间相差的命令操作同步给从服务器。  
 
-这里借用[Redis核心技术与实战的一张图片](https://time.geekbang.org/column/intro/100056701)
+举个栗子  
 
-<img src="/img/redis/repl_backlog_buffer.jpeg"  alt="redis" align="center" />
+比如这里从服务器1，刚刚由于网络云因断连了一会，然后又恢复了连接，这时候，可能缺失了一段时间的命令同步，`repl_backlog_buffer`的增量同步机制就登场了。  
+
+`repl_backlog_buffer`把根据主服务器的 master_repl_offset 和从服务器 slave_repl_offset ，计算出两者命令之间的差距，之后把差距同步给`replication buffer`，然后发送到从服务器中。  
+
+<img src="/img/redis/redis-repl_backlog.png"  alt="redis" align="center" />
 
 ### 参考
 
