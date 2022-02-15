@@ -11,6 +11,8 @@
     - [什么是哨兵机制](#%E4%BB%80%E4%B9%88%E6%98%AF%E5%93%A8%E5%85%B5%E6%9C%BA%E5%88%B6)
     - [如何保证选主的准确性](#%E5%A6%82%E4%BD%95%E4%BF%9D%E8%AF%81%E9%80%89%E4%B8%BB%E7%9A%84%E5%87%86%E7%A1%AE%E6%80%A7)
     - [如何选主](#%E5%A6%82%E4%BD%95%E9%80%89%E4%B8%BB)
+      - [选举主节点的规则](#%E9%80%89%E4%B8%BE%E4%B8%BB%E8%8A%82%E7%82%B9%E7%9A%84%E8%A7%84%E5%88%99)
+      - [哨兵进行主节点切换](#%E5%93%A8%E5%85%B5%E8%BF%9B%E8%A1%8C%E4%B8%BB%E8%8A%82%E7%82%B9%E5%88%87%E6%8D%A2)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -123,7 +125,7 @@ Redis 主库接收到写操作的命令，首先会写入`replication buffer`(�
 
 #### 什么是哨兵机制
 
-sentinel(哨兵机制)：是 Redis 中集群的高可用方式，哨兵节点是特殊的 Redis 服务，比提供读写，主要来监控 Redis 中的实例节点，如果监控服务的主服务器下线了，会从所属的从服务器中重新选出一个主服务器，代替原来的主服务器提供服务。  
+sentinel(哨兵机制)：是 Redis 中集群的高可用方式，哨兵节点是特殊的 Redis 服务，不提供读写，主要来监控 Redis 中的实例节点，如果监控服务的主服务器下线了，会从所属的从服务器中重新选出一个主服务器，代替原来的主服务器提供服务。  
 
 <img src="/img/redis/redis-sentinel.png"  alt="redis" align="center" />
 
@@ -153,7 +155,7 @@ sentinel(哨兵机制)：是 Redis 中集群的高可用方式，哨兵节点是
 
 #### 如何选主
 
-先来看下选举主节点的规则  
+##### 选举主节点的规则  
 
 1、过滤掉已经下线的服务器；  
 
@@ -165,13 +167,54 @@ sentinel(哨兵机制)：是 Redis 中集群的高可用方式，哨兵节点是
 
 如果几台从服务器优先级相同，然后根据复制偏移量从大到小进行排序，如果还有相同偏移量的从服务器，然后按照 runID 从小到大进行排序，直到选出一台从服务器。    
 
+##### 哨兵进行主节点切换
 
+当根据选举规则，选出了可以成为主节点的从节点，如何进行切换呢？  
 
+在哨兵中也是有一个 Leader 节点的，当一个从库被选举出来，从库的切换是由 Leader 节点完成的。  
 
+Leader 节点的选举用的是 Raft 算法，关于什么是 Raft 算法可参考[Raft一致性算法原理](https://github.com/maemual/raft-zh_cn/blob/master/raft-zh_cn.md)      
 
+在raft算法中，在任何时刻，每一个服务器节点都处于这三个状态之一：  
+
+- Follower:追随者，跟随者都是被动的：他们不会发送任何请求，只是简单的响应来自领导者或者候选人的请求；  
+
+- Candidate:候选人，如果跟随者接收不到消息，那么他就会变成候选人并发起一次选举，获得集群中大多数选票的候选人将成为领导者。  
+
+- Leader:领导者，系统中只有一个领导人并且其他的节点全部都是跟随者，领导人处理所有的客户端请求（如果一个客户端和跟随者联系，那么跟随者会把请求重定向给领导人）  
+
+哨兵节点的选举总结起来就是：  
+
+1、每个做主观下线的sentinel节点向其他sentinel节点发送命令，要求将自己设置为领导者；  
+
+2、接收到的sentinel可以同意或者拒绝；  
+
+3、如果该sentinel节点发现自己的票数已经超过半数并且超过了 quorum，quorum 用来配置判断主节点宕机的哨兵节点数。简单点讲就是：如果 Sentinel 集群有 quorum 个哨兵认为 master 宕机了，就「客观」的认为 master 宕机了；  
+
+4、如果此过程选举出了多个领导者，那么将等待一段时重新进行选举；  
+
+这里借用一张来自[Redis核心技术与实战](https://time.geekbang.org/column/intro/100056701)的示例图，来展示哨兵节点的选举  
+
+假定这里一共有 3个哨兵、quorum 为2，来看下选举的过程  
+
+<img src="/img/redis/sentinel-leader.jpeg"  alt="redis" align="center" />
+
+**故障转移**    
+
+- sentinel的领导者从从机中选举出合适的丛机进行故障转移；  
+
+- 对选取的从节点进行`slave of no one`命令，（这个命令用来让从机关闭复制功能，并从从机变为主机）；  
+
+- 更新应用程序端的链接到新的主节点；  
+
+- 对其他从节点变更 master 为新的节点；  
+
+- 修复原来的 master 并将其设置为新的 master 的从机。    
 
 
 ### 参考
 
 【Redis核心技术与实战】https://time.geekbang.org/column/intro/100056701    
 【Redis设计与实现】https://book.douban.com/subject/25900156/  
+【估算两台服务器同时故障的概率】https://disksing.com/failure-probability-analysis/    
+【Redis中哨兵选举算法】https://blog.csdn.net/weixin_44324174/article/details/108939199    
