@@ -321,9 +321,17 @@ ASK 就表示当前正在迁移中，客户端需要访问数据，就还需要�
 
 ##### Hot Key 如何解决
 
+知道了`Hot Key`如何来应对呢  
 
+- 1、对 Key 进行分散处理；  
 
+举个栗子    
 
+有一个热 Key 名字为`Hot-key-test`,可以将其分散为`Hot-key-test1`，`Hot-key-test2`...然后将这些 Key 分散到多个实例节点中，当客户端进行访问的时候，随机一个下标的 Key 进行访问，这样就能将流量分散到不同的实例中了，避免了一个缓存节点的过载。  
+
+通过添加后缀或者前缀，把一个 hotkey 的数量变成 redis 实例个数 N 的倍数 M，从而由访问一个`redis key`变成访问`N * M`个redis key。 `N*M`个`redis key`经过分片分布到不同的实例上，将访问量均摊到所有实例。  
+
+- 2、
 
 
 
@@ -334,3 +342,4 @@ ASK 就表示当前正在迁移中，客户端需要访问数据，就还需要�
 【Redis设计与实现】https://book.douban.com/subject/25900156/  
 【估算两台服务器同时故障的概率】https://disksing.com/failure-probability-analysis/    
 【Redis中哨兵选举算法】https://blog.csdn.net/weixin_44324174/article/details/108939199    
+【如何处理redis集群中hot key和big key】https://juejin.cn/post/6844903743083773959    
