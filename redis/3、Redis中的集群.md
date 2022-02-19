@@ -19,6 +19,8 @@
       - [1、如果数据已经迁移完了](#1%E5%A6%82%E6%9E%9C%E6%95%B0%E6%8D%AE%E5%B7%B2%E7%BB%8F%E8%BF%81%E7%A7%BB%E5%AE%8C%E4%BA%86)
       - [2、数据迁移了一半](#2%E6%95%B0%E6%8D%AE%E8%BF%81%E7%A7%BB%E4%BA%86%E4%B8%80%E5%8D%8A)
     - [避免 Hot Key](#%E9%81%BF%E5%85%8D-hot-key)
+      - [如何发现 Hot Key](#%E5%A6%82%E4%BD%95%E5%8F%91%E7%8E%B0-hot-key)
+      - [Hot Key 如何解决](#hot-key-%E5%A6%82%E4%BD%95%E8%A7%A3%E5%86%B3)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -319,6 +321,30 @@ ASK 就表示当前正在迁移中，客户端需要访问数据，就还需要�
 
 2、秒杀活动中的，性价比高的商品；  
 
+##### 如何发现 Hot Key
+
+- 1、提现预判；  
+
+根据业务经验进行提前预判；  
+
+- 2、在客户端进行收集；  
+
+通过在客户端增加命令的采集，来统计发现热点 Key;  
+
+- 3、使用 Redis 自带的命令排查；  
+
+使用monitor命令统计热点key（不推荐，高并发条件下会有造成redis 内存爆掉的隐患）；  
+
+hotkeys参数，redis 4.0.3提供了redis-cli的热点key发现功能，执行redis-cli时加上–hotkeys选项即可。但是该参数在执行的时候，如果key比较多，执行起来比较慢。  
+
+- 4、在Proxy层做收集
+
+如果集群架构引入了 proxy，可以在 proxy 中做统计
+
+- 5、自己抓包评估
+
+Redis客户端使用TCP协议与服务端进行交互，通信协议采用的是RESP。自己写程序监听端口，按照RESP协议规则解析数据，进行分析。缺点就是开发成本高，维护困难，有丢包可能性。  
+
 ##### Hot Key 如何解决
 
 知道了`Hot Key`如何来应对呢  
@@ -329,10 +355,24 @@ ASK 就表示当前正在迁移中，客户端需要访问数据，就还需要�
 
 有一个热 Key 名字为`Hot-key-test`,可以将其分散为`Hot-key-test1`，`Hot-key-test2`...然后将这些 Key 分散到多个实例节点中，当客户端进行访问的时候，随机一个下标的 Key 进行访问，这样就能将流量分散到不同的实例中了，避免了一个缓存节点的过载。  
 
-通过添加后缀或者前缀，把一个 hotkey 的数量变成 redis 实例个数 N 的倍数 M，从而由访问一个`redis key`变成访问`N * M`个redis key。 `N*M`个`redis key`经过分片分布到不同的实例上，将访问量均摊到所有实例。  
+一般来讲，可以通过添加后缀或者前缀，把一个 hotkey 的数量变成 redis 实例个数 N 的倍数 M，从而由访问一个`redis key`变成访问`N * M`个redis key。 `N*M`个`redis key`经过分片分布到不同的实例上，将访问量均摊到所有实例。  
 
-- 2、
+```go
+const M = N * 2
+//生成随机数
+random = GenRandom(0, M)
+//构造备份新key
+bakHotKey = hotKey + “_” + random
+data = redis.GET(bakHotKey)
+if data == NULL {
+    data = GetFromDB()
+    redis.SET(bakHotKey, expireTime + GenRandom(0,5))
+}
+```
 
+- 2、使用本地缓存;  
+
+业务端还可以使用本地缓存，将这些热 key 记录在本地缓存，来减少对远程缓存的冲击。  
 
 
 
@@ -343,3 +383,4 @@ ASK 就表示当前正在迁移中，客户端需要访问数据，就还需要�
 【估算两台服务器同时故障的概率】https://disksing.com/failure-probability-analysis/    
 【Redis中哨兵选举算法】https://blog.csdn.net/weixin_44324174/article/details/108939199    
 【如何处理redis集群中hot key和big key】https://juejin.cn/post/6844903743083773959    
+【谈谈redis的热key问题如何解决】https://www.cnblogs.com/rjzheng/p/10874537.html  
