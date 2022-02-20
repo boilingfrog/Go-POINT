@@ -439,3 +439,4 @@ if data == NULL {
 【Redis中哨兵选举算法】https://blog.csdn.net/weixin_44324174/article/details/108939199    
 【如何处理redis集群中hot key和big key】https://juejin.cn/post/6844903743083773959    
 【谈谈redis的热key问题如何解决】https://www.cnblogs.com/rjzheng/p/10874537.html  
+【Redis 中常见的集群部署方案】https://boilingfrog.github.io/2022/02/20/redis%E4%B8%AD%E5%B8%B8%E8%A7%81%E7%9A%84%E9%9B%86%E7%BE%A4%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/#%E4%B8%BB%E4%BB%8E%E9%9B%86%E7%BE%A4%E6%A8%A1%E5%BC%8F  
