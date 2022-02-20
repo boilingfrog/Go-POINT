@@ -4,7 +4,7 @@
 
 - [2、Redis中的持久化](https://github.com/boilingfrog/Go-POINT/blob/master/redis/2%E3%80%81Redis%E4%B8%AD%E6%95%B0%E6%8D%AE%E6%8C%81%E4%B9%85%E5%8C%96.md)  
 
-- [1、Redis中的集群部署方案](https://github.com/boilingfrog/Go-POINT/blob/master/redis/3%E3%80%81Redis%E4%B8%AD%E7%9A%84%E9%9B%86%E7%BE%A4.md)  
+- [3、Redis中的集群部署方案](https://github.com/boilingfrog/Go-POINT/blob/master/redis/3%E3%80%81Redis%E4%B8%AD%E7%9A%84%E9%9B%86%E7%BE%A4.md)  
 
 
 
