@@ -21,6 +21,11 @@
     - [避免 Hot Key](#%E9%81%BF%E5%85%8D-hot-key)
       - [如何发现 Hot Key](#%E5%A6%82%E4%BD%95%E5%8F%91%E7%8E%B0-hot-key)
       - [Hot Key 如何解决](#hot-key-%E5%A6%82%E4%BD%95%E8%A7%A3%E5%86%B3)
+  - [避免 Big Key](#%E9%81%BF%E5%85%8D-big-key)
+    - [Big Key 存在问题](#big-key-%E5%AD%98%E5%9C%A8%E9%97%AE%E9%A2%98)
+    - [如何发现 Big Key](#%E5%A6%82%E4%BD%95%E5%8F%91%E7%8E%B0-big-key)
+    - [Big Key 如何避免](#big-key-%E5%A6%82%E4%BD%95%E9%81%BF%E5%85%8D)
+    - [Big Key 如何删除](#big-key-%E5%A6%82%E4%BD%95%E5%88%A0%E9%99%A4)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -374,7 +379,57 @@ if data == NULL {
 
 业务端还可以使用本地缓存，将这些热 key 记录在本地缓存，来减少对远程缓存的冲击。  
 
+### 避免 Big Key
 
+什么是 `Big Key`：我们将含有较大数据或含有大量成员、列表数的Key称之为大Key。  
+
+- 一个STRING类型的Key，它的值为5MB（数据过大）  
+
+- 一个LIST类型的Key，它的列表数量为20000个（列表数量过多）  
+
+- 一个ZSET类型的Key，它的成员数量为10000个（成员数量过多）  
+
+- 一个HASH格式的Key，它的成员数量虽然只有1000个但这些成员的value总大小为100MB（成员体积过大）  
+
+#### Big Key 存在问题
+
+- 内存空间不均匀：如果采用切片集群的部署方案，容易造成某些实例节点的内存分配不均匀；  
+
+- 造成网络拥塞：读取 bigkey 意味着需要消耗更多的网络流量，可能会对 Redis 服务器造成影响；  
+
+- 过期删除：big key 不单读写慢，删除也慢，删除过期 big key 也比较耗时；  
+
+- 迁移困难：由于数据庞大，备份和还原也容易造成阻塞，操作失败；  
+
+#### 如何发现 Big Key
+
+- 使用 redis-cli 客户端的命令 --bigkeys;  
+
+- 生成 rdb 文件，离线分析 rdb 文件。比如：redis-rdb-cli，rdbtools;  
+
+- 通过 scan 命令，对扫描出来的key进行类型判断，例如：string长度大于10K，list长度大于10240认为是big bigkeys;  
+
+#### Big Key 如何避免
+
+对于`Big Key`可以从以下两个方面进行处理  
+
+- 合理优化数据结构：  
+
+1、对较大的数据进行压缩处理；  
+
+2、拆分集合：将大的集合拆分成小集合（如以时间进行分片）或者单个的数据。   
+
+- 选择其他的技术来存储 big key： 
+
+使用其他的存储形式，考虑使用 cdn 或者文档性数据库 MongoDB。  
+
+#### Big Key 如何删除  
+
+直接使用 DEL 命令会发生什么？危险：同步删除 bigkey 会阻塞 Redis 其他命令，造成 Redis 阻塞。  
+
+推荐使用 UNLINK 命令，异步删除 bigkey，不影响主线程执行其他命令。  
+
+在业务的低峰期使用 scan 命令查找 big key，对于类型为集合的key，可以使用脚本逐一删除里面的元素。  
 
 ### 参考
 
