@@ -43,14 +43,35 @@ struct sdshdr {
 
 #### 2、RedisObject
 
-因为 Redis 中有很多数据类型，但是对于这些不同的数据结构，都有
+因为 Redis 中有很多数据类型，对于这些不同的数据结构，Redis 为了能够统一处理，所以引入了 RedisObject。  
 
+```
+typedef struct redisObject {
+    unsigned type:4; // 类型
+    unsigned encoding:4; // 编码
+    unsigned lru:LRU_BITS; // 最近被访问的时间
+    int refcount; // 引用次数
+    void *ptr; // 指向具体底层数据的指针
+} robj;
+```
 
+<img src="/img/redis/redis-object.svg"  alt="redis" align="center" />
 
+一个 RedisObject 包含了8字节的元数据和一个8字节指针，指针指向实际的数据内存地址。   
+
+不过需要注意的是这里 Redis 做了优化  
+
+1、当保存的数据是 Long 类型整数时，RedisObjec t中的指针就直接赋值为整数数据了，就不用使用额外的指针了。  
+
+2、如果保存的是字符串数据，并且字符串大小小于等于44字节时，RedisObject中的元数据、指针和SDS是一块连续的内存区域，这样就可以避免内存碎片。这种布局方式也被称为 embstr 编码方式。  
+
+3、如果保存的是字符串数据，并且字符串大小大于44字节时，Redis 就不再把 SDS 和 RedisObject 布局在一起了，而是会给 SDS 分配独立的空间，并用指针指向 SDS 结构。这种布局方式被称为 raw 编码模式。    
+
+<img src="/img/redis/redis-object-string.jpeg"  alt="redis" align="center" />
 
 
 ### 参考
 
 【Redis核心技术与实战】https://time.geekbang.org/column/intro/100056701    
 【Redis设计与实现】https://book.douban.com/subject/25900156/  
-
+【redis 一组kv实际内存占用计算】https://kernelmaker.github.io/Redis-StringMem    
