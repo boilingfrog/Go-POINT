@@ -5,6 +5,7 @@
   - [使用 String 类型内存开销大](#%E4%BD%BF%E7%94%A8-string-%E7%B1%BB%E5%9E%8B%E5%86%85%E5%AD%98%E5%BC%80%E9%94%80%E5%A4%A7)
     - [1、简单动态字符串](#1%E7%AE%80%E5%8D%95%E5%8A%A8%E6%80%81%E5%AD%97%E7%AC%A6%E4%B8%B2)
     - [2、RedisObject](#2redisobject)
+    - [3、全局哈希表](#3%E5%85%A8%E5%B1%80%E5%93%88%E5%B8%8C%E8%A1%A8)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -67,7 +68,32 @@ typedef struct redisObject {
 
 3、如果保存的是字符串数据，并且字符串大小大于44字节时，Redis 就不再把 SDS 和 RedisObject 布局在一起了，而是会给 SDS 分配独立的空间，并用指针指向 SDS 结构。这种布局方式被称为 raw 编码模式。    
 
+这个引用一张[Redis核心技术与实战](https://time.geekbang.org/column/intro/100056701)中的图片  
+    
 <img src="/img/redis/redis-object-string.jpeg"  alt="redis" align="center" />
+
+#### 3、全局哈希表
+
+Redis 中会有一个全局的哈希表来保存所有的键值对，哈希表中每一项存储的是 dictEntry 结构体  
+
+```
+typedef struct dictEntry {
+    void *key;
+    union {
+        void *val;
+        uint64_t u64;
+        int64_t s64;
+        double d;
+    } v;
+    struct dictEntry *next;
+} dictEntry;
+```
+
+dictEntry 结构体中有三个指针，在64位机器下占24个字节，jemalloc 会为它分配32字节大小的内存单元。  
+
+jemalloc 作为 Redis 的默认内存分配器，在减小内存碎片方面做的相对比较好。jemalloc 在64位系统中，将内存空间划分为小、大、巨大三个范围；每个范围内又划分了许多小的内存块单位；当 Redis 存储数据时，会选择大小最合适的内存块进行存储。  
+
+jemalloc 在分配内存时，会根据我们申请的字节数N，找一个比N大，但是最接近 N 的2的幂次数作为分配的空间，这样可以减少频繁分配的次数。    
 
 
 ### 参考
