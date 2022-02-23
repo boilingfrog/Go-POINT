@@ -6,6 +6,7 @@
   - [2、RedisObject](#2redisobject)
   - [3、全局哈希表](#3%E5%85%A8%E5%B1%80%E5%93%88%E5%B8%8C%E8%A1%A8)
   - [使用 Hash 来存储](#%E4%BD%BF%E7%94%A8-hash-%E6%9D%A5%E5%AD%98%E5%82%A8)
+  - [总结](#%E6%80%BB%E7%BB%93)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -109,11 +110,11 @@ Redis基于压缩列表实现了 Hash 这样的集合类型，因为一个集合
 
 使用集合我们还需要注意一下几点：  
 
-1、我们要去保证存放到集合中的元素不要太多，使用 ziplist 作为内部数据结构的限制元素数默认不超过 512 个。可以通过修改配置来调整 zset_max_ziplist_entries 阀值的大小。如果超过了限制就不使用 ziplist 而是使用 Hash 类型来实现这个映射关系了。  
+1、我们要去保证存放到集合中的元素不要太多，使用 ziplist 作为内部数据结构的限制元素数默认不超过 512 个。可以通过修改配置来调整`zset_max_ziplist_entries`阀值的大小。如果超过了限制就不使用 ziplist 而是使用 Hash 类型来实现这个映射关系了。  
 
-2、同时元素也不能太少，如果一个列表中只放入了一个键值对，就相当于每个键值对也使用了一个全局的哈希表的 dictEntry。  
+2、同时元素也不能太少，如果一个 Hash 集合中只存入了一对`filed/value`，就相当于每个键值对也使用了一个全局的哈希表的 dictEntry。  
 
-3、同时键值对的 value 也不要太长，超过了 hash-max-ziplist-value 的限制也是会使用 Hash 类型而不是 ziplist。  
+3、同时键值对的 value 也不要太长，超过了`hash-max-ziplist-value`的限制也是会使用 Hash 类型而不是 ziplist。  
 
 原来使用 String 类型存储，是一个`k/v`结构，使用 Hash 类型，就需要两个 key 了，可以将原来的`k/v`中的 k 进行拆分，分成两部分即可。   
 
@@ -123,6 +124,10 @@ OK
 127.0.0.1:6379> hset 20222 0222111 xiaoming
 (integer) 1
 ```
+
+### 总结
+
+String 类型的元数据是会占用一部分的内存空间，如果我们的数据，单个数据不大，但是数量很多，选用 String 这种类型的时候，需要考虑一下内存的占用。   
 
 ### 参考
 
