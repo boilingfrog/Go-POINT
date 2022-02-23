@@ -102,7 +102,7 @@ Redis 中的底层数据结构，提供了压缩列表，这种是很节省内�
 
 关于压缩列表的细节可参见[Redis中的压缩列表](https://www.cnblogs.com/ricklz/p/15839710.html#6%E5%8E%8B%E7%BC%A9%E5%88%97%E8%A1%A8)  
 
-<img src="/img/redis/redis-ziplist-entry.png"  alt="redis" align="center" />
+<img src="/img/redis/redis-ziplist.png"  alt="redis" align="center" />
 
 这些entry会挨个儿放置在内存中，不需要再用额外的指针进行连接，这样就可以节省指针所占用的空间。  
 
@@ -134,3 +134,4 @@ String 类型的元数据是会占用一部分的内存空间，如果我们的�
 【Redis核心技术与实战】https://time.geekbang.org/column/intro/100056701    
 【Redis设计与实现】https://book.douban.com/subject/25900156/  
 【redis 一组kv实际内存占用计算】https://kernelmaker.github.io/Redis-StringMem    
+【Redis学习笔记】https://github.com/boilingfrog/Go-POINT/tree/master/redis    
