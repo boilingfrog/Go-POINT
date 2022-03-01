@@ -20,6 +20,8 @@ Redis 中也是可以实现消息队列
 
 3、消息的顺序性问题；  
 
+关于 mq 中如何处理这几个问题，可参看[RabbitMQ，RocketMQ，Kafka 事务性，消息丢失，消息顺序性和消息重复发送的处理策略](https://www.cnblogs.com/ricklz/p/15747565.html)  
+
 ### 基于List的消息队列
 
 对于 List  
