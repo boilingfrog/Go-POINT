@@ -8,6 +8,7 @@ import (
 
 func TestSort(t *testing.T) {
 	s := []int{5, 2, 6, 3, 1, 4}
+	fmt.Println("是否排好序了", sort.IntsAreSorted(s))
 	sort.Ints(s)
 	// 正序
 	fmt.Println(s)
@@ -16,6 +17,8 @@ func TestSort(t *testing.T) {
 	fmt.Println(s)
 	// 稳定排序
 	sort.Stable(sort.IntSlice(s))
+	fmt.Println("是否排好序了", sort.IntsAreSorted(s))
+	fmt.Println("查找是否存在", sort.SearchInts(s, 5))
 	fmt.Println(s)
 
 	str := []string{"s", "f", "d", "c", "r", "a"}
@@ -74,4 +77,20 @@ func TestSortStruct(t *testing.T) {
 
 	sort.Sort(ByAge(people))
 	fmt.Println(people)
+}
+
+func TestSortQuick(t *testing.T) {
+
+	fmt.Println(maxDepth(14))
+
+}
+
+// maxDepth returns a threshold at which quicksort should switch
+// to heapsort. It returns 2*ceil(lg(n+1)).
+func maxDepth(n int) int {
+	var depth int
+	for i := n; i > 0; i >>= 1 {
+		depth++
+	}
+	return depth * 2
 }
