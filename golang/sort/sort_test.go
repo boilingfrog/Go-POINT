@@ -81,7 +81,7 @@ func TestSortStruct(t *testing.T) {
 
 func TestSortQuick(t *testing.T) {
 
-	fmt.Println(maxDepth(20))
+	fmt.Println(3 << 1)
 
 }
 

@@ -8,6 +8,8 @@
     - [自定义 Less 排序比较器](#%E8%87%AA%E5%AE%9A%E4%B9%89-less-%E6%8E%92%E5%BA%8F%E6%AF%94%E8%BE%83%E5%99%A8)
     - [自定义数据结构的排序](#%E8%87%AA%E5%AE%9A%E4%B9%89%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E7%9A%84%E6%8E%92%E5%BA%8F)
   - [分析下源码](#%E5%88%86%E6%9E%90%E4%B8%8B%E6%BA%90%E7%A0%81)
+    - [不稳定排序](#%E4%B8%8D%E7%A8%B3%E5%AE%9A%E6%8E%92%E5%BA%8F)
+    - [稳定排序](#%E7%A8%B3%E5%AE%9A%E6%8E%92%E5%BA%8F)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -191,9 +193,28 @@ func TestSortStruct(t *testing.T) {
 
 ### 分析下源码
 
+先来看下什么是稳定性排序  
+
+栗如：对一个数组进行排序，如果里面有重复的数据，排完序时候，相同的数据的相对索引位置没有发生改变，那么就是稳定排序。  
+
+也就是里面有两个5，5。排完之后第一个5还在最前面，没有和后面的重复数据5发生过位置的互换，那么这就是稳定排序。  
+
+#### 不稳定排序
+
 sort 中的排序算法用到了，quickSort(快排),heapSort(堆排序),insertionSort(插入排序),shellSort(希尔排序)  
 
-先来分析下这几种排序算法的使用   
+先来分析下这几种排序算法的使用     
+
+可以看下调用 Sort 进行排序，最终都会调用 quickSort  
+
+```go
+func Sort(data Interface) {
+	n := data.Len()
+	quickSort(data, 0, n, maxDepth(n))
+}
+```
+
+再来看下 quickSort 的实现   
 
 ````go
 func quickSort(data Interface, a, b, maxDepth int) {
@@ -394,7 +415,141 @@ func heapSort(data Interface, a, b int) {
 }
 ```
 
+#### 稳定排序
 
+sort 包中也提供了稳定的排序，通过调用`sort.Stable`来实现    
+
+```go
+// It makes one call to data.Len to determine n, O(n*log(n)) calls to
+// data.Less and O(n*log(n)*log(n)) calls to data.Swap.
+func Stable(data Interface) {
+	stable(data, data.Len())
+}
+
+func stable(data Interface, n int) {
+	// 定义切片块的大小
+	blockSize := 20 // must be > 0
+	a, b := 0, blockSize
+    // 如果切片长度大于块的大小，分多次对每个块中进行排序    
+	for b <= n {
+		insertionSort(data, a, b)
+		a = b
+		b += blockSize
+	}
+	insertionSort(data, a, n)
+
+    // 如果有多个块，对排好序的块进行合并操作
+	for blockSize < n {
+		a, b = 0, 2*blockSize
+		for b <= n {
+			symMerge(data, a, a+blockSize, b)
+			a = b
+			b += 2 * blockSize
+		}
+		if m := a + blockSize; m < n {
+			symMerge(data, a, m, n)
+		}
+		blockSize *= 2
+	}
+}
+
+// symMerge merges the two sorted subsequences data[a:m] and data[m:b] using
+// the SymMerge algorithm from Pok-Son Kim and Arne Kutzner, "Stable Minimum
+// Storage Merging by Symmetric Comparisons", in Susanne Albers and Tomasz
+// Radzik, editors, Algorithms - ESA 2004, volume 3221 of Lecture Notes in
+// Computer Science, pages 714-723. Springer, 2004.
+//
+// Let M = m-a and N = b-n. Wolog M < N.
+// The recursion depth is bound by ceil(log(N+M)).
+// The algorithm needs O(M*log(N/M + 1)) calls to data.Less.
+// The algorithm needs O((M+N)*log(M)) calls to data.Swap.
+//
+// The paper gives O((M+N)*log(M)) as the number of assignments assuming a
+// rotation algorithm which uses O(M+N+gcd(M+N)) assignments. The argumentation
+// in the paper carries through for Swap operations, especially as the block
+// swapping rotate uses only O(M+N) Swaps.
+//
+// symMerge assumes non-degenerate arguments: a < m && m < b.
+// Having the caller check this condition eliminates many leaf recursion calls,
+// which improves performance.
+func symMerge(data Interface, a, m, b int) {
+    // 如果只有一个元素避免没必要的递归，这里直接插入
+	if m-a == 1 {
+    // 使用二分查找查找最低索引 i
+    // 这样 data[i] >= data[a] for m <= i < b.
+    // 如果不存在这样的索引，则使用 i == b 退出搜索循环。
+		i := m
+		j := b
+		for i < j {
+			h := int(uint(i+j) >> 1)
+			if data.Less(h, a) {
+				i = h + 1
+			} else {
+				j = h
+			}
+		}
+		// Swap values until data[a] reaches the position before i.
+		for k := a; k < i-1; k++ {
+			data.Swap(k, k+1)
+		}
+		return
+	}
+
+    // 同上
+	if b-m == 1 {
+		// Use binary search to find the lowest index i
+		// such that data[i] > data[m] for a <= i < m.
+		// Exit the search loop with i == m in case no such index exists.
+		i := a
+		j := m
+		for i < j {
+			h := int(uint(i+j) >> 1)
+			if !data.Less(m, h) {
+				i = h + 1
+			} else {
+				j = h
+			}
+		}
+		// Swap values until data[m] reaches the position i.
+		for k := m; k > i; k-- {
+			data.Swap(k, k-1)
+		}
+		return
+	}
+
+	mid := int(uint(a+b) >> 1)
+	n := mid + m
+	var start, r int
+	if m > mid {
+		start = n - b
+		r = mid
+	} else {
+		start = a
+		r = m
+	}
+	p := n - 1
+
+	for start < r {
+		c := int(uint(start+r) >> 1)
+		if !data.Less(p-c, c) {
+			start = c + 1
+		} else {
+			r = c
+		}
+	}
+
+	end := n - start
+	if start < m && m < end {
+		rotate(data, start, m, end)
+	}
+	if a < start && start < mid {
+		symMerge(data, a, start, mid)
+	}
+	if mid < end && end < b {
+		symMerge(data, mid, end, b)
+	}
+}
+```
 
 
 
@@ -402,5 +557,5 @@ func heapSort(data Interface, a, b int) {
 
 【Golang sort 排序】https://blog.csdn.net/K346K346/article/details/118314382    
 【文中示例代码】https://github.com/boilingfrog/Go-POINT/blob/master/golang/sort/sort_test.go  
-【】https://www.johndcook.com/blog/2009/06/23/tukey-median-ninther/  
+【John Tukey’s median of medians】https://www.johndcook.com/blog/2009/06/23/tukey-median-ninther/    
 
