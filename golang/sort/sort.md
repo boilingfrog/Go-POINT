@@ -193,25 +193,28 @@ func TestSortStruct(t *testing.T) {
 
 sort 中的排序算法用到了，quickSort(快排),heapSort(堆排序),insertionSort(插入排序),shellSort(希尔排序)  
 
-来看下这几种排序的实现  
+先来分析下这几种排序算法的使用   
 
 ````go
 func quickSort(data Interface, a, b, maxDepth int) {
-
 	// 切片长度大于12的时候使用快排
 	for b-a > 12 { // Use ShellSort for slices <= 12 elements
 		// maxDepth 返回快速排序应该切换的阈值
-		// 进行堆排序。它返回 2*ceil(lg(n+1))。
+		// 进行堆排序
 		// 当 maxDepth为0的时候进行堆排序
 		if maxDepth == 0 {
 			heapSort(data, a, b)
 			return
 		}
 		maxDepth--
-		// 这里使用的是三路快排
+		// doPivot 是快排核心算法，它取一点为轴，把不大于轴的元素放左边，大于轴的元素放右边，返回小于轴部分数据的最后一个下标，以及大于轴部分数据的第一个下标
+		// 下标位置 a...mlo,pivot,mhi...b
+		// data[a...mlo] <= data[pivot]
+		// data[mhi...b] > data[pivot]
+		// 和中位数一样的数据就不用在进行交换了，维护这个范围值能减少数据的次数  
 		mlo, mhi := doPivot(data, a, b)
-		// Avoiding recursion on the larger subproblem guarantees
-		// a stack depth of at most lg(b-a).
+		// 避免递归过深
+		// 循环是比递归节省时间的，如果有大规模的子节点，让小的先递归，达到了 maxDepth 也就是可以触发堆排序的条件了，然后使用堆排序进行排序
 		if mlo-a < b-mhi {
 			quickSort(data, a, mlo, maxDepth)
 			a = mhi // i.e., quickSort(data, mhi, b)
@@ -236,8 +239,7 @@ func quickSort(data Interface, a, b, maxDepth int) {
 }
 
 // maxDepth 返回快速排序应该切换的阈值
-// 进行堆排序。它返回 2*ceil(lg(n+1))。
-// 就是节点数目为 N 的平衡二叉树的深度的2倍
+// 进行堆排序
 func maxDepth(n int) int {
 	var depth int
 	for i := n; i > 0; i >>= 1 {
@@ -246,6 +248,123 @@ func maxDepth(n int) int {
 	return depth * 2
 }
 
+// doPivot 是快排核心算法，它取一点为轴，把不大于轴的元素放左边，大于轴的元素放右边，返回小于轴部分数据的最后一个下标，以及大于轴部分数据的第一个下标
+// 下标位置 lo...midlo,pivot,midhi...hi
+// data[lo...midlo] <= data[pivot]
+// data[midhi...hi] > data[pivot]
+func doPivot(data Interface, lo, hi int) (midlo, midhi int) {
+	m := int(uint(lo+hi) >> 1) // Written like this to avoid integer overflow.
+	// 这里用到了 Tukey's ninther 算法，文章链接 https://www.johndcook.com/blog/2009/06/23/tukey-median-ninther/
+	// 通过该算法求出中位数
+	if hi-lo > 40 {
+		// Tukey's ``Ninther,'' median of three medians of three.
+		s := (hi - lo) / 8
+		medianOfThree(data, lo, lo+s, lo+2*s)
+		medianOfThree(data, m, m-s, m+s)
+		medianOfThree(data, hi-1, hi-1-s, hi-1-2*s)
+	}
+
+	// 求出中位数 data[m] <= data[lo] <= data[hi-1]
+	medianOfThree(data, lo, m, hi-1)
+
+	// Invariants are:
+	//	data[lo] = pivot (set up by ChoosePivot)
+	//	data[lo < i < a] < pivot
+	//	data[a <= i < b] <= pivot
+	//	data[b <= i < c] unexamined
+	//	data[c <= i < hi-1] > pivot
+	//	data[hi-1] >= pivot
+	// 中位数
+	pivot := lo
+	a, c := lo+1, hi-1
+
+	// 将左边和中位数进行比较， 一直到不满足条件为止
+	for ; a < c && data.Less(a, pivot); a++ {
+	}
+	b := a
+	for {
+		// 对比保证  data[b] <= pivot
+		// 和上面的有点重合，不过在处理上面的for 循环，会发生数据交换的情况，可能是为了更加严谨吧
+		for ; b < c && !data.Less(pivot, b); b++ {
+		}
+		// 对比保证  data[c-1] > pivot
+		for ; b < c && data.Less(pivot, c-1); c-- { // data[c-1] > pivot
+		}
+		// 左边和右边重合或者已经再右边的右侧
+		if b >= c {
+			break
+		}
+		// data[b] > pivot; data[c-1] <= pivot
+		// 左侧的数据大于右侧，交换，然后接着排序
+		data.Swap(b, c-1)
+		b++
+		c--
+	}
+	// 如果 hi-c<3 则存在重复项（按中位数为 9 的属性）。
+	// 让我们稍微保守一点，将边框设置为 5。
+	protect := hi-c < 5
+	if !protect && hi-c < (hi-lo)/4 {
+		// 用一些特殊的点和中间数进行比较
+		dups := 0
+		// 处理使 data[hi-1] = pivot
+		if !data.Less(pivot, hi-1) {
+			data.Swap(c, hi-1)
+			c++
+			dups++
+		}
+		// 处理使 data[b-1] = pivot
+		if !data.Less(b-1, pivot) {
+			b--
+			dups++
+		}
+		// m-lo = (hi-lo)/2 > 6
+		// b-lo > (hi-lo)*3/4-1 > 8
+		// ==> m < b ==> data[m] <= pivot
+		if !data.Less(m, pivot) { // data[m] = pivot
+			data.Swap(m, b-1)
+			b--
+			dups++
+		}
+		// 如果上面的 if 进入了两次， 就证明现在是偏态分布（也就是左右不平衡的）
+		protect = dups > 1
+	}
+	// 不平衡，接着进行处理
+	if protect {
+		// Protect against a lot of duplicates
+		// Add invariant:
+		//	data[a <= i < b] unexamined
+		//	data[b <= i < c] = pivot
+		for {
+			// 处理使 data[b] == pivot
+			for ; a < b && !data.Less(b-1, pivot); b-- {
+			}
+			// 处理使 data[a] < pivot
+			for ; a < b && data.Less(a, pivot); a++ {
+			}
+			if a >= b {
+				break
+			}
+			// data[a] == pivot; data[b-1] < pivot
+			data.Swap(a, b-1)
+			a++
+			b--
+		}
+	}
+	// 交换中位数到中间
+	data.Swap(pivot, b-1)
+	return b - 1, c
+}
+````
+
+对于这几种排序算法的使用，sort 包中是混合使用的  
+
+1、如果切片长度大于12的时候使用快排，使用快排的时候，如果满足了使用堆排序的条件没这个排序对于后面的数据的处理，又会转换成堆排序；   
+
+2、切片长度小于12了，就使用 shell 排序，shell 排序只处理一轮数据，后面数据的排序使用插入排序；  
+
+堆排序和插入排序就是正常的排序处理了    
+
+```go
 // insertionSort sorts data[a:b] using insertion sort.
 // 插入排序
 func insertionSort(data Interface, a, b int) {
@@ -273,7 +392,7 @@ func heapSort(data Interface, a, b int) {
 		siftDown(data, lo, i, first)
 	}
 }
-````
+```
 
 
 
@@ -283,4 +402,5 @@ func heapSort(data Interface, a, b int) {
 
 【Golang sort 排序】https://blog.csdn.net/K346K346/article/details/118314382    
 【文中示例代码】https://github.com/boilingfrog/Go-POINT/blob/master/golang/sort/sort_test.go  
+【】https://www.johndcook.com/blog/2009/06/23/tukey-median-ninther/  
 
