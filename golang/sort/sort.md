@@ -10,6 +10,9 @@
   - [分析下源码](#%E5%88%86%E6%9E%90%E4%B8%8B%E6%BA%90%E7%A0%81)
     - [不稳定排序](#%E4%B8%8D%E7%A8%B3%E5%AE%9A%E6%8E%92%E5%BA%8F)
     - [稳定排序](#%E7%A8%B3%E5%AE%9A%E6%8E%92%E5%BA%8F)
+    - [查找](#%E6%9F%A5%E6%89%BE)
+    - [Interface](#interface)
+  - [总结](#%E6%80%BB%E7%BB%93)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -551,7 +554,73 @@ func symMerge(data Interface, a, m, b int) {
 }
 ```
 
+#### 查找
 
+sort 中的 查找功能最终是调用 search 函数来实现的  
+
+```go
+func SearchInts(a []int, x int) int {
+	return Search(len(a), func(i int) bool { return a[i] >= x })
+}
+
+// 使用二分查找
+func Search(n int, f func(int) bool) int {
+	// Define f(-1) == false and f(n) == true.
+	// Invariant: f(i-1) == false, f(j) == true.
+	i, j := 0, n
+	for i < j {
+        // 二分查找
+		h := int(uint(i+j) >> 1) // avoid overflow when computing h
+		// i ≤ h < j
+		if !f(h) {
+			i = h + 1 // preserves f(i-1) == false
+		} else {
+			j = h // preserves f(j) == true
+		}
+	}
+	// i == j, f(i-1) == false, and f(j) (= f(i)) == true  =>  answer is i.
+	return i
+}
+```
+
+sort 中查找相对比较简单，使用的是二分查找   
+
+#### Interface  
+
+sort 包提供了 Interface 的接口，我们可以定义结构体，然后实现 Interface 对应的接口，就能使用 sort 包中的方法  
+
+```go
+type Interface interface {
+	Len() int
+
+	Less(i, j int) bool
+
+	Swap(i, j int)
+}
+```
+
+看源码可以看到 sort 包中已有的对 []int 等数据结构的排序，也是实现了 Interface  
+
+```go
+// Convenience types for common cases
+
+// IntSlice attaches the methods of Interface to []int, sorting in increasing order.
+type IntSlice []int
+
+func (x IntSlice) Len() int           { return len(x) }
+func (x IntSlice) Less(i, j int) bool { return x[i] < x[j] }
+func (x IntSlice) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
+```
+
+这种思路挺好的，之后可以借鉴下，对于可变部分提供抽象接口，让用户根据自己的场景有实现。   
+
+对于基础的排序，查找只要实现了 Interface 的方法，就能拥有这些基础的能力了。   
+
+### 总结
+
+sort 对于排序算法的实现，是结合了多种算法，最终实现了一个高性能的排序算法  
+
+抽象出了 IntSlice 接口，用户可以自己去实现对应的方法，然后就能拥有 sort 中提供的能力了
 
 ### 参考
 

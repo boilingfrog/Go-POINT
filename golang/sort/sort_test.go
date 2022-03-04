@@ -81,16 +81,8 @@ func TestSortStruct(t *testing.T) {
 
 func TestSortQuick(t *testing.T) {
 
-	fmt.Println(3 << 1)
+	s := []int{1, 2, 6, 9, 4, 7}
+	symMerge(sort.IntSlice(s), 0, 2, 5)
+	fmt.Println(s)
 
-}
-
-// maxDepth returns a threshold at which quicksort should switch
-// to heapsort. It returns 2*ceil(lg(n+1)).
-func maxDepth(n int) int {
-	var depth int
-	for i := n; i > 0; i >>= 1 {
-		depth++
-	}
-	return depth * 2
 }
