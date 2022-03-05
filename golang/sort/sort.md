@@ -23,6 +23,8 @@
 
 我们的代码业务中很多地方需要我们自己进行排序操作，go 标准库中是提供了 sort 包是实现排序功能的，这里来看下生产级别的排序功能是如何实现的。   
 
+`go version go1.16.13 darwin/amd64`  
+
 ### 如何使用
 
 先来看下 sort 提供的主要功能  
@@ -302,19 +304,18 @@ func doPivot(data Interface, lo, hi int) (midlo, midhi int) {
 	pivot := lo
 	a, c := lo+1, hi-1
 
-	// 将左边和中位数进行比较， 一直到不满足条件为止
+	// 处理使 data[lo < i < a] < pivot
 	for ; a < c && data.Less(a, pivot); a++ {
 	}
 	b := a
 	for {
-		// 对比保证  data[b] <= pivot
-		// 和上面的有点重合，不过在处理上面的for 循环，会发生数据交换的情况，可能是为了更加严谨吧
+		// 处理使 data[a <= i < b] <= pivot
 		for ; b < c && !data.Less(pivot, b); b++ {
 		}
-		// 对比保证  data[c-1] > pivot
+		// 处理使 data[c <= i < hi-1] > pivot
 		for ; b < c && data.Less(pivot, c-1); c-- { // data[c-1] > pivot
 		}
-		// 左边和右边重合或者已经再右边的右侧
+		// 左边和右边重合或者已经在右边的右侧
 		if b >= c {
 			break
 		}
@@ -456,27 +457,9 @@ func stable(data Interface, n int) {
 	}
 }
 
-// symMerge merges the two sorted subsequences data[a:m] and data[m:b] using
-// the SymMerge algorithm from Pok-Son Kim and Arne Kutzner, "Stable Minimum
-// Storage Merging by Symmetric Comparisons", in Susanne Albers and Tomasz
-// Radzik, editors, Algorithms - ESA 2004, volume 3221 of Lecture Notes in
-// Computer Science, pages 714-723. Springer, 2004.
-//
-// Let M = m-a and N = b-n. Wolog M < N.
-// The recursion depth is bound by ceil(log(N+M)).
-// The algorithm needs O(M*log(N/M + 1)) calls to data.Less.
-// The algorithm needs O((M+N)*log(M)) calls to data.Swap.
-//
-// The paper gives O((M+N)*log(M)) as the number of assignments assuming a
-// rotation algorithm which uses O(M+N+gcd(M+N)) assignments. The argumentation
-// in the paper carries through for Swap operations, especially as the block
-// swapping rotate uses only O(M+N) Swaps.
-//
-// symMerge assumes non-degenerate arguments: a < m && m < b.
-// Having the caller check this condition eliminates many leaf recursion calls,
-// which improves performance.
 func symMerge(data Interface, a, m, b int) {
     // 如果只有一个元素避免没必要的递归，这里直接插入
+    // 处理左边部分
 	if m-a == 1 {
     // 使用二分查找查找最低索引 i
     // 这样 data[i] >= data[a] for m <= i < b.
@@ -499,6 +482,7 @@ func symMerge(data Interface, a, m, b int) {
 	}
 
     // 同上
+    // 处理右边部分
 	if b-m == 1 {
 		// Use binary search to find the lowest index i
 		// such that data[i] > data[m] for a <= i < m.
@@ -520,31 +504,13 @@ func symMerge(data Interface, a, m, b int) {
 		return
 	}
 
-	mid := int(uint(a+b) >> 1)
-	n := mid + m
-	var start, r int
-	if m > mid {
-		start = n - b
-		r = mid
-	} else {
-		start = a
-		r = m
-	}
-	p := n - 1
-
-	for start < r {
-		c := int(uint(start+r) >> 1)
-		if !data.Less(p-c, c) {
-			start = c + 1
-		} else {
-			r = c
-		}
-	}
+...
 
 	end := n - start
 	if start < m && m < end {
 		rotate(data, start, m, end)
 	}
+// 递归的进行归并操作
 	if a < start && start < mid {
 		symMerge(data, a, start, mid)
 	}
@@ -587,7 +553,7 @@ sort 中查找相对比较简单，使用的是二分查找
 
 #### Interface  
 
-sort 包提供了 Interface 的接口，我们可以定义结构体，然后实现 Interface 对应的接口，就能使用 sort 包中的方法  
+sort 包提供了 Interface 的接口，我们可以自定义数据结构，然后实现 Interface 对应的接口，就能使用 sort 包中的方法  
 
 ```go
 type Interface interface {

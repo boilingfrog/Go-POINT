@@ -81,8 +81,8 @@ func TestSortStruct(t *testing.T) {
 
 func TestSortQuick(t *testing.T) {
 
-	s := []int{1, 2, 6, 9, 4, 7}
-	symMerge(sort.IntSlice(s), 0, 2, 5)
+	s := []int{1, 2, 4, 7, 3, 5}
+	symMerge(sort.IntSlice(s), 3, 4, 6)
 	fmt.Println(s)
 
 }
