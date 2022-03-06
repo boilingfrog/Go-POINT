@@ -558,7 +558,7 @@ func Search(n int, f func(int) bool) int {
 	// Invariant: f(i-1) == false, f(j) == true.
 	i, j := 0, n
 	for i < j {
-        // 二分查找
+		// 二分查找
 		h := int(uint(i+j) >> 1) // avoid overflow when computing h
 		// i ≤ h < j
 		if !f(h) {
@@ -617,4 +617,5 @@ sort 对于排序算法的实现，是结合了多种算法，最终实现了一
 【Golang sort 排序】https://blog.csdn.net/K346K346/article/details/118314382    
 【John Tukey’s median of medians】https://www.johndcook.com/blog/2009/06/23/tukey-median-ninther/    
 【code_reading】https://github.com/Junedayday/code_reading/blob/master/sort/sort.go  
+【go中的sort包】https://boilingfrog.github.io/2022/03/06/go%E4%B8%AD%E7%9A%84sort%E5%8C%85/  
 
