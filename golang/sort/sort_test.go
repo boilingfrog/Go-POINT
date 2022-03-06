@@ -78,11 +78,3 @@ func TestSortStruct(t *testing.T) {
 	sort.Sort(ByAge(people))
 	fmt.Println(people)
 }
-
-func TestSortQuick(t *testing.T) {
-
-	s := []int{1, 2, 4, 7, 3, 5}
-	symMerge(sort.IntSlice(s), 3, 4, 6)
-	fmt.Println(s)
-
-}

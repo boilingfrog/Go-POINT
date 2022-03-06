@@ -443,7 +443,7 @@ func stable(data Interface, n int) {
 	// 定义切片块的大小
 	blockSize := 20 // must be > 0
 	a, b := 0, blockSize
-    // 如果切片长度大于块的大小，分多次对每个块中进行排序    
+	// 如果切片长度大于块的大小，分多次对每个块中进行排序    
 	for b <= n {
 		insertionSort(data, a, b)
 		a = b
@@ -451,7 +451,7 @@ func stable(data Interface, n int) {
 	}
 	insertionSort(data, a, n)
 
-    // 如果有多个块，对排好序的块进行合并操作
+	// 如果有多个块，对排好序的块进行合并操作
 	for blockSize < n {
 		a, b = 0, 2*blockSize
 		for b <= n {
@@ -462,6 +462,7 @@ func stable(data Interface, n int) {
 		if m := a + blockSize; m < n {
 			symMerge(data, a, m, n)
 		}
+		// block 每次循环扩大两倍， 直到比元素的总个数大，就结束
 		blockSize *= 2
 	}
 }
@@ -536,6 +537,12 @@ func symMerge(data Interface, a, m, b int) {
 }
 ```
 
+对于稳定排序，用到了插入排序和归并排序  
+
+1、首先会将数据按照每20个一组进行分块，对每个块中的数据使用插入排序完成排序；   
+
+2、然后下面使用归并排序，对排序的数据块进行两两归并排序，完成一次排序，扩大数据块为之前的2倍，直到完成所有的排序。  
+
 #### 查找
 
 sort 中的 查找功能最终是调用 search 函数来实现的  
@@ -606,8 +613,8 @@ sort 对于排序算法的实现，是结合了多种算法，最终实现了一
 
 ### 参考
 
-【Golang sort 排序】https://blog.csdn.net/K346K346/article/details/118314382    
 【文中示例代码】https://github.com/boilingfrog/Go-POINT/blob/master/golang/sort/sort_test.go  
+【Golang sort 排序】https://blog.csdn.net/K346K346/article/details/118314382    
 【John Tukey’s median of medians】https://www.johndcook.com/blog/2009/06/23/tukey-median-ninther/    
 【code_reading】https://github.com/Junedayday/code_reading/blob/master/sort/sort.go  
 
