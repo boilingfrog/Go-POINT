@@ -325,9 +325,17 @@ func doPivot(data Interface, lo, hi int) (midlo, midhi int) {
 		b++
 		c--
 	}
+	// If hi-c<3 then there are duplicates (by property of median of nine).
+	// Let's be a bit more conservative, and set border to 5.
 	// 如果 hi-c<3 则存在重复项（按中位数为 9 的属性）。
 	// 让我们稍微保守一点，将边框设置为 5。
+
+	// 因为c为划分pivot的大小的临界值，所以在9值划分时，正常来说，应该是两边各4个
+	// 由于左边是<=，多了个相等的情况，所以5，3分布，也是没有问题
+	// 如果hi-c<3，c的值明显偏向于hi，说明有多个和pivot重复值
+	// 为了更保守一点，所以设置为5(反正只是多校验一次而已)
 	protect := hi-c < 5
+	// 即便大于等于5，也可能是因为元素总值很多，所以对比hi-c是否小于总数量的1/4
 	if !protect && hi-c < (hi-lo)/4 {
 		// 用一些特殊的点和中间数进行比较
 		dups := 0
@@ -354,6 +362,7 @@ func doPivot(data Interface, lo, hi int) (midlo, midhi int) {
 		protect = dups > 1
 	}
 	// 不平衡，接着进行处理
+	// 这里划分的是<pivot和=pivot的两组
 	if protect {
 		// Protect against a lot of duplicates
 		// Add invariant:
@@ -593,4 +602,5 @@ sort 对于排序算法的实现，是结合了多种算法，最终实现了一
 【Golang sort 排序】https://blog.csdn.net/K346K346/article/details/118314382    
 【文中示例代码】https://github.com/boilingfrog/Go-POINT/blob/master/golang/sort/sort_test.go  
 【John Tukey’s median of medians】https://www.johndcook.com/blog/2009/06/23/tukey-median-ninther/    
+【code_reading】https://github.com/Junedayday/code_reading/blob/master/sort/sort.go  
 
