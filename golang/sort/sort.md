@@ -467,12 +467,12 @@ func stable(data Interface, n int) {
 }
 
 func symMerge(data Interface, a, m, b int) {
-    // 如果只有一个元素避免没必要的递归，这里直接插入
-    // 处理左边部分
+	// 如果只有一个元素避免没必要的递归，这里直接插入
+	// 处理左边部分
 	if m-a == 1 {
-    // 使用二分查找查找最低索引 i
-    // 这样 data[i] >= data[a] for m <= i < b.
-    // 如果不存在这样的索引，则使用 i == b 退出搜索循环。
+		// 使用二分查找查找最低索引 i
+		// 这样 data[i] >= data[a] for m <= i < b.
+		// 如果不存在这样的索引，则使用 i == b 退出搜索循环。
 		i := m
 		j := b
 		for i < j {
@@ -490,8 +490,8 @@ func symMerge(data Interface, a, m, b int) {
 		return
 	}
 
-    // 同上
-    // 处理右边部分
+	// 同上
+	// 处理右边部分
 	if b-m == 1 {
 		// Use binary search to find the lowest index i
 		// such that data[i] > data[m] for a <= i < m.
@@ -513,13 +513,20 @@ func symMerge(data Interface, a, m, b int) {
 		return
 	}
 
-...
+	for start < r {
+		c := int(uint(start+r) >> 1)
+		if !data.Less(p-c, c) {
+			start = c + 1
+		} else {
+			r = c
+		}
+	}
 
 	end := n - start
 	if start < m && m < end {
 		rotate(data, start, m, end)
 	}
-// 递归的进行归并操作
+	// 递归的进行归并操作
 	if a < start && start < mid {
 		symMerge(data, a, start, mid)
 	}
