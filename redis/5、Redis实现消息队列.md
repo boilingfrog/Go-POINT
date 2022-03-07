@@ -52,6 +52,113 @@ Redis 中也是可以实现消息队列
 
 Streams 是 Redis 专门为消息队列设计的数据类型。  
 
+- 是可持久化的，可以保证数据不丢失。  
+
+- 支持消息的多播、分组消费。  
+
+- 支持消息的有序性。
+
+来看下几个主要的命令  
+
+```
+XADD：插入消息，保证有序，可以自动生成全局唯一ID；
+
+XREAD：用于读取消息，可以按ID读取数据； 
+
+XREADGROUP：按消费组形式读取消息；
+
+XPENDING和XACK：XPENDING命令可以用来查询每个消费组内所有消费者已读取但尚未确认的消息，而XACK命令用于向消息队列确认消息处理已完成。  
+```
+
+下面看几个常用的命令  
+
+**XADD**
+
+使用 XADD 向队列添加消息，如果指定的队列不存在，则创建一个队列，XADD 语法格式：  
+
+```
+XADD key ID field value [field value ...]
+```
+
+- key ：队列名称，如果不存在就创建  
+
+- ID ：消息 id，我们使用 * 表示由 redis 生成，可以自定义，但是要自己保证递增性。  
+
+- field value ： 记录。
+
+```
+127.0.0.1:6379> XADD teststream * name xiaohong surname xiaobai
+"1646650328883-0"
+```
+
+可以看到 `1646650328883-0`就是自动生成的全局唯一消息ID   
+
+**XREAD**
+
+使用 XREAD 以阻塞或非阻塞方式获取消息列表  
+
+```
+XREAD [COUNT count] [BLOCK milliseconds] STREAMS key [key ...] id [id ...]
+```
+
+- count ：数量  
+
+- milliseconds ：可选，阻塞毫秒数，没有设置就是非阻塞模式  
+
+- key ：队列名  
+
+- id ：消息 ID  
+
+```
+127.0.0.1:6379> XREAD BLOCK 100 STREAMS  teststream 0
+1) 1) "teststream"
+   2) 1) 1) "1646650328883-0"
+         2) 1) "name"
+            2) "xiaohong"
+            3) "surname"
+            4) "xiaobai"
+```
+
+BLOCK 就是阻塞的毫秒数  
+
+**XGROUP**
+
+使用 XGROUP CREATE 创建消费者组  
+
+```
+XGROUP [CREATE key groupname id-or-$] [SETID key groupname id-or-$] [DESTROY key groupname] [DELCONSUMER key groupname consumername]
+```
+
+- key ：队列名称，如果不存在就创建  
+
+- groupname ：组名。  
+
+- $ ： 表示从尾部开始消费，只接受新消息，当前 Stream 消息会全部忽略。
+
+从头开始消费  
+
+```
+XGROUP CREATE teststream consumer-group-name 0-0  
+```
+
+从尾部开始消费  
+
+```
+XGROUP CREATE teststream consumer-group-name $
+```
+
+**XREADGROUP GROUP**
+
+使用 `XREADGROUP GROUP` 读取消费组中的消息  
+
+```
+XREADGROUP GROUP group consumer [COUNT count] [BLOCK milliseconds] [NOACK] STREAMS key [key ...] ID [ID ...]
+```
+
+
+
+
+
 
 
 
@@ -65,4 +172,5 @@ Streams 是 Redis 专门为消息队列设计的数据类型。
 
 【Redis核心技术与实战】https://time.geekbang.org/column/intro/100056701    
 【Redis设计与实现】https://book.douban.com/subject/25900156/  
-【Redis Streams 介绍】http://www.redis.cn/topics/streams-intro.html    
+【Redis Streams 介绍】http://www.redis.cn/topics/streams-intro.html      
+【Centos7.6安装redis-6.0.8版本】https://blog.csdn.net/roc_wl/article/details/108662719    
