@@ -80,11 +80,11 @@ XPENDING和XACK：XPENDING命令可以用来查询每个消费组内所有消费
 XADD key ID field value [field value ...]
 ```
 
-- key ：队列名称，如果不存在就创建  
+- key：队列名称，如果不存在就创建  
 
-- ID ：消息 id，我们使用 * 表示由 redis 生成，可以自定义，但是要自己保证递增性。  
+- ID：消息 id，我们使用 * 表示由 redis 生成，可以自定义，但是要自己保证递增性  
 
-- field value ： 记录。
+- field value：记录   
 
 ```
 127.0.0.1:6379> XADD teststream * name xiaohong surname xiaobai
@@ -101,13 +101,13 @@ XADD key ID field value [field value ...]
 XREAD [COUNT count] [BLOCK milliseconds] STREAMS key [key ...] id [id ...]
 ```
 
-- count ：数量  
+- count：数量  
 
-- milliseconds ：可选，阻塞毫秒数，没有设置就是非阻塞模式  
+- milliseconds：可选，阻塞毫秒数，没有设置就是非阻塞模式  
 
-- key ：队列名  
+- key：队列名  
 
-- id ：消息 ID  
+- id：消息 ID  
 
 ```
 127.0.0.1:6379> XREAD BLOCK 100 STREAMS  teststream 0
@@ -129,22 +129,22 @@ BLOCK 就是阻塞的毫秒数
 XGROUP [CREATE key groupname id-or-$] [SETID key groupname id-or-$] [DESTROY key groupname] [DELCONSUMER key groupname consumername]
 ```
 
-- key ：队列名称，如果不存在就创建  
+- key：队列名称，如果不存在就创建  
 
-- groupname ：组名。  
+- groupname：组名  
 
-- $ ： 表示从尾部开始消费，只接受新消息，当前 Stream 消息会全部忽略。
+- $：表示从尾部开始消费，只接受新消息，当前 Stream 消息会全部忽略  
 
 从头开始消费  
 
 ```
-XGROUP CREATE teststream consumer-group-name 0-0  
+XGROUP CREATE teststream test-consumer-group-name 0-0  
 ```
 
 从尾部开始消费  
 
 ```
-XGROUP CREATE teststream consumer-group-name $
+XGROUP CREATE teststream test-consumer-group-name $
 ```
 
 **XREADGROUP GROUP**
@@ -155,9 +155,32 @@ XGROUP CREATE teststream consumer-group-name $
 XREADGROUP GROUP group consumer [COUNT count] [BLOCK milliseconds] [NOACK] STREAMS key [key ...] ID [ID ...]
 ```
 
+- group：消费组名  
 
+- consumer：消费者名  
 
+- count：读取数量
 
+- milliseconds：阻塞毫秒数  
+
+- key：队列名  
+
+- ID：消息 ID
+
+```
+$ XADD teststream * name xiaohong surname xiaobai
+"1646653392799-0"
+
+$ XREADGROUP GROUP test-consumer-group-name test-consumer-name COUNT 1 STREAMS teststream >
+1) 1) "teststream"
+   2) 1) 1) "1646653392799-0"
+         2) 1) "name"
+            2) "xiaohong"
+            3) "surname"
+            4) "xiaobai"
+```
+
+消息队列中的消息一旦被消费组里的一个消费者读取了，就不能再被该消费组内的其他消费者读取了。  
 
 
 
