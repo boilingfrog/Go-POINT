@@ -77,7 +77,7 @@ XPENDING和XACK：XPENDING命令可以用来查询每个消费组内所有消费
 使用 XADD 向队列添加消息，如果指定的队列不存在，则创建一个队列，XADD 语法格式：  
 
 ```
-XADD key ID field value [field value ...]
+$ XADD key ID field value [field value ...]
 ```
 
 - key：队列名称，如果不存在就创建  
@@ -87,7 +87,7 @@ XADD key ID field value [field value ...]
 - field value：记录   
 
 ```
-127.0.0.1:6379> XADD teststream * name xiaohong surname xiaobai
+$ XADD teststream * name xiaohong surname xiaobai
 "1646650328883-0"
 ```
 
@@ -98,7 +98,7 @@ XADD key ID field value [field value ...]
 使用 XREAD 以阻塞或非阻塞方式获取消息列表  
 
 ```
-XREAD [COUNT count] [BLOCK milliseconds] STREAMS key [key ...] id [id ...]
+$ XREAD [COUNT count] [BLOCK milliseconds] STREAMS key [key ...] id [id ...]
 ```
 
 - count：数量  
@@ -110,7 +110,7 @@ XREAD [COUNT count] [BLOCK milliseconds] STREAMS key [key ...] id [id ...]
 - id：消息 ID  
 
 ```
-127.0.0.1:6379> XREAD BLOCK 100 STREAMS  teststream 0
+$ XREAD BLOCK 100 STREAMS  teststream 0
 1) 1) "teststream"
    2) 1) 1) "1646650328883-0"
          2) 1) "name"
@@ -126,7 +126,7 @@ BLOCK 就是阻塞的毫秒数
 使用 XGROUP CREATE 创建消费者组  
 
 ```
-XGROUP [CREATE key groupname id-or-$] [SETID key groupname id-or-$] [DESTROY key groupname] [DELCONSUMER key groupname consumername]
+$ XGROUP [CREATE key groupname id-or-$] [SETID key groupname id-or-$] [DESTROY key groupname] [DELCONSUMER key groupname consumername]
 ```
 
 - key：队列名称，如果不存在就创建  
@@ -138,13 +138,13 @@ XGROUP [CREATE key groupname id-or-$] [SETID key groupname id-or-$] [DESTROY key
 从头开始消费  
 
 ```
-XGROUP CREATE teststream test-consumer-group-name 0-0  
+$ XGROUP CREATE teststream test-consumer-group-name 0-0  
 ```
 
 从尾部开始消费  
 
 ```
-XGROUP CREATE teststream test-consumer-group-name $
+$ XGROUP CREATE teststream test-consumer-group-name $
 ```
 
 **XREADGROUP GROUP**
@@ -152,7 +152,7 @@ XGROUP CREATE teststream test-consumer-group-name $
 使用 `XREADGROUP GROUP` 读取消费组中的消息  
 
 ```
-XREADGROUP GROUP group consumer [COUNT count] [BLOCK milliseconds] [NOACK] STREAMS key [key ...] ID [ID ...]
+$ XREADGROUP GROUP group consumer [COUNT count] [BLOCK milliseconds] [NOACK] STREAMS key [key ...] ID [ID ...]
 ```
 
 - group：消费组名  
@@ -182,12 +182,16 @@ $ XREADGROUP GROUP test-consumer-group-name test-consumer-name COUNT 1 STREAMS t
 
 消息队列中的消息一旦被消费组里的一个消费者读取了，就不能再被该消费组内的其他消费者读取了。  
 
+如果没有通过 XACK 命令告知消息已经成功消费了，该消息会一直存在，可以通过 XPENDING 命令查看已读取、但尚未确认处理完成的消息。   
 
-
-
-
-
-
+```
+$ XPENDING teststream test-consumer-group-name
+1) (integer) 3
+2) "1646653325535-0"
+3) "1646653392799-0"
+4) 1) 1) "test-consumer-name"
+      2) "3"
+```
 
 
 
