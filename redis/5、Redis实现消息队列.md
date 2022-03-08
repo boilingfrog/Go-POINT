@@ -4,6 +4,7 @@
 - [使用 Redis 实现消息队列](#%E4%BD%BF%E7%94%A8-redis-%E5%AE%9E%E7%8E%B0%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97)
   - [基于List的消息队列](#%E5%9F%BA%E4%BA%8Elist%E7%9A%84%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97)
   - [基于 Streams 的消息队列](#%E5%9F%BA%E4%BA%8E-streams-%E7%9A%84%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97)
+    - [看下实现](#%E7%9C%8B%E4%B8%8B%E5%AE%9E%E7%8E%B0)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -193,7 +194,21 @@ $ XPENDING teststream test-consumer-group-name
       2) "3"
 ```
 
+#### 看下实现
 
+先来看下 stream 的结构  
+
+``` 
+typedef struct stream {
+    // 这是使用前缀树存储数据
+    rax *rax;               /* The radix tree holding the stream. */
+    uint64_t length;        /* Number of elements inside this stream. */
+    // 当前stream的最后一个id
+    streamID last_id;       /* Zero if there are yet no items. */
+    // 存储当前的消费者组信息
+    rax *cgroups;           /* Consumer groups dictionary: name -> streamCG */
+} stream;
+```
 
 ### 参考
 
