@@ -208,7 +208,48 @@ typedef struct stream {
     // 存储当前的消费者组信息
     rax *cgroups;           /* Consumer groups dictionary: name -> streamCG */
 } stream;
+
+typedef struct streamID {
+    // 消息创建时的时间
+    uint64_t ms;        /* Unix time in milliseconds. */
+    // 消息的序号
+    uint64_t seq;       /* Sequence number. */
+} streamID;
+
 ```
+
+可以看到 stream 的实现用到了 rax 树  
+
+再来看 rax 的实现  
+
+```
+typedef struct rax {
+    // radix tree 的头节点
+    raxNode *head;
+    //  radix tree 所存储的元素总数，每插入一个 ID，计数加 1
+    uint64_t numele;
+    // radix tree 的节点总数
+    uint64_t numnodes;
+} rax;
+
+typedef struct raxNode {
+    uint32_t iskey:1;     /* Does this node contain a key? */
+    uint32_t isnull:1;    /* Associated value is NULL (don't store it). */
+    uint32_t iscompr:1;   /* Node is compressed. */
+    uint32_t size:29;     /* Number of children, or compressed string len. */
+    unsigned char data[];
+} raxNode;
+```
+
+压缩前缀树的数据是存在了 `data[]` 数组中，实际对这个数组的操作使用到了 listpack(紧凑列表)  
+
+这个 listpack 有点脸盲，listpack 是在 redis5.0 引入了一种新的数据结构，listpack 相比于 ziplist 有哪些优点呢  
+
+压缩列表的细节可参见[压缩列表](https://www.cnblogs.com/ricklz/p/15839710.html#6%E5%8E%8B%E7%BC%A9%E5%88%97%E8%A1%A8)    
+
+保存过大的元素，否则容易导致内存重新分配，甚至可能引发连锁更新的问题。  
+
+在 listpack 中，因为每个列表项只记录自己的长度，而不会像 ziplist 中的列表项那样，会记录前一项的长度。所以，当我们在 listpack 中新增或修改元素时，实际上只会涉及每个列表项自己的操作，而不会影响后续列表项的长度变化，这就避免了连锁更新。  
 
 ### 参考
 
@@ -216,3 +257,4 @@ typedef struct stream {
 【Redis设计与实现】https://book.douban.com/subject/25900156/  
 【Redis Streams 介绍】http://www.redis.cn/topics/streams-intro.html      
 【Centos7.6安装redis-6.0.8版本】https://blog.csdn.net/roc_wl/article/details/108662719    
+【Stream 数据类型源码分析】https://blog.csdn.net/weixin_45505313/article/details/109060761  
