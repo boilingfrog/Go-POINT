@@ -5,6 +5,9 @@
   - [基于List的消息队列](#%E5%9F%BA%E4%BA%8Elist%E7%9A%84%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97)
   - [基于 Streams 的消息队列](#%E5%9F%BA%E4%BA%8E-streams-%E7%9A%84%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97)
     - [看下实现](#%E7%9C%8B%E4%B8%8B%E5%AE%9E%E7%8E%B0)
+      - [stream 的结构](#stream-%E7%9A%84%E7%BB%93%E6%9E%84)
+      - [streamCG 消费者组](#streamcg-%E6%B6%88%E8%B4%B9%E8%80%85%E7%BB%84)
+      - [streamConsumer 消费者结构](#streamconsumer-%E6%B6%88%E8%B4%B9%E8%80%85%E7%BB%93%E6%9E%84)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -196,7 +199,7 @@ $ XPENDING teststream test-consumer-group-name
 
 #### 看下实现
 
-先来看下 stream 的结构  
+##### stream 的结构
 
 ``` 
 typedef struct stream {
@@ -247,9 +250,41 @@ typedef struct raxNode {
 
 压缩列表的细节可参见[压缩列表](https://www.cnblogs.com/ricklz/p/15839710.html#6%E5%8E%8B%E7%BC%A9%E5%88%97%E8%A1%A8)    
 
-保存过大的元素，否则容易导致内存重新分配，甚至可能引发连锁更新的问题。  
+对于压缩列表来讲：保存过大的元素，否则容易导致内存重新分配，甚至可能引发连锁更新的问题。  
 
 在 listpack 中，因为每个列表项只记录自己的长度，而不会像 ziplist 中的列表项那样，会记录前一项的长度。所以，当我们在 listpack 中新增或修改元素时，实际上只会涉及每个列表项自己的操作，而不会影响后续列表项的长度变化，这就避免了连锁更新。  
+
+##### streamCG 消费者组
+
+```
+typedef struct streamCG {
+    // 当前我这个stream的最大id
+    streamID last_id;
+    // 还没有收到ACK的消息列表
+    rax *pel;
+    // 消费组中的所有消费者，消费者名称为键，streamConsumer 为值 
+    rax *consumers;
+} streamCG;
+```
+- last_id: 每个组的消费者共享一个last_id代表这个组消费到了什么位置，每次投递后会更新这个group；  
+
+- pel: 已经发送给客户端，但是还没有收到XACK的消息都存储在pel树里面；  
+
+- consumers: 存储当前这个消费者组中的消费者。  
+
+##### streamConsumer 消费者结构
+
+```
+typedef struct streamConsumer {
+    // 为该消费者最后一次活跃的时间
+    mstime_t seen_time;
+    // 消费者名称，为sds结构
+    sds name;
+    // 待ACK的消息列表，和 streamCG 中指向的是同一个  
+    rax *pel;
+} streamConsumer;
+```
+
 
 ### 参考
 
