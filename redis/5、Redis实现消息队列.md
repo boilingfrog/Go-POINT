@@ -249,6 +249,12 @@ typedef struct raxNode {
 } raxNode;
 ```
 
+data 是用来保存实际数据的。不过，这里保存的数据会根据当前节点的类型而有所不同：  
+
+- 对于非压缩节点来说，data 数组包括子节点对应的字符、指向子节点的指针，以及节点表示 key 时对应的 value 指针；  
+
+- 对于压缩节点来说，data 数组包括子节点对应的合并字符串、指向子节点的指针，以及节点为 key 时的 value 指针。
+
 压缩前缀树的数据是存在了 `data[]` 数组中，实际对这个数组的操作使用到了 listpack(紧凑列表)  
 
 这个 listpack 有点脸盲，listpack 是在 redis5.0 引入了一种新的数据结构，listpack 相比于 ziplist 有哪些优点呢  
