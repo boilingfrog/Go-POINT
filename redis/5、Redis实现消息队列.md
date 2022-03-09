@@ -8,6 +8,7 @@
       - [stream 的结构](#stream-%E7%9A%84%E7%BB%93%E6%9E%84)
       - [streamCG 消费者组](#streamcg-%E6%B6%88%E8%B4%B9%E8%80%85%E7%BB%84)
       - [streamConsumer 消费者结构](#streamconsumer-%E6%B6%88%E8%B4%B9%E8%80%85%E7%BB%93%E6%9E%84)
+  - [发布订阅](#%E5%8F%91%E5%B8%83%E8%AE%A2%E9%98%85)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -299,6 +300,52 @@ typedef struct streamConsumer {
     rax *pel;
 } streamConsumer;
 ```
+
+消息队列中的消息一旦被消费组里的一个消费者读取了，就不能再被该消费组内的其他消费者读取了。  
+
+消费者组中会维护 last_id，代表消费者组消费的位置，同时未经 ACK 的消息会存在于 pel 中。   
+
+### 发布订阅  
+
+Redis 发布订阅(pub/sub)是一种消息通信模式：发送者(pub)发送消息，订阅者(sub)接收消息。  
+
+来看下几个主要的命令  
+
+```
+PSUBSCRIBE pattern [pattern ...]
+订阅一个或多个符合给定模式的频道。
+
+PUBSUB subcommand [argument [argument ...]]
+查看订阅与发布系统状态。
+
+PUBLISH channel message
+将信息发送到指定的频道。
+
+PUNSUBSCRIBE [pattern [pattern ...]]
+退订所有给定模式的频道。
+
+SUBSCRIBE channel [channel ...]
+订阅给定的一个或多个频道的信息。
+
+UNSUBSCRIBE [channel [channel ...]]
+指退订给定的频道。
+```
+
+来个栗子  
+
+订阅 test 
+
+```
+SUBSCRIBE test
+```
+
+向 test 发布信息  
+
+```
+PUBLISH test 1
+```
+
+<img src="/img/redis/pubsub-1.jpg"  alt="redis" align="center" />
 
 
 ### 参考
