@@ -236,10 +236,15 @@ typedef struct rax {
 } rax;
 
 typedef struct raxNode {
+    // 表明当前节点是否包含一个key，占用1bit
     uint32_t iskey:1;     /* Does this node contain a key? */
+    // 表明当前key对应的value是否为空，占用1bit  
     uint32_t isnull:1;    /* Associated value is NULL (don't store it). */
+    // 表明当前节点是否为压缩节点，占用1bit
     uint32_t iscompr:1;   /* Node is compressed. */
+    // 压缩节点压缩的字符串长度或者非压缩节点的子节点个数，占用29bit
     uint32_t size:29;     /* Number of children, or compressed string len. */
+    // 包含填充字段，同时存储了当前节点包含的字符串以及子节点的指针，key对应的value指针。
     unsigned char data[];
 } raxNode;
 ```
@@ -253,6 +258,10 @@ typedef struct raxNode {
 对于压缩列表来讲：保存过大的元素，否则容易导致内存重新分配，甚至可能引发连锁更新的问题。  
 
 在 listpack 中，因为每个列表项只记录自己的长度，而不会像 ziplist 中的列表项那样，会记录前一项的长度。所以，当我们在 listpack 中新增或修改元素时，实际上只会涉及每个列表项自己的操作，而不会影响后续列表项的长度变化，这就避免了连锁更新。  
+
+Stream 保存的消息数据，按照 key-value 形式来看的话，消息 ID 就相当于 key，而消息内容相当于是 value。也就是说，Stream 会使用 Radix Tree 来保存消息 ID，然后将消息内容保存在 listpack 中，并作为消息 ID 的 value，用 raxNode 的 value 指针指向对应的 listpack。  
+
+<img src="/img/redis/stream-1.jpg"  alt="redis" align="center" />
 
 ##### streamCG 消费者组
 
