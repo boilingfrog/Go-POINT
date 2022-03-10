@@ -9,6 +9,8 @@
       - [streamCG 消费者组](#streamcg-%E6%B6%88%E8%B4%B9%E8%80%85%E7%BB%84)
       - [streamConsumer 消费者结构](#streamconsumer-%E6%B6%88%E8%B4%B9%E8%80%85%E7%BB%93%E6%9E%84)
   - [发布订阅](#%E5%8F%91%E5%B8%83%E8%AE%A2%E9%98%85)
+    - [普通的订阅](#%E6%99%AE%E9%80%9A%E7%9A%84%E8%AE%A2%E9%98%85)
+    - [基于模式(pattern)的发布/订阅](#%E5%9F%BA%E4%BA%8E%E6%A8%A1%E5%BC%8Fpattern%E7%9A%84%E5%8F%91%E5%B8%83%E8%AE%A2%E9%98%85)
     - [看下源码实现](#%E7%9C%8B%E4%B8%8B%E6%BA%90%E7%A0%81%E5%AE%9E%E7%8E%B0)
   - [参考](#%E5%8F%82%E8%80%83)
 
@@ -332,7 +334,7 @@ UNSUBSCRIBE [channel [channel ...]]
 指退订给定的频道。
 ```
 
-来个栗子  
+#### 普通的订阅
 
 订阅 test 
 
@@ -347,6 +349,25 @@ PUBLISH test 1
 ```
 
 <img src="/img/redis/pubsub-1.jpg"  alt="redis" align="center" />
+
+#### 基于模式(pattern)的发布/订阅  
+
+相当于是模糊匹配，订阅的时候通过加入通配符中来实现，?表示1个占位符，*表示任意个占位符(包括0)，?*表示1个以上占位符。  
+
+订阅  
+
+```
+psubscribe p-test*
+``` 
+
+发送信息  
+
+```
+PUBLISH p-testa ceshi-1
+```
+
+
+<img src="/img/redis/pubsub-2.jpg"  alt="redis" align="center" />
 
 #### 看下源码实现
 
@@ -368,6 +389,8 @@ pubsub_channels 属性是一个字典，字典的键为正在被订阅的频道�
 <img src="/img/redis/pubsub_channels.png"  alt="redis" align="center" />
 
 使用 PSUBSCRIBE 命令订阅频道时，就会将订阅的频道和客户端在 pubsub_channels 中进行关联  
+
+代码路径 `https://github.com/redis/redis/blob/6.0/src/pubsub.c`
 
 ```
 // 订阅一个频道，成功返回1，已经订阅返回0
@@ -408,6 +431,108 @@ int pubsubSubscribeChannel(client *c, robj *channel, pubsubtype type) {
 1、客户端进行订阅的时候，自己本身也会维护一个订阅的 channel 列表；  
 
 2、服务端会将订阅的客户端添加到自己的 pubsub_channels 中。  
+
+再来看下取消订阅 `pubsubUnsubscribeChannel`   
+
+```
+// 取消 client 订阅
+int pubsubUnsubscribeChannel(client *c, robj *channel, int notify, pubsubtype type) {
+    dictEntry *de;
+    list *clients;
+    listNode *ln;
+    int retval = 0;
+
+    /* Remove the channel from the client -> channels hash table */
+    incrRefCount(channel); /* channel may be just a pointer to the same object
+                            we have in the hash tables. Protect it... */
+    // 客户端在本地的哈希表中删除channel
+    if (dictDelete(type.clientPubSubChannels(c),channel) == DICT_OK) {
+        retval = 1;
+        /* Remove the client from the channel -> clients list hash table */
+        // 移除Channel对应的Client列表
+        de = dictFind(*type.serverPubSubChannels, channel);
+        serverAssertWithInfo(c,NULL,de != NULL);
+        clients = dictGetVal(de);
+        ln = listSearchKey(clients,c);
+        serverAssertWithInfo(c,NULL,ln != NULL);
+        listDelNode(clients,ln);
+        if (listLength(clients) == 0) {
+            /* Free the list and associated hash entry at all if this was
+             * the latest client, so that it will be possible to abuse
+             * Redis PUBSUB creating millions of channels. */
+            dictDelete(*type.serverPubSubChannels, channel);
+            /* As this channel isn't subscribed by anyone, it's safe
+             * to remove the channel from the slot. */
+            if (server.cluster_enabled & type.shard) {
+                slotToChannelDel(channel->ptr);
+            }
+        }
+    }
+    /* Notify the client */
+    if (notify) {
+        addReplyPubsubUnsubscribed(c,channel,type);
+    }
+    decrRefCount(channel); /* it is finally safe to release it */
+    return retval;
+}
+```
+
+取消订阅的逻辑也比较简单，先在客户端本地维护的 channel 列表移除对应的 channel 信息，然后在服务端中的 pubsub_channels 移除对应的客户端信息。    
+
+再来看下信息是如何进行发布的呢  
+
+```
+/* Publish a message */
+int pubsubPublishMessage(robj *channel, robj *message) {
+    int receivers = 0;
+    dictEntry *de;
+    dictIterator *di;
+    listNode *ln;
+    listIter li;
+
+    /* Send to clients listening for that channel */
+    //找到Channel所对应的dictEntry
+    de = dictFind(server.pubsub_channels,channel);
+    if (de) {
+        // 获取此 channel 对应的所有客户端
+        list *list = dictGetVal(de);
+        listNode *ln;
+        listIter li;
+
+        listRewind(list,&li);
+        // 一个个发送信息
+        while ((ln = listNext(&li)) != NULL) {
+            client *c = ln->value;
+            addReplyPubsubMessage(c,channel,message);
+            receivers++;
+        }
+    }
+    /* Send to clients listening to matching channels */
+    di = dictGetIterator(server.pubsub_patterns);
+    if (di) {
+        channel = getDecodedObject(channel);
+        while((de = dictNext(di)) != NULL) {
+            robj *pattern = dictGetKey(de);
+            list *clients = dictGetVal(de);
+            if (!stringmatchlen((char*)pattern->ptr,
+                                sdslen(pattern->ptr),
+                                (char*)channel->ptr,
+                                sdslen(channel->ptr),0)) continue;
+
+            listRewind(clients,&li);
+            while ((ln = listNext(&li)) != NULL) {
+                client *c = listNodeValue(ln);
+                addReplyPubsubPatMessage(c,pattern,channel,message);
+                receivers++;
+            }
+        }
+        decrRefCount(channel);
+        dictReleaseIterator(di);
+    }
+    return receivers;
+}
+```
+
 
 
 
