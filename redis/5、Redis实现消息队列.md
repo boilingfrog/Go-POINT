@@ -9,6 +9,7 @@
       - [streamCG 消费者组](#streamcg-%E6%B6%88%E8%B4%B9%E8%80%85%E7%BB%84)
       - [streamConsumer 消费者结构](#streamconsumer-%E6%B6%88%E8%B4%B9%E8%80%85%E7%BB%93%E6%9E%84)
   - [发布订阅](#%E5%8F%91%E5%B8%83%E8%AE%A2%E9%98%85)
+    - [看下源码实现](#%E7%9C%8B%E4%B8%8B%E6%BA%90%E7%A0%81%E5%AE%9E%E7%8E%B0)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -364,7 +365,49 @@ struct redisServer {
 
 pubsub_channels 属性是一个字典，字典的键为正在被订阅的频道，而字典的值则是一个链表， 链表中保存了所有订阅这个频道的客户端。   
 
-<img src="/img/redis/pubsub-1.jpg"  alt="redis" align="center" />
+<img src="/img/redis/pubsub_channels.png"  alt="redis" align="center" />
+
+使用 PSUBSCRIBE 命令订阅频道时，就会将订阅的频道和客户端在 pubsub_channels 中进行关联  
+
+```
+// 订阅一个频道，成功返回1，已经订阅返回0
+int pubsubSubscribeChannel(client *c, robj *channel, pubsubtype type) {
+    dictEntry *de;
+    list *clients = NULL;
+    int retval = 0;
+
+    /* Add the channel to the client -> channels hash table */
+    // 将频道添加到客户端本地的哈希表中
+    // 客户端自己也有一个订阅频道的列表，记录了此客户端所订阅的频道
+    if (dictAdd(type.clientPubSubChannels(c),channel,NULL) == DICT_OK) {
+        retval = 1;
+        incrRefCount(channel);
+        /* Add the client to the channel -> list of clients hash table */
+        // 添加到服务器中的pubsub_channels中
+        // 判断下这个 channel 是否已经创建了
+        de = dictFind(*type.serverPubSubChannels, channel);
+        if (de == NULL) {
+            // 没有创建，先创建 channel,后添加
+            clients = listCreate();
+            dictAdd(*type.serverPubSubChannels, channel, clients);
+            incrRefCount(channel);
+        } else {
+            // 已经创建过了
+            clients = dictGetVal(de);
+        }
+        // 在尾部添加客户端
+        listAddNodeTail(clients,c);
+    }
+    /* Notify the client */
+    // 通知客户端
+    addReplyPubsubSubscribed(c,channel,type);
+    return retval;
+}
+```
+
+1、客户端进行订阅的时候，自己本身也会维护一个订阅的 channel 列表；  
+
+2、服务端会将订阅的客户端添加到自己的 pubsub_channels 中。  
 
 
 
