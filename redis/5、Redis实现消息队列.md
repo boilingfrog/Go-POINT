@@ -376,7 +376,6 @@ Redis 将所有频道和模式的订阅关系分别保存在 pubsub_channels 和
 ```
 struct redisServer {
     // 属性是一个字典，保存订阅频道的信息
-	/* Pubsub */
     dict *pubsub_channels;  /* Map channels to list of subscribed clients */
     // 属性是一个链表，链表中保存着所有和模式相关的信息
     list *pubsub_patterns;  /* A list of pubsub_patterns */
@@ -508,6 +507,8 @@ int pubsubPublishMessage(robj *channel, robj *message) {
         }
     }
     /* Send to clients listening to matching channels */
+    // pubsub_patterns 属性是一个链表，链表中保存着所有和模式相关的信息
+    // 拿到匹配的 channel 模式的客户端信息  
     di = dictGetIterator(server.pubsub_patterns);
     if (di) {
         channel = getDecodedObject(channel);
@@ -533,11 +534,11 @@ int pubsubPublishMessage(robj *channel, robj *message) {
 }
 ```
 
+消息的发布，除了会向 pubsub_channels 中的客户端发送信息，也会通过 pubsub_patterns 给匹配的客户端发送信息。  
 
+再来看下 pubsub_patterns 中的客户端数据是如何保存的  
 
-
-
-
+<img src="/img/redis/pubsub_patterns.png"  alt="redis" align="center" />
 
 ### 参考
 
