@@ -347,6 +347,29 @@ PUBLISH test 1
 
 <img src="/img/redis/pubsub-1.jpg"  alt="redis" align="center" />
 
+#### 看下源码实现
+
+Redis 将所有频道和模式的订阅关系分别保存在 pubsub_channels 和 pubsub_patterns 中。  
+
+```
+struct redisServer {
+    // 属性是一个字典，保存订阅频道的信息
+	/* Pubsub */
+    dict *pubsub_channels;  /* Map channels to list of subscribed clients */
+    // 属性是一个链表，链表中保存着所有和模式相关的信息
+    list *pubsub_patterns;  /* A list of pubsub_patterns */
+    // ...
+}
+```
+
+pubsub_channels 属性是一个字典，字典的键为正在被订阅的频道，而字典的值则是一个链表， 链表中保存了所有订阅这个频道的客户端。   
+
+<img src="/img/redis/pubsub-1.jpg"  alt="redis" align="center" />
+
+
+
+
+
 
 ### 参考
 
@@ -355,3 +378,4 @@ PUBLISH test 1
 【Redis Streams 介绍】http://www.redis.cn/topics/streams-intro.html      
 【Centos7.6安装redis-6.0.8版本】https://blog.csdn.net/roc_wl/article/details/108662719    
 【Stream 数据类型源码分析】https://blog.csdn.net/weixin_45505313/article/details/109060761  
+【订阅与发布】https://redisbook.readthedocs.io/en/latest/feature/pubsub.html  
