@@ -391,11 +391,11 @@ pubsub_channels 属性是一个字典，字典的键为正在被订阅的频道�
 
 使用 PSUBSCRIBE 命令订阅频道时，就会将订阅的频道和客户端在 pubsub_channels 中进行关联  
 
-代码路径 `https://github.com/redis/redis/blob/6.0/src/pubsub.c`
+代码路径 `https://github.com/redis/redis/blob/6.2/src/pubsub.c`
 
 ```
 // 订阅一个频道，成功返回1，已经订阅返回0
-int pubsubSubscribeChannel(client *c, robj *channel, pubsubtype type) {
+int pubsubSubscribeChannel(client *c, robj *channel) {
     dictEntry *de;
     list *clients = NULL;
     int retval = 0;
@@ -403,17 +403,16 @@ int pubsubSubscribeChannel(client *c, robj *channel, pubsubtype type) {
     /* Add the channel to the client -> channels hash table */
     // 将频道添加到客户端本地的哈希表中
     // 客户端自己也有一个订阅频道的列表，记录了此客户端所订阅的频道
-    if (dictAdd(type.clientPubSubChannels(c),channel,NULL) == DICT_OK) {
+    if (dictAdd(c->pubsub_channels,channel,NULL) == DICT_OK) {
         retval = 1;
         incrRefCount(channel);
-        /* Add the client to the channel -> list of clients hash table */
         // 添加到服务器中的pubsub_channels中
         // 判断下这个 channel 是否已经创建了
-        de = dictFind(*type.serverPubSubChannels, channel);
+        de = dictFind(server.pubsub_channels,channel);
         if (de == NULL) {
             // 没有创建，先创建 channel,后添加
             clients = listCreate();
-            dictAdd(*type.serverPubSubChannels, channel, clients);
+            dictAdd(server.pubsub_channels,channel,clients);
             incrRefCount(channel);
         } else {
             // 已经创建过了
@@ -423,10 +422,13 @@ int pubsubSubscribeChannel(client *c, robj *channel, pubsubtype type) {
         listAddNodeTail(clients,c);
     }
     /* Notify the client */
-    // 通知客户端
-    addReplyPubsubSubscribed(c,channel,type);
-    return retval;
+    addReplyPubsubSubscribed(c,channel);
 }
+
+typedef struct client {
+    dict *pubsub_channels;  /* channels a client is interested in (SUBSCRIBE) */
+    list *pubsub_patterns;  /* patterns a client is interested in (SUBSCRIBE) */
+} client;
 ```
 
 1、客户端进行订阅的时候，自己本身也会维护一个订阅的 channel 列表；  
@@ -437,21 +439,19 @@ int pubsubSubscribeChannel(client *c, robj *channel, pubsubtype type) {
 
 ```
 // 取消 client 订阅
-int pubsubUnsubscribeChannel(client *c, robj *channel, int notify, pubsubtype type) {
+int pubsubUnsubscribeChannel(client *c, robj *channel, int notify) {
     dictEntry *de;
     list *clients;
     listNode *ln;
     int retval = 0;
 
-    /* Remove the channel from the client -> channels hash table */
+    // 客户端在本地的哈希表中删除channel
     incrRefCount(channel); /* channel may be just a pointer to the same object
                             we have in the hash tables. Protect it... */
-    // 客户端在本地的哈希表中删除channel
-    if (dictDelete(type.clientPubSubChannels(c),channel) == DICT_OK) {
+    if (dictDelete(c->pubsub_channels,channel) == DICT_OK) {
         retval = 1;
         /* Remove the client from the channel -> clients list hash table */
-        // 移除Channel对应的Client列表
-        de = dictFind(*type.serverPubSubChannels, channel);
+        de = dictFind(server.pubsub_channels,channel);
         serverAssertWithInfo(c,NULL,de != NULL);
         clients = dictGetVal(de);
         ln = listSearchKey(clients,c);
@@ -461,18 +461,11 @@ int pubsubUnsubscribeChannel(client *c, robj *channel, int notify, pubsubtype ty
             /* Free the list and associated hash entry at all if this was
              * the latest client, so that it will be possible to abuse
              * Redis PUBSUB creating millions of channels. */
-            dictDelete(*type.serverPubSubChannels, channel);
-            /* As this channel isn't subscribed by anyone, it's safe
-             * to remove the channel from the slot. */
-            if (server.cluster_enabled & type.shard) {
-                slotToChannelDel(channel->ptr);
-            }
+            dictDelete(server.pubsub_channels,channel);
         }
     }
     /* Notify the client */
-    if (notify) {
-        addReplyPubsubUnsubscribed(c,channel,type);
-    }
+    if (notify) addReplyPubsubUnsubscribed(c,channel);
     decrRefCount(channel); /* it is finally safe to release it */
     return retval;
 }
@@ -492,7 +485,7 @@ int pubsubPublishMessage(robj *channel, robj *message) {
     listIter li;
 
     /* Send to clients listening for that channel */
-    //找到Channel所对应的dictEntry
+    // 找到Channel所对应的dictEntry
     de = dictFind(server.pubsub_channels,channel);
     if (de) {
         // 获取此 channel 对应的所有客户端
@@ -509,14 +502,15 @@ int pubsubPublishMessage(robj *channel, robj *message) {
         }
     }
     /* Send to clients listening to matching channels */
-    // pubsub_patterns 属性是一个链表，链表中保存着所有和模式相关的信息
-    // 拿到匹配的 channel 模式的客户端信息  
+    // 拿到所有的客户端信息
     di = dictGetIterator(server.pubsub_patterns);
     if (di) {
         channel = getDecodedObject(channel);
         while((de = dictNext(di)) != NULL) {
             robj *pattern = dictGetKey(de);
             list *clients = dictGetVal(de);
+             // 这里进行匹配
+            // 拥有相同的 pattern 的客户端会被放入到同一个链表中
             if (!stringmatchlen((char*)pattern->ptr,
                                 sdslen(pattern->ptr),
                                 (char*)channel->ptr,
@@ -538,6 +532,10 @@ int pubsubPublishMessage(robj *channel, robj *message) {
 
 消息的发布，除了会向 pubsub_channels 中的客户端发送信息，也会通过 pubsub_patterns 给匹配的客户端发送信息。  
 
+通过 channel 订阅,通过 channel 找到匹配的客户端链表，然后逐一发送  
+
+通过 pattern 订阅,拿出所有的 patterns ，然后根据规则，对 发送的 channel ,进行一一匹配，找到满足条件的客户端然后发送信息。   
+
 再来看下 pubsub_patterns 中的客户端数据是如何保存的  
 
 <img src="/img/redis/pubsub_patterns.png"  alt="redis" align="center" />  
@@ -549,13 +547,16 @@ int pubsubSubscribePattern(client *c, robj *pattern) {
     list *clients;
     int retval = 0;
 
+    // 如果客户端没有订阅过
     if (listSearchKey(c->pubsub_patterns,pattern) == NULL) {
         retval = 1;
+        // 客户端端本地进行记录
         listAddNodeTail(c->pubsub_patterns,pattern);
         incrRefCount(pattern);
         /* Add the client to the pattern -> list of clients hash table */
         de = dictFind(server.pubsub_patterns,pattern);
         if (de == NULL) {
+            // 没有创建，先创建
             clients = listCreate();
             dictAdd(server.pubsub_patterns,pattern,clients);
             incrRefCount(pattern);
@@ -569,6 +570,14 @@ int pubsubSubscribePattern(client *c, robj *pattern) {
     return retval;
 }
 ```
+
+这里订阅 pattern 的流程和订阅 channel 的流程有点类似，只是这里存储的是 pattern。pubsub_patterns 的类型也是 dict。
+
+拥有相同的 pattern 的客户端会被放入到同一个链表中。看 redis 的提交记录可以发现，原本 pubsub_patterns 的类型是 list，后面调整成了 dict。[issues](https://github.com/redis/redis/pull/8472)   
+  
+> This commit introduced a dictionary on the server side to efficiently handle the pub sub pattern matching. However, there is another list maintaining the same information which is redundant as well as expensive to operate on. Hence removing it.
+
+如果是一个链表，就需要遍历所有的链表，使用 dict ，将有相同 pattern 的客户端放入同一个链表中,这样匹配前面的 pattern 就好了，不用遍历所有的客户端节点。   
 
 ### 参考
 
