@@ -373,12 +373,14 @@ PUBLISH p-testa ceshi-1
 
 Redis 将所有频道和模式的订阅关系分别保存在 pubsub_channels 和 pubsub_patterns 中。  
 
+代码路径`https://github.com/redis/redis/blob/6.0/src/server.h`  
+
 ```
 struct redisServer {
-    // 属性是一个字典，保存订阅频道的信息
+    // 保存订阅频道的信息
     dict *pubsub_channels;  /* Map channels to list of subscribed clients */
-    // 属性是一个链表，链表中保存着所有和模式相关的信息
-    list *pubsub_patterns;  /* A list of pubsub_patterns */
+    // 保存着所有和模式相关的信息
+    dict *pubsub_patterns;  /* A dict of pubsub_patterns */
     // ...
 }
 ```
@@ -538,7 +540,35 @@ int pubsubPublishMessage(robj *channel, robj *message) {
 
 再来看下 pubsub_patterns 中的客户端数据是如何保存的  
 
-<img src="/img/redis/pubsub_patterns.png"  alt="redis" align="center" />
+<img src="/img/redis/pubsub_patterns.png"  alt="redis" align="center" />  
+
+```
+/* Subscribe a client to a pattern. Returns 1 if the operation succeeded, or 0 if the client was already subscribed to that pattern. */
+int pubsubSubscribePattern(client *c, robj *pattern) {
+    dictEntry *de;
+    list *clients;
+    int retval = 0;
+
+    if (listSearchKey(c->pubsub_patterns,pattern) == NULL) {
+        retval = 1;
+        listAddNodeTail(c->pubsub_patterns,pattern);
+        incrRefCount(pattern);
+        /* Add the client to the pattern -> list of clients hash table */
+        de = dictFind(server.pubsub_patterns,pattern);
+        if (de == NULL) {
+            clients = listCreate();
+            dictAdd(server.pubsub_patterns,pattern,clients);
+            incrRefCount(pattern);
+        } else {
+            clients = dictGetVal(de);
+        }
+        listAddNodeTail(clients,c);
+    }
+    /* Notify the client */
+    addReplyPubsubPatSubscribed(c,pattern);
+    return retval;
+}
+```
 
 ### 参考
 
