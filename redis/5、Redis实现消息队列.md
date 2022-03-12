@@ -139,7 +139,9 @@ typedef struct quicklistNode {
 } quicklistNode;
 ``` 
 
-quicklist 作为一个链表结构，在它的数据结构中，是定义了整个 quicklist 的头、尾指针，这样一来，我们就可以通过 quicklist 的数据结构，来快速定位到 quicklist 的链表头和链表尾。  
+quicklist 作为一个链表结构，在它的数据结构中，是定义了整个 quicklist 的头、尾指针，这样一来，我们就可以通过 quicklist 的数据结构，来快速定位到 quicklist 的链表头和链表尾。   
+
+<img src="/img/redis/quicklist.png"  alt="redis" align="center" />
 
 ### 基于 Streams 的消息队列
 
