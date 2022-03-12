@@ -3,8 +3,9 @@
 
 - [使用 Redis 实现消息队列](#%E4%BD%BF%E7%94%A8-redis-%E5%AE%9E%E7%8E%B0%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97)
   - [基于List的消息队列](#%E5%9F%BA%E4%BA%8Elist%E7%9A%84%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97)
+    - [分析下源码实现](#%E5%88%86%E6%9E%90%E4%B8%8B%E6%BA%90%E7%A0%81%E5%AE%9E%E7%8E%B0)
   - [基于 Streams 的消息队列](#%E5%9F%BA%E4%BA%8E-streams-%E7%9A%84%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97)
-    - [看下实现](#%E7%9C%8B%E4%B8%8B%E5%AE%9E%E7%8E%B0)
+    - [分析下源码实现](#%E5%88%86%E6%9E%90%E4%B8%8B%E6%BA%90%E7%A0%81%E5%AE%9E%E7%8E%B0-1)
       - [stream 的结构](#stream-%E7%9A%84%E7%BB%93%E6%9E%84)
       - [streamCG 消费者组](#streamcg-%E6%B6%88%E8%B4%B9%E8%80%85%E7%BB%84)
       - [streamConsumer 消费者结构](#streamconsumer-%E6%B6%88%E8%B4%B9%E8%80%85%E7%BB%93%E6%9E%84)
@@ -56,7 +57,7 @@ Redis 中也是可以实现消息队列
 
 不过 List 类型并不支持消费组的实现,Redis 从 5.0 版本开始提供的 Streams 数据类型，来支持消息队列的场景。  
 
-#### 看下代码实现  
+#### 分析下源码实现 
 
 在版本3.2之前，Redis中的列表是 ziplist 和 linkedlist 实现的，针对 ziplist 存在的问题， 在3.2之后，引入了 quicklist 来对 ziplist 进行优化。   
 
@@ -141,7 +142,43 @@ typedef struct quicklistNode {
 
 quicklist 作为一个链表结构，在它的数据结构中，是定义了整个 quicklist 的头、尾指针，这样一来，我们就可以通过 quicklist 的数据结构，来快速定位到 quicklist 的链表头和链表尾。   
 
-<img src="/img/redis/quicklist.png"  alt="redis" align="center" />
+<img src="/img/redis/quicklist.png"  alt="redis" align="center" />    
+
+来看下 quicklist 是如何插入的  
+
+```
+/* Add new entry to head node of quicklist.
+ *
+ * Returns 0 if used existing head.
+ * Returns 1 if new head created. */
+int quicklistPushHead(quicklist *quicklist, void *value, size_t sz) {
+    quicklistNode *orig_head = quicklist->head;
+    assert(sz < UINT32_MAX); /* TODO: add support for quicklist nodes that are sds encoded (not zipped) */
+    if (likely(
+            // 检测插入位置的 ziplist 是否能容纳该元素
+            _quicklistNodeAllowInsert(quicklist->head, quicklist->fill, sz))) {
+        quicklist->head->zl =
+            ziplistPush(quicklist->head->zl, value, sz, ZIPLIST_HEAD);
+        quicklistNodeUpdateSz(quicklist->head);
+    } else {
+        // 容纳不了，就重新创建一个 quicklistNode
+        quicklistNode *node = quicklistCreateNode();
+        node->zl = ziplistPush(ziplistNew(), value, sz, ZIPLIST_HEAD);
+
+        quicklistNodeUpdateSz(node);
+        _quicklistInsertNodeBefore(quicklist, quicklist->head, node);
+    }
+    quicklist->count++;
+    quicklist->head->count++;
+    return (orig_head != quicklist->head);
+}
+```
+
+quicklist 采用的是链表结构，所以当插入一个新元素的时候，首先判断下 quicklist 插入位置的 ziplist 是否能容纳该元素，即单个 ziplist 是否不超过 8KB，或是单个 ziplist 里的元素个数是否满足要求。  
+
+如果可以插入就当前的节点进行插入，否则就新建一个 quicklistNode 来保存先插入的节点。   
+
+quicklist 通过控制每个 quicklistNode 中，ziplist 的大小或是元素个数，就有效减少了在 ziplist 中新增或修改元素后，发生连锁更新的情况，从而提供了更好的访问性能。   
 
 ### 基于 Streams 的消息队列
 
@@ -288,7 +325,7 @@ $ XPENDING teststream test-consumer-group-name
       2) "3"
 ```
 
-#### 看下实现
+#### 分析下源码实现
 
 ##### stream 的结构
 
@@ -665,6 +702,9 @@ int pubsubSubscribePattern(client *c, robj *pattern) {
 > This commit introduced a dictionary on the server side to efficiently handle the pub sub pattern matching. However, there is another list maintaining the same information which is redundant as well as expensive to operate on. Hence removing it.
 
 如果是一个链表，就需要遍历所有的链表，使用 dict ，将有相同 pattern 的客户端放入同一个链表中,这样匹配前面的 pattern 就好了，不用遍历所有的客户端节点。   
+
+### 总结
+
 
 ### 参考
 
