@@ -56,6 +56,91 @@ Redis 中也是可以实现消息队列
 
 不过 List 类型并不支持消费组的实现,Redis 从 5.0 版本开始提供的 Streams 数据类型，来支持消息队列的场景。  
 
+#### 看下代码实现  
+
+在版本3.2之前，Redis中的列表是 ziplist 和 linkedlist 实现的，针对 ziplist 存在的问题， 在3.2之后，引入了 quicklist 来对 ziplist 进行优化。   
+
+对于 ziplist 来讲：  
+
+1、保存过大的元素，否则容易导致内存重新分配，甚至可能引发连锁更新的问题。  
+
+2、保存过多的元素，否则访问性能会降低。   
+
+代码链接`https://github.com/redis/redis/blob/6.2/src/t_list.c`  
+
+```
+void listTypePush(robj *subject, robj *value, int where) {
+    if (subject->encoding == OBJ_ENCODING_QUICKLIST) {
+        int pos = (where == LIST_HEAD) ? QUICKLIST_HEAD : QUICKLIST_TAIL;
+        if (value->encoding == OBJ_ENCODING_INT) {
+            char buf[32];
+            ll2string(buf, 32, (long)value->ptr);
+            quicklistPush(subject->ptr, buf, strlen(buf), pos);
+        } else {
+            quicklistPush(subject->ptr, value->ptr, sdslen(value->ptr), pos);
+        }
+    } else {
+        serverPanic("Unknown list encoding");
+    }
+}
+
+/* Wrapper to allow argument-based switching between HEAD/TAIL pop */
+void quicklistPush(quicklist *quicklist, void *value, const size_t sz,
+                   int where) {
+    if (where == QUICKLIST_HEAD) {
+        quicklistPushHead(quicklist, value, sz);
+    } else if (where == QUICKLIST_TAIL) {
+        quicklistPushTail(quicklist, value, sz);
+    }
+}
+```
+
+可以看下上面主要用到的是 quicklist   
+
+这里再来分析下 quicklist 的数据结构  
+
+```
+typedef struct quicklist {
+    // quicklist的链表头
+    quicklistNode *head;
+    // quicklist的链表尾
+    quicklistNode *tail;
+    // 所有ziplist中的总元素个数
+    unsigned long count;        /* total count of all entries in all ziplists */
+    // quicklistNodes的个数
+    unsigned long len;          /* number of quicklistNodes */
+    int fill : QL_FILL_BITS;              /* fill factor for individual nodes */
+    unsigned int compress : QL_COMP_BITS; /* depth of end nodes not to compress;0=off */
+    unsigned int bookmark_count: QL_BM_BITS;
+    quicklistBookmark bookmarks[];
+} quicklist;
+
+typedef struct quicklistNode {
+    // 前一个quicklistNode
+    struct quicklistNode *prev; 
+    // 后一个quicklistNode
+    struct quicklistNode *next;
+    // quicklistNode指向的ziplist
+    unsigned char *zl;
+    // ziplist的字节大小
+    unsigned int sz;             /* ziplist size in bytes */
+    // ziplist中的元素个数
+    unsigned int count : 16;     /* count of items in ziplist */
+    // 编码格式，原生字节数组或压缩存储
+    unsigned int encoding : 2;   /* RAW==1 or LZF==2 */
+    // 存储方式
+    unsigned int container : 2;  /* NONE==1 or ZIPLIST==2 */
+    // 数据是否被压缩
+    unsigned int recompress : 1; /* was this node previous compressed? */
+    // 数据能否被压缩
+    unsigned int attempted_compress : 1; /* node can't compress; too small */
+    // 预留的bit位
+    unsigned int extra : 10; /* more bits to steal for future usage */
+} quicklistNode;
+``` 
+
+quicklist 作为一个链表结构，在它的数据结构中，是定义了整个 quicklist 的头、尾指针，这样一来，我们就可以通过 quicklist 的数据结构，来快速定位到 quicklist 的链表头和链表尾。  
+
 ### 基于 Streams 的消息队列
 
 Streams 是 Redis 专门为消息队列设计的数据类型。  
