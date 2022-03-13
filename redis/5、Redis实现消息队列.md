@@ -13,6 +13,7 @@
     - [普通的订阅](#%E6%99%AE%E9%80%9A%E7%9A%84%E8%AE%A2%E9%98%85)
     - [基于模式(pattern)的发布/订阅](#%E5%9F%BA%E4%BA%8E%E6%A8%A1%E5%BC%8Fpattern%E7%9A%84%E5%8F%91%E5%B8%83%E8%AE%A2%E9%98%85)
     - [看下源码实现](#%E7%9C%8B%E4%B8%8B%E6%BA%90%E7%A0%81%E5%AE%9E%E7%8E%B0)
+  - [总结](#%E6%80%BB%E7%BB%93)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -705,6 +706,13 @@ int pubsubSubscribePattern(client *c, robj *pattern) {
 
 ### 总结
 
+redis 中消息队列的实现，可以使用 list，Streams，pub/sub。  
+
+1、list 不支持消费者组;  
+ 
+2、发布订阅 (pub/sub) 消息无法持久化，如果出现网络断开、Redis 宕机等，消息就会被丢弃，分发消息，无法记住历史消息；  
+
+3、5.0 引入了 Streams，专门为消息队列设计的数据结构，其中支持了消费者组，支持消息的有序性，支持消息的持久化；  
 
 ### 参考
 
