@@ -56,6 +56,23 @@ Redis 中也是可以实现消息队列
 
 如果客户端从队列中拿到一条消息时，但是还没消费，客户端宕机了，这条消息就对应丢失了， Redis 中为了避免这种情况的出现，提供了 BRPOPLPUSH 命令，BRPOPLPUSH 会在消费一条消息的时候，同时把消息插入到另一个 List，这样如果消费者程序读了消息但没能正常处理，等它重启后，就可以从备份 List 中重新读取消息并进行处理了。  
 
+```
+127.0.0.1:6379> LPUSH test "ceshi-1"
+(integer) 1
+127.0.0.1:6379> LPUSH test "ceshi-2"
+(integer) 2
+127.0.0.1:6379> BRPOPLPUSH test a-test 100
+"ceshi-1"
+127.0.0.1:6379> BRPOPLPUSH test a-test 100
+"ceshi-2"
+127.0.0.1:6379> BRPOPLPUSH test a-test 100
+
+127.0.0.1:6379> RPOP a-test
+"ceshi-1"
+127.0.0.1:6379> RPOP a-test
+"ceshi-2"
+```  
+
 不过 List 类型并不支持消费组的实现,Redis 从 5.0 版本开始提供的 Streams 数据类型，来支持消息队列的场景。  
 
 #### 分析下源码实现 
