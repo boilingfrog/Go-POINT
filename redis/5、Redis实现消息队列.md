@@ -395,6 +395,12 @@ typedef struct raxNode {
 } raxNode;
 ```
 
+下面的前缀树就是存储了（radix、race、read、real 和 redis）这几个 key 的布局    
+
+<img src="/img/redis/radix_tree.jpg"  alt="redis" align="center" />
+
+Radix Tree 非叶子节点，要不然是压缩节点，只指向单个子节点，要不然是非压缩节点，指向多个子节点，但每个子节点只表示一个字符。所以，非叶子节点无法同时指向表示单个字符的子节点和表示合并字符串的子节点。  
+
 data 是用来保存实际数据的。不过，这里保存的数据会根据当前节点的类型而有所不同：  
 
 - 对于非压缩节点来说，data 数组包括子节点对应的字符、指向子节点的指针，以及节点表示 key 时对应的 value 指针；  
@@ -481,13 +487,13 @@ UNSUBSCRIBE [channel [channel ...]]
 订阅 test 
 
 ```
-SUBSCRIBE test
+$ SUBSCRIBE test
 ```
 
 向 test 发布信息  
 
 ```
-PUBLISH test 1
+$ PUBLISH test 1
 ```
 
 <img src="/img/redis/pubsub-1.jpg"  alt="redis" align="center" />
@@ -499,13 +505,13 @@ PUBLISH test 1
 订阅  
 
 ```
-psubscribe p-test*
+$ psubscribe p-test*
 ``` 
 
 发送信息  
 
 ```
-PUBLISH p-testa ceshi-1
+$ PUBLISH p-testa ceshi-1
 ```
 
 
