@@ -85,6 +85,10 @@ Redis 中也是可以实现消息队列
 
 2、保存过多的元素，否则访问性能会降低。   
 
+quicklist 使多个数据项，不再用一个 ziplist 来存，而是分拆到多个 ziplist 中，每个 ziplist 用指针串起来，这样修改其中一个数据项，即便发生级联更新，也只会影响这一个 ziplist，其它 ziplist 不受影响。  
+
+下面看下 list 的实现    
+
 代码链接`https://github.com/redis/redis/blob/6.2/src/t_list.c`  
 
 ```
