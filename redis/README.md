@@ -8,6 +8,7 @@
 
 - [4、Redis中String的内存开销比较大](https://github.com/boilingfrog/Go-POINT/blob/master/redis/4%E3%80%81Redis%E4%B8%AD%E7%9A%84String%E7%B1%BB%E5%9E%8B%E7%9A%84%E5%86%85%E5%AD%98%E5%BC%80%E9%94%80%E6%AF%94%E8%BE%83%E5%A4%A7.md)    
 
+- [5、使用Redis实现消息队列](https://github.com/boilingfrog/Go-POINT/blob/master/redis/5%E3%80%81Redis%E5%AE%9E%E7%8E%B0%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97.md)    
 
 
 

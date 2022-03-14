@@ -747,3 +747,5 @@ redis 中消息队列的实现，可以使用 list，Streams，pub/sub。
 【Centos7.6安装redis-6.0.8版本】https://blog.csdn.net/roc_wl/article/details/108662719    
 【Stream 数据类型源码分析】https://blog.csdn.net/weixin_45505313/article/details/109060761  
 【订阅与发布】https://redisbook.readthedocs.io/en/latest/feature/pubsub.html  
+【Redis学习笔记】https://github.com/boilingfrog/Go-POINT/tree/master/redis  
+【使用 Redis 实现消息队列】https://boilingfrog.github.io/2022/03/14/redis%E4%B8%AD%E5%AE%9E%E7%8E%B0%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97%E7%9A%84%E5%87%A0%E7%A7%8D%E6%96%B9%E5%BC%8F/  
