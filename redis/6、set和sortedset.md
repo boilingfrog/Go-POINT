@@ -206,7 +206,66 @@ int setTypeAdd(robj *subject, sds value) {
 
 3、使用 inset 有一个最大的限制，达到了最大的限制，也是会使用 hashtable；  
 
+再来看下 inset 数据结构  
 
+代码地址`https://github.com/redis/redis/blob/6.2/src/intset.h`  
+
+```
+typedef struct intset {
+    // 编码方法，指定当前存储的是 16 位，32 位，还是 64 位的整数
+    uint32_t encoding;
+    uint32_t length;
+    // 实际保存元素的数组
+    int8_t contents[];
+} intset;
+```
+
+来看下 intset 的数据插入  
+
+```
+/* Insert an integer in the intset */
+intset *intsetAdd(intset *is, int64_t value, uint8_t *success) {
+    // 计算value的编码长度
+    uint8_t valenc = _intsetValueEncoding(value);
+    uint32_t pos;
+    if (success) *success = 1;
+
+    /* Upgrade encoding if necessary. If we need to upgrade, we know that
+     * this value should be either appended (if > 0) or prepended (if < 0),
+     * because it lies outside the range of existing values. */
+    // 如果value的编码长度大于当前的编码位数，进行升级
+    if (valenc > intrev32ifbe(is->encoding)) {
+        /* This always succeeds, so we don't need to curry *success. */
+        return intsetUpgradeAndAdd(is,value);
+    } else {
+        /* Abort if the value is already present in the set.
+         * This call will populate "pos" with the right position to insert
+         * the value when it cannot be found. */
+        // 当前值不存在的时候才进行插入  
+        if (intsetSearch(is,value,&pos)) {
+            if (success) *success = 0;
+            return is;
+        }
+
+        is = intsetResize(is,intrev32ifbe(is->length)+1);
+        if (pos < intrev32ifbe(is->length)) intsetMoveTail(is,pos,pos+1);
+    }
+
+    // 数据插入
+    _intsetSet(is,pos,value);
+    is->length = intrev32ifbe(intrev32ifbe(is->length)+1);
+    return is;
+}
+```
+
+intset 的数据插入有一个数据升级的过程，当一个整数被添加到整数集合时，首先需要判断下 新元素的类型和集合中现有元素类型的长短，如果新元素是一个32位的数字，现有集合类型是16位的，那么就需要将整数集合进行升级，然后才能将新的元素加入进来。  
+
+这样做的优点：  
+
+1、提升整数集合的灵活性，可以随意的添加整数，而不用关心整数的类型；  
+
+2、可以尽可能的节约内存。  
+                       
 ### 参考
 
 【Redis核心技术与实战】https://time.geekbang.org/column/intro/100056701    
