@@ -114,6 +114,97 @@ SSCAN key cursor [MATCH pattern] [COUNT count]
 
 #### 看下源码实现  
 
+这里来看下 set 中主要用到的数据类型  
+
+代码路径`https://github.com/redis/redis/blob/6.2/src/t_set.c`  
+
+```
+void saddCommand(client *c) {
+    robj *set;
+    int j, added = 0;
+
+    set = lookupKeyWrite(c->db,c->argv[1]);
+    if (checkType(c,set,OBJ_SET)) return;
+    
+    if (set == NULL) {
+        set = setTypeCreate(c->argv[2]->ptr);
+        dbAdd(c->db,c->argv[1],set);
+    }
+
+    for (j = 2; j < c->argc; j++) {
+        if (setTypeAdd(set,c->argv[j]->ptr)) added++;
+    }
+    if (added) {
+        signalModifiedKey(c,c->db,c->argv[1]);
+        notifyKeyspaceEvent(NOTIFY_SET,"sadd",c->argv[1],c->db->id);
+    }
+    server.dirty += added;
+    addReplyLongLong(c,added);
+}
+
+// 当 value 是整数类型使用 intset
+// 否则使用哈希表
+robj *setTypeCreate(sds value) {
+    if (isSdsRepresentableAsLongLong(value,NULL) == C_OK)
+        return createIntsetObject();
+    return createSetObject();
+}
+
+/* Add the specified value into a set.
+ *
+ * If the value was already member of the set, nothing is done and 0 is
+ * returned, otherwise the new element is added and 1 is returned. */
+int setTypeAdd(robj *subject, sds value) {
+    long long llval;
+    // 如果是 OBJ_ENCODING_HT 说明是哈希类型
+    if (subject->encoding == OBJ_ENCODING_HT) {
+        dict *ht = subject->ptr;
+        dictEntry *de = dictAddRaw(ht,value,NULL);
+        if (de) {
+            // 设置key ,value 设置成null
+            dictSetKey(ht,de,sdsdup(value));
+            dictSetVal(ht,de,NULL);
+            return 1;
+        }
+    // OBJ_ENCODING_INTSET 代表是 inset
+    } else if (subject->encoding == OBJ_ENCODING_INTSET) {
+        if (isSdsRepresentableAsLongLong(value,&llval) == C_OK) {
+            uint8_t success = 0;
+            subject->ptr = intsetAdd(subject->ptr,llval,&success);
+            if (success) {
+                /* Convert to regular set when the intset contains
+                 * too many entries. */
+                // 如果条目过多将会转换成集合
+                size_t max_entries = server.set_max_intset_entries;
+                /* limit to 1G entries due to intset internals. */
+                if (max_entries >= 1<<30) max_entries = 1<<30;
+                if (intsetLen(subject->ptr) > max_entries)
+                    setTypeConvert(subject,OBJ_ENCODING_HT);
+                return 1;
+            }
+        } else {
+            /* Failed to get integer from object, convert to regular set. */
+            setTypeConvert(subject,OBJ_ENCODING_HT);
+
+            /* The set *was* an intset and this value is not integer
+             * encodable, so dictAdd should always work. */
+            serverAssert(dictAdd(subject->ptr,sdsdup(value),NULL) == DICT_OK);
+            return 1;
+        }
+    } else {
+        serverPanic("Unknown set encoding");
+    }
+    return 0;
+}
+```
+
+通过上面的源码分析，可以看到  
+
+1、set 中主要用到了 hashtable 和 inset；  
+
+2、如果存储的类型是整数类型就会使用 inset，否则使用 hashtable；  
+
+3、使用 inset 有一个最大的限制，达到了最大的限制，也是会使用 hashtable；  
 
 
 ### 参考
