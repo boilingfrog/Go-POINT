@@ -80,36 +80,36 @@ func syncMapDemo() {
 ```go
 // sync/map.go
 type Map struct {
-   // 当写read map 或读写dirty map时 需要上锁
-   mu Mutex
+	// 当写read map 或读写dirty map时 需要上锁
+	mu Mutex
 
-   // read map的 k v(entry) 是不变的，删除只是打标记，插入新key会加锁写到dirty中
-   // 因此对read map的读取无需加锁
-   read atomic.Value // 保存readOnly结构体
+	// read map的 k v(entry) 是不变的，删除只是打标记，插入新key会加锁写到dirty中
+	// 因此对read map的读取无需加锁
+	read atomic.Value // 保存readOnly结构体
 
-   // dirty map 对dirty map的操作需要持有mu锁
-   dirty map[interface{}]*entry
+	// dirty map 对dirty map的操作需要持有mu锁
+	dirty map[interface{}]*entry
 
-   // 当Load操作在read map中未找到，尝试从dirty中进行加载时(不管是否存在)，misses+1
-   // 当misses达到diry map len时，dirty被提升为read 并且重新分配dirty
-   misses int
+	// 当Load操作在read map中未找到，尝试从dirty中进行加载时(不管是否存在)，misses+1
+	// 当misses达到diry map len时，dirty被提升为read 并且重新分配dirty
+	misses int
 }
 
 // read map数据结构
 type readOnly struct {
-   m       map[interface{}]*entry
-   // 为true时代表dirty map中含有m中没有的元素
-   amended bool
+	m       map[interface{}]*entry
+	// 为true时代表dirty map中含有m中没有的元素
+	amended bool
 }
 
 type entry struct {
-   // 指向实际的interface{}
-   // p有三种状态:
-   // p == nil: 键值已经被删除，此时，m.dirty==nil 或 m.dirty[k]指向该entry
-   // p == expunged: 键值已经被删除， 此时, m.dirty!=nil 且 m.dirty不存在该键值
-   // 其它情况代表实际interface{}地址 如果m.dirty!=nil 则 m.read[key] 和 m.dirty[key] 指向同一个entry
-   // 当删除key时，并不实际删除，先CAS entry.p为nil 等到每次dirty map创建时(dirty提升后的第一次新建Key)，会将entry.p由nil CAS为expunged
-   p unsafe.Pointer // *interface{}
+	// 指向实际的interface{}
+	// p有三种状态:
+	// p == nil: 键值已经被删除，此时，m.dirty==nil 或 m.dirty[k]指向该entry
+	// p == expunged: 键值已经被删除， 此时, m.dirty!=nil 且 m.dirty不存在该键值
+	// 其它情况代表实际interface{}地址 如果m.dirty!=nil 则 m.read[key] 和 m.dirty[key] 指向同一个entry
+	// 当删除key时，并不实际删除，先CAS entry.p为nil 等到每次dirty map创建时(dirty提升后的第一次新建Key)，会将entry.p由nil CAS为expunged
+	p unsafe.Pointer // *interface{}
 }
 ```
 
@@ -126,21 +126,21 @@ type entry struct {
 
 ```go
 func (m *Map) Load(key interface{}) (value interface{}, ok bool) {
-    // 首先在通过atomic的原子操作读取内容
+	// 首先在通过atomic的原子操作读取内容
 	read, _ := m.read.Load().(readOnly)
 	e, ok := read.m[key]
-    // 如果没在 read 中找到，并且 amended 为 true，即 dirty 中存在 read 中没有的 key
+	// 如果没在 read 中找到，并且 amended 为 true，即 dirty 中存在 read 中没有的 key
 	if !ok && read.amended {
-       // read调用了atomic的原子性，所以不用加锁，但是dirty map[interface{}]*entry就需要了，用的互斥锁
+		// read调用了atomic的原子性，所以不用加锁，但是dirty map[interface{}]*entry就需要了，用的互斥锁
 		m.mu.Lock()
-        // double check，避免在加锁的时候dirty map提升为read map
+		// double check，避免在加锁的时候dirty map提升为read map
 		read, _ = m.read.Load().(readOnly)
 		e, ok = read.m[key]
-        // 还是没有找到
+		// 还是没有找到
 		if !ok && read.amended {
-            // 从 dirty 中找
+			// 从 dirty 中找
 			e, ok = m.dirty[key]
-            // 不管dirty中有没有找到 都增加misses计数 该函数可能将dirty map提升为readmap
+			// 不管dirty中有没有找到 都增加misses计数 该函数可能将dirty map提升为readmap
 			m.missLocked()
 		}
 		m.mu.Unlock()
@@ -153,13 +153,12 @@ func (m *Map) Load(key interface{}) (value interface{}, ok bool) {
 
 // 从entry中atomic load实际interface{}
 func (e *entry) load() (value interface{}, ok bool) {
-  p := atomic.LoadPointer(&e.p)
-  if p == nil || p == expunged {
-    return nil, false
-  }
-  return *(*interface{})(p), true
+	p := atomic.LoadPointer(&e.p)
+	if p == nil || p == expunged {
+		return nil, false
+	}
+	return *(*interface{})(p), true
 }
-
 ```
 
 梳理下处理的逻辑：  
@@ -173,16 +172,16 @@ func (e *entry) load() (value interface{}, ok bool) {
 // 如果 misses 值小于 m.dirty 的长度，就直接返回。否则，将 m.dirty 晋升为 read，并清空 dirty，清空 misses 计数值。这样，之前
 // 一段时间新加入的 key 都会进入到 read 中，从而能够提升 read 的命中率。
 func (m *Map) missLocked() {
-  m.misses++
-  if m.misses < len(m.dirty) {
-    return
-  }
-  // 提升过程很简单，直接将m.dirty赋给m.read.m
-  // 提升完成之后 amended == false m.dirty == nil
-  // m.dirty并不立即创建被拷贝元素，而是延迟创建
-  m.read.Store(readOnly{m: m.dirty})
-  m.dirty = nil
-  m.misses = 0
+	m.misses++
+	if m.misses < len(m.dirty) {
+		return
+	}
+	// 提升过程很简单，直接将m.dirty赋给m.read.m
+	// 提升完成之后 amended == false m.dirty == nil
+	// m.dirty并不立即创建被拷贝元素，而是延迟创建
+	m.read.Store(readOnly{m: m.dirty})
+	m.dirty = nil
+	m.misses = 0
 }
 ```
 
@@ -193,7 +192,7 @@ func (m *Map) missLocked() {
 ```go
 // Store sets the value for a key.
 func (m *Map) Store(key, value interface{}) {
-    // 如果read map中存在该key  则尝试直接更改(由于修改的是entry内部的pointer，因此dirty map也可见)
+	// 如果read map中存在该key  则尝试直接更改(由于修改的是entry内部的pointer，因此dirty map也可见)
 	read, _ := m.read.Load().(readOnly)
 	if e, ok := read.m[key]; ok && e.tryStore(&value) {
 		return
@@ -208,10 +207,10 @@ func (m *Map) Store(key, value interface{}) {
 			//    b. dirty map 插入 key
 			m.dirty[key] = e
 		}
-        // 更新 entry.p = value (read map 和 dirty map 指向同一个 entry)
+		// 更新 entry.p = value (read map 和 dirty map 指向同一个 entry)
 		e.storeLocked(&value)
 	} else if e, ok := m.dirty[key]; ok {
-        // 如果 read map 中不存在该 key，但 dirty map 中存在该 key，直接写入更新 entry(read map 中仍然没有这个 key)
+		// 如果 read map 中不存在该 key，但 dirty map 中存在该 key，直接写入更新 entry(read map 中仍然没有这个 key)
 		e.storeLocked(&value)
 	} else {
 		// 如果read map和dirty map中都不存在该key，则:
@@ -230,57 +229,57 @@ func (m *Map) Store(key, value interface{}) {
 
 // 尝试直接更新entry 如果p == expunged 返回false
 func (e *entry) tryStore(i *interface{}) bool {
-  p := atomic.LoadPointer(&e.p)
-  if p == expunged {
-    return false
-  }
-  for {
-    if atomic.CompareAndSwapPointer(&e.p, p, unsafe.Pointer(i)) {
-      return true
-    }
-    p = atomic.LoadPointer(&e.p)
-    if p == expunged {
-      return false
-    }
-  }
+	p := atomic.LoadPointer(&e.p)
+	if p == expunged {
+		return false
+	}
+	for {
+		if atomic.CompareAndSwapPointer(&e.p, p, unsafe.Pointer(i)) {
+			return true
+		}
+		p = atomic.LoadPointer(&e.p)
+		if p == expunged {
+			return false
+		}
+	}
 }
 
 func (e *entry) unexpungeLocked() (wasExpunged bool) {
-  return atomic.CompareAndSwapPointer(&e.p, expunged, nil)
+	return atomic.CompareAndSwapPointer(&e.p, expunged, nil)
 }
 
 // 如果 dirty map为nil，则从read map中拷贝元素到dirty map
 func (m *Map) dirtyLocked() {
-  if m.dirty != nil {
-    return
-  }
+	if m.dirty != nil {
+		return
+	}
 
-  read, _ := m.read.Load().(readOnly)
-  m.dirty = make(map[interface{}]*entry, len(read.m))
-  for k, e := range read.m {
-    // a. 将所有为 nil的 p 置为 expunged
-    // b. 只拷贝不为expunged 的 p
-    if !e.tryExpungeLocked() {
-      m.dirty[k] = e
-    }
-  }
+	read, _ := m.read.Load().(readOnly)
+	m.dirty = make(map[interface{}]*entry, len(read.m))
+	for k, e := range read.m {
+		// a. 将所有为 nil的 p 置为 expunged
+		// b. 只拷贝不为expunged 的 p
+		if !e.tryExpungeLocked() {
+			m.dirty[k] = e
+		}
+	}
 }
 
 func (e *entry) tryExpungeLocked() (isExpunged bool) {
-  p := atomic.LoadPointer(&e.p)
-  for p == nil {
-    if atomic.CompareAndSwapPointer(&e.p, nil, expunged) {
-      return true
-    }
-    p = atomic.LoadPointer(&e.p)
-  }
-  return p == expunged
+	p := atomic.LoadPointer(&e.p)
+	for p == nil {
+		if atomic.CompareAndSwapPointer(&e.p, nil, expunged) {
+			return true
+		}
+		p = atomic.LoadPointer(&e.p)
+	}
+	return p == expunged
 }
 ```
 梳理下流程：  
 
 1、首先还是去read map中查询，存在并且p!=expunged,直接修改。（由于修改的是 entry 内部的 pointer，因此 dirty map 也可见）  
-2、如果read map中存在该key，但p == expunged。加锁更新p的状态，然后直接更新该entry (此时m.dirty==nil或m.dirty[key]==e)  
+2、如果read map中存在该key，但p == expunged。加锁更新p的状态，然后直接更新该entry (此时`m.dirty==nil`或`m.dirty[key]==e`)  
 3、如果read map中不存在该Key，但dirty map中存在该key，直接写入更新entry(read map中仍然没有)   
 4、如果read map和dirty map都不存在该key     
 - a. 如果dirty map为空，则需要创建dirty map，并从read map中拷贝未删除的元素  
@@ -292,22 +291,22 @@ func (e *entry) tryExpungeLocked() (isExpunged bool) {
 ```go
 // Delete deletes the value for a key.
 func (m *Map) Delete(key interface{}) {
-    // 从read map中寻找
+	// 从read map中寻找
 	read, _ := m.read.Load().(readOnly)
 	e, ok := read.m[key]
-    // 没找到
+	// 没找到
 	if !ok && read.amended { // read.amended为true代表dirty map中含有m中没有的元素
 		m.mu.Lock()
-        // double check
+		// double check
 		read, _ = m.read.Load().(readOnly)
 		e, ok = read.m[key]
-        // 第二次仍然没找到，但dirty map中存在，则直接从dirty map删除
+		// 第二次仍然没找到，但dirty map中存在，则直接从dirty map删除
 		if !ok && read.amended {
 			delete(m.dirty, key)
 		}
 		m.mu.Unlock()
 	}
-    // 如果read存在，将entry.p 置为 nil
+	// 如果read存在，将entry.p 置为 nil
 	if ok {
 		e.delete()
 	}
@@ -345,27 +344,27 @@ func (m *Map) LoadOrStore(key, value interface{}) (actual interface{}, loaded bo
 	}
 
 	m.mu.Lock()
-    // double check
+	// double check
 	read, _ = m.read.Load().(readOnly)
 	if e, ok := read.m[key]; ok {
 		if e.unexpungeLocked() {
-		    // 如果 read map 中存在该 key，但 p == expunged，则说明 m.dirty != nil 并且 m.dirty 中不存在该 key 值 此时:
-		    //    a. 将 p 的状态由 expunged  更改为 nil
-		    //    b. dirty map 插入 key
+			// 如果 read map 中存在该 key，但 p == expunged，则说明 m.dirty != nil 并且 m.dirty 中不存在该 key 值 此时:
+			//    a. 将 p 的状态由 expunged  更改为 nil
+			//    b. dirty map 插入 key
 			m.dirty[key] = e
 		}
 		actual, loaded, _ = e.tryLoadOrStore(value)
 	} else if e, ok := m.dirty[key]; ok {
-        // 如果 read map 中不存在该 key，但 dirty map 中存在该 key
+		// 如果 read map 中不存在该 key，但 dirty map 中存在该 key
 		actual, loaded, _ = e.tryLoadOrStore(value)
-        // 不管dirty中有没有找到 都增加misses计数 该函数可能将dirty map提升为readmap
+		// 不管dirty中有没有找到 都增加misses计数 该函数可能将dirty map提升为readmap
 		m.missLocked()
 	} else {
 		if !read.amended {
-		    // 如果read map和dirty map中都不存在该key，则:
-		    //    a. 如果dirty map为空，则需要创建dirty map，并从read map中拷贝未删除的元素
-		    //    b. 更新amended字段，标识dirty map中存在read map中没有的key
-		    //    c. 将k v写入dirty map中，read.m不变
+			// 如果read map和dirty map中都不存在该key，则:
+			//    a. 如果dirty map为空，则需要创建dirty map，并从read map中拷贝未删除的元素
+			//    b. 更新amended字段，标识dirty map中存在read map中没有的key
+			//    c. 将k v写入dirty map中，read.m不变
 			m.dirtyLocked()
 			m.read.Store(readOnly{m: read.m, amended: true})
 		}
@@ -430,11 +429,12 @@ func (e *entry) tryLoadOrStore(i interface{}) (actual interface{}, loaded, ok bo
 
 ### 流程图片
 
-最后附上一张不错的图片
+最后附上一张操作的流程图  
 
-![alt](../../img//go-sync-map-diagram.png)
+<img src="/img/golang/go-sync-map-diagram.png"  alt="redis" align="center" />
 
 ### 参考
 【Go sync.Map 实现】https://wudaijun.com/2018/02/go-sync-map-implement/  
 【深度解密 Go 语言之 sync.map】https://www.cnblogs.com/qcrao-2018/p/12833787.html  
-【图片】http://russellluo.com/2017/06/go-sync-map-diagram.html
+【golang源码阅读笔记】https://github.com/boilingfrog/Go-POINT/tree/master/golang  
+【go中sync.Map源码刨铣】https://boilingfrog.github.io/2022/03/16/go%E4%B8%ADsync.map%E6%BA%90%E7%A0%81%E5%88%A8%E9%93%A3/  
