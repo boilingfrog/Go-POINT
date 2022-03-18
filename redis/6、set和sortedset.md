@@ -7,6 +7,8 @@
     - [常见命令](#%E5%B8%B8%E8%A7%81%E5%91%BD%E4%BB%A4)
     - [set 的使用场景](#set-%E7%9A%84%E4%BD%BF%E7%94%A8%E5%9C%BA%E6%99%AF)
     - [看下源码实现](#%E7%9C%8B%E4%B8%8B%E6%BA%90%E7%A0%81%E5%AE%9E%E7%8E%B0)
+      - [insert](#insert)
+      - [dict](#dict)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -220,6 +222,8 @@ typedef struct intset {
 } intset;
 ```
 
+##### insert
+
 来看下 intset 的数据插入  
 
 ```
@@ -319,6 +323,53 @@ static uint8_t intsetSearch(intset *is, int64_t value, uint32_t *pos) {
 }
 ```
 
+可以看到这里用到的是二分查找，intset 中的数据本身也就是排好序的  
+
+##### dict 
+
+来看下 dict 的数据结构  
+
+```
+typedef struct dict {
+    dictType *type;
+    void *privdata;
+    // 哈希表数组，长度为2，一个正常存储数据，一个用来扩容
+    dictht ht[2];
+    long rehashidx; /* rehashing not in progress if rehashidx == -1 */
+    int16_t pauserehash; /* If >0 rehashing is paused (<0 indicates coding error) */
+} dict;
+
+// 哈希表结构，通过两个哈希表使用，实现增量的 rehash  
+typedef struct dictht {
+    dictEntry **table;
+    // hash 容量大小
+    unsigned long size;
+    // 总是等于 size - 1，用于计算索引值
+    unsigned long sizemask;
+    // 实际存储的 dictEntry 数量
+    unsigned long used;
+} dictht;
+
+//  k/v 键值对节点，是实际存储数据的节点  
+typedef struct dictEntry {
+    // 键对象，总是一个字符串类型的对象
+    void *key;
+    union {
+        // void指针，这意味着它可以指向任何类型
+        void *val;
+        uint64_t u64;
+        int64_t s64;
+        double d;
+    } v;
+    // 指向下一个节点
+    struct dictEntry *next;
+} dictEntry;
+```
+
+可以看到 dict 中，是预留了两个哈希表，来处理渐进式的 rehash  
+
+rehash 细节参加 [redis 中的字典](https://www.cnblogs.com/ricklz/p/15839710.html#3%E5%AD%97%E5%85%B8)  
+
 再来看下 dict 数据的插入  
 
 ```
@@ -339,7 +390,7 @@ dictEntry *dictAddRaw(dict *d, void *key, dictEntry **existing)
      * Insert the element in top, with the assumption that in a database
      * system it is more likely that recently added entries are accessed
      * more frequently. */
-    // hash 中得物使用主要用到了
+    // 这里来判断是否正在 Rehash 中
     ht = dictIsRehashing(d) ? &d->ht[1] : &d->ht[0];
     entry = zmalloc(sizeof(*entry));
     entry->next = ht->table[index];
@@ -347,10 +398,70 @@ dictEntry *dictAddRaw(dict *d, void *key, dictEntry **existing)
     ht->used++;
 
     /* Set the hash entry fields. */
+    // 插入具体的数据  
     dictSetKey(d, entry, key);
     return entry;
 }
 ```
+
+这里重点来分析下 Rehash 的过程  
+
+```
+/* Performs N steps of incremental rehashing. Returns 1 if there are still
+ * keys to move from the old to the new hash table, otherwise 0 is returned.
+ *
+ * Note that a rehashing step consists in moving a bucket (that may have more
+ * than one key as we use chaining) from the old to the new hash table, however
+ * since part of the hash table may be composed of empty spaces, it is not
+ * guaranteed that this function will rehash even a single bucket, since it
+ * will visit at max N*10 empty buckets in total, otherwise the amount of
+ * work it does would be unbound and the function may block for a long time. */
+int dictRehash(dict *d, int n) {
+    int empty_visits = n*10; /* Max number of empty buckets to visit. */
+    if (!dictIsRehashing(d)) return 0;
+
+    while(n-- && d->ht[0].used != 0) {
+        dictEntry *de, *nextde;
+
+        /* Note that rehashidx can't overflow as we are sure there are more
+         * elements because ht[0].used != 0 */
+        assert(d->ht[0].size > (unsigned long)d->rehashidx);
+        while(d->ht[0].table[d->rehashidx] == NULL) {
+            d->rehashidx++;
+            if (--empty_visits == 0) return 1;
+        }
+        de = d->ht[0].table[d->rehashidx];
+        /* Move all the keys in this bucket from the old to the new hash HT */
+        while(de) {
+            uint64_t h;
+
+            nextde = de->next;
+            /* Get the index in the new hash table */
+            h = dictHashKey(d, de->key) & d->ht[1].sizemask;
+            de->next = d->ht[1].table[h];
+            d->ht[1].table[h] = de;
+            d->ht[0].used--;
+            d->ht[1].used++;
+            de = nextde;
+        }
+        d->ht[0].table[d->rehashidx] = NULL;
+        d->rehashidx++;
+    }
+
+    /* Check if we already rehashed the whole table... */
+    if (d->ht[0].used == 0) {
+        zfree(d->ht[0].table);
+        d->ht[0] = d->ht[1];
+        _dictReset(&d->ht[1]);
+        d->rehashidx = -1;
+        return 0;
+    }
+
+    /* More to rehash... */
+    return 1;
+}
+```
+
 
 
 ### 参考
