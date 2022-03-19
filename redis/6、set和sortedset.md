@@ -9,6 +9,10 @@
     - [看下源码实现](#%E7%9C%8B%E4%B8%8B%E6%BA%90%E7%A0%81%E5%AE%9E%E7%8E%B0)
       - [insert](#insert)
       - [dict](#dict)
+  - [sorted set](#sorted-set)
+    - [常见的命令](#%E5%B8%B8%E8%A7%81%E7%9A%84%E5%91%BD%E4%BB%A4)
+    - [使用场景](#%E4%BD%BF%E7%94%A8%E5%9C%BA%E6%99%AF)
+    - [分析下源码实现](#%E5%88%86%E6%9E%90%E4%B8%8B%E6%BA%90%E7%A0%81%E5%AE%9E%E7%8E%B0)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -480,6 +484,123 @@ int incrementallyRehash(int dbid) {
 }
 ```
 
+1、rehash 的过程 Redis 默认使用了两个全局哈希表;  
+
+2、rehash 的过程是渐进式的，因为如果数据量很大的话，一次迁移所有的数据，会造成Redis线程阻塞，无法服务其他请求；  
+
+3、在进行 rehash 期间，删除，查找或者更新操作都会在两个哈希表中执行，添加操作就直接添加到哈希表2中了。查找会把两个哈希表都找一遍，直到找到或者两个都找不到；  
+
+4、如果在 reash 期间，如果没有读写操作，这时候，就不能迁移工作了，所以后台定时执行一定数量的数据迁移。   
+
+### sorted set
+
+`sorted set`有序集合和集合一样也是 string 类型元素的集合，同时也不允许有重复的成员。   
+
+不同的是`sorted set`中的每个元素都会关联一个 double 类型的分数，`sorted set`通过这个分数给集合中的成员进行从小到大的排序。有序集合中的成员是唯一的，关联的 score 可以重复。   
+
+#### 常见的命令
+
+下面看下有序集合中常见的命令  
+
+```
+向有序集合添加一个或多个成员，或者更新已存在成员的分数
+ZADD key score1 member1 [score2 member2]
+
+获取有序集合的成员数
+ZCARD key
+
+计算在有序集合中指定区间分数的成员数
+ZCOUNT key min max
+
+有序集合中对指定成员的分数加上增量 increment
+ZINCRBY key increment member
+
+计算给定的一个或多个有序集的交集并将结果集存储在新的有序集合 destination 中
+ZINTERSTORE destination numkeys key [key ...]
+
+在有序集合中计算指定字典区间内成员数量
+ZLEXCOUNT key min max
+
+通过索引区间返回有序集合指定区间内的成员
+ZRANGE key start stop [WITHSCORES]
+
+通过字典区间返回有序集合的成员
+ZRANGEBYLEX key min max [LIMIT offset count]
+
+通过分数返回有序集合指定区间内的成员
+ZRANGEBYSCORE key min max [WITHSCORES] [LIMIT]
+
+返回有序集合中指定成员的索引
+ZRANK key member
+
+移除有序集合中的一个或多个成员
+ZREM key member [member ...]
+
+移除有序集合中给定的字典区间的所有成员
+ZREMRANGEBYLEX key min max
+
+移除有序集合中给定的排名区间的所有成员
+ZREMRANGEBYRANK key start stop
+
+移除有序集合中给定的分数区间的所有成员
+ZREMRANGEBYSCORE key min max
+
+返回有序集中指定区间内的成员，通过索引，分数从高到低
+ZREVRANGE key start stop [WITHSCORES]
+
+返回有序集中指定分数区间内的成员，分数从高到低排序
+ZREVRANGEBYSCORE key max min [WITHSCORES]
+
+返回有序集合中指定成员的排名，有序集成员按分数值递减(从大到小)排序
+ZREVRANK key member
+
+返回有序集中，成员的分数值
+ZSCORE key member
+
+计算给定的一个或多个有序集的并集，并存储在新的 key 中
+ZUNIONSTORE destination numkeys key [key ...]
+
+迭代有序集合中的元素（包括元素成员和元素分值）
+ZSCAN key cursor [MATCH pattern] [COUNT count]
+```
+
+来个栗子  
+
+```
+127.0.0.1:6379> ZADD test-sset 1 member1
+(integer) 1
+127.0.0.1:6379> ZADD test-sset 2 member2
+(integer) 1
+127.0.0.1:6379> ZADD test-sset 3 member3
+(integer) 1
+127.0.0.1:6379> ZADD test-sset 3 member3
+(integer) 0
+127.0.0.1:6379> ZADD test-sset 4 member3
+(integer) 0
+127.0.0.1:6379> ZADD test-sset 5 member5
+(integer) 1
+127.0.0.1:6379> ZRANGE test-sset 0 10 WITHSCORES
+1) "member1"
+2) "1"
+3) "member2"
+4) "2"
+5) "member3"
+6) "4"
+7) "member5"
+8) "5"
+```
+
+#### 使用场景
+
+来看下`sorted set`的使用场景  
+
+1、通过 score 的排序功能，可以实现类似排行榜，学习成绩的排序功能；  
+
+2、也可以实现带权重队列，比如普通消息的 score 为1，重要消息的 score 为2，然后工作线程可以选择按 score 的倒序来获取工作任务。让重要的任务优先执行；  
+
+3、也可以实现一个延迟队列，将 score 存储过期时间，从小到大排序，最靠前的就是最先过期的。  
+
+#### 分析下源码实现
 
 
 ### 参考
