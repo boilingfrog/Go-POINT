@@ -407,19 +407,13 @@ dictEntry *dictAddRaw(dict *d, void *key, dictEntry **existing)
 这里重点来分析下 Rehash 的过程  
 
 ```
-/* Performs N steps of incremental rehashing. Returns 1 if there are still
- * keys to move from the old to the new hash table, otherwise 0 is returned.
- *
- * Note that a rehashing step consists in moving a bucket (that may have more
- * than one key as we use chaining) from the old to the new hash table, however
- * since part of the hash table may be composed of empty spaces, it is not
- * guaranteed that this function will rehash even a single bucket, since it
- * will visit at max N*10 empty buckets in total, otherwise the amount of
- * work it does would be unbound and the function may block for a long time. */
 int dictRehash(dict *d, int n) {
     int empty_visits = n*10; /* Max number of empty buckets to visit. */
+    // 这里来判断是否正在 Rehash 中
     if (!dictIsRehashing(d)) return 0;
 
+    // used 实际存储的 dictEntry 数量
+    // 如果有数据进行下面的迁移
     while(n-- && d->ht[0].used != 0) {
         dictEntry *de, *nextde;
 
@@ -430,6 +424,7 @@ int dictRehash(dict *d, int n) {
             d->rehashidx++;
             if (--empty_visits == 0) return 1;
         }
+        // 获取老数据中的数据
         de = d->ht[0].table[d->rehashidx];
         /* Move all the keys in this bucket from the old to the new hash HT */
         while(de) {
@@ -437,8 +432,10 @@ int dictRehash(dict *d, int n) {
 
             nextde = de->next;
             /* Get the index in the new hash table */
+            // 获取新哈希表的索引
             h = dictHashKey(d, de->key) & d->ht[1].sizemask;
             de->next = d->ht[1].table[h];
+            // 将数据放入到新的 dity 中
             d->ht[1].table[h] = de;
             d->ht[0].used--;
             d->ht[1].used++;
@@ -449,8 +446,10 @@ int dictRehash(dict *d, int n) {
     }
 
     /* Check if we already rehashed the whole table... */
+    // 这里来检测是否完成了整个的 rehash 操作  
     if (d->ht[0].used == 0) {
         zfree(d->ht[0].table);
+        // 将 ht[1] 的内容放入到 ht[0] 中，ht[1] 作为备用，下次 rehash 使用
         d->ht[0] = d->ht[1];
         _dictReset(&d->ht[1]);
         d->rehashidx = -1;
@@ -459,6 +458,25 @@ int dictRehash(dict *d, int n) {
 
     /* More to rehash... */
     return 1;
+}
+
+// 使用增量的方式 rehash 
+// 当然数据很大的话，一次迁移所有的数据，显然是不合理的，会造成Redis线程阻塞，无法服务其他请求。这里 Redis 使用的是渐进式 rehash。
+// 在 rehash 期间，每次执行添加，删除，查找或者更新操作时，除了对命令本身的处理，还会顺带将哈希表1中的数据拷贝到哈希表2中。从索引0开始，每执行一次操作命令，拷贝一个索引位置的数据。  
+// 如果没有读入和写入操作，这时候就不能进行 rehash
+// 所以会定时执行一定数量的 rehash 操作  
+int incrementallyRehash(int dbid) {
+    /* Keys dictionary */
+    if (dictIsRehashing(server.db[dbid].dict)) {
+        dictRehashMilliseconds(server.db[dbid].dict,1);
+        return 1; /* already used our millisecond for this loop... */
+    }
+    /* Expires */
+    if (dictIsRehashing(server.db[dbid].expires)) {
+        dictRehashMilliseconds(server.db[dbid].expires,1);
+        return 1; /* already used our millisecond for this loop... */
+    }
+    return 0;
 }
 ```
 
