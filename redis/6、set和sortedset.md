@@ -602,6 +602,51 @@ ZSCAN key cursor [MATCH pattern] [COUNT count]
 
 #### 分析下源码实现
 
+先来看下`sorted set`的数据结构   
+
+```go
+typedef struct zset {
+    dict *dict;
+    zskiplist *zsl;
+} zset;
+
+typedef struct zskiplist {
+    // 头，尾节点
+    struct zskiplistNode *header, *tail;
+    // 节点数量
+    unsigned long length;
+    // 目前表内节点的最大层数
+    int level;
+} zskiplist;
+
+/* ZSETs use a specialized version of Skiplists */
+// ZSETs 使用的是特定版的 Skiplists
+typedef struct zskiplistNode {
+    // 这里使用 sds 存储具体的元素
+    sds ele;
+    // 元素的权重
+    double score;
+    // 后向指针（为了便于从跳表的尾节点倒序查找）
+    struct zskiplistNode *backward;
+    // 层
+    // 保存着指向其他元素的指针。高层的指针越过的元素数量大于等于低层的指针，为了提高查找的效率，程序总是从高层先开始访问，然后随着元素值范围的缩小，慢慢降低层次。
+    struct zskiplistLevel {
+        // 节点上的前向指针
+        struct zskiplistNode *forward;
+        // 跨度
+        // 用于记录两个节点之间的距离
+        unsigned long span;
+    } level[];
+} zskiplistNode;
+```
+
+看上面的数据结构可以发现`sorted set`的实现主要使用了 dict 和 zskiplist 两种数据结构。  
+
+<img src="/img/golang/skip-table.jpeg"  alt="redis" align="center" />
+
+
+
+
 
 ### 参考
 
