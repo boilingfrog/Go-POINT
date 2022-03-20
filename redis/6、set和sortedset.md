@@ -602,6 +602,12 @@ ZSCAN key cursor [MATCH pattern] [COUNT count]
 
 #### 分析下源码实现
 
+`sorted set` 中的代码主要在下面的两个文件中  
+
+结构定义：`server.h`  
+
+实现：`t_zset.c`    
+
 先来看下`sorted set`的数据结构   
 
 ```go
@@ -643,6 +649,187 @@ typedef struct zskiplistNode {
 看上面的数据结构可以发现`sorted set`的实现主要使用了 dict 和 zskiplist 两种数据结构。  
 
 <img src="/img/golang/skip-table.jpeg"  alt="redis" align="center" />
+
+来看下 ZADD 的插入  
+
+```go 
+/* Add a new element or update the score of an existing element in a sorted
+ * set, regardless of its encoding.
+ *
+ * The set of flags change the command behavior. 
+ *
+ * The input flags are the following:
+ *
+ * ZADD_INCR: Increment the current element score by 'score' instead of updating
+ *            the current element score. If the element does not exist, we
+ *            assume 0 as previous score.
+ * ZADD_NX:   Perform the operation only if the element does not exist.
+ * ZADD_XX:   Perform the operation only if the element already exist.
+ * ZADD_GT:   Perform the operation on existing elements only if the new score is 
+ *            greater than the current score.
+ * ZADD_LT:   Perform the operation on existing elements only if the new score is 
+ *            less than the current score.
+ *
+ * When ZADD_INCR is used, the new score of the element is stored in
+ * '*newscore' if 'newscore' is not NULL.
+ *
+ * The returned flags are the following:
+ *
+ * ZADD_NAN:     The resulting score is not a number.
+ * ZADD_ADDED:   The element was added (not present before the call).
+ * ZADD_UPDATED: The element score was updated.
+ * ZADD_NOP:     No operation was performed because of NX or XX.
+ *
+ * Return value:
+ *
+ * The function returns 1 on success, and sets the appropriate flags
+ * ADDED or UPDATED to signal what happened during the operation (note that
+ * none could be set if we re-added an element using the same score it used
+ * to have, or in the case a zero increment is used).
+ *
+ * The function returns 0 on error, currently only when the increment
+ * produces a NAN condition, or when the 'score' value is NAN since the
+ * start.
+ *
+ * The command as a side effect of adding a new element may convert the sorted
+ * set internal encoding from ziplist to hashtable+skiplist.
+ *
+ * Memory management of 'ele':
+ *
+ * The function does not take ownership of the 'ele' SDS string, but copies
+ * it if needed. */
+int zsetAdd(robj *zobj, double score, sds ele, int in_flags, int *out_flags, double *newscore) {
+    /* Turn options into simple to check vars. */
+    int incr = (in_flags & ZADD_IN_INCR) != 0;
+    int nx = (in_flags & ZADD_IN_NX) != 0;
+    int xx = (in_flags & ZADD_IN_XX) != 0;
+    int gt = (in_flags & ZADD_IN_GT) != 0;
+    int lt = (in_flags & ZADD_IN_LT) != 0;
+    *out_flags = 0; /* We'll return our response flags. */
+    double curscore;
+
+    /* NaN as input is an error regardless of all the other parameters. */
+    if (isnan(score)) {
+        *out_flags = ZADD_OUT_NAN;
+        return 0;
+    }
+
+    /* Update the sorted set according to its encoding. */
+    if (zobj->encoding == OBJ_ENCODING_ZIPLIST) {
+        unsigned char *eptr;
+
+        if ((eptr = zzlFind(zobj->ptr,ele,&curscore)) != NULL) {
+            /* NX? Return, same element already exists. */
+            if (nx) {
+                *out_flags |= ZADD_OUT_NOP;
+                return 1;
+            }
+
+            /* Prepare the score for the increment if needed. */
+            if (incr) {
+                score += curscore;
+                if (isnan(score)) {
+                    *out_flags |= ZADD_OUT_NAN;
+                    return 0;
+                }
+            }
+
+            /* GT/LT? Only update if score is greater/less than current. */
+            if ((lt && score >= curscore) || (gt && score <= curscore)) {
+                *out_flags |= ZADD_OUT_NOP;
+                return 1;
+            }
+
+            if (newscore) *newscore = score;
+
+            /* Remove and re-insert when score changed. */
+            if (score != curscore) {
+                zobj->ptr = zzlDelete(zobj->ptr,eptr);
+                zobj->ptr = zzlInsert(zobj->ptr,ele,score);
+                *out_flags |= ZADD_OUT_UPDATED;
+            }
+            return 1;
+        } else if (!xx) {
+            /* check if the element is too large or the list
+             * becomes too long *before* executing zzlInsert. */
+            if (zzlLength(zobj->ptr)+1 > server.zset_max_ziplist_entries ||
+                sdslen(ele) > server.zset_max_ziplist_value ||
+                !ziplistSafeToAdd(zobj->ptr, sdslen(ele)))
+            {
+                zsetConvert(zobj,OBJ_ENCODING_SKIPLIST);
+            } else {
+                zobj->ptr = zzlInsert(zobj->ptr,ele,score);
+                if (newscore) *newscore = score;
+                *out_flags |= ZADD_OUT_ADDED;
+                return 1;
+            }
+        } else {
+            *out_flags |= ZADD_OUT_NOP;
+            return 1;
+        }
+    }
+
+    /* Note that the above block handling ziplist would have either returned or
+     * converted the key to skiplist. */
+    if (zobj->encoding == OBJ_ENCODING_SKIPLIST) {
+        zset *zs = zobj->ptr;
+        zskiplistNode *znode;
+        dictEntry *de;
+
+        de = dictFind(zs->dict,ele);
+        if (de != NULL) {
+            /* NX? Return, same element already exists. */
+            if (nx) {
+                *out_flags |= ZADD_OUT_NOP;
+                return 1;
+            }
+
+            curscore = *(double*)dictGetVal(de);
+
+            /* Prepare the score for the increment if needed. */
+            if (incr) {
+                score += curscore;
+                if (isnan(score)) {
+                    *out_flags |= ZADD_OUT_NAN;
+                    return 0;
+                }
+            }
+
+            /* GT/LT? Only update if score is greater/less than current. */
+            if ((lt && score >= curscore) || (gt && score <= curscore)) {
+                *out_flags |= ZADD_OUT_NOP;
+                return 1;
+            }
+
+            if (newscore) *newscore = score;
+
+            /* Remove and re-insert when score changes. */
+            if (score != curscore) {
+                znode = zslUpdateScore(zs->zsl,curscore,ele,score);
+                /* Note that we did not removed the original element from
+                 * the hash table representing the sorted set, so we just
+                 * update the score. */
+                dictGetVal(de) = &znode->score; /* Update score ptr. */
+                *out_flags |= ZADD_OUT_UPDATED;
+            }
+            return 1;
+        } else if (!xx) {
+            ele = sdsdup(ele);
+            znode = zslInsert(zs->zsl,score,ele);
+            serverAssert(dictAdd(zs->dict,ele,&znode->score) == DICT_OK);
+            *out_flags |= ZADD_OUT_ADDED;
+            if (newscore) *newscore = score;
+            return 1;
+        } else {
+            *out_flags |= ZADD_OUT_NOP;
+            return 1;
+        }
+    } else {
+        serverPanic("Unknown sorted set encoding");
+    }
+    return 0; /* Never reached. */
+}
+```
 
 
 
