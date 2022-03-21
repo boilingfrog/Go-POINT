@@ -13,6 +13,7 @@
     - [常见的命令](#%E5%B8%B8%E8%A7%81%E7%9A%84%E5%91%BD%E4%BB%A4)
     - [使用场景](#%E4%BD%BF%E7%94%A8%E5%9C%BA%E6%99%AF)
     - [分析下源码实现](#%E5%88%86%E6%9E%90%E4%B8%8B%E6%BA%90%E7%A0%81%E5%AE%9E%E7%8E%B0)
+  - [总结](#%E6%80%BB%E7%BB%93)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -805,6 +806,8 @@ int zsetAdd(robj *zobj, double score, sds ele, int in_flags, int *out_flags, dou
 
 3、这里跳表加哈希表的组合方式也是很巧妙的，跳表用来进行范围的查询，通过哈希表来实现单个元素权重值的查询，组合的方式提高了查询的效率；  
 
+<img src="/img/redis/redis-sortedset.png"  alt="redis" align="center" />
+
 看完了掺入函数，这里再来分析下 ZRANGE  
 
 ```
@@ -903,7 +906,19 @@ unsigned long zslGetRank(zskiplist *zsl, double score, sds ele) {
 }
 ```
 
-通过索引区间返回有序集合指定区间内的成员，因为数据在插入的时候，已经按照从小到大进行了，排序，所以返回指定区间的成员，遍历对应的数据即可。   
+通过索引区间返回有序集合指定区间内的成员，因为数据在插入的时候，已经按照从小到大进行了，排序，所以返回指定区间的成员，遍历对应的数据即可。 
+
+### 总结
+
+1、Redis 的 Set 是 String 类型的无序集合，集合成员是唯一的；    
+
+2、`sorted set`有序集合和集合一样也是 string 类型元素的集合，同时也不允许有重复的成员。不同的是`sorted set`中的每个元素都会关联一个 double 类型的分数；   
+
+3、set 底层实现主要用到了两种数据结构 hashtable 和 inset(整数集合)；  
+
+4、`sorted set`在元素较少的情况下使用的压缩列表存储数据，数据量超过阀值的时候 使用 dict 加 zskiplist 来存储数据；  
+
+4、跳表加哈希表的组合方式也是很巧妙的，跳表用来进行范围的查询，通过哈希表来实现单个元素权重值的查询，组合的方式提高了查询的效率。  
 
 ### 参考
 
