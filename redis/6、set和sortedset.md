@@ -653,51 +653,35 @@ typedef struct zskiplistNode {
 来看下 ZADD 的插入  
 
 ```go 
-/* Add a new element or update the score of an existing element in a sorted
- * set, regardless of its encoding.
- *
- * The set of flags change the command behavior. 
- *
- * The input flags are the following:
- *
- * ZADD_INCR: Increment the current element score by 'score' instead of updating
- *            the current element score. If the element does not exist, we
- *            assume 0 as previous score.
- * ZADD_NX:   Perform the operation only if the element does not exist.
- * ZADD_XX:   Perform the operation only if the element already exist.
- * ZADD_GT:   Perform the operation on existing elements only if the new score is 
- *            greater than the current score.
- * ZADD_LT:   Perform the operation on existing elements only if the new score is 
- *            less than the current score.
- *
- * When ZADD_INCR is used, the new score of the element is stored in
- * '*newscore' if 'newscore' is not NULL.
- *
- * The returned flags are the following:
- *
- * ZADD_NAN:     The resulting score is not a number.
- * ZADD_ADDED:   The element was added (not present before the call).
- * ZADD_UPDATED: The element score was updated.
- * ZADD_NOP:     No operation was performed because of NX or XX.
- *
- * Return value:
- *
- * The function returns 1 on success, and sets the appropriate flags
- * ADDED or UPDATED to signal what happened during the operation (note that
- * none could be set if we re-added an element using the same score it used
- * to have, or in the case a zero increment is used).
- *
- * The function returns 0 on error, currently only when the increment
- * produces a NAN condition, or when the 'score' value is NAN since the
- * start.
- *
- * The command as a side effect of adding a new element may convert the sorted
- * set internal encoding from ziplist to hashtable+skiplist.
- *
- * Memory management of 'ele':
- *
- * The function does not take ownership of the 'ele' SDS string, but copies
- * it if needed. */
+// 代码地址 https://github.com/redis/redis/blob/6.2/src/t_zset.c
+// ZADD 命令
+void zaddCommand(client *c) {
+    zaddGenericCommand(c,ZADD_IN_NONE);
+}
+
+/* This generic command implements both ZADD and ZINCRBY. */
+void zaddGenericCommand(client *c, int flags) {
+    ...
+    /* Lookup the key and create the sorted set if does not exist. */
+    zobj = lookupKeyWrite(c->db,key);
+    if (checkType(c,zobj,OBJ_ZSET)) goto cleanup;
+    if (zobj == NULL) {
+        if (xx) goto reply_to_client; /* No key + XX option: nothing to do. */
+        // 超过阈值（zset-max-ziplist-entries、zset-max-ziplist-value）后，使用 hashtable + skiplist 存储
+        if (server.zset_max_ziplist_entries == 0 ||
+            server.zset_max_ziplist_value < sdslen(c->argv[scoreidx+1]->ptr))
+        {
+            zobj = createZsetObject();
+        } else {
+            zobj = createZsetZiplistObject();
+        }
+        dbAdd(c->db,key,zobj);
+    }
+    ...
+}
+
+// 代码地址 https://github.com/redis/redis/blob/6.2/src/t_zset.c
+// 看下具体的插入过程
 int zsetAdd(robj *zobj, double score, sds ele, int in_flags, int *out_flags, double *newscore) {
     /* Turn options into simple to check vars. */
     int incr = (in_flags & ZADD_IN_INCR) != 0;
@@ -705,53 +689,28 @@ int zsetAdd(robj *zobj, double score, sds ele, int in_flags, int *out_flags, dou
     int xx = (in_flags & ZADD_IN_XX) != 0;
     int gt = (in_flags & ZADD_IN_GT) != 0;
     int lt = (in_flags & ZADD_IN_LT) != 0;
-    *out_flags = 0; /* We'll return our response flags. */
-    double curscore;
-
-    /* NaN as input is an error regardless of all the other parameters. */
-    if (isnan(score)) {
-        *out_flags = ZADD_OUT_NAN;
-        return 0;
-    }
-
+    ...
     /* Update the sorted set according to its encoding. */
+    // 如果类型是 ZIPLIST
     if (zobj->encoding == OBJ_ENCODING_ZIPLIST) {
         unsigned char *eptr;
 
         if ((eptr = zzlFind(zobj->ptr,ele,&curscore)) != NULL) {
-            /* NX? Return, same element already exists. */
-            if (nx) {
-                *out_flags |= ZADD_OUT_NOP;
-                return 1;
-            }
-
-            /* Prepare the score for the increment if needed. */
-            if (incr) {
-                score += curscore;
-                if (isnan(score)) {
-                    *out_flags |= ZADD_OUT_NAN;
-                    return 0;
-                }
-            }
-
-            /* GT/LT? Only update if score is greater/less than current. */
-            if ((lt && score >= curscore) || (gt && score <= curscore)) {
-                *out_flags |= ZADD_OUT_NOP;
-                return 1;
-            }
-
-            if (newscore) *newscore = score;
+             ...
 
             /* Remove and re-insert when score changed. */
+            // 当分数改变时移除并重新插入
             if (score != curscore) {
                 zobj->ptr = zzlDelete(zobj->ptr,eptr);
                 zobj->ptr = zzlInsert(zobj->ptr,ele,score);
                 *out_flags |= ZADD_OUT_UPDATED;
             }
             return 1;
+        // 新元素
         } else if (!xx) {
             /* check if the element is too large or the list
              * becomes too long *before* executing zzlInsert. */
+            // 如果元素过大就使用跳表
             if (zzlLength(zobj->ptr)+1 > server.zset_max_ziplist_entries ||
                 sdslen(ele) > server.zset_max_ziplist_value ||
                 !ziplistSafeToAdd(zobj->ptr, sdslen(ele)))
@@ -771,11 +730,13 @@ int zsetAdd(robj *zobj, double score, sds ele, int in_flags, int *out_flags, dou
 
     /* Note that the above block handling ziplist would have either returned or
      * converted the key to skiplist. */
+    // 表示使用的类型是跳表
     if (zobj->encoding == OBJ_ENCODING_SKIPLIST) {
         zset *zs = zobj->ptr;
         zskiplistNode *znode;
         dictEntry *de;
 
+        // 在哈希表中查找元素
         de = dictFind(zs->dict,ele);
         if (de != NULL) {
             /* NX? Return, same element already exists. */
@@ -783,10 +744,11 @@ int zsetAdd(robj *zobj, double score, sds ele, int in_flags, int *out_flags, dou
                 *out_flags |= ZADD_OUT_NOP;
                 return 1;
             }
-
+            // 哈希表中获取元素的权重
             curscore = *(double*)dictGetVal(de);
 
             /* Prepare the score for the increment if needed. */
+            // 更新权重值
             if (incr) {
                 score += curscore;
                 if (isnan(score)) {
@@ -804,6 +766,7 @@ int zsetAdd(robj *zobj, double score, sds ele, int in_flags, int *out_flags, dou
             if (newscore) *newscore = score;
 
             /* Remove and re-insert when score changes. */
+            // 如果权重发生变化了
             if (score != curscore) {
                 znode = zslUpdateScore(zs->zsl,curscore,ele,score);
                 /* Note that we did not removed the original element from
@@ -813,9 +776,12 @@ int zsetAdd(robj *zobj, double score, sds ele, int in_flags, int *out_flags, dou
                 *out_flags |= ZADD_OUT_UPDATED;
             }
             return 1;
+        // 如果新元素不存在
         } else if (!xx) {
             ele = sdsdup(ele);
+            // 插入到跳表节点
             znode = zslInsert(zs->zsl,score,ele);
+            // 在哈希表中插入
             serverAssert(dictAdd(zs->dict,ele,&znode->score) == DICT_OK);
             *out_flags |= ZADD_OUT_ADDED;
             if (newscore) *newscore = score;
@@ -831,8 +797,13 @@ int zsetAdd(robj *zobj, double score, sds ele, int in_flags, int *out_flags, dou
 }
 ```
 
+`sorted set` 的插入使用了两种策略  
 
+1、如果掺入的数据量和长度没有达到阀值，就使用压缩列表进行保存，反之就使用跳表加哈希表的组合方式进行保存；   
 
+2、压缩列表本身是就不适合保存过多的元素，所以达到阀值使用跳表加哈希表的组合方式进行保存；  
+
+3、这里跳表加哈希表的组合方式也是很巧妙的，跳表用来进行范围的查询，通过哈希表来实现单个元素权重值的查询，组合的方式提高了查询的效率；  
 
 
 ### 参考
@@ -840,4 +811,5 @@ int zsetAdd(robj *zobj, double score, sds ele, int in_flags, int *out_flags, dou
 【Redis核心技术与实战】https://time.geekbang.org/column/intro/100056701    
 【Redis设计与实现】https://book.douban.com/subject/25900156/    
 【redis 集合（set）类型的使用和应用场景】https://www.oraclejsq.com/redisjc/040101720.html    
+【跳跃表】https://redisbook.readthedocs.io/en/latest/internal-datastruct/skiplist.html    
 
