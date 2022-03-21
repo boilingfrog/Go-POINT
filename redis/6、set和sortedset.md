@@ -13,6 +13,8 @@
     - [常见的命令](#%E5%B8%B8%E8%A7%81%E7%9A%84%E5%91%BD%E4%BB%A4)
     - [使用场景](#%E4%BD%BF%E7%94%A8%E5%9C%BA%E6%99%AF)
     - [分析下源码实现](#%E5%88%86%E6%9E%90%E4%B8%8B%E6%BA%90%E7%A0%81%E5%AE%9E%E7%8E%B0)
+      - [ZADD](#zadd)
+      - [ZRANGE](#zrange)
   - [总结](#%E6%80%BB%E7%BB%93)
   - [参考](#%E5%8F%82%E8%80%83)
 
@@ -651,6 +653,8 @@ typedef struct zskiplistNode {
 
 <img src="/img/golang/skip-table.jpeg"  alt="redis" align="center" />
 
+##### ZADD
+
 来看下 ZADD 的插入  
 
 ```go 
@@ -800,7 +804,7 @@ int zsetAdd(robj *zobj, double score, sds ele, int in_flags, int *out_flags, dou
 
 `sorted set` 的插入使用了两种策略  
 
-1、如果掺入的数据量和长度没有达到阀值，就使用压缩列表进行保存，反之就使用跳表加哈希表的组合方式进行保存；   
+1、如果插入的数据量和长度没有达到阀值，就使用压缩列表进行保存，反之就使用跳表加哈希表的组合方式进行保存；   
 
 2、压缩列表本身是就不适合保存过多的元素，所以达到阀值使用跳表加哈希表的组合方式进行保存；  
 
@@ -808,7 +812,9 @@ int zsetAdd(robj *zobj, double score, sds ele, int in_flags, int *out_flags, dou
 
 <img src="/img/redis/redis-sortedset.png"  alt="redis" align="center" />
 
-看完了掺入函数，这里再来分析下 ZRANGE  
+##### ZRANGE
+
+看完了插入函数，这里再来分析下 ZRANGE  
 
 ```
 // 获取有序集合中, 指定数据的排名.
