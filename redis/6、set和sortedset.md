@@ -646,7 +646,7 @@ typedef struct zskiplistNode {
 } zskiplistNode;
 ```
 
-看上面的数据结构可以发现`sorted set`的实现主要使用了 dict 和 zskiplist 两种数据结构。  
+看上面的数据结构可以发现`sorted set`的实现主要使用了 dict 和 zskiplist 两种数据结构。不过`sorted set`在元素较少的情况下使用的压缩列表，具体细节参见下文的 zsetAdd 函数。   
 
 <img src="/img/golang/skip-table.jpeg"  alt="redis" align="center" />
 
@@ -805,6 +805,105 @@ int zsetAdd(robj *zobj, double score, sds ele, int in_flags, int *out_flags, dou
 
 3、这里跳表加哈希表的组合方式也是很巧妙的，跳表用来进行范围的查询，通过哈希表来实现单个元素权重值的查询，组合的方式提高了查询的效率；  
 
+看完了掺入函数，这里再来分析下 ZRANGE  
+
+```
+// 获取有序集合中, 指定数据的排名.
+// 若reverse==0, 排名以得分升序排列. 否则排名以得分降序排列.
+// 第一个数据的排名为0, 而不是1
+long zsetRank(robj *zobj, sds ele, int reverse) {
+    unsigned long llen;
+    unsigned long rank;
+
+    llen = zsetLength(zobj);
+
+    // 压缩列表
+    if (zobj->encoding == OBJ_ENCODING_ZIPLIST) {
+        unsigned char *zl = zobj->ptr;
+        unsigned char *eptr, *sptr;
+
+        eptr = ziplistIndex(zl,0);
+        serverAssert(eptr != NULL);
+        sptr = ziplistNext(zl,eptr);
+        serverAssert(sptr != NULL);
+
+        rank = 1;
+        while(eptr != NULL) {
+            if (ziplistCompare(eptr,(unsigned char*)ele,sdslen(ele)))
+                break;
+            rank++;
+            zzlNext(zl,&eptr,&sptr);
+        }
+
+        if (eptr != NULL) {
+            if (reverse)
+                return llen-rank;
+            else
+                return rank-1;
+        } else {
+            return -1;
+        }
+    // 跳表
+    } else if (zobj->encoding == OBJ_ENCODING_SKIPLIST) {
+        zset *zs = zobj->ptr;
+        zskiplist *zsl = zs->zsl;
+        dictEntry *de;
+        double score;
+
+        de = dictFind(zs->dict,ele);
+        if (de != NULL) {
+            score = *(double*)dictGetVal(de);
+            // 查找包含给定分值和成员对象的节点在跳跃表中的排位
+            rank = zslGetRank(zsl,score,ele);
+            /* Existing elements always have a rank. */
+            serverAssert(rank != 0);
+            // 逆向取rank
+            if (reverse)
+                return llen-rank;
+            else
+                return rank-1;
+        } else {
+            return -1;
+        }
+    } else {
+        serverPanic("Unknown sorted set encoding");
+    }
+}
+
+/*
+ * 查找包含给定分值和成员对象的节点在跳跃表中的排位。
+ *
+ * 如果没有包含给定分值和成员对象的节点，返回 0 ，否则返回排位。
+ * 注意，因为跳跃表的表头也被计算在内，所以返回的排位以 1 为起始值。
+ * T_wrost = O(N), T_avg = O(log N)
+ */
+unsigned long zslGetRank(zskiplist *zsl, double score, sds ele) {
+    zskiplistNode *x;
+    unsigned long rank = 0;
+    int i;
+
+    x = zsl->header;
+    for (i = zsl->level-1; i >= 0; i--) {
+        // 遍历所有对比的节点
+        while (x->level[i].forward &&
+            (x->level[i].forward->score < score ||
+                (x->level[i].forward->score == score &&
+                sdscmp(x->level[i].forward->ele,ele) <= 0))) {
+            rank += x->level[i].span;
+            // 沿着前进指针遍历跳跃表
+            x = x->level[i].forward;
+        }
+
+        /* x might be equal to zsl->header, so test if obj is non-NULL */
+        if (x->ele && sdscmp(x->ele,ele) == 0) {
+            return rank;
+        }
+    }
+    return 0;
+}
+```
+
+通过索引区间返回有序集合指定区间内的成员，因为数据在插入的时候，已经按照从小到大进行了，排序，所以返回指定区间的成员，遍历对应的数据即可。   
 
 ### 参考
 
