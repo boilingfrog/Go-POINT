@@ -10,6 +10,7 @@
 
 - [5、使用Redis实现消息队列](https://github.com/boilingfrog/Go-POINT/blob/master/redis/5%E3%80%81Redis%E5%AE%9E%E7%8E%B0%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97.md)    
 
+- [6、Redis 中的 set 和 sorted set 如何使用，源码实现分析](https://github.com/boilingfrog/Go-POINT/blob/master/redis/6%E3%80%81set%E5%92%8Csortedset.md)      
 
 
 
