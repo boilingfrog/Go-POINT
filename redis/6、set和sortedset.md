@@ -506,64 +506,64 @@ int incrementallyRehash(int dbid) {
 下面看下有序集合中常见的命令  
 
 ```
-向有序集合添加一个或多个成员，或者更新已存在成员的分数
+# 向有序集合添加一个或多个成员，或者更新已存在成员的分数
 ZADD key score1 member1 [score2 member2]
 
-获取有序集合的成员数
+# 获取有序集合的成员数
 ZCARD key
 
-计算在有序集合中指定区间分数的成员数
+# 计算在有序集合中指定区间分数的成员数
 ZCOUNT key min max
 
-有序集合中对指定成员的分数加上增量 increment
+# 有序集合中对指定成员的分数加上增量 increment
 ZINCRBY key increment member
 
-计算给定的一个或多个有序集的交集并将结果集存储在新的有序集合 destination 中
+# 计算给定的一个或多个有序集的交集并将结果集存储在新的有序集合 destination 中
 ZINTERSTORE destination numkeys key [key ...]
 
-在有序集合中计算指定字典区间内成员数量
+# 在有序集合中计算指定字典区间内成员数量
 ZLEXCOUNT key min max
 
-通过索引区间返回有序集合指定区间内的成员
+# 通过索引区间返回有序集合指定区间内的成员
 ZRANGE key start stop [WITHSCORES]
 
-通过字典区间返回有序集合的成员
+# 通过字典区间返回有序集合的成员
 ZRANGEBYLEX key min max [LIMIT offset count]
 
-通过分数返回有序集合指定区间内的成员
+# 通过分数返回有序集合指定区间内的成员
 ZRANGEBYSCORE key min max [WITHSCORES] [LIMIT]
 
-返回有序集合中指定成员的索引
+# 返回有序集合中指定成员的索引
 ZRANK key member
 
-移除有序集合中的一个或多个成员
+# 移除有序集合中的一个或多个成员
 ZREM key member [member ...]
 
-移除有序集合中给定的字典区间的所有成员
+# 移除有序集合中给定的字典区间的所有成员
 ZREMRANGEBYLEX key min max
 
-移除有序集合中给定的排名区间的所有成员
+# 移除有序集合中给定的排名区间的所有成员
 ZREMRANGEBYRANK key start stop
 
-移除有序集合中给定的分数区间的所有成员
+# 移除有序集合中给定的分数区间的所有成员
 ZREMRANGEBYSCORE key min max
 
-返回有序集中指定区间内的成员，通过索引，分数从高到低
+# 返回有序集中指定区间内的成员，通过索引，分数从高到低
 ZREVRANGE key start stop [WITHSCORES]
 
-返回有序集中指定分数区间内的成员，分数从高到低排序
+# 返回有序集中指定分数区间内的成员，分数从高到低排序
 ZREVRANGEBYSCORE key max min [WITHSCORES]
 
-返回有序集合中指定成员的排名，有序集成员按分数值递减(从大到小)排序
+# 返回有序集合中指定成员的排名，有序集成员按分数值递减(从大到小)排序
 ZREVRANK key member
 
-返回有序集中，成员的分数值
+# 返回有序集中，成员的分数值
 ZSCORE key member
 
-计算给定的一个或多个有序集的并集，并存储在新的 key 中
+# 计算给定的一个或多个有序集的并集，并存储在新的 key 中
 ZUNIONSTORE destination numkeys key [key ...]
 
-迭代有序集合中的元素（包括元素成员和元素分值）
+# 迭代有序集合中的元素（包括元素成员和元素分值）
 ZSCAN key cursor [MATCH pattern] [COUNT count]
 ```
 
@@ -820,6 +820,7 @@ int zsetAdd(robj *zobj, double score, sds ele, int in_flags, int *out_flags, dou
 // 获取有序集合中, 指定数据的排名.
 // 若reverse==0, 排名以得分升序排列. 否则排名以得分降序排列.
 // 第一个数据的排名为0, 而不是1
+// 使用压缩列表或者跳表，里面的数据都是排好序的
 long zsetRank(robj *zobj, sds ele, int reverse) {
     unsigned long llen;
     unsigned long rank;
@@ -845,6 +846,8 @@ long zsetRank(robj *zobj, sds ele, int reverse) {
         }
 
         if (eptr != NULL) {
+             // 逆向取rank
+             // 返回后面的数据
             if (reverse)
                 return llen-rank;
             else
