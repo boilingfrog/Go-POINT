@@ -8,6 +8,7 @@
     - [2、惰性删除](#2%E6%83%B0%E6%80%A7%E5%88%A0%E9%99%A4)
     - [3、定期删除](#3%E5%AE%9A%E6%9C%9F%E5%88%A0%E9%99%A4)
     - [Redis 中过期删除策略](#redis-%E4%B8%AD%E8%BF%87%E6%9C%9F%E5%88%A0%E9%99%A4%E7%AD%96%E7%95%A5)
+    - [从库是否会脏读主库创建的过期键](#%E4%BB%8E%E5%BA%93%E6%98%AF%E5%90%A6%E4%BC%9A%E8%84%8F%E8%AF%BB%E4%B8%BB%E5%BA%93%E5%88%9B%E5%BB%BA%E7%9A%84%E8%BF%87%E6%9C%9F%E9%94%AE)
   - [内存淘汰机制](#%E5%86%85%E5%AD%98%E6%B7%98%E6%B1%B0%E6%9C%BA%E5%88%B6)
   - [参考](#%E5%8F%82%E8%80%83)
 
@@ -60,8 +61,8 @@ int expireIfNeeded(redisDb *db, robj *key) {
     // 没有过期
     if (!keyIsExpired(db,key)) return 0;
 
-    // 如果是从库返回1
-    // 从库的过期是主库控制的
+    // 从库的过期是主库控制的，是不会进行删除操作的
+    // 不过仍然尝试返回正确的信息给调用者，也就是说，如果我们认为 key 仍然有效，则返回0，如果我们认为此时 key 已经过期，则返回1。
     if (server.masterhost != NULL) return 1;
     ...
     /* Delete the key */
@@ -73,15 +74,17 @@ int expireIfNeeded(redisDb *db, robj *key) {
 
 可以看到每次操作对应的 key 是会检查 key 是否过期，如果过期则会删除对应的 key 。   
 
+如果过期键是主库创建的，那么从库进行检查是不会进行删除操作的,只是会根据 key 的过期时间返回过期或者未过期的状态。那么从库是不是会读取到过期的键值对信息呢，具体见下文分析。   
+
 #### 3、定期删除
 
 定期删除是对上面两种删除策略的一种整合和折中  
 
 每个一段时间就对一些 key 进行采样检查，检查是否过期，如果过期就进行删除  
 
-1、采样ACTIVE_EXPIRE_CYCLE_LOOKUPS_PER_LOOP个数的key，并将其中过期的key全部删除；  
+1、采样一定个数个数的key，可以进行配置，并将其中过期的key全部删除；  
 
-2、如果超过25%的key过期了，则重复删除的过程，直到过期key的比例降至25%以下。   
+2、如果过期 key 的占比超过`可接受的过期 key 的百分比`，则重复删除的过程，直到过期key的比例降至`可接受的过期 key 的百分比`以下。   
 
 优点：  
 
@@ -118,15 +121,15 @@ void activeExpireCycle(int type) {
     // 根据配置的超时工作调整运行参数。默认工作量为1，最大可配置工作量为10
     unsigned long
     effort = server.active_expire_effort-1, /* Rescale from 0 to 9. */
+    // 采样的 key 的数量
     config_keys_per_loop = ACTIVE_EXPIRE_CYCLE_KEYS_PER_LOOP +
                            ACTIVE_EXPIRE_CYCLE_KEYS_PER_LOOP/4*effort,
-    config_cycle_fast_duration = ACTIVE_EXPIRE_CYCLE_FAST_DURATION +
-                                 ACTIVE_EXPIRE_CYCLE_FAST_DURATION/4*effort,
+    // 占比CPU时间，默认是25%，最大43%，如果是100%，那除了定时删除其他的工作都做不了了，所以要做限制
     config_cycle_slow_time_perc = ACTIVE_EXPIRE_CYCLE_SLOW_TIME_PERC +
                                   2*effort,
+    // 可接受的过期 key 的百分比
     config_cycle_acceptable_stale = ACTIVE_EXPIRE_CYCLE_ACCEPTABLE_STALE-
                                     effort;
-
     ...
     //慢速定期删除的执行时长
     timelimit = config_cycle_slow_time_perc*1000000/server.hz/100;
@@ -138,7 +141,8 @@ void activeExpireCycle(int type) {
 
     for (j = 0; j < dbs_per_call && timelimit_exit == 0; j++) {
         ...
-        // 如果超过 config_cycle_acceptable_stale 的key过期了，则重复删除的过程，直到过期key的比例降至 config_cycle_acceptable_stale 以下。    
+        // 如果超过 config_cycle_acceptable_stale 的key过期了，则重复删除的过程，直到过期key的比例降至 config_cycle_acceptable_stale 以下。  
+        // 存储在 config_cycle_acceptable_stale 中的百分比不是固定的，而是取决于Redis配置的“expire efforce”  
         do {
             /* If there is nothing to expire try next DB ASAP. */
             if ((num = dictSize(db->expires)) == 0) {
@@ -146,6 +150,7 @@ void activeExpireCycle(int type) {
                 break;
             }
             ...
+            // 采样的 key 的数量 
             if (num > config_keys_per_loop)
                 num = config_keys_per_loop;
             ...
@@ -167,13 +172,32 @@ void activeExpireCycle(int type) {
                 db->expires_cursor++;
             }
          ...
-        // 判断过期 key 的占比是否满足 config_cycle_acceptable_stale
+        // 判断过期 key 的占比是否大于 config_cycle_acceptable_stale，如果大于持续进行过期 key 的删除
         } while (sampled == 0 ||
                  (expired*100/sampled) > config_cycle_acceptable_stale);
     }
     ...
 }
+
+// 检查删除由从节点创建的有过期的时间的 key 
+void expireSlaveKeys(void) {
+    // 从主库同步的 key，过期时间由主库维护，主库同步 DEL 操作到从库。
+    // 从库如果是 READ-WRITE 模式，就可以继续写入数据。从库自己写入的数据就需要自己来维护其过期操作。
+    if (slaveKeysWithExpire == NULL ||
+        dictSize(slaveKeysWithExpire) == 0) return;
+     ...
+}
 ```
+
+惰性删除过程    
+
+1、固定的时间执行一次定期删除；  
+
+2、采样一定个数个数的key，可以进行配置，并将其中过期的key全部删除；  
+
+3、如果过期 key 的占比超过`可接受的过期 key 的百分比`，则重复删除的过程，直到过期key的比例降至`可接受的过期 key 的百分比`以下；     
+
+4、对于从库创建的过期 key 同样从库是不能进行删除的。   
 
 #### Redis 中过期删除策略
 
@@ -183,13 +207,30 @@ void activeExpireCycle(int type) {
 
 定期删除，获取 CPU 和 内存的使用平衡，针对过期的 KEY 可能得不到及时的删除，当 KEY 被再次获取的时候，通过惰性删除再做一次过期检查，来避免业务获取到过期内容。   
 
+#### 从库是否会脏读主库创建的过期键  
+
+从上面惰性删除和定期删除的源码阅读中，我们可以发现，从库对于主库的过期键是不能主动进行删除的。如果一个主库创建的过期键值对，已经过期了，主库在进行定期删除的时候，没有及时的删除掉，这时候从库请求了这个键值对，当执行惰性删除的时候，因为是主库创建的键值对，这时候是不能在从库中删除的，那么是不是就意味着从库会读取到已经过期的数据呢？  
+
+答案肯定不是的  
+
+[how-redis-replication-deals-with-expires-on-keys](https://redis.io/docs/manual/replication/#how-redis-replication-deals-with-expires-on-keys)  
+
+> How Redis replication deals with expires on keys
+> Redis expires allow keys to have a limited time to live. Such a feature depends on the ability of an instance to count the time, however Redis slaves correctly replicate keys with expires, even when such keys are altered using Lua scripts.
+> To implement such a feature Redis cannot rely on the ability of the master and slave to have synchronized clocks, since this is a problem that cannot be solved and would result into race conditions and diverging data sets, so Redis uses three main techniques in order to make the replication of expired keys able to work:
+> 1.Slaves don’t expire keys, instead they wait for masters to expire the keys. When a master expires a key (or evict it because of LRU), it synthesizes a DEL command which is transmitted to all the slaves.
+> 2.However because of master-driven expire, sometimes slaves may still have in memory keys that are already logically expired, since the master was not able to provide the DEL command in time. In order to deal with that the slave uses its logical clock in order to report that a key does not exist only for read operations that don’t violate the consistency of the data set (as new commands from the master will arrive). In this way slaves avoid to report logically expired keys are still existing. In practical terms, an HTML fragments cache that uses slaves to scale will avoid returning items that are already older than the desired time to live.
+> 3.During Lua scripts executions no keys expires are performed. As a Lua script runs, conceptually the time in the master is frozen, so that a given key will either exist or not for all the time the script runs. This prevents keys to expire in the middle of a script, and is needed in order to send the same script to the slave in a way that is guaranteed to have the same effects in the data set.
+> Once a slave is promoted to a master it will start to expire keys independently, and will not require any help from its old master.
+
+上面是官方文档中针对这一问题的描述  
+
+大概意思就是从节点不会主动删除过期键，从节点会等待主节点触发键过期。当主节点触发键过期时，主节点会同步一个del命令给所有的从节点。  
+
+因为是主节点驱动删除的，所以从节点会获取到已经过期的键值对。从节点需要根据自己本地的逻辑时钟来判断减值是否过期，从而实现数据集合的一致性读操作。     
 
 
 ### 内存淘汰机制
-
-
-
- 
 
 ### 参考
 
