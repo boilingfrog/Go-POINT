@@ -62,7 +62,7 @@ int expireIfNeeded(redisDb *db, robj *key) {
     if (!keyIsExpired(db,key)) return 0;
 
     // 从库的过期是主库控制的，是不会进行删除操作的
-    // 不过仍然尝试返回正确的信息给调用者，也就是说，如果我们认为 key 仍然有效，则返回0，如果我们认为此时 key 已经过期，则返回1。
+    // 上面已经判断过是否到期了，所以这里的 key 肯定设计过期的 key ,不过如果是主节点创建的 key 从节点就不删除，不过会返回已经过期了
     if (server.masterhost != NULL) return 1;
     ...
     /* Delete the key */
@@ -74,7 +74,7 @@ int expireIfNeeded(redisDb *db, robj *key) {
 
 可以看到每次操作对应的 key 是会检查 key 是否过期，如果过期则会删除对应的 key 。   
 
-如果过期键是主库创建的，那么从库进行检查是不会进行删除操作的,只是会根据 key 的过期时间返回过期或者未过期的状态。那么从库是不是会读取到过期的键值对信息呢，具体见下文分析。   
+如果过期键是主库创建的，那么从库进行检查是不会进行删除操作的,只是会根据 key 的过期时间返回过期或者未过期的状态。   
 
 #### 3、定期删除
 
@@ -229,6 +229,74 @@ void expireSlaveKeys(void) {
 
 因为是主节点驱动删除的，所以从节点会获取到已经过期的键值对。从节点需要根据自己本地的逻辑时钟来判断减值是否过期，从而实现数据集合的一致性读操作。     
 
+我们知道 Redis 中的过期策略是惰性删除和定期删除，所以每个键值的操作，都会使用惰性删除来检查是否过期，然后能够可以进行删除  
+
+
+```
+// https://github.com/redis/redis/blob/6.2/src/db.c#L1541
+// 当访问到 key 的时候，会调用这个函数，因为有的 key 虽然已经被删除了，但是还可能存在于内存中
+
+// key 仍然有效，函数返回值为0，否则，如果 key 过期，函数返回1。
+int expireIfNeeded(redisDb *db, robj *key) {
+    // 检查 key 是否过期
+    if (!keyIsExpired(db,key)) return 0;
+
+    // 从库的过期是主库控制的，是不会进行删除操作的
+    // 上面已经判断过是否到期了，所以这里的 key 肯定设计过期的 key ,不过如果是主节点创建的 key 从节点就不删除，不过会返回已经过期了
+    if (server.masterhost != NULL) return 1;
+    ...
+    /* Delete the key */
+    // 删除 key 
+    deleteExpiredKeyAndPropagate(db,key);
+    return 1;
+}
+
+// https://github.com/redis/redis/blob/6.2/src/db.c#L1485
+/* Check if the key is expired. */
+int keyIsExpired(redisDb *db, robj *key) {
+    // 过期时间
+    mstime_t when = getExpire(db,key);
+    mstime_t now;
+
+    // 没有过期
+    if (when < 0) return 0; /* No expire for this key */
+
+    /* Don't expire anything while loading. It will be done later. */
+    if (server.loading) return 0;
+
+    // lua 脚本执行的过程中不过期
+    if (server.lua_caller) {
+        now = server.lua_time_snapshot;
+    }
+    // 如果我们正在执行一个命令，我们仍然希望使用一个不会改变的引用时间:在这种情况下，我们只使用缓存的时间，我们在每次调用call()函数之前更新。
+    // 这样我们就避免了RPOPLPUSH之类的命令，这些命令可能会重新打开相同的键多次，如果下次调用会看到键过期，则会使已经打开的对象在下次调用中失效，而第一次调用没有。
+    else if (server.fixed_time_expire > 0) {
+        now = server.mstime;
+    }
+    // 其他情况下，获取最新的时间
+    else {
+        now = mstime();
+    }
+    // 判断是否过期了
+    return now > when;
+}
+
+// 返回指定 key 的过期时间，如果没有过期则返回-1
+long long getExpire(redisDb *db, robj *key) {
+    dictEntry *de;
+
+    /* No expire? return ASAP */
+    if (dictSize(db->expires) == 0 ||
+       (de = dictFind(db->expires,key->ptr)) == NULL) return -1;
+
+    /* The entry was found in the expire dict, this means it should also
+     * be present in the main dict (safety check). */
+    serverAssertWithInfo(NULL,key,dictFind(db->dict,key->ptr) != NULL);
+    return dictGetSignedIntegerVal(de);
+}
+```
+
+上面的惰性删除，对于主节点创建的过期 key ，虽然不能进行删除的操作，但是可以进行过期时间的判断，所以如果主库创建的过期键，如果主库没有及时进行删除，这时候从库可以通过惰性删除来判断键值对的是否过期，避免读取到过期的内容。  
 
 ### 内存淘汰机制
 
