@@ -356,6 +356,100 @@ Redis 使用的是一种近似 LRU 算法，目的是为了更好的节约内存
 
 这里看下是如何实现的呢  
 
+Redis 在源码中对于每个键值对中的值，会使用一个 redisObject 结构体来保存指向值的指针，这里先来看下 redisObject 的结构   
+
+```
+// https://github.com/redis/redis/blob/6.2/src/server.h#L673
+typedef struct redisObject {
+    unsigned type:4;
+    unsigned encoding:4;
+    // 这里保存 
+    // LRU时间(相对于全局LRU时钟)或 LFU数据(最低有效8位频率*和最有效16位访问时间)
+    unsigned lru:LRU_BITS; /* LRU time (relative to global lru_clock) or
+                            * LFU data (least significant 8 bits frequency
+                            * and most significant 16 bits access time). */
+    int refcount;
+    void *ptr;
+} robj;
+```
+
+当一个键值对被创建的时候，就会记录下更新的时间  
+
+```
+// https://github.com/redis/redis/blob/6.2/src/object.c#L41  
+robj *createObject(int type, void *ptr) {
+    robj *o = zmalloc(sizeof(*o));
+    o->type = type;
+    o->encoding = OBJ_ENCODING_RAW;
+    o->ptr = ptr;
+    o->refcount = 1;
+
+    // 如果缓存替换策略是LFU，那么将lru变量设置为LFU的计数值
+    if (server.maxmemory_policy & MAXMEMORY_FLAG_LFU) {
+        o->lru = (LFUGetTimeInMinutes()<<8) | LFU_INIT_VAL;
+    } else {
+    // 如果是 lru 
+    // 调用LRU_CLOCK函数获取LRU时钟值
+        o->lru = LRU_CLOCK();
+    }
+    return o;
+}
+```
+
+同时一个键值对被访问的时候记录的时间也会被更新，当一个键值对被访问时，访问操作最终都会调用 lookupKey 函数。  
+
+```
+// https://github.com/redis/redis/blob/6.2/src/db.c#L63
+robj *lookupKey(redisDb *db, robj *key, int flags) {
+    dictEntry *de = dictFind(db->dict,key->ptr);
+    if (de) {
+        robj *val = dictGetVal(de);
+
+        /* Update the access time for the ageing algorithm.
+         * Don't do it if we have a saving child, as this will trigger
+         * a copy on write madness. */
+        if (!hasActiveChildProcess() && !(flags & LOOKUP_NOTOUCH)){
+            if (server.maxmemory_policy & MAXMEMORY_FLAG_LFU) {
+                updateLFU(val);
+            } else {
+                // 使用 LRU 更新 lru 的时间
+                val->lru = LRU_CLOCK();
+            }
+        }
+        return val;
+    } else {
+        return NULL;
+    }
+}
+```
+
+上面我们分别看了，创建和访问一个键值对的代码，每次操作，redisObject 中记录的 lru 时间就会被同步的更新  
+
+Redis 会判断当前内存的使用情况，如果超过了 maxmemory 配置的值，就会触发新的内存淘汰了  
+
+如果内存超过了 maxmemory 的值，这时候还需要去计算需要释放的内存量，这个释放的内存大小等于已使用的内存量减去 maxmemory。不过，已使用的内存量并不包括用于主从复制的复制缓冲区大小。   
+
+处理淘汰的数据，Redis 中提供了一个数组 EvictionPoolLRU，用来保存待淘汰的候选键值对。这个数组的元素类型是 evictionPoolEntry 结构体，该结构体保存了待淘汰键值对的空闲时间 idle、对应的 key 等信息。  
+
+```
+// https://github.com/redis/redis/blob/6.2/src/evict.c#L55
+struct evictionPoolEntry {
+    // 待淘汰的键值对的空闲时间
+    unsigned long long idle;    /* Object idle time (inverse frequency for LFU) */
+    // 待淘汰的键值对的key
+    sds key;                    /* Key name. */
+    // 缓存的SDS对象
+    sds cached;                 /* Cached SDS object for key name. */
+    // 待淘汰键值对的key所在的数据库ID
+    int dbid;                   /* Key DB number. */
+};
+
+static struct evictionPoolEntry *EvictionPoolLRU;
+```
+
+然后通过 evictionPoolPopulate 函数，进行采样，然后将采样数据写入到 evictionPoolEntry 中  
+
+
 
 
 
