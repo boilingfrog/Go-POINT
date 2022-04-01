@@ -365,7 +365,8 @@ typedef struct redisObject {
     unsigned type:4;
     unsigned encoding:4;
     // 这里保存 
-    // LRU时间(相对于全局LRU时钟)或 LFU数据(最低有效8位频率*和最有效16位访问时间)
+    // LRU时间(相对于全局LRU时钟)
+    // LFU数据 (低 8 bits 作为计数器,用 24 bits 中的高 16 bits，记录访问的时间戳)
     unsigned lru:LRU_BITS; /* LRU time (relative to global lru_clock) or
                             * LFU data (least significant 8 bits frequency
                             * and most significant 16 bits access time). */
@@ -636,9 +637,9 @@ int performEvictions(void) {
 
 除了 LRU 算法，Redis 在 4.0 版本引入了 LFU 算法，就是最不频繁使用（`Least Frequently Used，LFU）`算法。  
 
-LRU 算法：淘汰最近最少使用的数据  
+LRU 算法：淘汰最近最少使用的数据，它是根据时间维度来选择将要淘汰的元素，即删除掉最长时间没被访问的元素。   
 
-LFU 算法：淘汰最不频繁访问的数据  
+LFU 算法：淘汰最不频繁访问的数据，它是根据频率维度来选择将要淘汰的元素，即删除访问频率最低的元素。如果两个元素的访问频率相同，则淘汰最久没被访问的元素。   
 
 LFU 的基本原理  
 
@@ -646,7 +647,12 @@ LFU（Least Frequently Used）算法，即最少访问算法，根据访问缓�
 
 它是根据频率维度来选择将要淘汰的元素，即删除访问频率最低的元素。如果两个元素的访问频率相同，则淘汰最久没被访问的元素。也就是说 LFU 淘汰的时候会选择两个维度，先比较频率，选择访问频率最小的元素；如果频率相同，则按时间维度淘汰掉最久远的那个元素。  
 
-一般 LFU 的实现
+LUF 的实现可参见[LFU实现详解](https://leetcode-cn.com/problems/lfu-cache/solution/chao-xiang-xi-tu-jie-dong-tu-yan-shi-460-lfuhuan-c/)  
+
+这看下 Redis 中对 LFU 算法的实现  
+
+**键值对的访问频率记录**
+
 
 
 
