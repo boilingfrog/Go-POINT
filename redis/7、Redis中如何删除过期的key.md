@@ -14,6 +14,7 @@
     - [有哪些内存淘汰策略](#%E6%9C%89%E5%93%AA%E4%BA%9B%E5%86%85%E5%AD%98%E6%B7%98%E6%B1%B0%E7%AD%96%E7%95%A5)
     - [内存淘汰算法](#%E5%86%85%E5%AD%98%E6%B7%98%E6%B1%B0%E7%AE%97%E6%B3%95)
       - [LRU](#lru)
+    - [LFU](#lfu)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -48,7 +49,7 @@ Redis 中提供了三种过期删除的策略
 
 优点：  
 
-对 CPU 是友好的，只有在取出键值对的时候才会进行过期检查，这样就不会把 CPU 资源花费在其他无关简要的键值对的过期删除上。  
+对 CPU 是友好的，只有在取出键值对的时候才会进行过期检查，这样就不会把 CPU 资源花费在其他无关紧要的键值对的过期删除上。  
 
 缺点：  
 
@@ -58,7 +59,7 @@ Redis 中提供了三种过期删除的策略
 
 ```
 // https://github.com/redis/redis/blob/6.2/src/db.c#L1541
-// 当访问到 key 的时候，会调用这个函数，因为有的 key 虽然已经被删除了，但是还可能存在于内存中
+// 当访问到 key 的时候，会调用这个函数，因为有的 key 虽然已经过期了，但是还可能存在于内存中
 
 // key 仍然有效，函数返回值为0，否则，如果 key 过期，函数返回1。
 int expireIfNeeded(redisDb *db, robj *key) {
@@ -66,7 +67,7 @@ int expireIfNeeded(redisDb *db, robj *key) {
     if (!keyIsExpired(db,key)) return 0;
 
     // 从库的过期是主库控制的，是不会进行删除操作的
-    // 上面已经判断过是否到期了，所以这里的 key 肯定设计过期的 key ,不过如果是主节点创建的 key 从节点就不删除，不过会返回已经过期了
+    // 上面已经判断过是否到期了，所以这里的 key 肯定是过期的 key ,不过如果是主节点创建的 key 从节点就不删除，只会返回已经过期了
     if (server.masterhost != NULL) return 1;
     ...
     /* Delete the key */
@@ -86,7 +87,7 @@ int expireIfNeeded(redisDb *db, robj *key) {
 
 每个一段时间就对一些 key 进行采样检查，检查是否过期，如果过期就进行删除  
 
-1、采样一定个数个数的key，可以进行配置，并将其中过期的key全部删除；  
+1、采样一定个数的key，采样的个数可以进行配置，并将其中过期的 key 全部删除；  
 
 2、如果过期 key 的占比超过`可接受的过期 key 的百分比`，则重复删除的过程，直到过期key的比例降至`可接受的过期 key 的百分比`以下。   
 
@@ -197,7 +198,7 @@ void expireSlaveKeys(void) {
 
 1、固定的时间执行一次定期删除；  
 
-2、采样一定个数个数的key，可以进行配置，并将其中过期的key全部删除；  
+2、采样一定个数的key，采样个数可以进行配置，并将其中过期的key全部删除；  
 
 3、如果过期 key 的占比超过`可接受的过期 key 的百分比`，则重复删除的过程，直到过期key的比例降至`可接受的过期 key 的百分比`以下；     
 
@@ -238,7 +239,7 @@ void expireSlaveKeys(void) {
 
 ```
 // https://github.com/redis/redis/blob/6.2/src/db.c#L1541
-// 当访问到 key 的时候，会调用这个函数，因为有的 key 虽然已经被删除了，但是还可能存在于内存中
+// 当访问到 key 的时候，会调用这个函数，因为有的 key 虽然已经过期了，但是还可能存在于内存中
 
 // key 仍然有效，函数返回值为0，否则，如果 key 过期，函数返回1。
 int expireIfNeeded(redisDb *db, robj *key) {
@@ -246,7 +247,7 @@ int expireIfNeeded(redisDb *db, robj *key) {
     if (!keyIsExpired(db,key)) return 0;
 
     // 从库的过期是主库控制的，是不会进行删除操作的
-    // 上面已经判断过是否到期了，所以这里的 key 肯定设计过期的 key ,不过如果是主节点创建的 key 从节点就不删除，不过会返回已经过期了
+    // 上面已经判断过是否到期了，所以这里的 key 肯定设计过期的 key ,不过如果是主节点创建的 key 从节点就不删除，只会返回已经过期了
     if (server.masterhost != NULL) return 1;
     ...
     /* Delete the key */
@@ -630,6 +631,24 @@ int performEvictions(void) {
 每次选中一部分过期的键值对，每次淘汰最久没有使用的那个，如果释放的内存空间还不够，就会重复的进行采样，删除的过程。   
 
 <img src="/img/redis/redis-lru.png"  alt="redis" align="center" />
+
+#### LFU
+
+除了 LRU 算法，Redis 在 4.0 版本引入了 LFU 算法，就是最不频繁使用（`Least Frequently Used，LFU）`算法。  
+
+LRU 算法：淘汰最近最少使用的数据  
+
+LFU 算法：淘汰最不频繁访问的数据  
+
+LFU 的基本原理  
+
+LFU（Least Frequently Used）算法，即最少访问算法，根据访问缓存的历史频率来淘汰数据，核心思想是“如果数据在过去一段时间被访问的次数很少，那么将来被访问的概率也会很低”。  
+
+它是根据频率维度来选择将要淘汰的元素，即删除访问频率最低的元素。如果两个元素的访问频率相同，则淘汰最久没被访问的元素。也就是说 LFU 淘汰的时候会选择两个维度，先比较频率，选择访问频率最小的元素；如果频率相同，则按时间维度淘汰掉最久远的那个元素。  
+
+一般 LFU 的实现
+
+
 
 ### 参考
 
