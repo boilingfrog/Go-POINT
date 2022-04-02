@@ -12,6 +12,7 @@
 
 - [6、Redis 中的 set 和 sorted set 如何使用，源码实现分析](https://github.com/boilingfrog/Go-POINT/blob/master/redis/6%E3%80%81set%E5%92%8Csortedset.md)      
 
+- [7、Redis 中的过期删除策略和内存淘汰机制](https://github.com/boilingfrog/Go-POINT/blob/master/redis/7%E3%80%81Redis%E4%B8%AD%E5%A6%82%E4%BD%95%E5%88%A0%E9%99%A4%E8%BF%87%E6%9C%9F%E7%9A%84key.md)      
 
 
 
