@@ -14,7 +14,7 @@
     - [有哪些内存淘汰策略](#%E6%9C%89%E5%93%AA%E4%BA%9B%E5%86%85%E5%AD%98%E6%B7%98%E6%B1%B0%E7%AD%96%E7%95%A5)
     - [内存淘汰算法](#%E5%86%85%E5%AD%98%E6%B7%98%E6%B1%B0%E7%AE%97%E6%B3%95)
       - [LRU](#lru)
-    - [LFU](#lfu)
+      - [LFU](#lfu)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -633,7 +633,7 @@ int performEvictions(void) {
 
 <img src="/img/redis/redis-lru.png"  alt="redis" align="center" />
 
-#### LFU
+##### LFU
 
 除了 LRU 算法，Redis 在 4.0 版本引入了 LFU 算法，就是最不频繁使用（`Least Frequently Used，LFU）`算法。  
 
@@ -653,6 +653,105 @@ LUF 的实现可参见[LFU实现详解](https://leetcode-cn.com/problems/lfu-cac
 
 **键值对的访问频率记录**
 
+上面分析 LRU 的时候，聊到了 redisObject，Redis 在源码中对于每个键值对中的值，会使用一个 redisObject 结构体来保存指向值的指针。里面 `lru:LRU_BITS` 字段记录了 LRU 算法和 LFU 算法需要的时间和计数器。  
+
+```
+// https://github.com/redis/redis/blob/6.2/src/server.h#L673
+typedef struct redisObject {
+    unsigned type:4;
+    unsigned encoding:4;
+    // 这里保存 
+    // LRU时间(相对于全局LRU时钟)
+    // LFU数据 (低 8 bits 作为计数器,用 24 bits 中的高 16 bits，记录访问的时间戳)
+    unsigned lru:LRU_BITS; /* LRU time (relative to global lru_clock) or
+                            * LFU data (least significant 8 bits frequency
+                            * and most significant 16 bits access time). */
+    int refcount;
+    void *ptr;
+} robj;
+```
+
+当一个键值对被创建的时候，如果使用 LFU 算法，就会更新 lru 字段记录的键值对的访问时间戳和访问次数。  
+
+```
+// https://github.com/redis/redis/blob/6.2/src/object.c#L41  
+robj *createObject(int type, void *ptr) {
+    robj *o = zmalloc(sizeof(*o));
+    o->type = type;
+    o->encoding = OBJ_ENCODING_RAW;
+    o->ptr = ptr;
+    o->refcount = 1;
+
+    // 如果缓存替换策略是LFU，lru变量包括以分钟为精度的UNIX时间戳和访问次数5
+    if (server.maxmemory_policy & MAXMEMORY_FLAG_LFU) {
+        o->lru = (LFUGetTimeInMinutes()<<8) | LFU_INIT_VAL;
+    } else {
+    // 如果是 lru 
+    // 调用LRU_CLOCK函数获取LRU时钟值
+        o->lru = LRU_CLOCK();
+    }
+    return o;
+}
+```
+
+当一个键值对被访问时，Redis 会调用 lookupKey 函数进行查找。当 `maxmemory-policy` 设置使用 LFU 算法时，lookupKey 函数会调用 updateLFU 函数来更新键值对的访问频率，也就是 lru 变量值，如下所示：   
+
+```
+// https://github.com/redis/redis/blob/6.2/src/db.c#L63
+robj *lookupKey(redisDb *db, robj *key, int flags) {
+    dictEntry *de = dictFind(db->dict,key->ptr);
+    if (de) {
+        robj *val = dictGetVal(de);
+
+        // 使用LFU算法时，调用updateLFU函数更新访问频率
+        if (!hasActiveChildProcess() && !(flags & LOOKUP_NOTOUCH)){
+            if (server.maxmemory_policy & MAXMEMORY_FLAG_LFU) {
+                updateLFU(val);
+            } else {
+                // 使用 LRU 更新 lru 的时间
+                val->lru = LRU_CLOCK();
+            }
+        }
+        return val;
+    } else {
+        return NULL;
+    }
+}
+
+// https://github.com/redis/redis/blob/6.2/src/db.c#L54
+/* 访问对象时更新 LFU。
+ * 首先，如果达到递减时间，则递减计数器。
+ * 然后对计数器进行对数递增，并更新访问时间。 */
+void updateLFU(robj *val) {
+    unsigned long counter = LFUDecrAndReturn(val);
+    counter = LFULogIncr(counter);
+    val->lru = (LFUGetTimeInMinutes()<<8) | counter;
+}
+
+// https://github.com/redis/redis/blob/6.2/src/evict.c#L318
+unsigned long LFUDecrAndReturn(robj *o) {
+    // 获取当前键值对的上一次访问时间
+    unsigned long ldt = o->lru >> 8;
+    // 获取当前的访问次数
+    unsigned long counter = o->lru & 255;
+    unsigned long num_periods = server.lfu_decay_time ? LFUTimeElapsed(ldt) / server.lfu_decay_time : 0;
+    if (num_periods)
+        // 如果衰减大小小于当前访问次数，那么，衰减后的访问次数是当前访问次数减去衰减大小；否则，衰减后的访问次数等于0
+        counter = (num_periods > counter) ? 0 : counter - num_periods;
+    // 如果衰减大小为0，则返回原来的访问次数
+    return counter;
+}
+``` 
+
+上面的代码可以看到，当访问一个键值对的时候，首先进行了访问次数的衰减？   
+
+LFU 算法是根据访问频率来淘汰数据的，而不只是访问次数。如果访问间隔时间越长，那么访问频率就越低。  
+
+因为 Redis 是使用 lru 变量中的访问次数来表示访问频率，所以在每次更新键值对的访问频率时，就会通过 LFUDecrAndReturn 函数对访问次数进行衰减。  
+
+LFUDecrAndReturn 函数会调用 LFUTimeElapsed 函数（在 evict.c 文件中），计算距离键值对的上一次访问已经过去的时长。这个时长也是以 1 分钟为精度来计算的。有了距离上次访问的时长后，LFUDecrAndReturn 函数会把这个时长除以 lfu_decay_time 的值，并把结果作为访问次数的衰减大小。   
+
+lfu_decay_time 变量值，是由 redis.conf 文件中的配置项 lfu-decay-time 来决定的。Redis 在初始化时，会通过 initServerConfig 函数来设置 lfu_decay_time 变量的值，默认值为 1。所以，在默认情况下，访问次数的衰减大小就是等于上一次访问距离当前的分钟数。  
 
 
 
@@ -660,3 +759,4 @@ LUF 的实现可参见[LFU实现详解](https://leetcode-cn.com/problems/lfu-cac
 
 【Redis核心技术与实战】https://time.geekbang.org/column/intro/100056701    
 【Redis设计与实现】https://book.douban.com/subject/25900156/   
+【Redis 源码剖析与实战】https://time.geekbang.org/column/intro/100084301  
