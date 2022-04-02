@@ -15,6 +15,7 @@
     - [内存淘汰算法](#%E5%86%85%E5%AD%98%E6%B7%98%E6%B1%B0%E7%AE%97%E6%B3%95)
       - [LRU](#lru)
       - [LFU](#lfu)
+  - [总结](#%E6%80%BB%E7%BB%93)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -651,7 +652,7 @@ LUF 的实现可参见[LFU实现详解](https://leetcode-cn.com/problems/lfu-cac
 
 这看下 Redis 中对 LFU 算法的实现  
 
-**键值对的访问频率记录**
+**1、键值对的访问频率记录和更新**
 
 上面分析 LRU 的时候，聊到了 redisObject，Redis 在源码中对于每个键值对中的值，会使用一个 redisObject 结构体来保存指向值的指针。里面 `lru:LRU_BITS` 字段记录了 LRU 算法和 LFU 算法需要的时间和计数器。  
 
@@ -752,6 +753,59 @@ LFU 算法是根据访问频率来淘汰数据的，而不只是访问次数。�
 LFUDecrAndReturn 函数会调用 LFUTimeElapsed 函数（在 evict.c 文件中），计算距离键值对的上一次访问已经过去的时长。这个时长也是以 1 分钟为精度来计算的。有了距离上次访问的时长后，LFUDecrAndReturn 函数会把这个时长除以 lfu_decay_time 的值，并把结果作为访问次数的衰减大小。   
 
 lfu_decay_time 变量值，是由 redis.conf 文件中的配置项 lfu-decay-time 来决定的。Redis 在初始化时，会通过 initServerConfig 函数来设置 lfu_decay_time 变量的值，默认值为 1。所以，在默认情况下，访问次数的衰减大小就是等于上一次访问距离当前的分钟数。  
+
+衰减之后，再来看下如何进行访问次数的更新  
+
+```
+// https://github.com/redis/redis/blob/6.2/src/evict.c#L298
+uint8_t LFULogIncr(uint8_t counter) {
+    // 等于255，不在进行次数的更新
+    if (counter == 255) return 255;
+    // 计算一个随机数
+    double r = (double)rand()/RAND_MAX;
+    // 计算当前访问次数和初始值的差值
+    double baseval = counter - LFU_INIT_VAL;
+    if (baseval < 0) baseval = 0;
+    // 根据baseval和lfu_log_factor计算阈值p
+    double p = 1.0/(baseval*server.lfu_log_factor+1);
+    // 概率值小于阀值
+    if (r < p) counter++;
+    return counter;
+}
+```
+
+如果当前访问次数小于255的时候，每次 LFULogIncr 函数会计算一个阈值 p，以及一个取值为 0 到 1 之间的随机概率值 r。如果概率 r 小于阈值 p，那么 LFULogIncr 函数才会将访问次数加 1。否则的话，LFULogIncr 函数会返回当前的访问次数，不做更新。  
+
+这样按照一定的概率增加访问频率，避免了访问次数过大，8 bits 计数器对访问次数的影响。  
+
+**2、使用 LFU 算法淘汰数据**
+
+LFU 处理数据淘汰和 LRU 方式差不多，这里回顾下 LRU 处理数据淘汰的过程  
+
+- 1、调用 getMaxmemoryState 函数计算待释放的内存空间；  
+
+- 2、调用 evictionPoolPopulate 函数随机采样键值对，并插入到待淘汰集合 EvictionPoolLRU 中；  
+
+- 3、遍历待淘汰集合 EvictionPoolLRU，选择实际被淘汰数据，并删除。  
+
+LRU 中 idle 记录的是它距离上次访问的空闲时间。  
+
+LFU 中 idel 记录的是用 255 减去键值对的访问次数。也就是键值对访问次数越大，它的 idle 值就越小，反之 idle 值越大。  
+
+```
+        if (server.maxmemory_policy & MAXMEMORY_FLAG_LRU) {
+            idle = estimateObjectIdleTime(o);
+        } else if (server.maxmemory_policy & MAXMEMORY_FLAG_LFU) {
+            idle = 255-LFUDecrAndReturn(o);
+        }
+```
+
+freeMemoryIfNeeded 函数按照 idle 值从大到小，遍历 EvictionPoolLRU 数组，选择实际被淘汰的键值对时，它就能选出访问次数小的键值对了，也就是把访问频率低的键值对淘汰出去。  
+
+具体的源码上面 LRU 已经展示了，这里不在啰嗦了。   
+
+### 总结  
+
 
 
 
