@@ -14,6 +14,7 @@
 
 - [7、Redis 中的过期删除策略和内存淘汰机制](https://github.com/boilingfrog/Go-POINT/blob/master/redis/7%E3%80%81Redis%E4%B8%AD%E5%A6%82%E4%BD%95%E5%88%A0%E9%99%A4%E8%BF%87%E6%9C%9F%E7%9A%84key.md)      
 
+- [Redis 中的内存缓冲区](https://github.com/boilingfrog/Go-POINT/blob/master/redis/%E5%86%85%E5%AD%98%E7%BC%93%E5%86%B2%E5%8C%BA%E6%BB%A1%E4%BA%86%E5%A6%82%E4%BD%95%E5%A4%84%E7%90%86.md#%E4%BB%80%E4%B9%88%E6%98%AF%E7%BC%93%E5%86%B2%E5%8C%BA)      
 
 
 
