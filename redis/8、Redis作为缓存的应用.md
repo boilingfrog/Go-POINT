@@ -6,6 +6,9 @@
   - [旁路缓存](#%E6%97%81%E8%B7%AF%E7%BC%93%E5%AD%98)
     - [只读缓存](#%E5%8F%AA%E8%AF%BB%E7%BC%93%E5%AD%98)
     - [读写缓存](#%E8%AF%BB%E5%86%99%E7%BC%93%E5%AD%98)
+  - [设置多大的缓存合适](#%E8%AE%BE%E7%BD%AE%E5%A4%9A%E5%A4%A7%E7%9A%84%E7%BC%93%E5%AD%98%E5%90%88%E9%80%82)
+  - [内存被写满了如何处理](#%E5%86%85%E5%AD%98%E8%A2%AB%E5%86%99%E6%BB%A1%E4%BA%86%E5%A6%82%E4%BD%95%E5%A4%84%E7%90%86)
+  - [如何处理被淘汰的数据](#%E5%A6%82%E4%BD%95%E5%A4%84%E7%90%86%E8%A2%AB%E6%B7%98%E6%B1%B0%E7%9A%84%E6%95%B0%E6%8D%AE)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
