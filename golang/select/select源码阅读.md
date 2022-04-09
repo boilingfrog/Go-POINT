@@ -130,7 +130,7 @@ select 中的多个 case 是随机触发执行的，一次只有一个 case 得�
 
 源码版本 `go version go1.16.13 darwin/amd64`
 
-源码包 src/runtime/select.go:scase 定义了表示case语句的数据结构：  
+源码包 `src/runtime/select.go` 定义了表示case语句的数据结构：  
 
 ```
 type scase struct {
@@ -140,6 +140,86 @@ type scase struct {
 ```
 
 c为当前 case 语句所操作的 channel 指针，这也说明了一个 case 语句只能操作一个 channel。  
+
+
+编译阶段，select 对应的 opType 是 OSELECT，select 语句在编译期间会被转换成 OSELECT 节点。  
+
+```
+// https://github.com/golang/go/blob/release-branch.go1.16/src/cmd/compile/internal/gc/syntax.go#L922
+OSELECT // select { List } (List is list of OCASE)
+```
+
+如果是 OSELECT 就会调用 `walkselect()`,然后 `walkselect()` 会调用 `walkselectcases()`   
+
+```go
+// https://github.com/golang/go/blob/release-branch.go1.16/src/cmd/compile/internal/gc/walk.go#L104
+// The result of walkstmt MUST be assigned back to n, e.g.
+// 	n.Left = walkstmt(n.Left)
+func walkstmt(n *Node) *Node {
+	if n == nil {
+		return n
+	}
+
+	setlineno(n)
+
+	walkstmtlist(n.Ninit.Slice())
+
+	switch n.Op {
+    ...
+	case OSELECT:
+		walkselect(n)
+
+	case OSWITCH:
+		walkswitch(n)
+
+	case ORANGE:
+		n = walkrange(n)
+	}
+
+	if n.Op == ONAME {
+		Fatalf("walkstmt ended up with name: %+v", n)
+	}
+	return n
+}
+
+// https://github.com/golang/go/blob/release-branch.go1.16/src/cmd/compile/internal/gc/select.go#L90
+func walkselect(sel *Node) {
+	lno := setlineno(sel)
+	if sel.Nbody.Len() != 0 {
+		Fatalf("double walkselect")
+	}
+
+	init := sel.Ninit.Slice()
+	sel.Ninit.Set(nil)
+    // 调用walkselectcases
+	init = append(init, walkselectcases(&sel.List)...)
+	sel.List.Set(nil)
+
+	sel.Nbody.Set(init)
+	walkstmtlist(sel.Nbody.Slice())
+
+	lineno = lno
+}
+```
+
+上面的调用逻辑，如果是 select 的逻辑是在 `walkselectcases()` 函数中完成的，这里来重点看下  
+
+walkselectcases() 在处理中会分成下面几种情况来处理  
+
+1、select 中不存在 case, 直接堵塞；  
+
+2、select 中仅存在一个 case；  
+
+3、select 中存在两个 case，其中一个是 default；  
+
+4、其他 select 情况如: 包含多个 case 并且有 default 等。  
+
+
+
+
+
+
+
 
 
 
