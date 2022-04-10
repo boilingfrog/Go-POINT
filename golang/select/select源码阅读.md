@@ -4,6 +4,9 @@
 - [深入了解下 go 中的 select](#%E6%B7%B1%E5%85%A5%E4%BA%86%E8%A7%A3%E4%B8%8B-go-%E4%B8%AD%E7%9A%84-select)
   - [前言](#%E5%89%8D%E8%A8%80)
   - [看下源码实现](#%E7%9C%8B%E4%B8%8B%E6%BA%90%E7%A0%81%E5%AE%9E%E7%8E%B0)
+    - [1、不存在 case](#1%E4%B8%8D%E5%AD%98%E5%9C%A8-case)
+    - [2、select 中仅存在一个 case](#2select-%E4%B8%AD%E4%BB%85%E5%AD%98%E5%9C%A8%E4%B8%80%E4%B8%AA-case)
+    - [3、select 中存在两个 case，其中一个是 default](#3select-%E4%B8%AD%E5%AD%98%E5%9C%A8%E4%B8%A4%E4%B8%AA-case%E5%85%B6%E4%B8%AD%E4%B8%80%E4%B8%AA%E6%98%AF-default)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -165,7 +168,7 @@ func walkstmt(n *Node) *Node {
 	walkstmtlist(n.Ninit.Slice())
 
 	switch n.Op {
-    ...
+		...
 	case OSELECT:
 		walkselect(n)
 
@@ -202,9 +205,9 @@ func walkselect(sel *Node) {
 }
 ```
 
-上面的调用逻辑，如果是 select 的逻辑是在 `walkselectcases()` 函数中完成的，这里来重点看下  
+上面的调用逻辑，select 的逻辑是在 `walkselectcases()` 函数中完成的，这里来重点看下  
 
-walkselectcases() 在处理中会分成下面几种情况来处理  
+`walkselectcases()` 在处理中会分成下面几种情况来处理  
 
 1、select 中不存在 case, 直接堵塞；  
 
@@ -237,19 +240,10 @@ func walkselectcases(cases *Nodes) []*Node {
 	// 优化: select 中存在两个 case，其中一个是 default 的情况
 	if n == 2 {
 		// 翻译为：发送或接收
-		// 发送
-		// if selectnbsend(ch, i) {
-		//    ...
-		// } else {
-		//     ...
-		// }
+		// if selectnbsend(c, v) { body } else { default body }
+
 		// 接收 
-		// if selectnbrecv(ch, i) {
-		//    ...
-		// } else {
-		//     ...
-		// }
-		//...
+		// if selectnbrecv(&v, &received, c) { body } else { default body }
 		return
 	}
 
@@ -260,23 +254,111 @@ func walkselectcases(cases *Nodes) []*Node {
 
 #### 1、不存在 case
 
-首先来看下没有 case 的场景  
+如果不存在 case ，空的 select 语句会直接阻塞当前 Goroutine，导致 Goroutine 进入无法被唤醒的永久休眠状态。  
 
-```
-// https://github.com/golang/go/blob/release-branch.go1.16/src/cmd/compile/internal/gc/select.go#L108
+```go
+// https://github.com/golang/go/blob/release-branch.go1.16/src/cmd/compile/internal/gc/walk.go#L104
 func walkselectcases(cases *Nodes) []*Node {
-	ncas := cases.Len()
-	sellineno := lineno
+	n := cases.Len()
 
-	// optimization: zero-case select
-	if ncas == 0 {
+	if n == 0 {
 		return []*Node{mkcall("block", nil, nil)}
 	}
+	...
+}
+
+// 调用 runtime.gopark 让出当前 Goroutine 对处理器的使用权并传入等待原因 waitReasonSelectNoCases。
+func block() {
+	gopark(nil, nil, waitReasonSelectNoCases, traceEvGoStop, 1)
+}
+```
+
+如果没有 case，导致 Goroutine 进入无法被唤醒的永久休眠状态，会触发 `deadlock!`  
+
+#### 2、select 中仅存在一个 case
+
+如果只有一个 case ，编译器会将 select 改写成 if 条件语句。  
+
+```go
+// 改写前
+select {
+case v, ok <-ch: // case ch <- v
+    ...    
+}
+
+// 改写后
+if ch == nil {
+    block()
+}
+v, ok := <-ch // case ch <- v
+...
+```
+
+如果只有一个 case ，walkselectcases 会将 select 根据收发情况装换成 if 语句，如果 case 中的 Channel 是空指针时，会直接挂起当前 Goroutine 并陷入永久休眠。  
+
+#### 3、select 中存在两个 case，其中一个是 default  
+
+`发送`  
+
+在 walkselectcases 中 OSEND，对应的就是向 channel 中发送数据，如果是发送的话，会翻译成下面的语句  
+
+```go
+select {
+case ch <- i:
+    ...
+default:
     ...
 }
 
-// 
+if selectnbsend(ch, i) {
+    ...
+} else {
+    // default body
+    ...
+}
+
+func selectnbsend(c *hchan, elem unsafe.Pointer) (selected bool) {
+	return chansend(c, elem, false, getcallerpc())
+}
 ```
+
+如果是发送，这里翻译之后最终调用 chansend 向 channel 中发送数据  
+
+```go
+// 这里提供了一个 block，参数设置成 true，那么表示当前发送操作是阻塞的
+func chansend(c *hchan, ep unsafe.Pointer, block bool, callerpc uintptr) bool {
+  ...
+	// 对于不阻塞的 send，快速检测失败场景
+	//
+	// 如果 channel 未关闭且 channel 没有多余的缓冲空间。这可能是：
+	// 1. channel 是非缓冲型的，且等待接收队列里没有 goroutine
+	// 2. channel 是缓冲型的，但循环数组已经装满了元素
+	if !block && c.closed == 0 && ((c.dataqsiz == 0 && c.recvq.first == nil) ||
+		(c.dataqsiz > 0 && c.qcount == c.dataqsiz)) {
+		return false
+	}
+    ...
+}
+```
+
+总结下  
+
+- 1、如果 block 为 true 表示当前向 channel 中的数据发送是阻塞的。这里可以看到 selectnbsend 中传入的是 false,说明 channel 的发送不会阻塞 select。  
+
+- 2、对于不阻塞的发送，会进行下面的检测，如果 channel 未关闭且 channel 没有多余的缓冲空间，就会发送失败，然后跳出当前的 case,走到 default 的逻辑。  
+
+如果 channel 未关闭且 channel 没有多余的缓冲空间。这可能是： 
+
+1、channel 是非缓冲型的，且等待接收队列里没有 goroutine；  
+
+2、channel 是缓冲型的，但循环数组已经装满了元素；  
+
+
+
+
+
+
+
 
 
 
