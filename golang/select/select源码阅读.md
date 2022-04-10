@@ -214,7 +214,69 @@ walkselectcases() 在处理中会分成下面几种情况来处理
 
 4、其他 select 情况如: 包含多个 case 并且有 default 等。  
 
+```go
+// src/cmd/compile/internal/gc/select.go
+func walkselectcases(cases *Nodes) []*Node {
+	// 获取 case 分支的数量
+	n := cases.Len()
 
+	// 优化: 没有 case 的情况
+	if n == 0 {
+		// 翻译为：block()
+		...
+		return
+	}
+
+	// 优化: 只有一个 case 的情况
+	if n == 1 {
+		// 翻译为：if ch == nil { block() }; n;
+		...
+		return
+	}
+
+	// 优化: select 中存在两个 case，其中一个是 default 的情况
+	if n == 2 {
+		// 翻译为：发送或接收
+		// 发送
+		// if selectnbsend(ch, i) {
+		//    ...
+		// } else {
+		//     ...
+		// }
+		// 接收 
+		// if selectnbrecv(ch, i) {
+		//    ...
+		// } else {
+		//     ...
+		// }
+		//...
+		return
+	}
+
+	// 一般情况，调用 selecggo
+	...
+}
+```
+
+#### 1、不存在 case
+
+首先来看下没有 case 的场景  
+
+```
+// https://github.com/golang/go/blob/release-branch.go1.16/src/cmd/compile/internal/gc/select.go#L108
+func walkselectcases(cases *Nodes) []*Node {
+	ncas := cases.Len()
+	sellineno := lineno
+
+	// optimization: zero-case select
+	if ncas == 0 {
+		return []*Node{mkcall("block", nil, nil)}
+	}
+    ...
+}
+
+// 
+```
 
 
 
@@ -225,5 +287,8 @@ walkselectcases() 在处理中会分成下面几种情况来处理
 
 
 ### 参考
+
+【Select 语句的本质】https://golang.design/under-the-hood/zh-cn/part1basic/ch03lang/chan/#select-    
+
 
 
