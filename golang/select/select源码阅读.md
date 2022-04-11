@@ -7,6 +7,9 @@
     - [1、不存在 case](#1%E4%B8%8D%E5%AD%98%E5%9C%A8-case)
     - [2、select 中仅存在一个 case](#2select-%E4%B8%AD%E4%BB%85%E5%AD%98%E5%9C%A8%E4%B8%80%E4%B8%AA-case)
     - [3、select 中存在两个 case，其中一个是 default](#3select-%E4%B8%AD%E5%AD%98%E5%9C%A8%E4%B8%A4%E4%B8%AA-case%E5%85%B6%E4%B8%AD%E4%B8%80%E4%B8%AA%E6%98%AF-default)
+      - [发送值](#%E5%8F%91%E9%80%81%E5%80%BC)
+      - [接收值](#%E6%8E%A5%E6%94%B6%E5%80%BC)
+    - [4、多个 case 的场景](#4%E5%A4%9A%E4%B8%AA-case-%E7%9A%84%E5%9C%BA%E6%99%AF)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -152,7 +155,7 @@ c为当前 case 语句所操作的 channel 指针，这也说明了一个 case �
 OSELECT // select { List } (List is list of OCASE)
 ```
 
-如果是 OSELECT 就会调用 `walkselect()`,然后 `walkselect()` 会调用 `walkselectcases()`   
+如果是 OSELECT 就会调用 `walkselect()`,然后 `walkselect()` 最后调用 `walkselectcases()`   
 
 ```go
 // https://github.com/golang/go/blob/release-branch.go1.16/src/cmd/compile/internal/gc/walk.go#L104
@@ -298,7 +301,7 @@ v, ok := <-ch // case ch <- v
 
 #### 3、select 中存在两个 case，其中一个是 default  
 
-`发送`  
+##### 发送值  
 
 在 walkselectcases 中 OSEND，对应的就是向 channel 中发送数据，如果是发送的话，会翻译成下面的语句  
 
@@ -353,17 +356,105 @@ func chansend(c *hchan, ep unsafe.Pointer, block bool, callerpc uintptr) bool {
 
 2、channel 是缓冲型的，但循环数组已经装满了元素；  
 
+##### 接收值
 
+在 walkselectcases 函数中可以看到，接收方式会有两个，分别是 OSELRECV 和 OSELRECV2  
 
+```go
+// https://github.com/golang/go/blob/release-branch.go1.16/src/cmd/compile/internal/gc/walk.go#L104
+func walkselectcases(cases *Nodes) []*Node {
+    ...
+	// optimization: two-case select but one is default: single non-blocking op.
+	if ncas == 2 && dflt != nil {
+		switch n.Op {
+		default:
+			Fatalf("select %v", n.Op)
 
+		case OSELRECV:
+			// if selectnbrecv(&v, c) { body } else { default body }
+            ...
+			r.Left = mkcall1(chanfn("selectnbrecv", 2, ch.Type), types.Types[TBOOL], &r.Ninit, elem, ch)
 
+		case OSELRECV2:
+			// if selectnbrecv2(&v, &received, c) { body } else { default body }
+            ...
+			r.Left = mkcall1(chanfn("selectnbrecv2", 2, ch.Type), types.Types[TBOOL], &r.Ninit, elem, receivedp, ch)
+		}
 
+		r.Left = typecheck(r.Left, ctxExpr)
+		r.Nbody.Set(cas.Nbody.Slice())
+		r.Rlist.Set(append(dflt.Ninit.Slice(), dflt.Nbody.Slice()...))
+		return []*Node{r, nod(OBREAK, nil, nil)}
+	}
+    ...
+}
+```
 
+walkselectcases 对这两种情况的改写  
 
+selectnbrecv  
 
+```go
+select {
+case v = <-c:
+	...
+default:
+	...
+}
 
+// 改写后
 
+if selectnbrecv(&v, c) {
+	...
+} else {
+    // default body
+	...
+}
+```
 
+selectnbrecv2  
+
+```go
+select {
+case v, ok = <-c:
+	... foo
+default:
+	... bar
+}
+
+// 改写后
+
+if c != nil && selectnbrecv2(&v, &ok, c) {
+	... foo
+} else {
+    // default body
+	... bar
+}
+```
+
+selectnbrecv 和 selectnbrecv2 有什么区别呢？  
+
+```go
+// https://github.com/golang/go/blob/release-branch.go1.16/src/runtime/chan.go#L707
+func selectnbrecv(elem unsafe.Pointer, c *hchan) (selected bool) {
+	selected, _ = chanrecv(c, elem, false)
+	return
+}
+
+func selectnbrecv2(elem unsafe.Pointer, received *bool, c *hchan) (selected bool) {
+	// TODO(khr): just return 2 values from this function, now that it is in Go.
+	selected, *received = chanrecv(c, elem, false)
+	return
+}
+```
+
+可以发现只是针对返回的值处理不同，selectnbrecv2 多了一个是否 received 的 bool 值  
+
+总结下：  
+
+对于接收值的 case 会有两种处理方式，这两种，区别在于是否将 received 的 bool 值传送给调用方  
+
+#### 4、多个 case 的场景  
 
 
 
