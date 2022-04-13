@@ -611,7 +611,7 @@ func selectgo(cas0 *scase, order0 *uint16, pc0 *uintptr, nsends, nrecvs int, blo
 		goto retc
 	}
 
-	// pass 2 - enqueue on all chans
+	// pass 2 - 所有 channel 入对，等待处理
 	gp = getg()
 	if gp.waiting != nil {
 		throw("gp.waiting != nil")
@@ -619,6 +619,7 @@ func selectgo(cas0 *scase, order0 *uint16, pc0 *uintptr, nsends, nrecvs int, blo
 	nextp = &gp.waiting
 	for _, casei := range lockorder {
 		casi = int(casei)
+        // 获取一个 scase
 		cas = &scases[casi]
 		c = cas.c
 		sg := acquireSudog()
