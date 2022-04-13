@@ -531,7 +531,7 @@ func selectgo(cas0 *scase, order0 *uint16, pc0 *uintptr, nsends, nrecvs int, blo
 	pollorder = pollorder[:norder]
 	lockorder = lockorder[:norder]
 
-    // 根据 channel 地址进行排序,决定获取锁的顺序
+	// 根据 channel 地址进行排序,决定获取锁的顺序
 	for i := range lockorder {
 		j := i
 		// Start with the pollorder to permute cases on the same channel.
@@ -543,7 +543,7 @@ func selectgo(cas0 *scase, order0 *uint16, pc0 *uintptr, nsends, nrecvs int, blo
 		}
 		lockorder[j] = pollorder[i]
 	}
-    ...
+	...
 
 	// 锁定选中的 channel
 	sellock(scases, lockorder)
@@ -569,36 +569,36 @@ func selectgo(cas0 *scase, order0 *uint16, pc0 *uintptr, nsends, nrecvs int, blo
 		casi = int(casei)
 		cas = &scases[casi]
 		c = cas.c
-        // 接收数据
+		// 接收数据
 		if casi >= nsends {
-            // 有 goroutine 等待发送数据
+			// 有 goroutine 等待发送数据
 			sg = c.sendq.dequeue()
 			if sg != nil {
 				goto recv
 			}
-		    // 缓冲区有数据
+			// 缓冲区有数据
 			if c.qcount > 0 {
 				goto bufrecv
 			}
-            // 通道关闭
+			// 通道关闭
 			if c.closed != 0 {
 				goto rclose
 			}
-        // 发送数据
+			// 发送数据
 		} else {
 			if raceenabled {
 				racereadpc(c.raceaddr(), casePC(casi), chansendpc)
 			}
-            // 判断通道的关闭情况
+			// 判断通道的关闭情况
 			if c.closed != 0 {
 				goto sclose
 			}
-            // 接收等待队列有 goroutine
+			// 接收等待队列有 goroutine
 			sg = c.recvq.dequeue()
 			if sg != nil {
 				goto send
 			}
-            // 缓冲区有空位置
+			// 缓冲区有空位置
 			if c.qcount < c.dataqsiz {
 				goto bufsend
 			}
@@ -619,8 +619,9 @@ func selectgo(cas0 *scase, order0 *uint16, pc0 *uintptr, nsends, nrecvs int, blo
 	nextp = &gp.waiting
 	for _, casei := range lockorder {
 		casi = int(casei)
-        // 获取一个 scase
+		// 获取一个 scase
 		cas = &scases[casi]
+		// 监听的 channel
 		c = cas.c
 		sg := acquireSudog()
 		sg.g = gp
@@ -633,7 +634,7 @@ func selectgo(cas0 *scase, order0 *uint16, pc0 *uintptr, nsends, nrecvs int, blo
 			sg.releasetime = -1
 		}
 		sg.c = c
-		// Construct waiting list in lock order.
+		// 按锁定顺序构造等待列表。
 		*nextp = sg
 		nextp = &sg.waitlink
 
@@ -644,7 +645,7 @@ func selectgo(cas0 *scase, order0 *uint16, pc0 *uintptr, nsends, nrecvs int, blo
 		}
 	}
 
-	// wait for someone to wake us up
+	// goroutine 陷入睡眠,等待某一个 channel 唤醒 gooutine
 	gp.param = nil
 	// Signal to anyone trying to shrink our stack that we're about
 	// to park on a channel. The window between when this G's status
@@ -660,15 +661,13 @@ func selectgo(cas0 *scase, order0 *uint16, pc0 *uintptr, nsends, nrecvs int, blo
 	sg = (*sudog)(gp.param)
 	gp.param = nil
 
-	// pass 3 - dequeue from unsuccessful chans
-	// otherwise they stack up on quiet channels
-	// record the successful case, if any.
-	// We singly-linked up the SudoGs in lock order.
+	// pass 3 - 删除队列中没有触发的 channels
+	// 如果不删除的话,他们会触发 channel.我们按锁的顺序单向链接 sudog
 	casi = -1
 	cas = nil
 	caseSuccess = false
 	sglist = gp.waiting
-	// Clear all elem before unlinking from gp.waiting.
+	// 在从 gp.waiting 取消链接之前清除所有元素。
 	for sg1 := gp.waiting; sg1 != nil; sg1 = sg1.waitlink {
 		sg1.isSelect = false
 		sg1.elem = nil
