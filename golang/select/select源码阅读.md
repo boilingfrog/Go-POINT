@@ -464,7 +464,29 @@ func selectnbrecv2(elem unsafe.Pointer, received *bool, c *hchan) (selected bool
 
 3、通过 for 循环生成一组 if 语句,来判断是否选中 case；  
 
-这里来看下 selectgo 的实现   
+这里来看下 selectgo 的实现     
+
+- 1、打乱 scase 的顺序，将锁定scase语句中所有的channel；  
+
+- 2、按照随机顺序检测scase中的channel是否ready；  
+
+2.1 如果case可读，则读取channel中数据，解锁所有的channel，然后返回(case index, true)  
+
+2.2 如果case可写，则将数据写入channel，解锁所有的channel，然后返回(case index, false)  
+
+2.3 所有case都未ready，则解锁所有的channel，然后返回（default index, false）  
+
+- 3、所有case都未ready，且没有default语句  
+
+3.1 将当前协程加入到所有channel的等待队列  
+
+3.2 当将协程转入阻塞，等待被唤醒  
+
+- 4、唤醒后返回channel对应的case index  
+
+4.1 如果是读操作，解锁所有的channel，然后返回(case index, true)  
+
+4.2 如果是写操作，解锁所有的channel，然后返回(case index, false)  
 
 ```go
 // https://github.com/golang/go/blob/release-branch.go1.16/src/runtime/select.go#L121
