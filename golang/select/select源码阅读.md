@@ -3,6 +3,9 @@
 
 - [深入了解下 go 中的 select](#%E6%B7%B1%E5%85%A5%E4%BA%86%E8%A7%A3%E4%B8%8B-go-%E4%B8%AD%E7%9A%84-select)
   - [前言](#%E5%89%8D%E8%A8%80)
+    - [1、栗子一](#1%E6%A0%97%E5%AD%90%E4%B8%80)
+    - [2、栗子二](#2%E6%A0%97%E5%AD%90%E4%BA%8C)
+    - [3、栗子三](#3%E6%A0%97%E5%AD%90%E4%B8%89)
   - [看下源码实现](#%E7%9C%8B%E4%B8%8B%E6%BA%90%E7%A0%81%E5%AE%9E%E7%8E%B0)
     - [1、不存在 case](#1%E4%B8%8D%E5%AD%98%E5%9C%A8-case)
     - [2、select 中仅存在一个 case](#2select-%E4%B8%AD%E4%BB%85%E5%AD%98%E5%9C%A8%E4%B8%80%E4%B8%AA-case)
@@ -10,6 +13,7 @@
       - [发送值](#%E5%8F%91%E9%80%81%E5%80%BC)
       - [接收值](#%E6%8E%A5%E6%94%B6%E5%80%BC)
     - [4、多个 case 的场景](#4%E5%A4%9A%E4%B8%AA-case-%E7%9A%84%E5%9C%BA%E6%99%AF)
+      - [具体的实现逻辑](#%E5%85%B7%E4%BD%93%E7%9A%84%E5%AE%9E%E7%8E%B0%E9%80%BB%E8%BE%91)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -20,7 +24,7 @@
 
 这里借助于几个经常遇到的 select 的使用 demo 来作为开始，先来看看，下面几个 demo 的输出情况  
 
-1、栗子一  
+#### 1、栗子一  
 
 ```go
 func main() {
@@ -67,7 +71,7 @@ chan2 ready.
 default
 ```
 
-2、栗子二
+#### 2、栗子二
 
 ```go
 func main() {
@@ -112,7 +116,7 @@ chan2 ready.
 default
 ```
 
-3、栗子三
+#### 3、栗子三
 
 ```go
 func main() {
@@ -330,7 +334,7 @@ func selectnbsend(c *hchan, elem unsafe.Pointer) (selected bool) {
 ```go
 // 这里提供了一个 block，参数设置成 true，那么表示当前发送操作是阻塞的
 func chansend(c *hchan, ep unsafe.Pointer, block bool, callerpc uintptr) bool {
-  ...
+	...
 	// 对于不阻塞的 send，快速检测失败场景
 	//
 	// 如果 channel 未关闭且 channel 没有多余的缓冲空间。这可能是：
@@ -340,7 +344,7 @@ func chansend(c *hchan, ep unsafe.Pointer, block bool, callerpc uintptr) bool {
 		(c.dataqsiz > 0 && c.qcount == c.dataqsiz)) {
 		return false
 	}
-    ...
+	...
 }
 ```
 
@@ -363,7 +367,7 @@ func chansend(c *hchan, ep unsafe.Pointer, block bool, callerpc uintptr) bool {
 ```go
 // https://github.com/golang/go/blob/release-branch.go1.16/src/cmd/compile/internal/gc/walk.go#L104
 func walkselectcases(cases *Nodes) []*Node {
-    ...
+	...
 	// optimization: two-case select but one is default: single non-blocking op.
 	if ncas == 2 && dflt != nil {
 		switch n.Op {
@@ -372,12 +376,12 @@ func walkselectcases(cases *Nodes) []*Node {
 
 		case OSELRECV:
 			// if selectnbrecv(&v, c) { body } else { default body }
-            ...
+			...
 			r.Left = mkcall1(chanfn("selectnbrecv", 2, ch.Type), types.Types[TBOOL], &r.Ninit, elem, ch)
 
 		case OSELRECV2:
 			// if selectnbrecv2(&v, &received, c) { body } else { default body }
-            ...
+			...
 			r.Left = mkcall1(chanfn("selectnbrecv2", 2, ch.Type), types.Types[TBOOL], &r.Ninit, elem, receivedp, ch)
 		}
 
@@ -386,7 +390,7 @@ func walkselectcases(cases *Nodes) []*Node {
 		r.Rlist.Set(append(dflt.Ninit.Slice(), dflt.Nbody.Slice()...))
 		return []*Node{r, nod(OBREAK, nil, nil)}
 	}
-    ...
+	...
 }
 ```
 
@@ -466,7 +470,7 @@ func selectnbrecv2(elem unsafe.Pointer, received *bool, c *hchan) (selected bool
 
 这里来看下 selectgo 的实现     
 
-这里看下参数    
+`这里看下参数`    
 
 - cas0：为 scase 数组的首地址，selectgo() 就是从这些 scase 中找出一个返回；  
 
@@ -482,13 +486,13 @@ lockorder：所有 case 语句中 channel 序列，以达到去重防止对 chan
 
 - block: 表示是否存在 default,没有 default 就表示 select 是阻塞的。  
 
-看下返回的数据  
+`看下返回的数据`  
 
 - int： 选中case的编号，这个case编号跟代码一致；  
 
 - bool: 是否成功从channle中读取了数据，如果选中的case是从channel中读数据，则该返回值表示是否读取成功。  
 
-具体的实现逻辑  
+##### 具体的实现逻辑  
 
 - 1、打乱 scase 的顺序，将锁定scase语句中所有的channel；  
 
