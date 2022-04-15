@@ -466,6 +466,30 @@ func selectnbrecv2(elem unsafe.Pointer, received *bool, c *hchan) (selected bool
 
 这里来看下 selectgo 的实现     
 
+这里看下参数    
+
+- cas0：为 scase 数组的首地址，selectgo() 就是从这些 scase 中找出一个返回；  
+
+- order0：为一个两倍 cas0 数组长度的 buffer，保存 scase 随机序列 pollorder 和 scase 中 channel 地址序列 lockorder,数组前一半是 pollorder,后一半用来 lockorder；  
+
+pollorder：每次 selectgo 执行都会把 scase 序列打乱，以达到随机检测 case 的目的；  
+
+lockorder：所有 case 语句中 channel 序列，以达到去重防止对 channel 加锁时重复加锁的目的；  
+     
+- nsends: 发送的 case 的个数；   
+
+- nrecvs: 接收的 case 的个数； 
+
+- block: 表示是否存在 default,没有 default 就表示 select 是阻塞的。  
+
+看下返回的数据  
+
+- int： 选中case的编号，这个case编号跟代码一致；  
+
+- bool: 是否成功从channle中读取了数据，如果选中的case是从channel中读数据，则该返回值表示是否读取成功。  
+
+具体的实现逻辑  
+
 - 1、打乱 scase 的顺序，将锁定scase语句中所有的channel；  
 
 - 2、按照随机顺序检测scase中的channel是否ready；  
@@ -474,7 +498,7 @@ func selectnbrecv2(elem unsafe.Pointer, received *bool, c *hchan) (selected bool
 
 2.2 如果case可写，则将数据写入channel，解锁所有的channel，然后返回(case index, false)  
 
-2.3 所有case都未ready，则解锁所有的channel，然后返回（default index, false）  
+2.3 所有case都未ready，并且有default语句，则解锁所有的channel，然后返回（default index, false）  
 
 - 3、所有case都未ready，且没有default语句  
 
@@ -487,6 +511,8 @@ func selectnbrecv2(elem unsafe.Pointer, received *bool, c *hchan) (selected bool
 4.1 如果是读操作，解锁所有的channel，然后返回(case index, true)  
 
 4.2 如果是写操作，解锁所有的channel，然后返回(case index, false)  
+
+这里来分析下 selectgo 的具体实现  
 
 ```go
 // https://github.com/golang/go/blob/release-branch.go1.16/src/runtime/select.go#L121
@@ -627,13 +653,14 @@ func selectgo(cas0 *scase, order0 *uint16, pc0 *uintptr, nsends, nrecvs int, blo
 		}
 	}
 
+    // 如果不阻塞，意味着有 default,准备退出select
 	if !block {
 		selunlock(scases, lockorder)
 		casi = -1
 		goto retc
 	}
 
-	// pass 2 - 所有 channel 入对，等待处理
+	// pass 2 - 所有 channel 入队，等待处理
 	gp = getg()
 	if gp.waiting != nil {
 		throw("gp.waiting != nil")
@@ -847,8 +874,6 @@ sclose:
 	panic(plainError("send on closed channel"))
 }
 ```
-
-
 
 ### 参考
 
