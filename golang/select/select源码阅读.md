@@ -14,6 +14,9 @@
       - [接收值](#%E6%8E%A5%E6%94%B6%E5%80%BC)
     - [4、多个 case 的场景](#4%E5%A4%9A%E4%B8%AA-case-%E7%9A%84%E5%9C%BA%E6%99%AF)
       - [具体的实现逻辑](#%E5%85%B7%E4%BD%93%E7%9A%84%E5%AE%9E%E7%8E%B0%E9%80%BB%E8%BE%91)
+      - [1、打乱 scase 的顺序，将锁定scase语句中所有的channel](#1%E6%89%93%E4%B9%B1-scase-%E7%9A%84%E9%A1%BA%E5%BA%8F%E5%B0%86%E9%94%81%E5%AE%9Ascase%E8%AF%AD%E5%8F%A5%E4%B8%AD%E6%89%80%E6%9C%89%E7%9A%84channel)
+      - [2、按照随机顺序检测 scase 中的 channel 是否 ready](#2%E6%8C%89%E7%85%A7%E9%9A%8F%E6%9C%BA%E9%A1%BA%E5%BA%8F%E6%A3%80%E6%B5%8B-scase-%E4%B8%AD%E7%9A%84-channel-%E6%98%AF%E5%90%A6-ready)
+      - [3、所有case都未ready，且没有default语句](#3%E6%89%80%E6%9C%89case%E9%83%BD%E6%9C%AAready%E4%B8%94%E6%B2%A1%E6%9C%89default%E8%AF%AD%E5%8F%A5)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -472,7 +475,7 @@ func selectnbrecv2(elem unsafe.Pointer, received *bool, c *hchan) (selected bool
 
 这里来看下 selectgo 的实现     
 
-`这里看下参数`    
+**这里看下函数的几个参数**    
 
 - cas0：为 scase 数组的首地址，selectgo() 就是从这些 scase 中找出一个返回；  
 
@@ -481,6 +484,8 @@ func selectnbrecv2(elem unsafe.Pointer, received *bool, c *hchan) (selected bool
 pollorder：每次 selectgo 执行都会把 scase 序列打乱，以达到随机检测 case 的目的；  
 
 lockorder：所有 case 语句中 channel 序列，以达到去重防止对 channel 加锁时重复加锁的目的；  
+
+- pc0：对于竞态检测器构建，pc0 指向一个数组类型`[ncases]uintptr` (也在栈上);对于其他版本，它设置为 nil;  
      
 - nsends: 发送的 case 的个数；   
 
@@ -488,7 +493,7 @@ lockorder：所有 case 语句中 channel 序列，以达到去重防止对 chan
 
 - block: 表示是否存在 default,没有 default 就表示 select 是阻塞的。  
 
-`看下返回的数据`  
+**看下返回的数据** 
 
 - int： 选中case的编号，这个case编号跟代码一致；  
 
@@ -519,6 +524,306 @@ lockorder：所有 case 语句中 channel 序列，以达到去重防止对 chan
 4.2 如果是写操作，解锁所有的channel，然后返回(case index, false)  
 
 这里来分析下 selectgo 的具体实现  
+
+##### 1、打乱 scase 的顺序，将锁定scase语句中所有的channel  
+
+```go
+func selectgo(cas0 *scase, order0 *uint16, pc0 *uintptr, nsends, nrecvs int, block bool) (int, bool) {
+	...
+	// 生成随机顺序
+	norder := 0
+	for i := range scases {
+		cas := &scases[i]
+
+		// 忽略轮询和锁定命令中没有通道的情况
+		if cas.c == nil {
+			cas.elem = nil // allow GC
+			continue
+		}
+
+		j := fastrandn(uint32(norder + 1))
+		pollorder[norder] = pollorder[j]
+		pollorder[j] = uint16(i)
+		norder++
+	}
+	pollorder = pollorder[:norder]
+	lockorder = lockorder[:norder]
+
+	// 根据 channel 地址进行排序,决定获取锁的顺序
+	for i := range lockorder {
+		j := i
+		// Start with the pollorder to permute cases on the same channel.
+		c := scases[pollorder[i]].c
+		for j > 0 && scases[lockorder[(j-1)/2]].c.sortkey() < c.sortkey() {
+			k := (j - 1) / 2
+			lockorder[j] = lockorder[k]
+			j = k
+		}
+		lockorder[j] = pollorder[i]
+	}
+	...
+
+	// 锁定选中的 channel
+	sellock(scases, lockorder)
+	...
+}
+```
+
+select 中的多个 case 是随机触发执行的，一次只有一个 case 得到执行。如果我们按照顺序依次判断，那么后面的条件永远都会得不到执行，而随机的引入就是为了避免饥饿问题的发生。  
+
+所以可以看到上面会将 scase 序列打乱，以达到随机检测 case 的目的，然后记录到 pollorder 中。   
+
+##### 2、按照随机顺序检测 scase 中的 channel 是否 ready
+
+```go
+func selectgo(cas0 *scase, order0 *uint16, pc0 *uintptr, nsends, nrecvs int, block bool) (int, bool) {
+	...
+	var (
+		gp     *g
+		sg     *sudog
+		c      *hchan
+		k      *scase
+		sglist *sudog
+		sgnext *sudog
+		qp     unsafe.Pointer
+		nextp  **sudog
+	)
+
+	// pass 1 - 遍历所有 scase,确定已经准备好的 scase
+	var casi int
+	var cas *scase
+	var caseSuccess bool
+	var caseReleaseTime int64 = -1
+	var recvOK bool
+    // 因为上面已经将scases随机写入到pollorder中
+    // 所以这里的遍历相比于原 cas0的顺序，就是随机的
+	for _, casei := range pollorder {
+		casi = int(casei)
+		cas = &scases[casi]
+		c = cas.c
+		// 接收数据
+		if casi >= nsends {
+			// 有 goroutine 等待发送数据
+			sg = c.sendq.dequeue()
+			if sg != nil {
+				goto recv
+			}
+			// 缓冲区有数据
+			if c.qcount > 0 {
+				goto bufrecv
+			}
+			// 通道关闭
+			if c.closed != 0 {
+				goto rclose
+			}
+			// 发送数据
+		} else {
+			if raceenabled {
+				racereadpc(c.raceaddr(), casePC(casi), chansendpc)
+			}
+			// 判断通道的关闭情况
+			if c.closed != 0 {
+				goto sclose
+			}
+			// 接收等待队列有 goroutine
+			sg = c.recvq.dequeue()
+			if sg != nil {
+				goto send
+			}
+			// 缓冲区有空位置
+			if c.qcount < c.dataqsiz {
+				goto bufsend
+			}
+		}
+	}
+
+	// 如果不阻塞，意味着有 default,准备退出select
+	if !block {
+		selunlock(scases, lockorder)
+		casi = -1
+		goto retc
+	}
+
+	...
+
+bufrecv:
+	// 可以从 buffer 接收 
+	if raceenabled {
+		if cas.elem != nil {
+			raceWriteObjectPC(c.elemtype, cas.elem, casePC(casi), chanrecvpc)
+		}
+		racenotify(c, c.recvx, nil)
+	}
+	if msanenabled && cas.elem != nil {
+		msanwrite(cas.elem, c.elemtype.size)
+	}
+	recvOK = true
+	qp = chanbuf(c, c.recvx)
+	if cas.elem != nil {
+		typedmemmove(c.elemtype, cas.elem, qp)
+	}
+	typedmemclr(c.elemtype, qp)
+	c.recvx++
+	if c.recvx == c.dataqsiz {
+		c.recvx = 0
+	}
+	c.qcount--
+	selunlock(scases, lockorder)
+	goto retc
+
+bufsend:
+	// 可以发送到 buffer
+	if raceenabled {
+		racenotify(c, c.sendx, nil)
+		raceReadObjectPC(c.elemtype, cas.elem, casePC(casi), chansendpc)
+	}
+	if msanenabled {
+		msanread(cas.elem, c.elemtype.size)
+	}
+	typedmemmove(c.elemtype, chanbuf(c, c.sendx), cas.elem)
+	c.sendx++
+	if c.sendx == c.dataqsiz {
+		c.sendx = 0
+	}
+	c.qcount++
+	selunlock(scases, lockorder)
+	goto retc
+
+recv:
+	// 可以从一个休眠的发送方 (sg)直接接收
+	recv(c, sg, cas.elem, func() { selunlock(scases, lockorder) }, 2)
+	if debugSelect {
+		print("syncrecv: cas0=", cas0, " c=", c, "\n")
+	}
+	recvOK = true
+	goto retc
+
+rclose:
+	// 在已经关闭的 channel 末尾进行读
+	selunlock(scases, lockorder)
+	recvOK = false
+	if cas.elem != nil {
+		typedmemclr(c.elemtype, cas.elem)
+	}
+	if raceenabled {
+		raceacquire(c.raceaddr())
+	}
+	goto retc
+
+send:
+	// 可以向一个休眠的接收方 (sg) 发送
+	if raceenabled {
+		raceReadObjectPC(c.elemtype, cas.elem, casePC(casi), chansendpc)
+	}
+	if msanenabled {
+		msanread(cas.elem, c.elemtype.size)
+	}
+	send(c, sg, cas.elem, func() { selunlock(scases, lockorder) }, 2)
+	if debugSelect {
+		print("syncsend: cas0=", cas0, " c=", c, "\n")
+	}
+	goto retc
+
+retc:
+	if caseReleaseTime > 0 {
+		blockevent(caseReleaseTime-t0, 1)
+	}
+	return casi, recvOK
+
+sclose:
+	// 向已关闭的 channel 进行发送
+	selunlock(scases, lockorder)
+	panic(plainError("send on closed channel"))
+}
+```
+
+- 1、因为上面已经将 scases 随机写入到 pollorder 中，所以这里的遍历相比于原 cas0 的顺序，就是随机的；  
+
+- 2、case 监听的 channel 有两种操作，读取或者写入；  
+
+读取  
+
+1、如果有发送的 goroutine 在等待数据的接收，那么直接从这个 goroutine 中读出数据，结束 select；  
+
+2、如果 channel 的缓冲区有数据，在缓冲去读出数据, 结束 select；  
+
+3、如果 channel 关闭了,读出零值，结束 select。
+
+所以可看出，已经关闭的 channel ,用 select 是可以读出数据的。  
+
+发送数据  
+
+1、如果 channel 关闭了，这时候会触发 panic,因为已经关闭的 channel 是不能发送数据的；  
+
+2、如果 channel 的接收等待队列有 goroutine，说明有 goroutine ,正在阻塞等待从该 channel 中接收数据，那么数据直接发送给该 goroutine，结束 select; 
+
+3、如果 channel 的缓冲区有数据，发送到数据到 channel 的缓冲区中，结束 select。     
+
+如果发送的 channel 中没有缓存空间，接收 channel 的缓存空间为空。这时候该 select 将会阻塞。  
+
+如果有 block 为 false ,就表示 select 中有 default,然后执行 default 结束 select。  
+
+如果 block 为 true 表示没有 default，需要在阻塞 select,细节见下文。   
+
+##### 3、所有case都未ready，且没有default语句
+
+```go
+func selectgo(cas0 *scase, order0 *uint16, pc0 *uintptr, nsends, nrecvs int, block bool) (int, bool) {
+	...
+	// pass 2 - 所有 channel 入队，等待处理
+	gp = getg()
+	if gp.waiting != nil {
+		throw("gp.waiting != nil")
+	}
+	nextp = &gp.waiting
+	for _, casei := range lockorder {
+		casi = int(casei)
+		// 获取一个 scase
+		cas = &scases[casi]
+		// 监听的 channel
+		c = cas.c
+		sg := acquireSudog()
+		sg.g = gp
+		sg.isSelect = true
+		// No stack splits between assigning elem and enqueuing
+		// sg on gp.waiting where copystack can find it.
+		sg.elem = cas.elem
+		sg.releasetime = 0
+		if t0 != 0 {
+			sg.releasetime = -1
+		}
+		sg.c = c
+		// 按锁定顺序构造等待列表。
+		*nextp = sg
+		nextp = &sg.waitlink
+
+		if casi < nsends {
+			c.sendq.enqueue(sg)
+		} else {
+			c.recvq.enqueue(sg)
+		}
+	}
+
+	// goroutine 陷入睡眠,等待某一个 channel 唤醒 gooutine
+	gp.param = nil
+	// Signal to anyone trying to shrink our stack that we're about
+	// to park on a channel. The window between when this G's status
+	// changes and when we set gp.activeStackChans is not safe for
+	// stack shrinking.
+	atomic.Store8(&gp.parkingOnChan, 1)
+	gopark(selparkcommit, nil, waitReasonSelect, traceEvGoBlockSelect, 1)
+	gp.activeStackChans = false
+
+	sellock(scases, lockorder)
+
+	gp.selectDone = 0
+	sg = (*sudog)(gp.param)
+	gp.param = nil
+	...
+}
+```
+
+##### 4、唤醒后返回 channel 对应的 case
 
 ```go
 func selectgo(cas0 *scase, order0 *uint16, pc0 *uintptr, nsends, nrecvs int, block bool) (int, bool) {
