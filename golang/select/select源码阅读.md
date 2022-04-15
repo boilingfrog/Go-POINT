@@ -136,7 +136,9 @@ select 中的多个 case 是随机触发执行的，一次只有一个 case 得�
 
 2、如果有 default 分支
 
-如果有 default 分支，当所有的 case 分支
+如果有 default 分支，随机将 case 分支遍历一遍，如果有 case 分支可执行，处理对应的 case 分支；  
+
+如果 遍历完 case 分支，没有可执行的分支，执行 default 分支。  
 
 源码版本 `go version go1.16.13 darwin/amd64`
 
@@ -519,7 +521,6 @@ lockorder：所有 case 语句中 channel 序列，以达到去重防止对 chan
 这里来分析下 selectgo 的具体实现  
 
 ```go
-// https://github.com/golang/go/blob/release-branch.go1.16/src/runtime/select.go#L121
 func selectgo(cas0 *scase, order0 *uint16, pc0 *uintptr, nsends, nrecvs int, block bool) (int, bool) {
 	if debugSelect {
 		print("select: cas0=", cas0, "\n")
@@ -657,7 +658,7 @@ func selectgo(cas0 *scase, order0 *uint16, pc0 *uintptr, nsends, nrecvs int, blo
 		}
 	}
 
-    // 如果不阻塞，意味着有 default,准备退出select
+	// 如果不阻塞，意味着有 default,准备退出select
 	if !block {
 		selunlock(scases, lockorder)
 		casi = -1
