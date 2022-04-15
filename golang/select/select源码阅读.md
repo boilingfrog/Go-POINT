@@ -893,6 +893,23 @@ retc:
 
 ### 总结  
 
+1、空的 select 会发生死锁；  
+
+2、select 中的 case 分支的执行是随机的；  
+
+3、如果没有 default 分支
+
+如果没有 default 分支，select 将会一直处于阻塞状态，直到其中的一个 case 就绪；
+
+4、如果有 default 分支
+
+如果有 default 分支，随机将 case 分支遍历一遍，如果有 case 分支可执行，处理对应的 case 分支；
+
+如果遍历完 case 分支，没有可执行的分支，执行 default 分支。
+
+5、select 中向 channel 的发送不会阻塞 select；  
+
+6、select 语句中读操作要判断是否成功读取，关闭的 channel 也可以读取。  
 
 ### 参考
 
