@@ -143,7 +143,7 @@ select 中的多个 case 是随机触发执行的，一次只有一个 case 得�
 
 如果有 default 分支，随机将 case 分支遍历一遍，如果有 case 分支可执行，处理对应的 case 分支；  
 
-如果 遍历完 case 分支，没有可执行的分支，执行 default 分支。  
+如果遍历完 case 分支，没有可执行的分支，执行 default 分支。  
 
 源码版本 `go version go1.16.13 darwin/amd64`
 
@@ -232,7 +232,7 @@ func walkselect(sel *Node) {
 4、其他 select 情况如: 包含多个 case 并且有 default 等。  
 
 ```go
-// src/cmd/compile/internal/gc/select.go
+// https://github.com/golang/go/blob/release-branch.go1.16/src/cmd/compile/internal/gc/select.go#L108
 func walkselectcases(cases *Nodes) []*Node {
 	// 获取 case 分支的数量
 	n := cases.Len()
@@ -271,7 +271,7 @@ func walkselectcases(cases *Nodes) []*Node {
 如果不存在 case ，空的 select 语句会直接阻塞当前 Goroutine，导致 Goroutine 进入无法被唤醒的永久休眠状态。  
 
 ```go
-// https://github.com/golang/go/blob/release-branch.go1.16/src/cmd/compile/internal/gc/walk.go#L104
+// https://github.com/golang/go/blob/release-branch.go1.16/src/cmd/compile/internal/gc/select.go#L108
 func walkselectcases(cases *Nodes) []*Node {
 	n := cases.Len()
 
@@ -597,8 +597,8 @@ func selectgo(cas0 *scase, order0 *uint16, pc0 *uintptr, nsends, nrecvs int, blo
 	var caseSuccess bool
 	var caseReleaseTime int64 = -1
 	var recvOK bool
-    // 因为上面已经将scases随机写入到pollorder中
-    // 所以这里的遍历相比于原 cas0的顺序，就是随机的
+	// 因为上面已经将scases随机写入到pollorder中
+	// 所以这里的遍历相比于原 cas0的顺序，就是随机的
 	for _, casei := range pollorder {
 		casi = int(casei)
 		cas = &scases[casi]
@@ -814,7 +814,7 @@ func selectgo(cas0 *scase, order0 *uint16, pc0 *uintptr, nsends, nrecvs int, blo
 	// changes and when we set gp.activeStackChans is not safe for
 	// stack shrinking.
 	atomic.Store8(&gp.parkingOnChan, 1)
-    // 将当前的 Goroutine 陷入沉睡等待唤醒
+	// 将当前的 Goroutine 陷入沉睡等待唤醒
 	gopark(selparkcommit, nil, waitReasonSelect, traceEvGoBlockSelect, 1)
 	gp.activeStackChans = false
 
