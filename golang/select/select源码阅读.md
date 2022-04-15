@@ -14,9 +14,11 @@
       - [接收值](#%E6%8E%A5%E6%94%B6%E5%80%BC)
     - [4、多个 case 的场景](#4%E5%A4%9A%E4%B8%AA-case-%E7%9A%84%E5%9C%BA%E6%99%AF)
       - [具体的实现逻辑](#%E5%85%B7%E4%BD%93%E7%9A%84%E5%AE%9E%E7%8E%B0%E9%80%BB%E8%BE%91)
-      - [1、打乱 scase 的顺序，将锁定scase语句中所有的channel](#1%E6%89%93%E4%B9%B1-scase-%E7%9A%84%E9%A1%BA%E5%BA%8F%E5%B0%86%E9%94%81%E5%AE%9Ascase%E8%AF%AD%E5%8F%A5%E4%B8%AD%E6%89%80%E6%9C%89%E7%9A%84channel)
-      - [2、按照随机顺序检测 scase 中的 channel 是否 ready](#2%E6%8C%89%E7%85%A7%E9%9A%8F%E6%9C%BA%E9%A1%BA%E5%BA%8F%E6%A3%80%E6%B5%8B-scase-%E4%B8%AD%E7%9A%84-channel-%E6%98%AF%E5%90%A6-ready)
-      - [3、所有case都未ready，且没有default语句](#3%E6%89%80%E6%9C%89case%E9%83%BD%E6%9C%AAready%E4%B8%94%E6%B2%A1%E6%9C%89default%E8%AF%AD%E5%8F%A5)
+      - [1、打乱 case 的顺序](#1%E6%89%93%E4%B9%B1-case-%E7%9A%84%E9%A1%BA%E5%BA%8F)
+      - [2、找出已经 ready 的 case](#2%E6%89%BE%E5%87%BA%E5%B7%B2%E7%BB%8F-ready-%E7%9A%84-case)
+      - [3、case 都没 ready，且没有 default](#3case-%E9%83%BD%E6%B2%A1-ready%E4%B8%94%E6%B2%A1%E6%9C%89-default)
+      - [4、唤醒后返回 channel 对应的 case](#4%E5%94%A4%E9%86%92%E5%90%8E%E8%BF%94%E5%9B%9E-channel-%E5%AF%B9%E5%BA%94%E7%9A%84-case)
+  - [总结](#%E6%80%BB%E7%BB%93)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -501,31 +503,31 @@ lockorder：所有 case 语句中 channel 序列，以达到去重防止对 chan
 
 ##### 具体的实现逻辑  
 
-- 1、打乱 scase 的顺序，将锁定scase语句中所有的channel；  
+- 1、打乱 scase 的顺序，锁定 scase 语句中所有的 channel；  
 
-- 2、按照随机顺序检测scase中的channel是否ready；  
+- 2、按照随机顺序检测 scase 中的 channel 是否ready；  
 
-2.1 如果case可读，则读取channel中数据，解锁所有的channel，然后返回(case index, true)  
+2.1 如果 case 可读，则读取 channel 中数据，解锁所有的 channel，然后返回`(case index, true)`  
 
-2.2 如果case可写，则将数据写入channel，解锁所有的channel，然后返回(case index, false)  
+2.2 如果 case 可写，则将数据写入 channel，解锁所有的channel，然后返回`(case index, false)` 
 
-2.3 所有case都未ready，并且有default语句，则解锁所有的channel，然后返回（default index, false）  
+2.3 所有 case 都未 ready，并且有 default 语句，则解锁所有的channel，然后返回 `(default index, false)`  
 
-- 3、所有case都未ready，且没有default语句  
+- 3、所有 case 都未 ready，且没有 default 语句  
 
-3.1 将当前协程加入到所有channel的等待队列  
+3.1 将当前协程加入到所有 channel 的等待队列  
 
 3.2 当将协程转入阻塞，等待被唤醒  
 
-- 4、唤醒后返回channel对应的case index  
+- 4、唤醒后返回 channel 对应的`case index`  
 
-4.1 如果是读操作，解锁所有的channel，然后返回(case index, true)  
+4.1 如果是读操作，解锁所有的 channel，然后返回`(case index, true)`  
 
-4.2 如果是写操作，解锁所有的channel，然后返回(case index, false)  
+4.2 如果是写操作，解锁所有的 channel，然后返回`(case index, false)`  
 
 这里来分析下 selectgo 的具体实现  
 
-##### 1、打乱 scase 的顺序，将锁定scase语句中所有的channel  
+##### 1、打乱 case 的顺序
 
 ```go
 func selectgo(cas0 *scase, order0 *uint16, pc0 *uintptr, nsends, nrecvs int, block bool) (int, bool) {
@@ -573,7 +575,7 @@ select 中的多个 case 是随机触发执行的，一次只有一个 case 得�
 
 所以可以看到上面会将 scase 序列打乱，以达到随机检测 case 的目的，然后记录到 pollorder 中。   
 
-##### 2、按照随机顺序检测 scase 中的 channel 是否 ready
+##### 2、找出已经 ready 的 case
 
 ```go
 func selectgo(cas0 *scase, order0 *uint16, pc0 *uintptr, nsends, nrecvs int, block bool) (int, bool) {
@@ -741,7 +743,7 @@ sclose:
 
 - 2、case 监听的 channel 有两种操作，读取或者写入；  
 
-读取  
+**读取数据**  
 
 1、如果有发送的 goroutine 在等待数据的接收，那么直接从这个 goroutine 中读出数据，结束 select；  
 
@@ -751,7 +753,7 @@ sclose:
 
 所以可看出，已经关闭的 channel ,用 select 是可以读出数据的。  
 
-发送数据  
+**发送数据**  
 
 1、如果 channel 关闭了，这时候会触发 panic,因为已经关闭的 channel 是不能发送数据的；  
 
@@ -765,7 +767,7 @@ sclose:
 
 如果 block 为 true 表示没有 default，需要在阻塞 select,细节见下文。   
 
-##### 3、所有case都未ready，且没有default语句
+##### 3、case 都没 ready，且没有 default
 
 ```go
 func selectgo(cas0 *scase, order0 *uint16, pc0 *uintptr, nsends, nrecvs int, block bool) (int, bool) {
@@ -782,6 +784,7 @@ func selectgo(cas0 *scase, order0 *uint16, pc0 *uintptr, nsends, nrecvs int, blo
 		cas = &scases[casi]
 		// 监听的 channel
 		c = cas.c
+		// 构建sudog，设置这一次阻塞发送的相关信息
 		sg := acquireSudog()
 		sg.g = gp
 		sg.isSelect = true
@@ -804,13 +807,14 @@ func selectgo(cas0 *scase, order0 *uint16, pc0 *uintptr, nsends, nrecvs int, blo
 		}
 	}
 
-	// goroutine 陷入睡眠,等待某一个 channel 唤醒 gooutine
+	// goroutine 陷入睡眠,等待某一个 channel 唤醒 goroutine
 	gp.param = nil
 	// Signal to anyone trying to shrink our stack that we're about
 	// to park on a channel. The window between when this G's status
 	// changes and when we set gp.activeStackChans is not safe for
 	// stack shrinking.
 	atomic.Store8(&gp.parkingOnChan, 1)
+    // 将当前的 Goroutine 陷入沉睡等待唤醒
 	gopark(selparkcommit, nil, waitReasonSelect, traceEvGoBlockSelect, 1)
 	gp.activeStackChans = false
 
@@ -823,205 +827,15 @@ func selectgo(cas0 *scase, order0 *uint16, pc0 *uintptr, nsends, nrecvs int, blo
 }
 ```
 
+如果 case 都没有 ready ,并没有 default  
+
+这时候会循环构建 sudog 的队列，并且按锁定顺序构造等待列表，附在 goroutine 中，然后使用 gopark 挂起当前 goroutine 等待调度器的唤醒。    
+
 ##### 4、唤醒后返回 channel 对应的 case
 
 ```go
 func selectgo(cas0 *scase, order0 *uint16, pc0 *uintptr, nsends, nrecvs int, block bool) (int, bool) {
-	if debugSelect {
-		print("select: cas0=", cas0, "\n")
-	}
-
-	// NOTE: In order to maintain a lean stack size, the number of scases
-	// is capped at 65536.
-	cas1 := (*[1 << 16]scase)(unsafe.Pointer(cas0))
-	order1 := (*[1 << 17]uint16)(unsafe.Pointer(order0))
-
-	ncases := nsends + nrecvs
-	scases := cas1[:ncases:ncases]
-	pollorder := order1[:ncases:ncases]
-	lockorder := order1[ncases:][:ncases:ncases]
-	// NOTE: pollorder/lockorder's underlying array was not zero-initialized by compiler.
-
-	// Even when raceenabled is true, there might be select
-	// statements in packages compiled without -race (e.g.,
-	// ensureSigM in runtime/signal_unix.go).
-	var pcs []uintptr
-	if raceenabled && pc0 != nil {
-		pc1 := (*[1 << 16]uintptr)(unsafe.Pointer(pc0))
-		pcs = pc1[:ncases:ncases]
-	}
-	casePC := func(casi int) uintptr {
-		if pcs == nil {
-			return 0
-		}
-		return pcs[casi]
-	}
-
-	var t0 int64
-	if blockprofilerate > 0 {
-		t0 = cputicks()
-	}
-
-	// The compiler rewrites selects that statically have
-	// only 0 or 1 cases plus default into simpler constructs.
-	// The only way we can end up with such small sel.ncase
-	// values here is for a larger select in which most channels
-	// have been nilled out. The general code handles those
-	// cases correctly, and they are rare enough not to bother
-	// optimizing (and needing to test).
-
-	// 生成随机顺序
-	norder := 0
-	for i := range scases {
-		cas := &scases[i]
-
-		// 忽略轮询和锁定命令中没有通道的情况
-		if cas.c == nil {
-			cas.elem = nil // allow GC
-			continue
-		}
-
-		j := fastrandn(uint32(norder + 1))
-		pollorder[norder] = pollorder[j]
-		pollorder[j] = uint16(i)
-		norder++
-	}
-	pollorder = pollorder[:norder]
-	lockorder = lockorder[:norder]
-
-	// 根据 channel 地址进行排序,决定获取锁的顺序
-	for i := range lockorder {
-		j := i
-		// Start with the pollorder to permute cases on the same channel.
-		c := scases[pollorder[i]].c
-		for j > 0 && scases[lockorder[(j-1)/2]].c.sortkey() < c.sortkey() {
-			k := (j - 1) / 2
-			lockorder[j] = lockorder[k]
-			j = k
-		}
-		lockorder[j] = pollorder[i]
-	}
 	...
-
-	// 锁定选中的 channel
-	sellock(scases, lockorder)
-
-	var (
-		gp     *g
-		sg     *sudog
-		c      *hchan
-		k      *scase
-		sglist *sudog
-		sgnext *sudog
-		qp     unsafe.Pointer
-		nextp  **sudog
-	)
-
-	// pass 1 - 遍历所有 scase,确定已经准备好的 scase
-	var casi int
-	var cas *scase
-	var caseSuccess bool
-	var caseReleaseTime int64 = -1
-	var recvOK bool
-	for _, casei := range pollorder {
-		casi = int(casei)
-		cas = &scases[casi]
-		c = cas.c
-		// 接收数据
-		if casi >= nsends {
-			// 有 goroutine 等待发送数据
-			sg = c.sendq.dequeue()
-			if sg != nil {
-				goto recv
-			}
-			// 缓冲区有数据
-			if c.qcount > 0 {
-				goto bufrecv
-			}
-			// 通道关闭
-			if c.closed != 0 {
-				goto rclose
-			}
-			// 发送数据
-		} else {
-			if raceenabled {
-				racereadpc(c.raceaddr(), casePC(casi), chansendpc)
-			}
-			// 判断通道的关闭情况
-			if c.closed != 0 {
-				goto sclose
-			}
-			// 接收等待队列有 goroutine
-			sg = c.recvq.dequeue()
-			if sg != nil {
-				goto send
-			}
-			// 缓冲区有空位置
-			if c.qcount < c.dataqsiz {
-				goto bufsend
-			}
-		}
-	}
-
-	// 如果不阻塞，意味着有 default,准备退出select
-	if !block {
-		selunlock(scases, lockorder)
-		casi = -1
-		goto retc
-	}
-
-	// pass 2 - 所有 channel 入队，等待处理
-	gp = getg()
-	if gp.waiting != nil {
-		throw("gp.waiting != nil")
-	}
-	nextp = &gp.waiting
-	for _, casei := range lockorder {
-		casi = int(casei)
-		// 获取一个 scase
-		cas = &scases[casi]
-		// 监听的 channel
-		c = cas.c
-		sg := acquireSudog()
-		sg.g = gp
-		sg.isSelect = true
-		// No stack splits between assigning elem and enqueuing
-		// sg on gp.waiting where copystack can find it.
-		sg.elem = cas.elem
-		sg.releasetime = 0
-		if t0 != 0 {
-			sg.releasetime = -1
-		}
-		sg.c = c
-		// 按锁定顺序构造等待列表。
-		*nextp = sg
-		nextp = &sg.waitlink
-
-		if casi < nsends {
-			c.sendq.enqueue(sg)
-		} else {
-			c.recvq.enqueue(sg)
-		}
-	}
-
-	// goroutine 陷入睡眠,等待某一个 channel 唤醒 gooutine
-	gp.param = nil
-	// Signal to anyone trying to shrink our stack that we're about
-	// to park on a channel. The window between when this G's status
-	// changes and when we set gp.activeStackChans is not safe for
-	// stack shrinking.
-	atomic.Store8(&gp.parkingOnChan, 1)
-	gopark(selparkcommit, nil, waitReasonSelect, traceEvGoBlockSelect, 1)
-	gp.activeStackChans = false
-
-	sellock(scases, lockorder)
-
-	gp.selectDone = 0
-	sg = (*sudog)(gp.param)
-	gp.param = nil
-
-	// pass 3 - 删除队列中没有触发的 channels
-	// 如果不删除的话,他们会触发 channel.我们按锁的顺序单向链接 sudog
 	casi = -1
 	cas = nil
 	caseSuccess = false
@@ -1058,137 +872,35 @@ func selectgo(cas0 *scase, order0 *uint16, pc0 *uintptr, nsends, nrecvs int, blo
 		sglist = sgnext
 	}
 
-	if cas == nil {
-		throw("selectgo: bad wakeup")
-	}
-
-	c = cas.c
-
-	if debugSelect {
-		print("wait-return: cas0=", cas0, " c=", c, " cas=", cas, " send=", casi < nsends, "\n")
-	}
-
-	if casi < nsends {
-		if !caseSuccess {
-			goto sclose
-		}
-	} else {
-		recvOK = caseSuccess
-	}
-
-	if raceenabled {
-		if casi < nsends {
-			raceReadObjectPC(c.elemtype, cas.elem, casePC(casi), chansendpc)
-		} else if cas.elem != nil {
-			raceWriteObjectPC(c.elemtype, cas.elem, casePC(casi), chanrecvpc)
-		}
-	}
-	if msanenabled {
-		if casi < nsends {
-			msanread(cas.elem, c.elemtype.size)
-		} else if cas.elem != nil {
-			msanwrite(cas.elem, c.elemtype.size)
-		}
-	}
+	...
 
 	selunlock(scases, lockorder)
 	goto retc
 
-bufrecv:
-	// 可以从 buffer 接收 
-	if raceenabled {
-		if cas.elem != nil {
-			raceWriteObjectPC(c.elemtype, cas.elem, casePC(casi), chanrecvpc)
-		}
-		racenotify(c, c.recvx, nil)
-	}
-	if msanenabled && cas.elem != nil {
-		msanwrite(cas.elem, c.elemtype.size)
-	}
-	recvOK = true
-	qp = chanbuf(c, c.recvx)
-	if cas.elem != nil {
-		typedmemmove(c.elemtype, cas.elem, qp)
-	}
-	typedmemclr(c.elemtype, qp)
-	c.recvx++
-	if c.recvx == c.dataqsiz {
-		c.recvx = 0
-	}
-	c.qcount--
-	selunlock(scases, lockorder)
-	goto retc
-
-bufsend:
-	// 可以发送到 buffer
-	if raceenabled {
-		racenotify(c, c.sendx, nil)
-		raceReadObjectPC(c.elemtype, cas.elem, casePC(casi), chansendpc)
-	}
-	if msanenabled {
-		msanread(cas.elem, c.elemtype.size)
-	}
-	typedmemmove(c.elemtype, chanbuf(c, c.sendx), cas.elem)
-	c.sendx++
-	if c.sendx == c.dataqsiz {
-		c.sendx = 0
-	}
-	c.qcount++
-	selunlock(scases, lockorder)
-	goto retc
-
-recv:
-	// 可以从一个休眠的发送方 (sg)直接接收
-	recv(c, sg, cas.elem, func() { selunlock(scases, lockorder) }, 2)
-	if debugSelect {
-		print("syncrecv: cas0=", cas0, " c=", c, "\n")
-	}
-	recvOK = true
-	goto retc
-
-rclose:
-	// 在已经关闭的 channel 末尾进行读
-	selunlock(scases, lockorder)
-	recvOK = false
-	if cas.elem != nil {
-		typedmemclr(c.elemtype, cas.elem)
-	}
-	if raceenabled {
-		raceacquire(c.raceaddr())
-	}
-	goto retc
-
-send:
-	// 可以向一个休眠的接收方 (sg) 发送
-	if raceenabled {
-		raceReadObjectPC(c.elemtype, cas.elem, casePC(casi), chansendpc)
-	}
-	if msanenabled {
-		msanread(cas.elem, c.elemtype.size)
-	}
-	send(c, sg, cas.elem, func() { selunlock(scases, lockorder) }, 2)
-	if debugSelect {
-		print("syncsend: cas0=", cas0, " c=", c, "\n")
-	}
-	goto retc
-
+	...
 retc:
 	if caseReleaseTime > 0 {
 		blockevent(caseReleaseTime-t0, 1)
 	}
 	return casi, recvOK
-
-sclose:
-	// 向已关闭的 channel 进行发送
-	selunlock(scases, lockorder)
-	panic(plainError("send on closed channel"))
+	...
 }
 ```
+
+遍历全部 case 时，先获取当前 Goroutine 接收到的参数 sudog 结构，然后依次对比所有 case 对应的 sudog 结构找到被唤醒的 case，获取该 case 对应的索引并返回。  
+
+因为已经找到了一个可执行的 case，剩下的 case 中没有被用到的 sudog 就会被忽略并且释放掉。为了不影响 Channel 的正常使用，我们还是需要将这些废弃的 sudog 从 Channel 中出队。  
+
+### 总结  
+
 
 ### 参考
 
 【Select 语句的本质】https://golang.design/under-the-hood/zh-cn/part1basic/ch03lang/chan/#select-    
-【GO专家编程】https://book.douban.com/subject/35144587/  
+【select】https://draveness.me/golang/docs/part2-foundation/ch05-keyword/golang-select/#52-select  
+【go源码阅读之Select】https://nercoeus.github.io/2020/01/13/go%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB%E4%B9%8BSelect/    
+【GO专家编程】https://book.douban.com/subject/35144587/    
+
 
 
 
