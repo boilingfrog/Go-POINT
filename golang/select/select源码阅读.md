@@ -357,15 +357,15 @@ func chansend(c *hchan, ep unsafe.Pointer, block bool, callerpc uintptr) bool {
 
 总结下  
 
-- 1、如果 block 为 true 表示当前向 channel 中的数据发送是阻塞的。这里可以看到 selectnbsend 中传入的是 false,说明 channel 的发送不会阻塞 select。  
+1、如果 block 为 true 表示当前向 channel 中的数据发送是阻塞的。这里可以看到 selectnbsend 中传入的是 false,说明 channel 的发送不会阻塞 select。  
 
-- 2、对于不阻塞的发送，会进行下面的检测，如果 channel 未关闭且 channel 没有多余的缓冲空间，就会发送失败，然后跳出当前的 case,走到 default 的逻辑。  
+2、对于不阻塞的发送，会进行下面的检测，如果 channel 未关闭且 channel 没有多余的缓冲空间，就会发送失败，然后跳出当前的 case,走到 default 的逻辑。  
 
 如果 channel 未关闭且 channel 没有多余的缓冲空间。这可能是： 
 
-1、channel 是非缓冲型的，且等待接收队列里没有 goroutine；  
+- 1、channel 是非缓冲型的，且等待接收队列里没有 goroutine；  
 
-2、channel 是缓冲型的，但循环数组已经装满了元素；  
+- 2、channel 是缓冲型的，但循环数组已经装满了元素；  
 
 ##### 接收值
 
@@ -479,51 +479,51 @@ func selectnbrecv2(elem unsafe.Pointer, received *bool, c *hchan) (selected bool
 
 **这里看下函数的几个参数**    
 
-- cas0：为 scase 数组的首地址，selectgo() 就是从这些 scase 中找出一个返回；  
+cas0：为 scase 数组的首地址，selectgo() 就是从这些 scase 中找出一个返回；  
 
-- order0：为一个两倍 cas0 数组长度的 buffer，保存 scase 随机序列 pollorder 和 scase 中 channel 地址序列 lockorder,数组前一半是 pollorder,后一半用来 lockorder；  
+order0：为一个两倍 cas0 数组长度的 buffer，保存 scase 随机序列 pollorder 和 scase 中 channel 地址序列 lockorder,数组前一半是 pollorder,后一半用来 lockorder；  
 
-pollorder：每次 selectgo 执行都会把 scase 序列打乱，以达到随机检测 case 的目的；  
+- pollorder：每次 selectgo 执行都会把 scase 序列打乱，以达到随机检测 case 的目的；  
 
-lockorder：所有 case 语句中 channel 序列，以达到去重防止对 channel 加锁时重复加锁的目的；  
+- lockorder：所有 case 语句中 channel 序列，以达到去重防止对 channel 加锁时重复加锁的目的；  
 
-- pc0：对于竞态检测器构建，pc0 指向一个数组类型`[ncases]uintptr` (也在栈上);对于其他版本，它设置为 nil;  
+pc0：对于竞态检测器构建，pc0 指向一个数组类型`[ncases]uintptr` (也在栈上);对于其他版本，它设置为 nil;  
      
-- nsends: 发送的 case 的个数；   
+nsends: 发送的 case 的个数；   
 
-- nrecvs: 接收的 case 的个数； 
+nrecvs: 接收的 case 的个数； 
 
-- block: 表示是否存在 default,没有 default 就表示 select 是阻塞的。  
+block: 表示是否存在 default,没有 default 就表示 select 是阻塞的。  
 
 **看下返回的数据** 
 
-- int： 选中case的编号，这个case编号跟代码一致；  
+int： 选中case的编号，这个case编号跟代码一致；  
 
-- bool: 是否成功从channle中读取了数据，如果选中的case是从channel中读数据，则该返回值表示是否读取成功。  
+bool: 是否成功从channle中读取了数据，如果选中的case是从channel中读数据，则该返回值表示是否读取成功。  
 
 ##### 具体的实现逻辑  
 
-- 1、打乱 scase 的顺序，锁定 scase 语句中所有的 channel；  
+1、打乱 scase 的顺序，锁定 scase 语句中所有的 channel；  
 
-- 2、按照随机顺序检测 scase 中的 channel 是否ready；  
+2、按照随机顺序检测 scase 中的 channel 是否ready；  
 
-2.1 如果 case 可读，则读取 channel 中数据，解锁所有的 channel，然后返回`(case index, true)`  
+- 2.1 如果 case 可读，则读取 channel 中数据，解锁所有的 channel，然后返回`(case index, true)`  
 
-2.2 如果 case 可写，则将数据写入 channel，解锁所有的channel，然后返回`(case index, false)` 
+- 2.2 如果 case 可写，则将数据写入 channel，解锁所有的channel，然后返回`(case index, false)` 
 
-2.3 所有 case 都未 ready，并且有 default 语句，则解锁所有的channel，然后返回 `(default index, false)`  
+- 2.3 所有 case 都未 ready，并且有 default 语句，则解锁所有的channel，然后返回 `(default index, false)`  
 
-- 3、所有 case 都未 ready，且没有 default 语句  
+3、所有 case 都未 ready，且没有 default 语句  
 
-3.1 将当前协程加入到所有 channel 的等待队列  
+- 3.1 将当前协程加入到所有 channel 的等待队列  
 
-3.2 当将协程转入阻塞，等待被唤醒  
+- 3.2 当将协程转入阻塞，等待被唤醒  
 
-- 4、唤醒后返回 channel 对应的`case index`  
+4、唤醒后返回 channel 对应的`case index`  
 
-4.1 如果是读操作，解锁所有的 channel，然后返回`(case index, true)`  
+- 4.1 如果是读操作，解锁所有的 channel，然后返回`(case index, true)`  
 
-4.2 如果是写操作，解锁所有的 channel，然后返回`(case index, false)`  
+- 4.2 如果是写操作，解锁所有的 channel，然后返回`(case index, false)`  
 
 这里来分析下 selectgo 的具体实现  
 
@@ -739,27 +739,27 @@ sclose:
 }
 ```
 
-- 1、因为上面已经将 scases 随机写入到 pollorder 中，所以这里的遍历相比于原 cas0 的顺序，就是随机的；  
+1、因为上面已经将 scases 随机写入到 pollorder 中，所以这里的遍历相比于原 cas0 的顺序，就是随机的；  
 
-- 2、case 监听的 channel 有两种操作，读取或者写入；  
+2、case 监听的 channel 有两种操作，读取或者写入；  
 
 **读取数据**  
 
-1、如果有发送的 goroutine 在等待数据的接收，那么直接从这个 goroutine 中读出数据，结束 select；  
+- 1、如果有发送的 goroutine 在等待数据的接收，那么直接从这个 goroutine 中读出数据，结束 select；  
 
-2、如果 channel 的缓冲区有数据，在缓冲去读出数据, 结束 select；  
+- 2、如果 channel 的缓冲区有数据，在缓冲去读出数据, 结束 select；  
 
-3、如果 channel 关闭了,读出零值，结束 select。
+- 3、如果 channel 关闭了,读出零值，结束 select。
 
 所以可看出，已经关闭的 channel ,用 select 是可以读出数据的。  
 
 **发送数据**  
 
-1、如果 channel 关闭了，这时候会触发 panic,因为已经关闭的 channel 是不能发送数据的；  
+- 1、如果 channel 关闭了，这时候会触发 panic,因为已经关闭的 channel 是不能发送数据的；  
 
-2、如果 channel 的接收等待队列有 goroutine，说明有 goroutine ,正在阻塞等待从该 channel 中接收数据，那么数据直接发送给该 goroutine，结束 select; 
+- 2、如果 channel 的接收等待队列有 goroutine，说明有 goroutine ,正在阻塞等待从该 channel 中接收数据，那么数据直接发送给该 goroutine，结束 select; 
 
-3、如果 channel 的缓冲区有数据，发送到数据到 channel 的缓冲区中，结束 select。     
+- 3、如果 channel 的缓冲区有数据，发送到数据到 channel 的缓冲区中，结束 select。     
 
 如果发送的 channel 中没有缓存空间，接收 channel 的缓存空间为空。这时候该 select 将会阻塞。  
 
@@ -917,6 +917,9 @@ retc:
 【select】https://draveness.me/golang/docs/part2-foundation/ch05-keyword/golang-select/#52-select  
 【go源码阅读之Select】https://nercoeus.github.io/2020/01/13/go%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB%E4%B9%8BSelect/    
 【GO专家编程】https://book.douban.com/subject/35144587/    
+【深入了解下 go 中的 select】https://github.com/boilingfrog/Go-POINT/blob/master/golang/select/select%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB.md  
+【select源码阅读】https://boilingfrog.github.io/2022/04/16/go%E4%B8%ADselect%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB/  
+
 
 
 

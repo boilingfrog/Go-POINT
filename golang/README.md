@@ -40,6 +40,9 @@ golang 中常用组件的学习
 
 - [sort包源码分析](https://github.com/boilingfrog/Go-POINT/blob/master/golang/sort/sort.md)     
 
+- [select源码分析](https://github.com/boilingfrog/Go-POINT/blob/master/golang/select/select%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB.md)     
+
+
 
 
 
