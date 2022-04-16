@@ -530,6 +530,7 @@ bool: 是否成功从channle中读取了数据，如果选中的case是从channe
 ##### 1、打乱 case 的顺序
 
 ```go
+// https://github.com/golang/go/blob/release-branch.go1.16/src/runtime/select.go#L121
 func selectgo(cas0 *scase, order0 *uint16, pc0 *uintptr, nsends, nrecvs int, block bool) (int, bool) {
 	...
 	// 生成随机顺序
@@ -578,6 +579,7 @@ select 中的多个 case 是随机触发执行的，一次只有一个 case 得�
 ##### 2、找出已经 ready 的 case
 
 ```go
+// https://github.com/golang/go/blob/release-branch.go1.16/src/runtime/select.go#L121
 func selectgo(cas0 *scase, order0 *uint16, pc0 *uintptr, nsends, nrecvs int, block bool) (int, bool) {
 	...
 	var (
@@ -770,6 +772,7 @@ sclose:
 ##### 3、case 都没 ready，且没有 default
 
 ```go
+// https://github.com/golang/go/blob/release-branch.go1.16/src/runtime/select.go#L121
 func selectgo(cas0 *scase, order0 *uint16, pc0 *uintptr, nsends, nrecvs int, block bool) (int, bool) {
 	...
 	// pass 2 - 所有 channel 入队，等待处理
@@ -834,6 +837,7 @@ func selectgo(cas0 *scase, order0 *uint16, pc0 *uintptr, nsends, nrecvs int, blo
 ##### 4、唤醒后返回 channel 对应的 case
 
 ```go
+// https://github.com/golang/go/blob/release-branch.go1.16/src/runtime/select.go#L121
 func selectgo(cas0 *scase, order0 *uint16, pc0 *uintptr, nsends, nrecvs int, block bool) (int, bool) {
 	...
 	casi = -1
