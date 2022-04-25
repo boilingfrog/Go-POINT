@@ -46,7 +46,7 @@ Athens 支持 disk, mongo, gcs, s3, minio, 外部存储/自定义，不过一半
 
 #### 配置私有仓库的认证信息  
 
-通过 .netrc 文件来配置，里面可以放自己的私有仓库的地址，以及用户，密码认证信息  
+通过 `.netrc` 文件来配置，里面可以放自己的私有仓库的地址，以及用户，密码认证信息  
 
 ```
 # cat .netrc
@@ -71,15 +71,32 @@ services:
     volumes:
         - /data/athens/.netrc:/root/.netrc
         - /data/athens-storage:/var/lib/athens
+        - ./filter_file:/root/filter_file
     environment:
-        - ATHENS_GLOBAL_ENDPOINT=https://goproxy.cn
         - ATHENS_NETRC_PATH=/root/.netrc
         - ATHENS_GONOSUM_PATTERNS=gitlab.test.com
         - ATHENS_STORAGE_TYPE=disk
+        - ATHENS_FILTER_FILE=/root/filter_file
+        - ATHENS_GOGET_WORKERS=100
         - ATHENS_DISK_STORAGE_ROOT=/var/lib/athens
 ```
 
 ATHENS_GONOSUM_PATTERNS：配置为私库地址, 作用避免私库地址流入公网，支持通配符，多个可以使用`,`分割。  
+
+通过 ATHENS_FILTER_FILE 配置访问的策略  
+
+- `-` 表示禁止下载此软件包,来屏蔽一些有安全隐患的包，若请求，报403；      
+
+```
+# cat filter_file
+
+- github.com/gogo
+```
+
+栗如：配置了`- github.com/gogo`    
+
+`go: github.com/gogo/googleapis@v1.2.0: reading http://127.0.0.1:3000/github.com/gogo/googleapis/@v/v1.2.0.mod: 403 Forbidden
+`
 
 启动 `docker-compose up -d`    
 
@@ -109,7 +126,7 @@ services:
     environment:
       - ATHENS_GLOBAL_ENDPOINT=https://goproxy.cn
       - ATHENS_NETRC_PATH=/root/.netrc
-      - ATHENS_GONOSUM_PATTERNS=gitlab.ushaqi.com
+      - ATHENS_GONOSUM_PATTERNS=gitlab.test.com
       - ATHENS_STORAGE_TYPE=disk
       - ATHENS_DISK_STORAGE_ROOT=/var/lib/athens
       - ATHENS_FILTER_FILE=/root/filter_file
@@ -122,14 +139,10 @@ athens 可配置软件包的过滤策略，来决定那些包可以存放到本�
 
 athens 中用 `D、-、+` 这三种方式来确定认证策略  
 
-- `D` 需要放在第一行，如果没放，配置的过滤策略就不生效；    
+- `D` 需要放在第一行，如果没放,配置的 ATHENS_GLOBAL_ENDPOINT 不生效；    
 
 - `-` 表示禁止下载此软件包,来屏蔽一些有安全隐患的包，若请求，报403；      
 
-栗如：配置了`- github.com/gogo`    
-
-`go: github.com/gogo/googleapis@v1.2.0: reading http://127.0.0.1:3000/github.com/gogo/googleapis/@v/v1.2.0.mod: 403 Forbidden
-`
 - `+` 表示不需要通过 GlobalEndpoint 代理，而是直接访问的资源包，通过 GlobalEndpoint 访问的资源不会下载到本地，直接访问的包会下载到本地，我们私有仓库的需要配置到这里面，因为通过公共代理是找不到的；   
 
 `-` 与 `+` 对软件包的策略可指定至版本，多个版本用,号分隔，甚至可使用版本修饰符`(~, ^, >)`。此外 # 开头的行表示注释，会被忽略。    

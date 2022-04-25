@@ -1,0 +1,4 @@
+D
+# 表示不需要通过 GlobalEndpoint 代理，而是直接访问的资源包；
++ gitlab.test.com
+
