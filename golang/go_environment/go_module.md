@@ -52,7 +52,7 @@ export GO111MODULE=of // 关闭
 
 需要注意的是：我们使用 `go mod` 不要在 GOPATH 目录下面
 
-我们在 GOPATH 以为的目录建立一个项目 hello，然后在根目录下面执行  
+我们在 GOPATH 以外的目录建立一个项目 hello，然后在根目录下面执行  
 
 ````
 liz@liz-PC:~/goWork/src/hello$ go mod init hello
@@ -372,3 +372,4 @@ go mod tidy 删除不适用的依赖
 【Using Go Modules】https://blog.golang.org/using-go-modules  
 【Go Modules 不完全教程】https://mp.weixin.qq.com/s/v-NdYEJBgKbiKsdoQaRsQg  
 【GOSUMDB 环境变量】https://goproxy.io/zh/docs/GOSUMDB-env.html    
+【如何使用go mod】https://boilingfrog.github.io/2022/04/25/go%E4%B8%ADgomod%E4%BD%BF%E7%94%A8%E5%B0%8F%E7%BB%93/  
