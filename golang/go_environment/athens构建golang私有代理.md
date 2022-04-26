@@ -38,7 +38,7 @@ Athens 处理存储的策略为仅追加，一个模块被保存，它就永远�
 
 Athens 也可以 filter 文件配置，过滤一些有安全隐患的包。  
 
-Athens 支持 disk, mongo, gcs, s3, minio, 外部存储/自定义，不过一半建议使用 disk。  
+Athens 支持 disk, mongo, gcs, s3, minio, 外部存储/自定义，不过一般建议使用 disk。  
 
 ### 使用 docker-compose 部署
 
@@ -110,7 +110,7 @@ ATHENS_GONOSUM_PATTERNS：配置为私库地址, 作用避免私库地址流入�
 
 有时候我们可能没有一台可以访问外网的机器，这时候 athens 提供了 ATHENS_GLOBAL_ENDPOINT ，可配置一些国内的公共代理。  
 
-```
+```yaml
 version: '2'
 services:
   athens:
@@ -153,6 +153,14 @@ D
 # 表示不需要通过 GlobalEndpoint 代理，而是直接访问的资源包； 
 + gitlab.test.com
 ```
+
+修饰符  
+
+`~`：`~1.2.3`表示激活所有大于等于3的 patch 版本，在语义化版本方案中，最后一位的3表示补丁版本。如 `1.2.3, 1.2.4, 1.2.5`；  
+
+`^`：`^1.2.3`表示激活所有大于等于2的 minor 与大于等于3的 patch 版本。如 `1.2.3, 1.3.0`；  
+
+`<`：`<1.2.3`表示激活所有小于 `1.2.3` 的版本。如 `1.2.2, 1.0.0, 0.1.1`。  
 
 ### 参考
 
