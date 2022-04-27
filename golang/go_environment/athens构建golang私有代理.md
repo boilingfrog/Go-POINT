@@ -36,7 +36,7 @@
 
 Athens 首先可以配置访问私有仓库；  
 
-Athens 的会存储每次拉取的包，如果该模块之前没有通过 athens，athens 会向目标地址请求数据，在返回给客户端的时候，会存储该模块到本地的磁盘中，这样实现了 `go mod download`永远只会发生一次；  
+Athens 的会存储每次拉取的包，如果该模块之前没有通过 athens，athens 会向目标地址请求数据，在返回给客户端的时候，会存储该模块到存储中，这样实现了 `go mod download`永远只会发生一次；  
 
 Athens 处理存储的策略为仅追加，一个模块被保存，它就永远不会改变，即使开发人员对 tag 进行了强推，那么也不会被删除；  
 
@@ -263,3 +263,4 @@ ssh-keys # chmod 600 id_rsa
 【介绍 ATHENS】https://gomods.io/zh/intro/   
 【download】https://github.com/gomods/athens/blob/main/docs/content/configuration/download.md   
 【athens构建golang私有代理】https://github.com/boilingfrog/Go-POINT/blob/master/golang/go_environment/athens%E6%9E%84%E5%BB%BAgolang%E7%A7%81%E6%9C%89%E4%BB%A3%E7%90%86.md  
+【使用 docker-compose 部署 golang 的 Athens 私有代理】https://github.com/boilingfrog/Go-POINT/blob/master/golang/go_environment/athens%E6%9E%84%E5%BB%BAgolang%E7%A7%81%E6%9C%89%E4%BB%A3%E7%90%86.md    
