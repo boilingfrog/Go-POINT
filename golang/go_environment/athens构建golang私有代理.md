@@ -179,7 +179,7 @@ go 处于安全性考虑，为了保证开发者的依赖库不被人恶意劫�
 id_rsa		id_rsa.pub
 ```
 
-没有的话通过下面的命令的名称生成  
+没有的话通过下面的命令的生成    
  
 ```
 # ssh-keygen -t rsa -C "youremail@example.com"
@@ -187,7 +187,7 @@ id_rsa		id_rsa.pub
 
 邮箱换成自己的，一路回车即可   
 
-然后将 `id_rsa.pub` 公钥的内容添加到自己的私有仓库中，如何添加自定 google 吧，比较简单   
+然后将 `id_rsa.pub` 公钥的内容添加到自己的私有仓库中，如何添加自己 google 吧，比较简单   
 
 ##### 2、配置 HTTP 与 SSH 重写规则
 
@@ -233,9 +233,33 @@ services:
 
 这样即可实现秘钥的认证了    
 
+需要注意私钥的权限，刚开始没注意，执行报了下面的错误  
+
+```
+        @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+        @         WARNING: UNPROTECTED PRIVATE KEY FILE!          @
+        @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+        Permissions 0644 for '/root/.ssh/id_rsa' are too open.
+        It is required that your private key files are NOT accessible by others.
+        This private key will be ignored.
+        Load key "/root/.ssh/id_rsa": bad permissions
+        git@gitlab.test.com: Permission denied (publickey).
+        fatal: Could not read from remote repository.
+
+```
+
+看报错就可推断出，是权限太大了，需要私钥文件不能被其他人所访问。  
+
+修改权限就可以了  
+
+```
+ssh-keys # chmod 600 id_rsa
+```
+
 具体的 demo 地址，可参见[athens私有代理部署](https://github.com/boilingfrog/Go-POINT/tree/master/golang/go_environment/athens)  
 
 ### 参考
 
 【介绍 ATHENS】https://gomods.io/zh/intro/   
 【download】https://github.com/gomods/athens/blob/main/docs/content/configuration/download.md   
+【athens构建golang私有代理】https://github.com/boilingfrog/Go-POINT/blob/master/golang/go_environment/athens%E6%9E%84%E5%BB%BAgolang%E7%A7%81%E6%9C%89%E4%BB%A3%E7%90%86.md  
