@@ -6,8 +6,8 @@
   - [为什么选择 athens](#%E4%B8%BA%E4%BB%80%E4%B9%88%E9%80%89%E6%8B%A9-athens)
   - [使用 docker-compose 部署](#%E4%BD%BF%E7%94%A8-docker-compose-%E9%83%A8%E7%BD%B2)
     - [配置私有仓库的认证信息](#%E9%85%8D%E7%BD%AE%E7%A7%81%E6%9C%89%E4%BB%93%E5%BA%93%E7%9A%84%E8%AE%A4%E8%AF%81%E4%BF%A1%E6%81%AF)
-    - [部署到海外机器中](#%E9%83%A8%E7%BD%B2%E5%88%B0%E6%B5%B7%E5%A4%96%E6%9C%BA%E5%99%A8%E4%B8%AD)
-    - [国内机器的部署](#%E5%9B%BD%E5%86%85%E6%9C%BA%E5%99%A8%E7%9A%84%E9%83%A8%E7%BD%B2)
+    - [配置下载模式](#%E9%85%8D%E7%BD%AE%E4%B8%8B%E8%BD%BD%E6%A8%A1%E5%BC%8F)
+    - [部署](#%E9%83%A8%E7%BD%B2)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -55,60 +55,69 @@ machine gitlab.test.com login test-name password test-pass
 
 有几个私有仓库，配置几个就可以了  
 
-#### 部署到海外机器中  
+#### 配置下载模式 
 
-如果有一个海外的服务器，那么部署私有代理仓库就简单了，直接部署在上面就可以了  
+通过 `The download mode` (下载模式配置策略)是现在 ATHENS 中比较推崇的，之前通过 `Filtering modules`（过滤模式）的方法，目前已经被弃用了。    
 
-```yaml
-version: '2'
-services:
-  athens:
-    image: gomods/athens:v0.10.0
-    restart: always
-    container_name: athens_proxy
-    ports:
-        - "3000:3000"
-    volumes:
-        - /data/athens/.netrc:/root/.netrc
-        - /data/athens-storage:/var/lib/athens
-        - ./filter_file:/root/filter_file
-    environment:
-        - ATHENS_NETRC_PATH=/root/.netrc
-        - ATHENS_GONOSUM_PATTERNS=gitlab.test.com
-        - ATHENS_STORAGE_TYPE=disk
-        - ATHENS_FILTER_FILE=/root/filter_file
-        - ATHENS_GOGET_WORKERS=100
-        - ATHENS_DISK_STORAGE_ROOT=/var/lib/athens
-```
-
-ATHENS_GONOSUM_PATTERNS：配置为私库地址, 作用避免私库地址流入公网，支持通配符，多个可以使用`,`分割。  
-
-通过 ATHENS_FILTER_FILE 配置访问的策略  
-
-- `-` 表示禁止下载此软件包,来屏蔽一些有安全隐患的包，若请求，报403；      
+来看下如何配置  
 
 ```
-# cat filter_file
-
-- github.com/gogo
+# DownloadMode defines how Athens behaves when a module@version
+# is not found in storage. There are 4 options:
+# 1. "sync" (default): download the module synchronously and
+# return the results to the client.
+# 2. "async": return 404, but asynchronously store the module
+# in the storage backend.
+# 3. "redirect": return a 301 redirect status to the client
+# with the base URL as the DownloadRedirectURL from below.
+# 4. "async_redirect": same as option number 3 but it will
+# asynchronously store the module to the backend.
+# 5. "none": return 404 if a module is not found and do nothing.
+# 6. "file:<path>": will point to an HCL file that specifies
+# any of the 5 options above based on different import paths.
+# 7. "custom:<base64-encoded-hcl>" is the same as option 6
+# but the file is fully encoded in the option. This is
+# useful for using an environment variable in serverless
+# deployments.
+# Env override: ATHENS_DOWNLOAD_MODE
+DownloadMode = "sync"
 ```
 
-栗如：配置了`- github.com/gogo`    
+通过环境变量 ATHENS_DOWNLOAD_MODE 可指定，也可以修改指定的 `config.dev.toml`来配置，默认是 sync     
 
-`go: github.com/gogo/googleapis@v1.2.0: reading http://127.0.0.1:3000/github.com/gogo/googleapis/@v/v1.2.0.mod: 403 Forbidden
-`
+ATHENS_DOWNLOAD_MODE 可指定的内容：   
 
-启动 `docker-compose up -d`    
+1、通过 `file:<path>`指定一个文件；  
 
-客户端设置代理 `export GOPROXY=http://xxxx:3000`  
+2、通过 `custom:<base64-encoded-hcl>` 指定一个 base64 编码的 HCL 文件；  
 
-这样就能使用我们的代理服务了    
+3、指定具体的全局策略，`sync, async, none, redirect, or async_redirect`，上面的两种是可以定制策略组的。    
 
-因为选择的 ATHENS_STORAGE_TYPE 为 disk，athens 服务会在拉取资源包的同时，也会下载资源包到配置的 ATHENS_DISK_STORAGE_ROOT 中。  
+- sync: 通过 同步从 VCS 下载模块 `go mod download`，将其持久化到存储中，并立即将其返回给用户。请注意，这是默认行为；  
 
-#### 国内机器的部署
+- async：向客户端返回 404，并异步下载 `module@version` 并将其持久化到存储中；  
 
-有时候我们可能没有一台可以访问外网的机器，这时候 athens 提供了 ATHENS_GLOBAL_ENDPOINT ，可配置一些国内的公共代理。  
+- none：返回 404 并且什么也不做；  
+
+- redirect：重定向到上游代理（例如proxy.golang.org），之后什么也不做；  
+
+- async_redirect：重定向到上游代理（例如`proxy.golang.org`）并异步下载 `module@version` 并将其持久化到存储中；  
+
+```
+# cat download.hcl  
+
+downloadURL = "https://goproxy.cn"
+
+mode = "async_redirect"
+
+download "gitlab.test.com/*" {
+    mode = "sync"
+}
+```
+
+#### 部署
+
+这里使用 docker-composer 部署  
 
 ```yaml
 version: '2'
@@ -122,46 +131,33 @@ services:
     volumes:
       - ./.netrc:/root/.netrc
       - ./athens-storage:/var/lib/athens
-      - ./filter_file:/root/filter_file
+      - ./download.hcl:/root/download.hcl
     environment:
-      - ATHENS_GLOBAL_ENDPOINT=https://goproxy.cn
       - ATHENS_NETRC_PATH=/root/.netrc
-      - ATHENS_GONOSUM_PATTERNS=gitlab.test.com
       - ATHENS_STORAGE_TYPE=disk
       - ATHENS_DISK_STORAGE_ROOT=/var/lib/athens
-      - ATHENS_FILTER_FILE=/root/filter_file
       - ATHENS_GOGET_WORKERS=100
+      - ATHENS_DOWNLOAD_MODE=file:/root/download.hcl
+      - ATHENS_GONOSUM_PATTERNS=gitlab.test.com
 ```
 
-如果配置了 ATHENS_GLOBAL_ENDPOINT，需要配置过滤策略  
+ATHENS_GONOSUM_PATTERNS：配置为私库地址，配置的仓库地址，不会进行安全向校验。  
 
-athens 可配置软件包的过滤策略，来决定那些包可以存放到本地  
+go 处于安全性考虑，为了保证开发者的依赖库不被人恶意劫持篡改，所以引入了 GOSUMDB 环境变量来设置校验服务器
 
-athens 中用 `D、-、+` 这三种方式来确定认证策略  
+当你在本地对依赖进行变动（更新/添加）操作时，Go 会自动去这个服务器进行数据校验，保证你下的这个代码库和世界上其他人下的代码库是一样的。如果有问题，会有个大大的安全提示。当然背后的这些操作都已经集成在 Go 里面了，开发者不需要进行额外的操作。  
 
-- `D` 需要放在第一行，如果没放,配置的 ATHENS_GLOBAL_ENDPOINT 不生效；    
+对于我们的私有仓库，去公共安全校验库校验，肯定是不能通过校验的，我们可以通过 ATHENS_GONOSUM_PATTERNS 这个环境变量来设置不做校验的代码仓库， 它可以设置多个匹配路径，用逗号相隔。
 
-- `-` 表示禁止下载此软件包,来屏蔽一些有安全隐患的包，若请求，报403；      
+启动 `docker-compose up -d`    
 
-- `+` 表示不需要通过 GlobalEndpoint 代理，而是直接访问的资源包，通过 GlobalEndpoint 访问的资源不会下载到本地，直接访问的包会下载到本地，我们私有仓库的需要配置到这里面，因为通过公共代理是找不到的；   
+客户端设置代理 `export GOPROXY=http://xxxx:3000`  
 
-`-` 与 `+` 对软件包的策略可指定至版本，多个版本用,号分隔，甚至可使用版本修饰符`(~, ^, >)`。此外 # 开头的行表示注释，会被忽略。    
+这样就能使用我们的代理服务了    
 
-```
-# cat filter_file
-D
-# 表示不需要通过 GlobalEndpoint 代理，而是直接访问的资源包； 
-+ gitlab.test.com
-```
-
-修饰符  
-
-`~`：`~1.2.3`表示激活所有大于等于3的 patch 版本，在语义化版本方案中，最后一位的3表示补丁版本。如 `1.2.3, 1.2.4, 1.2.5`；  
-
-`^`：`^1.2.3`表示激活所有大于等于2的 minor 与大于等于3的 patch 版本。如 `1.2.3, 1.3.0`；  
-
-`<`：`<1.2.3`表示激活所有小于 `1.2.3` 的版本。如 `1.2.2, 1.0.0, 0.1.1`。  
+因为选择的 ATHENS_STORAGE_TYPE 为 disk，athens 服务会在拉取资源包的同时，也会下载资源包到配置的 ATHENS_DISK_STORAGE_ROOT 中。  
 
 ### 参考
 
-【介绍 ATHENS】https://gomods.io/zh/intro/    
+【介绍 ATHENS】https://gomods.io/zh/intro/   
+【download】https://github.com/gomods/athens/blob/main/docs/content/configuration/download.md   

@@ -9,14 +9,11 @@ services:
     volumes:
       - ./.netrc:/root/.netrc
       - ./athens-storage:/var/lib/athens
-      - ./filter_file:/root/filter_file
-      - ./ssh-keys/config:/root/.gitconfig
-      - ./ssh-keys:/root/.ssh
+      - ./download.hcl:/root/download.hcl
     environment:
-      - ATHENS_GLOBAL_ENDPOINT=https://goproxy.cn
       - ATHENS_NETRC_PATH=/root/.netrc
-      - ATHENS_GONOSUM_PATTERNS=gitlab.test.com
       - ATHENS_STORAGE_TYPE=disk
       - ATHENS_DISK_STORAGE_ROOT=/var/lib/athens
-      - ATHENS_FILTER_FILE=/root/filter_file
       - ATHENS_GOGET_WORKERS=100
+      - ATHENS_DOWNLOAD_MODE=file:/root/download.hcl
+      - ATHENS_GONOSUM_PATTERNS=gitlab.test.com
