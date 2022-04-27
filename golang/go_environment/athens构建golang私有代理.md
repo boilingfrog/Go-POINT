@@ -8,6 +8,10 @@
     - [配置私有仓库的认证信息](#%E9%85%8D%E7%BD%AE%E7%A7%81%E6%9C%89%E4%BB%93%E5%BA%93%E7%9A%84%E8%AE%A4%E8%AF%81%E4%BF%A1%E6%81%AF)
     - [配置下载模式](#%E9%85%8D%E7%BD%AE%E4%B8%8B%E8%BD%BD%E6%A8%A1%E5%BC%8F)
     - [部署](#%E9%83%A8%E7%BD%B2)
+    - [使用秘钥的方式认证私有仓库](#%E4%BD%BF%E7%94%A8%E7%A7%98%E9%92%A5%E7%9A%84%E6%96%B9%E5%BC%8F%E8%AE%A4%E8%AF%81%E7%A7%81%E6%9C%89%E4%BB%93%E5%BA%93)
+      - [1、配置秘钥](#1%E9%85%8D%E7%BD%AE%E7%A7%98%E9%92%A5)
+      - [2、配置 HTTP 与 SSH 重写规则](#2%E9%85%8D%E7%BD%AE-http-%E4%B8%8E-ssh-%E9%87%8D%E5%86%99%E8%A7%84%E5%88%99)
+      - [3、配置 SSH 来绕过主机 SSH 键验证](#3%E9%85%8D%E7%BD%AE-ssh-%E6%9D%A5%E7%BB%95%E8%BF%87%E4%B8%BB%E6%9C%BA-ssh-%E9%94%AE%E9%AA%8C%E8%AF%81)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
