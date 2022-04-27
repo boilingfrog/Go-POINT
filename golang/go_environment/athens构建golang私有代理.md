@@ -161,6 +161,76 @@ go 处于安全性考虑，为了保证开发者的依赖库不被人恶意劫�
 
 因为选择的 ATHENS_STORAGE_TYPE 为 disk，athens 服务会在拉取资源包的同时，也会下载资源包到配置的 ATHENS_DISK_STORAGE_ROOT 中。  
 
+#### 使用秘钥的方式认证私有仓库
+
+上面通过 `.netrc` 的方式来认证私有仓库，因为账号密码是铭文的总归不太好，可以使用秘钥的方式来认证  
+
+##### 1、配置秘钥  
+
+首先查看电脑有没有秘钥   
+
+```
+# cd .ssh
+# ls
+id_rsa		id_rsa.pub
+```
+
+没有的话通过下面的命令的名称生成  
+ 
+```
+# ssh-keygen -t rsa -C "youremail@example.com"
+```
+
+邮箱换成自己的，一路回车即可   
+
+然后将 `id_rsa.pub` 公钥的内容添加到自己的私有仓库中，如何添加自定 google 吧，比较简单   
+
+##### 2、配置 HTTP 与 SSH 重写规则
+
+```
+# cat gitconfig 
+[url "ssh://git@gitlab.test.com"]
+        insteadOf = https://gitlab.test.com
+```
+
+##### 3、配置 SSH 来绕过主机 SSH 键验证
+
+```
+# cat config 
+Host gitlab.test.com
+Hostname gitlab.test.com
+StrictHostKeyChecking no
+IdentityFile /root/.ssh/id_rsa
+```
+
+将上面配置的认证信息，映射到容器中即可  
+
+```yaml
+version: '2'
+services:
+  athens:
+    image: gomods/athens:v0.11.0
+    restart: always
+    container_name: athens_proxy
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./athens-storage:/var/lib/athens
+      - ./download.hcl:/root/download.hcl
+      - ./gitconfig:/root/.gitconfig
+      - ./ssh-keys:/root/.ssh
+    environment:
+      - ATHENS_STORAGE_TYPE=disk
+      - ATHENS_DISK_STORAGE_ROOT=/var/lib/athens
+      - ATHENS_GOGET_WORKERS=100
+      - ATHENS_DOWNLOAD_MODE=file:/root/download.hcl
+      - ATHENS_GONOSUM_PATTERNS=gitlab.test.com
+```
+
+这样即可实现秘钥的认证了    
+
+具体的 demo 地址，可参见[athens私有代理部署](https://github.com/boilingfrog/Go-POINT/tree/master/golang/go_environment/athens)  
+
 ### 参考
 
 【介绍 ATHENS】https://gomods.io/zh/intro/   

@@ -1,0 +1,4 @@
+Host gitlab.test.com
+Hostname gitlab.test.com
+StrictHostKeyChecking no
+IdentityFile /root/.ssh/id_rsa

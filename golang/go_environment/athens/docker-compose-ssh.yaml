@@ -1,17 +1,17 @@
 version: '2'
 services:
-  athens:
+  athens_ssh:
     image: gomods/athens:v0.11.0
     restart: always
-    container_name: athens_proxy
+    container_name: athens_proxy_ssh
     ports:
       - "3000:3000"
     volumes:
-      - ./.netrc:/root/.netrc
       - ./athens-storage:/var/lib/athens
       - ./download.hcl:/root/download.hcl
+      - ./gitconfig:/root/.gitconfig
+      - ./ssh-keys:/root/.ssh
     environment:
-      - ATHENS_NETRC_PATH=/root/.netrc
       - ATHENS_STORAGE_TYPE=disk
       - ATHENS_DISK_STORAGE_ROOT=/var/lib/athens
       - ATHENS_GOGET_WORKERS=100
