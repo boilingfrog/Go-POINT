@@ -36,7 +36,7 @@ Athens 的会存储每次拉取的包，如果该模块之前没有通过 athens
 
 Athens 处理存储的策略为仅追加，一个模块被保存，它就永远不会改变，即使开发人员对 tag 进行了强推，那么也不会被删除；  
 
-Athens 也可以 filter 文件配置，过滤一些有安全隐患的包。  
+Athens 也可以配置下载策略，过滤一些有安全隐患的包。  
 
 Athens 支持 disk, mongo, gcs, s3, minio, 外部存储/自定义，不过一般建议使用 disk。  
 
@@ -87,11 +87,13 @@ DownloadMode = "sync"
 
 ATHENS_DOWNLOAD_MODE 可指定的内容：   
 
-1、通过 `file:<path>`指定一个文件；  
+1、通过 `file:<path>`指定一个 hcl 文件,里面可以对不同的仓库，设置下载模式；  
 
 2、通过 `custom:<base64-encoded-hcl>` 指定一个 base64 编码的 HCL 文件；  
 
-3、指定具体的全局策略，`sync, async, none, redirect, or async_redirect`，上面的两种是可以定制策略组的。    
+3、指定具体的全局策略，`sync, async, none, redirect, or async_redirect`，这是一个全局的设置，上面的两种是可以定制策略组的。    
+
+来看下具体的下载模式    
 
 - sync: 通过 同步从 VCS 下载模块 `go mod download`，将其持久化到存储中，并立即将其返回给用户。请注意，这是默认行为；  
 
@@ -102,6 +104,8 @@ ATHENS_DOWNLOAD_MODE 可指定的内容：
 - redirect：重定向到上游代理（例如proxy.golang.org），之后什么也不做；  
 
 - async_redirect：重定向到上游代理（例如`proxy.golang.org`）并异步下载 `module@version` 并将其持久化到存储中；  
+
+下面看下配置策略的 hcl 文件  
 
 ```
 # cat download.hcl  
