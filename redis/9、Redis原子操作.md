@@ -4,6 +4,8 @@
 - [Redis 如何应对并发访问](#redis-%E5%A6%82%E4%BD%95%E5%BA%94%E5%AF%B9%E5%B9%B6%E5%8F%91%E8%AE%BF%E9%97%AE)
   - [Redis 中处理并发的方案](#redis-%E4%B8%AD%E5%A4%84%E7%90%86%E5%B9%B6%E5%8F%91%E7%9A%84%E6%96%B9%E6%A1%88)
     - [原子性](#%E5%8E%9F%E5%AD%90%E6%80%A7)
+      - [原子性的单命令](#%E5%8E%9F%E5%AD%90%E6%80%A7%E7%9A%84%E5%8D%95%E5%91%BD%E4%BB%A4)
+      - [使用 LUA 脚本](#%E4%BD%BF%E7%94%A8-lua-%E8%84%9A%E6%9C%AC)
     - [分布式锁](#%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81)
   - [参考](#%E5%8F%82%E8%80%83)
 
@@ -45,9 +47,118 @@
 
 #### 原子性
 
+为了实现并发控制要求的临界区代码互斥执行，Redis的原子操作采用了两种方法：  
+
+1、借助于 Redis 中的原子性的单命令；    
+
+2、把多个操作写到一个Lua脚本中，以原子性方式执行单个Lua脚本。  
+
+##### 原子性的单命令
+
+比如对于上面的`读取-修改-写回`操作可以使用 Redis 中的原子计数器, INCRBY（自增）、DECRBR（自减）、INCR（加1） 和 DECR（减1） 等命令。  
+
+这些命令可以直接帮助我们处理并发控制   
+
+```
+127.0.0.1:6379> incr test-1
+(integer) 1
+127.0.0.1:6379> incr test-1
+(integer) 2
+127.0.0.1:6379> incr test-1
+(integer) 3
+```
+
+分析下源码，看看这个命令是如何实现的    
+
+```
+// https://github.com/redis/redis/blob/6.2/src/t_string.c#L617
+
+void incrCommand(client *c) {
+    incrDecrCommand(c,1);
+}
+
+void decrCommand(client *c) {
+    incrDecrCommand(c,-1);
+}
+
+void incrbyCommand(client *c) {
+    long long incr;
+
+    if (getLongLongFromObjectOrReply(c, c->argv[2], &incr, NULL) != C_OK) return;
+    incrDecrCommand(c,incr);
+}
+
+void decrbyCommand(client *c) {
+    long long incr;
+
+    if (getLongLongFromObjectOrReply(c, c->argv[2], &incr, NULL) != C_OK) return;
+    incrDecrCommand(c,-incr);
+}
+```
+
+可以看到 INCRBY（自增）、DECRBR（自减）、INCR（加1） 和 DECR（减1）这几个命令最终都是调用的 decrbyCommand  
+
+```
+// https://github.com/redis/redis/blob/6.2/src/t_string.c#L579  
+void incrDecrCommand(client *c, long long incr) {
+    long long value, oldvalue;
+    robj *o, *new;
+
+    // 查找有没有对应的键值
+    o = lookupKeyWrite(c->db,c->argv[1]);
+    // 判断类型，如果value对象不是字符串类型，直接返回
+    if (checkType(c,o,OBJ_STRING)) return;
+
+    // 将字符串类型的value转换为longlong类型保存在value中
+    if (getLongLongFromObjectOrReply(c,o,&value,NULL) != C_OK) return;
+
+    // 备份旧的value
+    oldvalue = value;
+
+    // 判断 incr 的值是否超过longlong类型所能表示的范围
+    // 长度的范围，十进制 64 位有符号整数
+    if ((incr < 0 && oldvalue < 0 && incr < (LLONG_MIN-oldvalue)) ||
+        (incr > 0 && oldvalue > 0 && incr > (LLONG_MAX-oldvalue))) {
+        addReplyError(c,"increment or decrement would overflow");
+        return;
+    }
+    // 计算新的 value值
+    value += incr;
+
+    if (o && o->refcount == 1 && o->encoding == OBJ_ENCODING_INT &&
+        (value < 0 || value >= OBJ_SHARED_INTEGERS) &&
+        value >= LONG_MIN && value <= LONG_MAX)
+    {
+        new = o;
+        o->ptr = (void*)((long)value);
+    } else {
+        new = createStringObjectFromLongLongForValue(value);
+        // 如果之前的 value 对象存在
+        if (o) {
+            // 重写为 new 的值  
+            dbOverwrite(c->db,c->argv[1],new);
+        } else {
+            // 如果之前没有对应的 value,新设置 value 的值
+            dbAdd(c->db,c->argv[1],new);
+        }
+    }
+    // 进行通知
+    signalModifiedKey(c,c->db,c->argv[1]);
+    notifyKeyspaceEvent(NOTIFY_STRING,"incrby",c->argv[1],c->db->id);
+    server.dirty++;
+    addReply(c,shared.colon);
+    addReply(c,new);
+    addReply(c,shared.crlf);
+}
+```
+
+##### 使用 LUA 脚本
+
+
 #### 分布式锁
 
 ### 参考
 
 【Redis核心技术与实战】https://time.geekbang.org/column/intro/100056701    
 【Redis设计与实现】https://book.douban.com/subject/25900156/   
+【字符串命令的实现】https://mcgrady-forever.github.io/2018/02/10/redis-analysis-t-string/     
