@@ -96,7 +96,7 @@ void decrbyCommand(client *c) {
 }
 ```
 
-可以看到 INCRBY（自增）、DECRBR（自减）、INCR（加1） 和 DECR（减1）这几个命令最终都是调用的 decrbyCommand  
+可以看到 INCRBY（自增）、DECRBR（自减）、INCR（加1） 和 DECR（减1）这几个命令最终都是调用的 incrDecrCommand  
 
 ```
 // https://github.com/redis/redis/blob/6.2/src/t_string.c#L579  
