@@ -95,15 +95,24 @@ thread-based architecture（基于线程的架构）：这种比较容易理解�
 - 
 事件驱动架构中路由和过滤能力支持划分服务，便于扩展和路由分发。  
 
-Reactor 模式和 Proactor 模式都是 `event-driven architecture`（事件驱动模型）的实现方式，这分析下  
+Reactor 模式和 Proactor 模式都是 `event-driven architecture`（事件驱动模型）的实现方式，这里具体分析下  
 
 ###### Reactor 模式
 
+Reactor 模式，是指通过一个或多个输入同时传递给服务处理器的服务请求的事件驱动处理模式。  
+
+在处理⽹络 IO 的连接事件、读事件、写事件。Reactor 中引入了三类角色  
+
+- reactor：监听和分配事件，连接事件交给 acceptor 处理，读写事件交给 handler 处理；
+
+- acceptor：接收连接请求，接收连接后，会创建 handler ，处理网络连接上对后续读写事件的处理；  
+
+- handler：处理读写事件。  
+
+<img src="/img/redis/redis-reactor.png"  alt="redis" />
 
 
 ###### Proactor 模式
-
-
 
 #### 为什么 Redis 选择单线程
 
