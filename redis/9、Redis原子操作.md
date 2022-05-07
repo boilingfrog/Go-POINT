@@ -3,10 +3,16 @@
 
 - [Redis 如何应对并发访问](#redis-%E5%A6%82%E4%BD%95%E5%BA%94%E5%AF%B9%E5%B9%B6%E5%8F%91%E8%AE%BF%E9%97%AE)
   - [Redis 中处理并发的方案](#redis-%E4%B8%AD%E5%A4%84%E7%90%86%E5%B9%B6%E5%8F%91%E7%9A%84%E6%96%B9%E6%A1%88)
-    - [原子性](#%E5%8E%9F%E5%AD%90%E6%80%A7)
-      - [原子性的单命令](#%E5%8E%9F%E5%AD%90%E6%80%A7%E7%9A%84%E5%8D%95%E5%91%BD%E4%BB%A4)
-      - [使用 LUA 脚本](#%E4%BD%BF%E7%94%A8-lua-%E8%84%9A%E6%9C%AC)
-    - [分布式锁](#%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81)
+  - [原子性](#%E5%8E%9F%E5%AD%90%E6%80%A7)
+    - [原子性的单命令](#%E5%8E%9F%E5%AD%90%E6%80%A7%E7%9A%84%E5%8D%95%E5%91%BD%E4%BB%A4)
+    - [Redis 的IO模型分析](#redis-%E7%9A%84io%E6%A8%A1%E5%9E%8B%E5%88%86%E6%9E%90)
+      - [thread-based architecture（基于线程的架构）](#thread-based-architecture%E5%9F%BA%E4%BA%8E%E7%BA%BF%E7%A8%8B%E7%9A%84%E6%9E%B6%E6%9E%84)
+      - [event-driven architecture（事件驱动模型）](#event-driven-architecture%E4%BA%8B%E4%BB%B6%E9%A9%B1%E5%8A%A8%E6%A8%A1%E5%9E%8B)
+        - [Reactor 模式](#reactor-%E6%A8%A1%E5%BC%8F)
+        - [Proactor 模式](#proactor-%E6%A8%A1%E5%BC%8F)
+    - [为什么 Redis 选择单线程](#%E4%B8%BA%E4%BB%80%E4%B9%88-redis-%E9%80%89%E6%8B%A9%E5%8D%95%E7%BA%BF%E7%A8%8B)
+    - [使用 LUA 脚本](#%E4%BD%BF%E7%94%A8-lua-%E8%84%9A%E6%9C%AC)
+  - [分布式锁](#%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -45,7 +51,7 @@
 
 下面从原子性和锁两个方面，具体分析下，对并发访问问题的处理   
 
-#### 原子性
+### 原子性
 
 为了实现并发控制要求的临界区代码互斥执行，Redis的原子操作采用了两种方法：  
 
@@ -53,7 +59,54 @@
 
 2、把多个操作写到一个Lua脚本中，以原子性方式执行单个Lua脚本。  
 
-##### 原子性的单命令
+#### 原子性的单命令
+
+Redis 中的单个命令的执行都是原子性的，这里来具体的探讨下   
+
+#### Redis 的IO模型分析
+
+在探讨 Redis 原子性的时候，先来探讨下 Redis 中的 IO 模型  
+
+在 web 服务中，处理 web 请求通常有两种体系结构，分别为：`thread-based architecture`（基于线程的架构）、`event-driven architecture`（事件驱动模型）  
+
+##### thread-based architecture（基于线程的架构）
+
+thread-based architecture（基于线程的架构）：这种比较容易理解，就是多线程并发模式，服务端在处理请求的时候，一个请求分配一个独立的线程来处理。   
+
+因为每个请求分配一个独立的线程，所以单个线程的阻塞不会影响到其他的线程，能够提高程序的响应速度。  
+
+不足的是，连接和线程之间始终保持一对一的关系，如果是一直处于 Keep-Alive 状态的长连接将会导致大量工作线程在空闲状态下等待，例如，文件系统访问，网络等。此外，成百上千的连接还可能会导致并发线程浪费大量内存的堆栈空间。  
+
+##### event-driven architecture（事件驱动模型）  
+
+事件驱动的体系结构由事件生产者和事件消费者组，是一种松耦合、分布式的驱动架构，生产者收集到某应用产生的事件后实时对事件采取必要的处理后路由至下游系统，无需等待系统响应，下游的事件消费者组收到是事件消息，异步的处理。  
+
+事件驱动架构具有以下优势：  
+
+- 降低耦合；  
+
+降低事件生产者和订阅者的耦合性。事件生产者只需关注事件的发生，无需关注事件如何处理以及被分发给哪些订阅者。任何一个环节出现故障，不会影响其他业务正常运行。
+
+- 异步执行；  
+
+事件驱动架构适用于异步场景，即便是需求高峰期，收集各种来源的事件后保留在事件总线中，然后逐步分发传递事件，不会造成系统拥塞或资源过剩的情况。
+
+- 可扩展性；
+- 
+事件驱动架构中路由和过滤能力支持划分服务，便于扩展和路由分发。  
+
+Reactor 模式和 Proactor 模式都是 `event-driven architecture`（事件驱动模型）的实现方式，这分析下  
+
+###### Reactor 模式
+
+
+
+###### Proactor 模式
+
+
+
+#### 为什么 Redis 选择单线程
+
 
 比如对于上面的`读取-修改-写回`操作可以使用 Redis 中的原子计数器, INCRBY（自增）、DECRBR（自减）、INCR（加1） 和 DECR（减1） 等命令。  
 
@@ -152,13 +205,19 @@ void incrDecrCommand(client *c, long long incr) {
 }
 ```
 
-##### 使用 LUA 脚本
+#### 使用 LUA 脚本
 
 
-#### 分布式锁
+### 分布式锁
 
 ### 参考
 
 【Redis核心技术与实战】https://time.geekbang.org/column/intro/100056701    
 【Redis设计与实现】https://book.douban.com/subject/25900156/   
 【字符串命令的实现】https://mcgrady-forever.github.io/2018/02/10/redis-analysis-t-string/     
+【Redis 多线程网络模型全面揭秘】https://segmentfault.com/a/1190000039223696     
+【高性能IO模型分析-Reactor模式和Proactor模式】https://zhuanlan.zhihu.com/p/95662364  
+【什么是事件驱动架构？】https://www.redhat.com/zh/topics/integration/what-is-event-driven-architecture  
+【事件驱动架构】https://help.aliyun.com/document_detail/207135.html   
+
+
