@@ -111,6 +111,30 @@ Reactor 模式，是指通过一个或多个输入同时传递给服务处理器
 
 <img src="/img/redis/redis-reactor.png"  alt="redis" />
 
+Reactor 模型又分为 3 类：  
+
+- 单线程 Reactor 模式；  
+
+建立连接（Acceptor）、监听accept、read、write事件（Reactor）、处理事件（Handler）都只用一个单线程；  
+
+- 多线程 Reactor 模式；  
+
+与单线程模式不同的是，添加了一个工作者线程池，并将非 `I/O` 操作从 Reactor 线程中移出转交给工作者线程池（Thread Pool）来执行。
+
+建立连接（Acceptor）和 监听accept、read、write事件（Reactor），复用一个线程。  
+
+工作线程池：处理事件（Handler），由一个工作线程池来执行业务逻辑，包括数据就绪后，用户态的数据读写。  
+
+- 主从 Reactor 模式；  
+
+对于多个CPU的机器，为充分利用系统资源，将 Reactor 拆分为两部分：mainReactor 和 subReactor。  
+
+mainReactor：负责监听`server socket`，用来处理网络新连接的建立，将建立的socketChannel指定注册给subReactor，通常一个线程就可以处理；  
+
+subReactor：监听`accept、read、write`事件（`Reactor`），包括等待数据就绪时，内核态的数据读写，通常使用多线程。    
+
+工作线程池：处理事件（`Handler`），由一个工作线程池来执行业务逻辑，包括数据就绪后，用户态的数据读写。  
+
 
 ###### Proactor 模式
 
