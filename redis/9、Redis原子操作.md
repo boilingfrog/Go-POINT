@@ -151,7 +151,7 @@ subReactor：监听`accept、read、write`事件（`Reactor`），包括等待�
 
 非阻塞的 read 请求在数据未准备好的情况下立即返回，可以继续往下执行，此时应用程序不断轮询内核，直到数据准备好，内核将数据拷贝到应用程序缓冲区，read 调用才可以获取到结果。  
 
-<img src="/img/redis/io-2.png"  alt="redis" />
+<img src="/img/redis/io-2.jpeg"  alt="redis" />
 
 这里最后一次 read 调用，获取数据的过程，是一个同步的过程，是需要等待的过程。这里的同步指的是内核态的数据拷贝到用户程序的缓存区这个过程。  
 
