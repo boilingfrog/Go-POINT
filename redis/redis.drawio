@@ -68,13 +68,13 @@
                         <mxPoint x="-29" y="-7" as="offset"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="OgSJZdiGVKwWTKnaTDDr-0" value="&lt;font style=&quot;font-size: 18px&quot;&gt;acceptor&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;fontColor=default;strokeColor=default;fillColor=#E63946;strokeWidth=2;fillWeight=4;hachureGap=8;fillStyle=dashed;sketch=1;hachureAngle=45;" vertex="1" parent="B5VFJ7lNq1nwlTygibGI-1">
+                <mxCell id="OgSJZdiGVKwWTKnaTDDr-0" value="&lt;font style=&quot;font-size: 18px&quot;&gt;acceptor&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;fontColor=default;strokeColor=default;fillColor=#2A9D8F;strokeWidth=2;fillWeight=4;hachureGap=8;fillStyle=dashed;sketch=1;hachureAngle=45;" vertex="1" parent="B5VFJ7lNq1nwlTygibGI-1">
                     <mxGeometry x="660" y="550" width="120" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="OgSJZdiGVKwWTKnaTDDr-1" value="&lt;font style=&quot;font-size: 18px&quot;&gt;handler&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;fontColor=default;strokeColor=default;fillColor=#E63946;strokeWidth=2;fillWeight=2;hachureGap=8;fillStyle=dots;sketch=1;hachureAngle=45;" vertex="1" parent="B5VFJ7lNq1nwlTygibGI-1">
+                <mxCell id="OgSJZdiGVKwWTKnaTDDr-1" value="&lt;font style=&quot;font-size: 18px&quot;&gt;handler&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;fontColor=default;strokeColor=default;fillColor=#2A9D8F;strokeWidth=2;fillWeight=2;hachureGap=8;fillStyle=dots;sketch=1;hachureAngle=45;" vertex="1" parent="B5VFJ7lNq1nwlTygibGI-1">
                     <mxGeometry x="660" y="660" width="120" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="4hEvKGFas-XP4M9qF5xe-3" value="&lt;font style=&quot;font-size: 18px&quot;&gt;handler&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;fontColor=default;strokeColor=default;fillColor=#E63946;strokeWidth=2;fillWeight=2;hachureGap=8;fillStyle=dots;sketch=1;hachureAngle=45;" vertex="1" parent="B5VFJ7lNq1nwlTygibGI-1">
+                <mxCell id="4hEvKGFas-XP4M9qF5xe-3" value="&lt;font style=&quot;font-size: 18px&quot;&gt;handler&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;fontColor=default;strokeColor=default;fillColor=#2A9D8F;strokeWidth=2;fillWeight=2;hachureGap=8;fillStyle=dots;sketch=1;hachureAngle=45;" vertex="1" parent="B5VFJ7lNq1nwlTygibGI-1">
                     <mxGeometry x="660" y="780" width="120" height="60" as="geometry"/>
                 </mxCell>
                 <mxCell id="4hEvKGFas-XP4M9qF5xe-8" style="edgeStyle=orthogonalEdgeStyle;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=18;" edge="1" parent="B5VFJ7lNq1nwlTygibGI-1" source="4hEvKGFas-XP4M9qF5xe-5" target="jXfEjZMSy8tfTScUWLBG-0">
@@ -86,7 +86,7 @@
                 <mxCell id="4hEvKGFas-XP4M9qF5xe-9" style="edgeStyle=orthogonalEdgeStyle;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=18;" edge="1" parent="B5VFJ7lNq1nwlTygibGI-1" source="4hEvKGFas-XP4M9qF5xe-6" target="jXfEjZMSy8tfTScUWLBG-0">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="4hEvKGFas-XP4M9qF5xe-6" value="&lt;span style=&quot;font-size: 16px&quot;&gt;client&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;fontColor=default;strokeColor=default;fillColor=#E9C46A;strokeWidth=2;fillWeight=2;hachureGap=8;fillStyle=dots;sketch=1;" vertex="1" parent="B5VFJ7lNq1nwlTygibGI-1">
+                <mxCell id="4hEvKGFas-XP4M9qF5xe-6" value="&lt;font style=&quot;font-size: 18px&quot;&gt;client&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;fontColor=default;strokeColor=default;fillColor=#E9C46A;strokeWidth=2;fillWeight=2;hachureGap=8;fillStyle=dots;sketch=1;" vertex="1" parent="B5VFJ7lNq1nwlTygibGI-1">
                     <mxGeometry x="240" y="770" width="120" height="60" as="geometry"/>
                 </mxCell>
             </root>

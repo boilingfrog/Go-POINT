@@ -5,11 +5,12 @@
   - [Redis 中处理并发的方案](#redis-%E4%B8%AD%E5%A4%84%E7%90%86%E5%B9%B6%E5%8F%91%E7%9A%84%E6%96%B9%E6%A1%88)
   - [原子性](#%E5%8E%9F%E5%AD%90%E6%80%A7)
     - [原子性的单命令](#%E5%8E%9F%E5%AD%90%E6%80%A7%E7%9A%84%E5%8D%95%E5%91%BD%E4%BB%A4)
-    - [Redis 的IO模型分析](#redis-%E7%9A%84io%E6%A8%A1%E5%9E%8B%E5%88%86%E6%9E%90)
+    - [Redis 的编程模型](#redis-%E7%9A%84%E7%BC%96%E7%A8%8B%E6%A8%A1%E5%9E%8B)
+      - [Unix 中的 I/O 模型](#unix-%E4%B8%AD%E7%9A%84-io-%E6%A8%A1%E5%9E%8B)
       - [thread-based architecture（基于线程的架构）](#thread-based-architecture%E5%9F%BA%E4%BA%8E%E7%BA%BF%E7%A8%8B%E7%9A%84%E6%9E%B6%E6%9E%84)
       - [event-driven architecture（事件驱动模型）](#event-driven-architecture%E4%BA%8B%E4%BB%B6%E9%A9%B1%E5%8A%A8%E6%A8%A1%E5%9E%8B)
-        - [Reactor 模式](#reactor-%E6%A8%A1%E5%BC%8F)
-        - [Proactor 模式](#proactor-%E6%A8%A1%E5%BC%8F)
+      - [Reactor 模式](#reactor-%E6%A8%A1%E5%BC%8F)
+      - [Proactor 模式](#proactor-%E6%A8%A1%E5%BC%8F)
     - [为什么 Redis 选择单线程](#%E4%B8%BA%E4%BB%80%E4%B9%88-redis-%E9%80%89%E6%8B%A9%E5%8D%95%E7%BA%BF%E7%A8%8B)
     - [使用 LUA 脚本](#%E4%BD%BF%E7%94%A8-lua-%E8%84%9A%E6%9C%AC)
   - [分布式锁](#%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81)
@@ -61,11 +62,69 @@
 
 #### 原子性的单命令
 
-Redis 中的单个命令的执行都是原子性的，这里来具体的探讨下   
+Redis 中的单个命令的执行都是原子性的，这里来具体的探讨下    
 
-#### Redis 的IO模型分析
+在探讨 Redis 原子性的时候，先来探讨下 Redis 中使用到的编程模型
 
-在探讨 Redis 原子性的时候，先来探讨下 Redis 中的 IO 模型  
+#### Redis 的编程模型
+
+Redis 中使用到了 Reactor 模型，Reactor 是非阻塞 I/O 模型，这里来看下 Unix 中的 I/O 模型。
+
+##### Unix 中的 I/O 模型   
+
+操作系统上的 I/O 是用户空间和内核空间的数据交互，因此 I/O 操作通常包含以下两个步骤：
+
+1、等待网络数据到达网卡(读就绪)/等待网卡可写(写就绪) –> 读取/写入到内核缓冲区；
+
+2、从内核缓冲区复制数据 –> 用户空间(读)/从用户空间复制数据 -> 内核缓冲区(写)；  
+
+Unix 中有五种基本的 I/O 模型  
+
+- 阻塞式 I/O；  
+  
+- 非阻塞式 I/O；  
+  
+- I/O 多路复用；  
+  
+- 信号驱动 I/O；  
+  
+- 异步 I/O；  
+
+<img src="/img/redis/io-all.jpg"  alt="redis" />  
+
+而判定一个 I/O 模型是同步还是异步，主要看第二步：数据在用户和内核空间之间复制的时候是不是会阻塞当前进程，如果会，则是同步 I/O，否则，就是异步 I/O。  
+
+这里主要分下下面三种 I/O 模型   
+
+- 阻塞型 I/O；
+
+当用户程序执行 read ，线程会被阻塞，一直等到内核数据准备好，并把数据从内核缓冲区拷贝到应用程序的缓冲区中，当拷贝过程完成，read 才会返回。
+
+<img src="/img/redis/io-1.png"  alt="redis" />
+
+阻塞等待的是「内核数据准备好」和「数据从内核态拷贝到用户态」这两个过程。
+
+- 非阻塞同步 I/O；
+
+非阻塞的 read 请求在数据未准备好的情况下立即返回，可以继续往下执行，此时应用程序不断轮询内核，直到数据准备好，内核将数据拷贝到应用程序缓冲区，read 调用才可以获取到结果。
+
+<img src="/img/redis/io-2.jpeg"  alt="redis" />
+
+这里最后一次 read 调用，获取数据的过程，是一个同步的过程，是需要等待的过程。这里的同步指的是内核态的数据拷贝到用户程序的缓存区这个过程。
+
+- 非阻塞异步 I/O；
+
+发起异步 I/O，就立即返回，内核自动将数据从内核空间拷贝到用户空间，这个拷贝过程同样是异步的，内核自动完成的，和前面的同步操作不一样，应用程序并不需要主动发起拷贝动作。
+
+<img src="/img/redis/io-3.png"  alt="redis" />
+
+举个你去饭堂吃饭的例子，你好比应用程序，饭堂好比操作系统。
+
+阻塞 I/O 好比，你去饭堂吃饭，但是饭堂的菜还没做好，然后你就一直在那里等啊等，等了好长一段时间终于等到饭堂阿姨把菜端了出来（数据准备的过程），但是你还得继续等阿姨把菜（内核空间）打到你的饭盒里（用户空间），经历完这两个过程，你才可以离开。
+
+非阻塞 I/O 好比，你去了饭堂，问阿姨菜做好了没有，阿姨告诉你没，你就离开了，过几十分钟，你又来饭堂问阿姨，阿姨说做好了，于是阿姨帮你把菜打到你的饭盒里，这个过程你是得等待的。
+
+异步 I/O 好比，你让饭堂阿姨将菜做好并把菜打到饭盒里后，把饭盒送到你面前，整个过程你都不需要任何等待。
 
 在 web 服务中，处理 web 请求通常有两种体系结构，分别为：`thread-based architecture`（基于线程的架构）、`event-driven architecture`（事件驱动模型）  
 
@@ -97,7 +156,7 @@ thread-based architecture（基于线程的架构）：这种比较容易理解�
 
 Reactor 模式和 Proactor 模式都是 `event-driven architecture`（事件驱动模型）的实现方式，这里具体分析下  
 
-###### Reactor 模式
+##### Reactor 模式
 
 Reactor 模式，是指通过一个或多个输入同时传递给服务处理器的服务请求的事件驱动处理模式。  
 
@@ -135,39 +194,7 @@ subReactor：监听`accept、read、write`事件（`Reactor`），包括等待�
 
 工作线程池：处理事件（`Handler`），由一个工作线程池来执行业务逻辑，包括数据就绪后，用户态的数据读写。  
 
-###### Proactor 模式  
-
-在了解 Proactor 模式之前，需要先了解 IO 的调用方式  
-
-- 阻塞型 I/O；  
-
-当用户程序执行 read ，线程会被阻塞，一直等到内核数据准备好，并把数据从内核缓冲区拷贝到应用程序的缓冲区中，当拷贝过程完成，read 才会返回。  
-
-<img src="/img/redis/io-1.png"  alt="redis" />
-
-阻塞等待的是「内核数据准备好」和「数据从内核态拷贝到用户态」这两个过程。  
-
-- 非阻塞同步 I/O；  
-
-非阻塞的 read 请求在数据未准备好的情况下立即返回，可以继续往下执行，此时应用程序不断轮询内核，直到数据准备好，内核将数据拷贝到应用程序缓冲区，read 调用才可以获取到结果。  
-
-<img src="/img/redis/io-2.jpeg"  alt="redis" />
-
-这里最后一次 read 调用，获取数据的过程，是一个同步的过程，是需要等待的过程。这里的同步指的是内核态的数据拷贝到用户程序的缓存区这个过程。  
-
-- 非阻塞异步 I/O；  
-
-发起异步 I/O，就立即返回，内核自动将数据从内核空间拷贝到用户空间，这个拷贝过程同样是异步的，内核自动完成的，和前面的同步操作不一样，应用程序并不需要主动发起拷贝动作。  
-
-<img src="/img/redis/io-3.png"  alt="redis" />
-
-举个你去饭堂吃饭的例子，你好比应用程序，饭堂好比操作系统。  
-
-阻塞 I/O 好比，你去饭堂吃饭，但是饭堂的菜还没做好，然后你就一直在那里等啊等，等了好长一段时间终于等到饭堂阿姨把菜端了出来（数据准备的过程），但是你还得继续等阿姨把菜（内核空间）打到你的饭盒里（用户空间），经历完这两个过程，你才可以离开。  
-
-非阻塞 I/O 好比，你去了饭堂，问阿姨菜做好了没有，阿姨告诉你没，你就离开了，过几十分钟，你又来饭堂问阿姨，阿姨说做好了，于是阿姨帮你把菜打到你的饭盒里，这个过程你是得等待的。    
-
-异步 I/O 好比，你让饭堂阿姨将菜做好并把菜打到饭盒里后，把饭盒送到你面前，整个过程你都不需要任何等待。  
+##### Proactor 模式
 
 reactor 流程与 Reactor 模式类似  
 
@@ -300,5 +327,6 @@ void incrDecrCommand(client *c, long long incr) {
 【事件驱动架构】https://help.aliyun.com/document_detail/207135.html   
 【Comparing Two High-Performance I/O Design Patterns】https://www.artima.com/articles/comparing-two-high-performance-io-design-patterns  
 【如何深刻理解Reactor和Proactor？】https://www.zhihu.com/question/26943938  
+【Go netpoller 原生网络模型之源码全面揭秘】https://strikefreedom.top/go-netpoll-io-multiplexing-reactor  
 
 
