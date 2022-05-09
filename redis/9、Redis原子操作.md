@@ -135,9 +135,38 @@ subReactor：监听`accept、read、write`事件（`Reactor`），包括等待�
 
 工作线程池：处理事件（`Handler`），由一个工作线程池来执行业务逻辑，包括数据就绪后，用户态的数据读写。  
 
+###### Proactor 模式  
 
-###### Proactor 模式
+在了解 Proactor 模式之前，需要先了解 IO 的调用方式  
 
+- 阻塞型 I/O；  
+
+当用户程序执行 read ，线程会被阻塞，一直等到内核数据准备好，并把数据从内核缓冲区拷贝到应用程序的缓冲区中，当拷贝过程完成，read 才会返回。  
+
+<img src="/img/redis/io-1.png"  alt="redis" />
+
+阻塞等待的是「内核数据准备好」和「数据从内核态拷贝到用户态」这两个过程。  
+
+- 非阻塞同步 I/O；  
+
+非阻塞的 read 请求在数据未准备好的情况下立即返回，可以继续往下执行，此时应用程序不断轮询内核，直到数据准备好，内核将数据拷贝到应用程序缓冲区，read 调用才可以获取到结果。  
+
+<img src="/img/redis/io-2.png"  alt="redis" />
+
+这里最后一次 read 调用，获取数据的过程，是一个同步的过程，是需要等待的过程。这里的同步指的是内核态的数据拷贝到用户程序的缓存区这个过程。  
+
+- 非阻塞异步 I/O；  
+
+发起异步 I/O，就立即返回，内核自动将数据从内核空间拷贝到用户空间，这个拷贝过程同样是异步的，内核自动完成的，和前面的同步操作不一样，应用程序并不需要主动发起拷贝动作。  
+
+<img src="/img/redis/io-3.png"  alt="redis" />
+
+reactor 流程与 Reactor 模式类似  
+
+不同点就是
+
+reactor 下还是由工作线程从网络同步读取数据；proactor 下数据由是内核读取到缓冲区后，工作线程再处理。
+ 
 #### 为什么 Redis 选择单线程
 
 
@@ -252,5 +281,7 @@ void incrDecrCommand(client *c, long long incr) {
 【高性能IO模型分析-Reactor模式和Proactor模式】https://zhuanlan.zhihu.com/p/95662364  
 【什么是事件驱动架构？】https://www.redhat.com/zh/topics/integration/what-is-event-driven-architecture  
 【事件驱动架构】https://help.aliyun.com/document_detail/207135.html   
+【Comparing Two High-Performance I/O Design Patterns】https://www.artima.com/articles/comparing-two-high-performance-io-design-patterns  
+【如何深刻理解Reactor和Proactor？】https://www.zhihu.com/question/26943938  
 
 
