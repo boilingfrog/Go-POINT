@@ -227,6 +227,26 @@ Redis 中使用是单线程，可能处于以下几方面的考虑
 Redis 在 v6.0 版本之前，Redis 的核心网络模型一直是一个典型的单 Reactor 模型：利用 `epoll/select/kqueue` 等多路复用技术，在单线程的事件循环中不断去处理事件（客户端请求），最后回写响应数据到客户端：  
 
 
+这里看几个主要的核心函数  
+
+- client：服务端连接的客户端信息，客户端通过 socket 连接服务点端，服务端会使用 client 记录连接的客户端的信息；  
+
+```
+ // 使用多路复用，需要记录每个客户端的状态，client 之前通过链表保存
+typedef struct client {
+    int fd; // 字段是客户端套接字文件描述符
+    sds querybuf; // 客户端的读入缓冲区
+    int argc; // 当前命令的参数数量
+    robj **argv;  // 当前命令的参数
+    redisDb *db; // 当前选择的数据库指针
+    int flags;
+    list *reply; // 要发送给客户端的回复对象列表
+    // ... many other fields ...
+    char buf[PROTO_REPLY_CHUNK_BYTES];
+} client;
+```
+
+- aeApiPoll：I
 
 
 比如对于上面的`读取-修改-写回`操作可以使用 Redis 中的原子计数器, INCRBY（自增）、DECRBR（自减）、INCR（加1） 和 DECR（减1） 等命令。  
