@@ -12,6 +12,11 @@
       - [Reactor 模式](#reactor-%E6%A8%A1%E5%BC%8F)
       - [Proactor 模式](#proactor-%E6%A8%A1%E5%BC%8F)
     - [为什么 Redis 选择单线程](#%E4%B8%BA%E4%BB%80%E4%B9%88-redis-%E9%80%89%E6%8B%A9%E5%8D%95%E7%BA%BF%E7%A8%8B)
+      - [client](#client)
+      - [aeApiPoll](#aeapipoll)
+      - [beforeSleep](#beforesleep)
+      - [acceptTcpHandler](#accepttcphandler)
+      - [readQueryFromClient](#readqueryfromclient)
     - [使用 LUA 脚本](#%E4%BD%BF%E7%94%A8-lua-%E8%84%9A%E6%9C%AC)
   - [分布式锁](#%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81)
   - [参考](#%E5%8F%82%E8%80%83)
@@ -229,7 +234,9 @@ Redis 在 v6.0 版本之前，Redis 的核心网络模型一直是一个典型�
 
 这里看几个主要的核心函数  
 
-- client：服务端连接的客户端信息，客户端通过 socket 连接服务点端，服务端会使用 client 记录连接的客户端的信息；  
+##### client
+  
+服务端连接的客户端信息，客户端通过 socket 连接服务点端，服务端会使用 client 记录连接的客户端的信息；  
 
 ```
  // 使用多路复用，需要记录每个客户端的状态，client 之前通过链表保存
@@ -246,7 +253,103 @@ typedef struct client {
 } client;
 ```
 
-- aeApiPoll：I
+##### aeApiPoll
+
+Redis 中对 IO 多路复用封装的 api,根据不同的操作函数调用不同的 IO 多路复用函数；  
+
+```
+// https://github.com/redis/redis/blob/5.0/src/ae.c#L49
+#ifdef HAVE_EVPORT
+#include "ae_evport.c"  // Solaris
+#else
+    #ifdef HAVE_EPOLL
+    #include "ae_epoll.c"   // Linux
+    #else
+        #ifdef HAVE_KQUEUE
+        #include "ae_kqueue.c"  // MacOS
+        #else
+        #include "ae_select.c"  // Windows
+        #endif
+    #endif
+#endif
+```
+
+ae_epoll.c：对应 Linux 上的 IO 复用函数 epoll；  
+
+ae_evport.c：对应 Solaris 上的 IO 复用函数 evport；  
+
+ae_kqueue.c：对应 macOS 或 FreeBSD 上的 IO 复用函数 kqueue；   
+
+ae_select.c：对应 Linux（或 Windows）的 IO 复用函数 select。
+
+##### beforeSleep 
+
+每次时间循环都会被调用，
+
+##### acceptTcpHandler  
+
+用于处理客户端的连接  
+
+```
+// https://github.com/redis/redis/blob/5.0/src/networking.c#L734
+void acceptTcpHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
+    int cport, cfd, max = MAX_ACCEPTS_PER_CALL;
+    char cip[NET_IP_STR_LEN];
+    UNUSED(el);
+    UNUSED(mask);
+    UNUSED(privdata);
+
+    while(max--) {
+       // 用于accept客户端的连接，其返回值是客户端对应的socket
+        cfd = anetTcpAccept(server.neterr, fd, cip, sizeof(cip), &cport);
+        if (cfd == ANET_ERR) {
+            if (errno != EWOULDBLOCK)
+                serverLog(LL_WARNING,
+                    "Accepting client connection: %s", server.neterr);
+            return;
+        }
+        serverLog(LL_VERBOSE,"Accepted %s:%d", cip, cport);
+        // 会调用acceptCommonHandler对连接以及客户端进行初始化
+        acceptCommonHandler(cfd,0,cip);
+    }
+}
+
+// https://github.com/redis/redis/blob/5.0/src/networking.c#L664  
+static void acceptCommonHandler(int fd, int flags, char *ip) {
+    client *c;
+    // 分配并初始化新客户端
+    if ((c = createClient(fd)) == NULL) {
+        serverLog(LL_WARNING,
+            "Error registering fd event for the new client: %s (fd=%d)",
+            strerror(errno),fd);
+        close(fd); /* May be already closed, just ignore errors */
+        return;
+    }
+    // 判断当前连接的客户端是否超过最大值，如果超过的话，会拒绝这次连接。否则，更新客户端连接数的计数
+    if (listLength(server.clients) > server.maxclients) {
+        char *err = "-ERR max number of clients reached\r\n";
+
+        /* That's a best effort error message, don't check write errors */
+        if (write(c->fd,err,strlen(err)) == -1) {
+            /* Nothing to do, Just to avoid the warning... */
+        }
+        server.stat_rejected_conn++;
+        freeClient(c);
+        return;
+    }
+    ...
+}
+```
+
+1、acceptTcpHandler 主要用于处理和客户端连接的建立；  
+
+2、其中会调用函数 anetTcpAccept 用于 accept 客户端的连接，其返回值是客户端对应的 socket；  
+
+3、然后调用 acceptCommonHandler 对连接以及客户端进行初始化。  
+
+##### readQueryFromClient
+
+
 
 
 比如对于上面的`读取-修改-写回`操作可以使用 Redis 中的原子计数器, INCRBY（自增）、DECRBR（自减）、INCR（加1） 和 DECR（减1） 等命令。  
