@@ -17,6 +17,7 @@
       - [beforeSleep](#beforesleep)
       - [acceptTcpHandler](#accepttcphandler)
       - [readQueryFromClient](#readqueryfromclient)
+      - [sendReplyToClient](#sendreplytoclient)
     - [使用 LUA 脚本](#%E4%BD%BF%E7%94%A8-lua-%E8%84%9A%E6%9C%AC)
   - [分布式锁](#%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81)
   - [参考](#%E5%8F%82%E8%80%83)
@@ -438,7 +439,81 @@ void processInputBuffer(client *c) {
 
 1、readQueryFromClient()，从文件描述符 fd 中读出数据到输入缓冲区 querybuf 中；  
 
-2、
+2、使用 processInputBuffer 函数完成对命令的解析，在其中使用 processInlineBuffer 或者 processMultibulkBuffer 根据 Redis 协议解析命令；    
+
+3、完成对一个命令的解析，就使用 processCommand 对命令就行执行；
+
+4、然后判断客户端是否满足重置的条件，对客户端进行重置工作。  
+
+##### sendReplyToClient
+
+命令的回调函数，当一次事件循环之后写出缓冲区中还有数据残留，则这个处理器会被注册绑定到相应的连接上，当客户端可写时，就会触发事件，调用 sendReplyToClient() 函数，执行写事件。   
+
+```
+// https://github.com/redis/redis/blob/5.0/src/networking.c#L1072
+// 写事件处理程序，只是发送回复给client
+void sendReplyToClient(aeEventLoop *el, int fd, void *privdata, int mask) {
+    UNUSED(el);
+    UNUSED(mask);
+    writeToClient(fd,privdata,1);
+}
+
+// https://github.com/redis/redis/blob/5.0/src/networking.c#L979
+// 将输出缓冲区的数据写给client，如果client被释放则返回C_ERR，没被释放则返回C_OK
+int writeToClient(int fd, client *c, int handler_installed) {
+    ssize_t nwritten = 0, totwritten = 0;
+    size_t objlen;
+    clientReplyBlock *o;
+    
+    // 如果指定的client的回复缓冲区中还有数据，则返回真，表示可以写socket
+    while(clientHasPendingReplies(c)) {
+        // 固定缓冲区发送未完成
+        if (c->bufpos > 0) {
+            // 将缓冲区的数据写到fd中
+            nwritten = write(fd,c->buf+c->sentlen,c->bufpos-c->sentlen);
+            ...
+            // 如果发送的数据等于buf的偏移量，表示发送完成
+            if ((int)c->sentlen == c->bufpos) {
+                c->bufpos = 0;
+                c->sentlen = 0;
+            }
+        // 固定缓冲区发送完成，发送回复链表的内容
+        } else {
+            // 回复链表的第一条回复对象，和对象值的长度和所占的内存
+            o = listNodeValue(listFirst(c->reply));
+            objlen = o->used;
+
+            if (objlen == 0) {
+                c->reply_bytes -= o->size;
+                listDelNode(c->reply,listFirst(c->reply));
+                continue;
+            }
+            // 将当前节点的值写到fd中
+            nwritten = write(fd, o->buf + c->sentlen, objlen - c->sentlen);
+            if (nwritten <= 0) break;
+            c->sentlen += nwritten;
+            totwritten += nwritten;
+            ...
+        }
+        ...
+    }
+    ...
+    // 如果指定的client的回复缓冲区中已经没有数据，发送完成
+    if (!clientHasPendingReplies(c)) {
+        c->sentlen = 0;
+        // 删除当前client的可读事件的监听
+        if (handler_installed) aeDeleteFileEvent(server.el,c->fd,AE_WRITABLE);
+
+        /* Close connection after entire reply has been sent. */
+        // 如果指定了写入按成之后立即关闭的标志，则释放client
+        if (c->flags & CLIENT_CLOSE_AFTER_REPLY) {
+            freeClient(c);
+            return C_ERR;
+        }
+    }
+    return C_OK;
+}
+```
 
 
 比如对于上面的`读取-修改-写回`操作可以使用 Redis 中的原子计数器, INCRBY（自增）、DECRBR（自减）、INCR（加1） 和 DECR（减1） 等命令。  
