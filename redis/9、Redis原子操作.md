@@ -349,7 +349,96 @@ static void acceptCommonHandler(int fd, int flags, char *ip) {
 
 ##### readQueryFromClient
 
+readQueryFromClient 是请求处理的起点,解析并执行客户端的请求命令。  
 
+```
+// https://github.com/redis/redis/blob/5.0/src/networking.c#L1522
+// 读取client的输入缓冲区的内容
+void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask) {
+    client *c = (client*) privdata;
+    int nread, readlen;
+    size_t qblen;
+    UNUSED(el);
+    UNUSED(mask);
+    ...
+    // 输入缓冲区的长度
+    qblen = sdslen(c->querybuf);
+    // 更新缓冲区的峰值
+    if (c->querybuf_peak < qblen) c->querybuf_peak = qblen;
+    // 扩展缓冲区的大小
+    c->querybuf = sdsMakeRoomFor(c->querybuf, readlen);
+    // 调用read从描述符为fd的客户端socket中读取数据
+    nread = read(fd, c->querybuf+qblen, readlen);
+    ...
+    // 处理读取的内容
+    processInputBufferAndReplicate(c);
+}
+// https://github.com/redis/redis/blob/5.0/src/networking.c#L1507
+void processInputBufferAndReplicate(client *c) {
+    // 当前客户端不属于主从复制中的Master 
+    // 直接调用 processInputBuffer，对客户端输入缓冲区中的命令和参数进行解析
+    if (!(c->flags & CLIENT_MASTER)) {
+        processInputBuffer(c);
+    // 客户端属于主从复制中的Master 
+    // 调用processInputBuffer函数，解析客户端命令，  
+    // 调用replicationFeedSlavesFromMasterStream 函数，将主节点接收到的命令同步给从节点
+    } else {
+        size_t prev_offset = c->reploff;
+        processInputBuffer(c);
+        size_t applied = c->reploff - prev_offset;
+        if (applied) {
+            replicationFeedSlavesFromMasterStream(server.slaves,
+                    c->pending_querybuf, applied);
+            sdsrange(c->pending_querybuf,applied,-1);
+        }
+    }
+}
+
+// https://github.com/redis/redis/blob/5.0/src/networking.c#L1428
+void processInputBuffer(client *c) {
+    server.current_client = c;
+
+    /* Keep processing while there is something in the input buffer */
+    // 持续读取缓冲区的内容
+    while(c->qb_pos < sdslen(c->querybuf)) {
+        ...
+        /* Multibulk processing could see a <= 0 length. */
+        // 如果参数为0，则重置client
+        if (c->argc == 0) {
+            resetClient(c);
+        } else {
+            /* Only reset the client when the command was executed. */
+            // 执行命令成功后重置client
+            if (processCommand(c) == C_OK) {
+                if (c->flags & CLIENT_MASTER && !(c->flags & CLIENT_MULTI)) {
+                    /* Update the applied replication offset of our master. */
+                    c->reploff = c->read_reploff - sdslen(c->querybuf) + c->qb_pos;
+                }
+
+                // 命令处于阻塞状态中的客户端，不需要进行重置
+                if (!(c->flags & CLIENT_BLOCKED) || c->btype != BLOCKED_MODULE)
+                    resetClient(c);
+            }
+            /* freeMemoryIfNeeded may flush slave output buffers. This may
+             * result into a slave, that may be the active client, to be
+             * freed. */
+            if (server.current_client == NULL) break;
+        }
+    }
+
+    /* Trim to pos */
+    if (server.current_client != NULL && c->qb_pos) {
+        sdsrange(c->querybuf,c->qb_pos,-1);
+        c->qb_pos = 0;
+    }
+
+    server.current_client = NULL;
+}
+```
+
+1、readQueryFromClient()，从文件描述符 fd 中读出数据到输入缓冲区 querybuf 中；  
+
+2、
 
 
 比如对于上面的`读取-修改-写回`操作可以使用 Redis 中的原子计数器, INCRBY（自增）、DECRBR（自减）、INCR（加1） 和 DECR（减1） 等命令。  
