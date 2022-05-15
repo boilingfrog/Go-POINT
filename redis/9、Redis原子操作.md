@@ -12,8 +12,7 @@
       - [Reactor 模式](#reactor-%E6%A8%A1%E5%BC%8F)
       - [Proactor 模式](#proactor-%E6%A8%A1%E5%BC%8F)
     - [为什么 Redis 选择单线程](#%E4%B8%BA%E4%BB%80%E4%B9%88-redis-%E9%80%89%E6%8B%A9%E5%8D%95%E7%BA%BF%E7%A8%8B)
-      - [客户端的连接](#%E5%AE%A2%E6%88%B7%E7%AB%AF%E7%9A%84%E8%BF%9E%E6%8E%A5)
-      - [aeApiPoll](#aeapipoll)
+      - [事件驱动框架对事件的捕获分发](#%E4%BA%8B%E4%BB%B6%E9%A9%B1%E5%8A%A8%E6%A1%86%E6%9E%B6%E5%AF%B9%E4%BA%8B%E4%BB%B6%E7%9A%84%E6%8D%95%E8%8E%B7%E5%88%86%E5%8F%91)
       - [客户端连接应答](#%E5%AE%A2%E6%88%B7%E7%AB%AF%E8%BF%9E%E6%8E%A5%E5%BA%94%E7%AD%94)
       - [命令的接收](#%E5%91%BD%E4%BB%A4%E7%9A%84%E6%8E%A5%E6%94%B6)
       - [命令的回复](#%E5%91%BD%E4%BB%A4%E7%9A%84%E5%9B%9E%E5%A4%8D)
@@ -231,31 +230,38 @@ Redis 中使用是单线程，可能处于以下几方面的考虑
 
 Redis 在 v6.0 版本之前，Redis 的核心网络模型一直是一个典型的单 Reactor 模型：利用 `epoll/select/kqueue` 等多路复用技术，在单线程的事件循环中不断去处理事件（客户端请求），最后回写响应数据到客户端：  
 
+这里看几个主要的流程
 
-这里看几个主要的核心函数  
+##### 事件驱动框架对事件的捕获分发
 
-##### 客户端的连接
+Redis 的网络框架实现了 Reactor 模型，并且自行开发实现了一个事件驱动框架。  
+
+事件驱动框架的逻辑简单点讲就是   
+
+- 事件初始化；  
   
-服务端连接的客户端信息，客户端通过 socket 连接服务点端，服务端会使用 client 记录连接的客户端的信息；  
+- 事件捕获；  
+  
+- 分发和处理主循环。  
+
+<img src="/img/redis/redis-reactor-list.png"  alt="redis" align="center" />
+
+来看下 Redis 中事件驱动框架实现的几个主要函数  
 
 ```
- // 使用多路复用，需要记录每个客户端的状态，client 之前通过链表保存
-typedef struct client {
-    int fd; // 字段是客户端套接字文件描述符
-    sds querybuf; // 保存客户端发来命令请求的输入缓冲区。以Redis通信协议的方式保存
-    int argc; // 当前命令的参数数量
-    robj **argv;  // 当前命令的参数
-    redisDb *db; // 当前选择的数据库指针
-    int flags;
-    list *reply; // 保存命令回复的链表。因为静态缓冲区大小固定，主要保存固定长度的命令回复，当处理一些返回大量回复的命令，则会将命令回复以链表的形式连接起来。
-    // ... many other fields ...
-    char buf[PROTO_REPLY_CHUNK_BYTES];
-} client;
+// 执行事件捕获，分发和处理循环
+void aeMain(aeEventLoop *eventLoop);
+// 用来注册监听的事件和事件对应的处理函数。只有对事件和处理函数进行了注册，才能在事件发生时调用相应的函数进行处理。
+int aeCreateFileEvent(aeEventLoop *eventLoop, int fd, int mask, aeFileProc *proc, void *clientData);
+// aeProcessEvents 函数实现的主要功能，包括捕获事件、判断事件类型和调用具体的事件处理函数，从而实现事件的处理
+int aeProcessEvents(aeEventLoop *eventLoop, int flags);
 ```
 
-##### aeApiPoll
+使用 aeApiPoll 来捕获事件  
 
-Redis 中对 IO 多路复用封装的 api,根据不同的操作函数调用不同的 IO 多路复用函数；  
+aeApiPoll 是 I/O 多路复用 API，是基于 `epoll_wait/select/kevent` 等系统调用的封装，监听等待读写事件触发，然后处理，它是事件循环（Event Loop）中的核心函数，是事件驱动得以运行的基础。  
+
+Redis 是依赖于操作系统底层提供的 IO 多路复用机制，来实现事件捕获，检查是否有新的连接、读写事件发生。为了适配不同的操作系统，Redis 对不同操作系统实现的网络 IO 多路复用函数，都进行了统一的封装。  
 
 ```
 // https://github.com/redis/redis/blob/5.0/src/ae.c#L49
@@ -274,17 +280,19 @@ Redis 中对 IO 多路复用封装的 api,根据不同的操作函数调用不�
 #endif
 ```
 
-ae_epoll.c：对应 Linux 上的 IO 复用函数 epoll；  
+ae_epoll.c：对应 Linux 上的 IO 复用函数 epoll；
 
-ae_evport.c：对应 Solaris 上的 IO 复用函数 evport；  
+ae_evport.c：对应 Solaris 上的 IO 复用函数 evport；
 
-ae_kqueue.c：对应 macOS 或 FreeBSD 上的 IO 复用函数 kqueue；   
+ae_kqueue.c：对应 macOS 或 FreeBSD 上的 IO 复用函数 kqueue；
 
 ae_select.c：对应 Linux（或 Windows）的 IO 复用函数 select。
 
 ##### 客户端连接应答
 
-监听 socket 的读事件,当有客户端连接请求过来，使用函数 acceptTcpHandler 和客户端建立连接  
+监听 socket 的读事件,当有客户端连接请求过来，使用函数 acceptTcpHandler 和客户端建立连接    
+
+当 Redis 启动后，服务器程序的 main 函数会调用 initSever 函数来进行初始化，而在初始化的过程中，aeCreateFileEvent 就会被 initServer 函数调用，用于注册要监听的事件，以及相应的事件处理函数。  
 
 ```
 // https://github.com/redis/redis/blob/5.0/src/server.c#L2036
@@ -301,7 +309,13 @@ void initServer(void) {
     }
   ...
 }
+``` 
 
+可以看到 initServer 中会根据启用的 IP 端口个数，为每个 IP 端口上的网络事件，调用 aeCreateFileEvent，创建对 AE_READABLE 事件的监听，并且注册 AE_READABLE 事件的处理 handler，也就是 acceptTcpHandler 函数。  
+
+然后看下 acceptTcpHandler 的实现  
+
+```
 // https://github.com/redis/redis/blob/5.0/src/networking.c#L734
 void acceptTcpHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
     int cport, cfd, max = MAX_ACCEPTS_PER_CALL;
@@ -351,6 +365,19 @@ static void acceptCommonHandler(int fd, int flags, char *ip) {
     ...
 }
 
+// 使用多路复用，需要记录每个客户端的状态，client 之前通过链表保存
+typedef struct client {
+int fd; // 字段是客户端套接字文件描述符
+sds querybuf; // 保存客户端发来命令请求的输入缓冲区。以Redis通信协议的方式保存
+int argc; // 当前命令的参数数量
+robj **argv;  // 当前命令的参数
+redisDb *db; // 当前选择的数据库指针
+int flags;
+list *reply; // 保存命令回复的链表。因为静态缓冲区大小固定，主要保存固定长度的命令回复，当处理一些返回大量回复的命令，则会将命令回复以链表的形式连接起来。
+// ... many other fields ...
+char buf[PROTO_REPLY_CHUNK_BYTES];
+} client;
+
 client *createClient(int fd) {
     client *c = zmalloc(sizeof(client));
     
@@ -386,7 +413,7 @@ client *createClient(int fd) {
 
 3、然后调用 acceptCommonHandler 对连接以及客户端进行初始化；  
 
-4、初始化客户端的时候，同时使用 AE 的 API 将 readQueryFromClient 命令读取处理器绑定到新连接对应的文件描述符上；  
+4、初始化客户端的时候，同时使用 aeCreateFileEvent 用来注册监听的事件和事件对应的处理函数，将 readQueryFromClient 命令读取处理器绑定到新连接对应的文件描述符上；  
 
 5、服务器会监听该文件描述符的读事件，当客户端发送了命令，触发了 AE_READABLE 事件，那么就会调用回调函数 readQueryFromClient() 来从文件描述符 fd 中读发来的命令，并保存在输入缓冲区中 querybuf。  
 
