@@ -512,7 +512,7 @@ void processInputBuffer(client *c) {
 
 3、完成对一个命令的解析，就使用 processCommand 对命令就行执行；
 
-4、然后判断客户端是否满足重置的条件，对客户端进行重置工作。
+4、命令执行完成，最后调用 addReply 函数族的一系列函数将响应数据写入到对应 client 的写出缓冲区：client->buf 或者 client->reply ，client->buf 是首选的写出缓冲区，固定大小 16KB，一般来说可以缓冲足够多的响应数据，但是如果客户端在时间窗口内需要响应的数据非常大，那么则会自动切换到 client->reply 链表上去，使用链表理论上能够保存无限大的数据（受限于机器的物理内存），最后把 client 添加进一个 LIFO 队列 clients_pending_write；  
 
 ##### 命令的回复
 
@@ -533,6 +533,7 @@ void beforeSleep(struct aeEventLoop *eventLoop) {
 int handleClientsWithPendingWrites(void) {
     listIter li;
     listNode *ln;
+    // 遍历 clients_pending_write 队列，调用 writeToClient 把 client 的写出缓冲区里的数据回写到客户端
     int processed = listLength(server.clients_pending_write);
 
     listRewind(server.clients_pending_write,&li);
@@ -629,7 +630,7 @@ int writeToClient(int fd, client *c, int handler_installed) {
 }
 ```
 
-1、beforeSleep 函数调用的 handleClientsWithPendingWrites 函数，会遍历每一个待写回数据的客户端，然后调用 writeToClient 函数，将客户端输出缓冲区中的数据写回；
+1、beforeSleep 函数调用的 handleClientsWithPendingWrites 函数，会遍历 clients_pending_write(待写回数据的客户端) 队列，调用 writeToClient 把 client 的写出缓冲区里的数据回写到客户端，然后调用 writeToClient 函数，将客户端输出缓冲区中的数据写回；
 
 2、如果输出缓冲区的数据还没有写完，此时，handleClientsWithPendingWrites 函数就会调用 aeCreateFileEvent 函数，创建可写事件，并设置回调函数 sendReplyToClient。sendReplyToClient 函数里面会调用 writeToClient 函数写回数据。
 
