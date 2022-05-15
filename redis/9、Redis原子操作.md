@@ -12,12 +12,11 @@
       - [Reactor 模式](#reactor-%E6%A8%A1%E5%BC%8F)
       - [Proactor 模式](#proactor-%E6%A8%A1%E5%BC%8F)
     - [为什么 Redis 选择单线程](#%E4%B8%BA%E4%BB%80%E4%B9%88-redis-%E9%80%89%E6%8B%A9%E5%8D%95%E7%BA%BF%E7%A8%8B)
-      - [client](#client)
+      - [客户端的连接](#%E5%AE%A2%E6%88%B7%E7%AB%AF%E7%9A%84%E8%BF%9E%E6%8E%A5)
       - [aeApiPoll](#aeapipoll)
-      - [beforeSleep](#beforesleep)
-      - [acceptTcpHandler](#accepttcphandler)
-      - [readQueryFromClient](#readqueryfromclient)
-      - [sendReplyToClient](#sendreplytoclient)
+      - [客户端连接应答](#%E5%AE%A2%E6%88%B7%E7%AB%AF%E8%BF%9E%E6%8E%A5%E5%BA%94%E7%AD%94)
+      - [命令的接收](#%E5%91%BD%E4%BB%A4%E7%9A%84%E6%8E%A5%E6%94%B6)
+      - [命令的回复](#%E5%91%BD%E4%BB%A4%E7%9A%84%E5%9B%9E%E5%A4%8D)
     - [使用 LUA 脚本](#%E4%BD%BF%E7%94%A8-lua-%E8%84%9A%E6%9C%AC)
   - [分布式锁](#%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81)
   - [参考](#%E5%8F%82%E8%80%83)
@@ -235,7 +234,7 @@ Redis 在 v6.0 版本之前，Redis 的核心网络模型一直是一个典型�
 
 这里看几个主要的核心函数  
 
-##### client
+##### 客户端的连接
   
 服务端连接的客户端信息，客户端通过 socket 连接服务点端，服务端会使用 client 记录连接的客户端的信息；  
 
@@ -243,12 +242,12 @@ Redis 在 v6.0 版本之前，Redis 的核心网络模型一直是一个典型�
  // 使用多路复用，需要记录每个客户端的状态，client 之前通过链表保存
 typedef struct client {
     int fd; // 字段是客户端套接字文件描述符
-    sds querybuf; // 客户端的读入缓冲区
+    sds querybuf; // 保存客户端发来命令请求的输入缓冲区。以Redis通信协议的方式保存
     int argc; // 当前命令的参数数量
     robj **argv;  // 当前命令的参数
     redisDb *db; // 当前选择的数据库指针
     int flags;
-    list *reply; // 要发送给客户端的回复对象列表
+    list *reply; // 保存命令回复的链表。因为静态缓冲区大小固定，主要保存固定长度的命令回复，当处理一些返回大量回复的命令，则会将命令回复以链表的形式连接起来。
     // ... many other fields ...
     char buf[PROTO_REPLY_CHUNK_BYTES];
 } client;
@@ -283,15 +282,26 @@ ae_kqueue.c：对应 macOS 或 FreeBSD 上的 IO 复用函数 kqueue；
 
 ae_select.c：对应 Linux（或 Windows）的 IO 复用函数 select。
 
-##### beforeSleep 
+##### 客户端连接应答
 
-每次时间循环都会被调用，
-
-##### acceptTcpHandler  
-
-用于处理客户端的连接  
+监听 socket 的读事件,当有客户端连接请求过来，使用函数 acceptTcpHandler 和客户端建立连接  
 
 ```
+// https://github.com/redis/redis/blob/5.0/src/server.c#L2036
+void initServer(void) {
+   ...
+    // 创建一个事件处理程序以接受 TCP 和 Unix 中的新连接
+    for (j = 0; j < server.ipfd_count; j++) {
+        if (aeCreateFileEvent(server.el, server.ipfd[j], AE_READABLE,
+            acceptTcpHandler,NULL) == AE_ERR)
+            {
+                serverPanic(
+                    "Unrecoverable error creating server.ipfd file event.");
+            }
+    }
+  ...
+}
+
 // https://github.com/redis/redis/blob/5.0/src/networking.c#L734
 void acceptTcpHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
     int cport, cfd, max = MAX_ACCEPTS_PER_CALL;
@@ -340,15 +350,47 @@ static void acceptCommonHandler(int fd, int flags, char *ip) {
     }
     ...
 }
+
+client *createClient(int fd) {
+    client *c = zmalloc(sizeof(client));
+    
+    // 如果fd为-1，表示创建的是一个无网络连接的伪客户端，用于执行lua脚本的时候。
+    // 如果fd不等于-1，表示创建一个有网络连接的客户端
+    if (fd != -1) {
+        // 设置fd为非阻塞模式
+        anetNonBlock(NULL,fd);
+        // 禁止使用 Nagle 算法，client向内核递交的每个数据包都会立即发送给server出去，TCP_NODELAY
+        anetEnableTcpNoDelay(NULL,fd);
+        // 如果开启了tcpkeepalive，则设置 SO_KEEPALIVE
+        if (server.tcpkeepalive)
+            anetKeepAlive(NULL,fd,server.tcpkeepalive);
+         // 创建一个文件事件状态el，且监听读事件，开始接受命令的输入
+        if (aeCreateFileEvent(server.el,fd,AE_READABLE,
+            readQueryFromClient, c) == AE_ERR)
+        {
+            close(fd);
+            zfree(c);
+            return NULL;
+        }
+    }
+
+    ...
+    // 初始化client 中的参数
+    return c;
+}
 ```
 
-1、acceptTcpHandler 主要用于处理和客户端连接的建立；  
+1、acceptTcpHandler 主要用于处理和客户端连接的建立；
 
-2、其中会调用函数 anetTcpAccept 用于 accept 客户端的连接，其返回值是客户端对应的 socket；  
+2、其中会调用函数 anetTcpAccept 用于 accept 客户端的连接，其返回值是客户端对应的 socket；
 
-3、然后调用 acceptCommonHandler 对连接以及客户端进行初始化。  
+3、然后调用 acceptCommonHandler 对连接以及客户端进行初始化；  
 
-##### readQueryFromClient
+4、初始化客户端的时候，同时使用 AE 的 API 将 readQueryFromClient 命令读取处理器绑定到新连接对应的文件描述符上；  
+
+5、服务器会监听该文件描述符的读事件，当客户端发送了命令，触发了 AE_READABLE 事件，那么就会调用回调函数 readQueryFromClient() 来从文件描述符 fd 中读发来的命令，并保存在输入缓冲区中 querybuf。  
+
+##### 命令的接收
 
 readQueryFromClient 是请求处理的起点,解析并执行客户端的请求命令。  
 
@@ -443,13 +485,58 @@ void processInputBuffer(client *c) {
 
 3、完成对一个命令的解析，就使用 processCommand 对命令就行执行；
 
-4、然后判断客户端是否满足重置的条件，对客户端进行重置工作。  
+4、然后判断客户端是否满足重置的条件，对客户端进行重置工作。
 
-##### sendReplyToClient
+##### 命令的回复
 
-命令的回调函数，当一次事件循环之后写出缓冲区中还有数据残留，则这个处理器会被注册绑定到相应的连接上，当客户端可写时，就会触发事件，调用 sendReplyToClient() 函数，执行写事件。   
+在 Redis 事件驱动框架每次循环进入事件处理函数前，来处理监听到的已触发事件或是到时的时间事件之前，都会调用 beforeSleep 函数，进行一些任务处理，这其中就包括了调用 handleClientsWithPendingWrites 函数，它会将 `Redis sever` 客户端缓冲区中的数据写回客户端。
 
 ```
+// https://github.com/redis/redis/blob/5.0/src/server.c#L1380
+void beforeSleep(struct aeEventLoop *eventLoop) {
+    UNUSED(eventLoop);
+
+    ...
+    // 将 Redis sever 客户端缓冲区中的数据写回客户端
+    handleClientsWithPendingWrites();
+    ...
+}
+
+// https://github.com/redis/redis/blob/5.0/src/networking.c#L1082
+int handleClientsWithPendingWrites(void) {
+    listIter li;
+    listNode *ln;
+    int processed = listLength(server.clients_pending_write);
+
+    listRewind(server.clients_pending_write,&li);
+    while((ln = listNext(&li))) {
+        client *c = listNodeValue(ln);
+        c->flags &= ~CLIENT_PENDING_WRITE;
+        listDelNode(server.clients_pending_write,ln);
+        ...
+        // 调用 writeToClient 函数，将客户端输出缓冲区中的数据写回
+        if (writeToClient(c->fd,c,0) == C_ERR) continue;
+
+         // 如果输出缓冲区的数据还没有写完，此时，handleClientsWithPendingWrites 函数就
+        // 会调用 aeCreateFileEvent 函数，创建可写事件，并设置回调函数 sendReplyToClien
+        if (clientHasPendingReplies(c)) {
+            int ae_flags = AE_WRITABLE;
+            if (server.aof_state == AOF_ON &&
+                server.aof_fsync == AOF_FSYNC_ALWAYS)
+            {
+                ae_flags |= AE_BARRIER;
+            }
+            // 将文件描述符fd和AE_WRITABLE事件关联起来，当客户端可写时，就会触发事件，调用sendReplyToClient()函数，执行写事件
+            if (aeCreateFileEvent(server.el, c->fd, ae_flags,
+                sendReplyToClient, c) == AE_ERR)
+            {
+                    freeClientAsync(c);
+            }
+        }
+    }
+    return processed;
+}
+
 // https://github.com/redis/redis/blob/5.0/src/networking.c#L1072
 // 写事件处理程序，只是发送回复给client
 void sendReplyToClient(aeEventLoop *el, int fd, void *privdata, int mask) {
@@ -515,6 +602,9 @@ int writeToClient(int fd, client *c, int handler_installed) {
 }
 ```
 
+1、beforeSleep 函数调用的 handleClientsWithPendingWrites 函数，会遍历每一个待写回数据的客户端，然后调用 writeToClient 函数，将客户端输出缓冲区中的数据写回；
+
+2、如果输出缓冲区的数据还没有写完，此时，handleClientsWithPendingWrites 函数就会调用 aeCreateFileEvent 函数，创建可写事件，并设置回调函数 sendReplyToClient。sendReplyToClient 函数里面会调用 writeToClient 函数写回数据。
 
 比如对于上面的`读取-修改-写回`操作可以使用 Redis 中的原子计数器, INCRBY（自增）、DECRBR（自减）、INCR（加1） 和 DECR（减1） 等命令。  
 
