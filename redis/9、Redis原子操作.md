@@ -248,6 +248,8 @@ Redis 的网络框架实现了 Reactor 模型，并且自行开发实现了一�
 
 来看下 Redis 中事件驱动框架实现的几个主要函数  
 
+<img src="/img/redis/redis-single.png"  alt="redis" align="center" />
+
 ```
 // 执行事件捕获，分发和处理循环
 void aeMain(aeEventLoop *eventLoop);
