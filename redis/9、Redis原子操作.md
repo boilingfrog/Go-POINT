@@ -259,7 +259,34 @@ int aeCreateFileEvent(aeEventLoop *eventLoop, int fd, int mask, aeFileProc *proc
 int aeProcessEvents(aeEventLoop *eventLoop, int flags);
 ```
 
-使用 aeApiPoll 来捕获事件  
+使用 aeMain 作为主循环来对事件进行持续监听和捕获，其中会调用 aeProcessEvents 函数，实现事件捕获、判断事件类型和调用具体的事件处理函数，从而实现事件的处理。  
+
+```
+// https://github.com/redis/redis/blob/5.0/src/ae.c#L496
+void aeMain(aeEventLoop *eventLoop) {
+    eventLoop->stop = 0;
+    while (!eventLoop->stop) {
+        if (eventLoop->beforesleep != NULL)
+            eventLoop->beforesleep(eventLoop);
+        aeProcessEvents(eventLoop, AE_ALL_EVENTS|AE_CALL_AFTER_SLEEP);
+    }
+}
+
+// https://github.com/redis/redis/blob/5.0/src/ae.c#L358
+int aeProcessEvents(aeEventLoop *eventLoop, int flags)
+{
+       ...
+   if (eventLoop->maxfd != -1 || ((flags & AE_TIME_EVENTS) && !(flags & AE_DONT_WAIT))) {
+       ...
+       //调用aeApiPoll函数捕获事件
+       numevents = aeApiPoll(eventLoop, tvp);
+       ...
+    }
+    ...
+}
+```
+
+可以看到 aeProcessEvents 中对于 IO 事件的捕获是通过调用 aeApiPoll 来完成的。  
 
 aeApiPoll 是 I/O 多路复用 API，是基于 `epoll_wait/select/kevent` 等系统调用的封装，监听等待读写事件触发，然后处理，它是事件循环（Event Loop）中的核心函数，是事件驱动得以运行的基础。  
 
