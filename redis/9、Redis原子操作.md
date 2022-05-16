@@ -230,7 +230,7 @@ Redis 中使用是单线程，可能处于以下几方面的考虑
 
 Redis 在 v6.0 版本之前，Redis 的核心网络模型一直是一个典型的单 Reactor 模型：利用 `epoll/select/kqueue` 等多路复用技术，在单线程的事件循环中不断去处理事件（客户端请求），最后回写响应数据到客户端：  
 
-这里看几个主要的流程  
+这里来看下 Redis 如何使用单线程处理任务  
 
 <img src="/img/redis/redis-single.png"  alt="redis" align="center" />
 
@@ -632,9 +632,23 @@ int writeToClient(int fd, client *c, int handler_installed) {
 }
 ```
 
-1、beforeSleep 函数调用的 handleClientsWithPendingWrites 函数，会遍历 clients_pending_write(待写回数据的客户端) 队列，调用 writeToClient 把 client 的写出缓冲区里的数据回写到客户端，然后调用 writeToClient 函数，将客户端输出缓冲区中的数据写回；
+1、beforeSleep 函数调用的 handleClientsWithPendingWrites 函数，会遍历 clients_pending_write(待写回数据的客户端) 队列，调用 writeToClient 把 client 的写出缓冲区里的数据回写到客户端，然后调用 writeToClient 函数，将客户端输出缓冲区中的数据发送给客户端；
 
-2、如果输出缓冲区的数据还没有写完，此时，handleClientsWithPendingWrites 函数就会调用 aeCreateFileEvent 函数，创建可写事件，并设置回调函数 sendReplyToClient。sendReplyToClient 函数里面会调用 writeToClient 函数写回数据。
+2、如果输出缓冲区的数据还没有写完，此时，handleClientsWithPendingWrites 函数就会调用 aeCreateFileEvent 函数，注册 sendReplyToClient 到该连接的写就绪事件，等待将后续将数据写回给客户端。
+
+上面的执行流程总结下来就是   
+
+1、`Redis Server` 启动后，主线程会启动一个时间循环(Event Loop),持续监听事件；  
+
+2、client 到 server 的新连接，会调用 acceptTcpHandler 函数，之后会注册读事件 readQueryFromClient 函数，client 发给 server 的数据，都会在这个函数处理，这个函数会解析 client 的数据，找到对应的 cmd 函数执行；  
+
+3、cmd 逻辑执行完成后，server 需要写回数据给 client，调用 addReply 函数族的一系列函数将响应数据写入到对应 client 的写出缓冲区：`client->buf` 或者 `client->reply` ，`client->buf` 是首选的写出缓冲区，固定大小 16KB，一般来说可以缓冲足够多的响应数据，但是如果客户端在时间窗口内需要响应的数据非常大，那么则会自动切换到 `client->reply` 链表上去，使用链表理论上能够保存无限大的数据（受限于机器的物理内存），最后把 client 添加进一个 LIFO 队列 `clients_pending_write`；
+
+4、在 Redis 事件驱动框架每次循环进入事件处理函数前，来处理监听到的已触发事件或是到时的时间事件之前，都会调用 beforeSleep 函数，进行一些任务处理，这其中就包括了调用 handleClientsWithPendingWrites 函数，它会将 Redis sever 客户端缓冲区中的数据写回客户端；  
+
+- beforeSleep 函数调用的 handleClientsWithPendingWrites 函数，会遍历 clients_pending_write(待写回数据的客户端) 队列，调用 writeToClient 把 client 的写出缓冲区里的数据回写到客户端，然后调用 writeToClient 函数，将客户端输出缓冲区中的数据发送给客户端；
+
+- 如果输出缓冲区的数据还没有写完，此时，handleClientsWithPendingWrites 函数就会调用 aeCreateFileEvent 函数，注册 sendReplyToClient 到该连接的写就绪事件，等待将后续将数据写回给客户端。
 
 比如对于上面的`读取-修改-写回`操作可以使用 Redis 中的原子计数器, INCRBY（自增）、DECRBR（自减）、INCR（加1） 和 DECR（减1） 等命令。  
 
