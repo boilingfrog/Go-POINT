@@ -230,7 +230,9 @@ Redis 中使用是单线程，可能处于以下几方面的考虑
 
 Redis 在 v6.0 版本之前，Redis 的核心网络模型一直是一个典型的单 Reactor 模型：利用 `epoll/select/kqueue` 等多路复用技术，在单线程的事件循环中不断去处理事件（客户端请求），最后回写响应数据到客户端：  
 
-这里看几个主要的流程
+这里看几个主要的流程  
+
+<img src="/img/redis/redis-single.png"  alt="redis" align="center" />
 
 ##### 事件驱动框架对事件的捕获分发
 
@@ -247,8 +249,6 @@ Redis 的网络框架实现了 Reactor 模型，并且自行开发实现了一�
 <img src="/img/redis/redis-reactor-list.png"  alt="redis" align="center" />
 
 来看下 Redis 中事件驱动框架实现的几个主要函数  
-
-<img src="/img/redis/redis-single.png"  alt="redis" align="center" />
 
 ```
 // 执行事件捕获，分发和处理循环
