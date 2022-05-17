@@ -177,6 +177,9 @@ Reactor 模型又分为 3 类：
 
 <img src="/img/redis/redis-reactor-1.png"  alt="redis" />
 
+<img src="/img/redis/redis-reactor-2.png"  alt="redis" />
+
+
 建立连接（Acceptor）、监听accept、read、write事件（Reactor）、处理事件（Handler）都只用一个单线程；  
 
 - 多线程 Reactor 模式；  
