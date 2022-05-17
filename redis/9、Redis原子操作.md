@@ -3,8 +3,7 @@
 
 - [Redis 如何应对并发访问](#redis-%E5%A6%82%E4%BD%95%E5%BA%94%E5%AF%B9%E5%B9%B6%E5%8F%91%E8%AE%BF%E9%97%AE)
   - [Redis 中处理并发的方案](#redis-%E4%B8%AD%E5%A4%84%E7%90%86%E5%B9%B6%E5%8F%91%E7%9A%84%E6%96%B9%E6%A1%88)
-  - [原子性](#%E5%8E%9F%E5%AD%90%E6%80%A7)
-    - [原子性的单命令](#%E5%8E%9F%E5%AD%90%E6%80%A7%E7%9A%84%E5%8D%95%E5%91%BD%E4%BB%A4)
+  - [1、原子性](#1%E5%8E%9F%E5%AD%90%E6%80%A7)
     - [Redis 的编程模型](#redis-%E7%9A%84%E7%BC%96%E7%A8%8B%E6%A8%A1%E5%9E%8B)
       - [Unix 中的 I/O 模型](#unix-%E4%B8%AD%E7%9A%84-io-%E6%A8%A1%E5%9E%8B)
       - [thread-based architecture（基于线程的架构）](#thread-based-architecture%E5%9F%BA%E4%BA%8E%E7%BA%BF%E7%A8%8B%E7%9A%84%E6%9E%B6%E6%9E%84)
@@ -16,8 +15,10 @@
       - [客户端连接应答](#%E5%AE%A2%E6%88%B7%E7%AB%AF%E8%BF%9E%E6%8E%A5%E5%BA%94%E7%AD%94)
       - [命令的接收](#%E5%91%BD%E4%BB%A4%E7%9A%84%E6%8E%A5%E6%94%B6)
       - [命令的回复](#%E5%91%BD%E4%BB%A4%E7%9A%84%E5%9B%9E%E5%A4%8D)
+    - [Redis 多IO线程](#redis-%E5%A4%9Aio%E7%BA%BF%E7%A8%8B)
+    - [原子性的单命令](#%E5%8E%9F%E5%AD%90%E6%80%A7%E7%9A%84%E5%8D%95%E5%91%BD%E4%BB%A4)
     - [使用 LUA 脚本](#%E4%BD%BF%E7%94%A8-lua-%E8%84%9A%E6%9C%AC)
-  - [分布式锁](#%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81)
+  - [2、分布式锁](#2%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -56,17 +57,13 @@
 
 下面从原子性和锁两个方面，具体分析下，对并发访问问题的处理   
 
-### 原子性
+### 1、原子性
 
 为了实现并发控制要求的临界区代码互斥执行，Redis的原子操作采用了两种方法：  
 
 1、借助于 Redis 中的原子性的单命令；    
 
-2、把多个操作写到一个Lua脚本中，以原子性方式执行单个Lua脚本。  
-
-#### 原子性的单命令
-
-Redis 中的单个命令的执行都是原子性的，这里来具体的探讨下    
+2、把多个操作写到一个Lua脚本中，以原子性方式执行单个Lua脚本。
 
 在探讨 Redis 原子性的时候，先来探讨下 Redis 中使用到的编程模型
 
@@ -176,7 +173,9 @@ Reactor 模式，是指通过一个或多个输入同时传递给服务处理器
 
 Reactor 模型又分为 3 类：  
 
-- 单线程 Reactor 模式；  
+- 单线程 Reactor 模式；   
+
+<img src="/img/redis/redis-reactor-1.png"  alt="redis" />
 
 建立连接（Acceptor）、监听accept、read、write事件（Reactor）、处理事件（Handler）都只用一个单线程；  
 
@@ -677,6 +676,17 @@ int writeToClient(int fd, client *c, int handler_installed) {
 
 - 如果输出缓冲区的数据还没有写完，此时，handleClientsWithPendingWrites 函数就会调用 aeCreateFileEvent 函数，注册 sendReplyToClient 到该连接的写就绪事件，等待将后续将数据写回给客户端。
 
+#### Redis 多IO线程
+
+在 Redis6.0 的版本中，引入了多线程来处理 IO 任务，多线程的引入，充分利用了当前服务器多核特性，使用多核运行多线程，让多线程帮助加速数据读取、命令解析以及数据写回的速度，提升 Redis 整体性能。  
+
+Redis6.0 之前的版本用的是单线程 Reactor 模式，所有的操作都在一个线程中完成，6.0 之后的版本使用了主从 Reactor 模式。  
+
+
+#### 原子性的单命令
+
+通过上面的分析，我们知道，Redis 的主线程是单线程执行的，所有 Redis 中的单命令，都是原子性的。  
+
 比如对于上面的`读取-修改-写回`操作可以使用 Redis 中的原子计数器, INCRBY（自增）、DECRBR（自减）、INCR（加1） 和 DECR（减1） 等命令。  
 
 这些命令可以直接帮助我们处理并发控制   
@@ -776,7 +786,7 @@ void incrDecrCommand(client *c, long long incr) {
 
 #### 使用 LUA 脚本
 
-### 分布式锁
+### 2、分布式锁
 
 ### 参考
 
