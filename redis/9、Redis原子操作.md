@@ -16,6 +16,9 @@
       - [命令的接收](#%E5%91%BD%E4%BB%A4%E7%9A%84%E6%8E%A5%E6%94%B6)
       - [命令的回复](#%E5%91%BD%E4%BB%A4%E7%9A%84%E5%9B%9E%E5%A4%8D)
     - [Redis 多IO线程](#redis-%E5%A4%9Aio%E7%BA%BF%E7%A8%8B)
+      - [多 IO 线程的初始化](#%E5%A4%9A-io-%E7%BA%BF%E7%A8%8B%E7%9A%84%E5%88%9D%E5%A7%8B%E5%8C%96)
+      - [命令的接收](#%E5%91%BD%E4%BB%A4%E7%9A%84%E6%8E%A5%E6%94%B6-1)
+      - [命令的回复](#%E5%91%BD%E4%BB%A4%E7%9A%84%E5%9B%9E%E5%A4%8D-1)
     - [原子性的单命令](#%E5%8E%9F%E5%AD%90%E6%80%A7%E7%9A%84%E5%8D%95%E5%91%BD%E4%BB%A4)
     - [使用 LUA 脚本](#%E4%BD%BF%E7%94%A8-lua-%E8%84%9A%E6%9C%AC)
   - [2、分布式锁](#2%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81)
@@ -685,6 +688,115 @@ int writeToClient(int fd, client *c, int handler_installed) {
 在 Redis6.0 的版本中，引入了多线程来处理 IO 任务，多线程的引入，充分利用了当前服务器多核特性，使用多核运行多线程，让多线程帮助加速数据读取、命令解析以及数据写回的速度，提升 Redis 整体性能。  
 
 Redis6.0 之前的版本用的是单线程 Reactor 模式，所有的操作都在一个线程中完成，6.0 之后的版本使用了主从 Reactor 模式。  
+
+由一个 mainReactor 线程接收连接，然后发送给多个 subReactor 线程处理，subReactor 负责处理具体的业务。   
+
+来看下 Redis 多IO线程的具体实现过程  
+
+##### 多 IO 线程的初始化
+
+使用 initThreadedIO 函数来初始化多 IO 线程。  
+
+```
+// https://github.com/redis/redis/blob/6.2/src/networking.c#L3573
+void initThreadedIO(void) {
+    server.io_threads_active = 0; /* We start with threads not active. */
+
+    /* Don't spawn any thread if the user selected a single thread:
+     * we'll handle I/O directly from the main thread. */
+     // 如果用户只配置了一个 I/O 线程，不需要创建新线程了，直接在主线程中处理
+    if (server.io_threads_num == 1) return;
+
+    if (server.io_threads_num > IO_THREADS_MAX_NUM) {
+        serverLog(LL_WARNING,"Fatal: too many I/O threads configured. "
+                             "The maximum number is %d.", IO_THREADS_MAX_NUM);
+        exit(1);
+    }
+
+    /* Spawn and initialize the I/O threads. */
+    // 初始化线程
+    for (int i = 0; i < server.io_threads_num; i++) {
+        /* Things we do for all the threads including the main thread. */
+        io_threads_list[i] = listCreate();
+        // 编号为0是主线程
+        if (i == 0) continue; /* Thread 0 is the main thread. */
+
+        /* Things we do only for the additional threads. */
+        pthread_t tid;
+        // 初始化io_threads_mutex数组
+        pthread_mutex_init(&io_threads_mutex[i],NULL);
+        // 初始化io_threads_pending数组
+        setIOPendingCount(i, 0);
+        // 主线程在启动 I/O 线程的时候会默认先锁住它，直到有 I/O 任务才唤醒它。
+        pthread_mutex_lock(&io_threads_mutex[i]); /* Thread will be stopped. */
+        // 调用pthread_create函数创建IO线程，线程运行函数为IOThreadMain
+        if (pthread_create(&tid,NULL,IOThreadMain,(void*)(long)i) != 0) {
+            serverLog(LL_WARNING,"Fatal: Can't initialize IO thread.");
+            exit(1);
+        }
+        io_threads[i] = tid;
+    }
+}
+```
+
+可以看到在 initThreadedIO 中完成了对下面四个数组的初始化工作  
+
+io_threads_list 数组：保存了每个 IO 线程要处理的客户端，将数组每个元素初始化为一个 List 类型的列表；  
+
+io_threads_pending 数组：保存等待每个 IO 线程处理的客户端个数；  
+
+io_threads_mutex 数组：保存线程互斥锁；  
+
+io_threads 数组：保存每个 IO 线程的描述符。
+
+##### 命令的接收  
+
+`Redis server` 在和一个客户端建立连接后，就开始了监听客户端的可读事件，处理可读事件的回调函数就是 readQueryFromClient。  
+
+```
+// https://github.com/redis/redis/blob/6.2/src/networking.c#L2219
+void readQueryFromClient(connection *conn) {
+    client *c = connGetPrivateData(conn);
+    int nread, readlen;
+    size_t qblen;
+
+    /* Check if we want to read from the client later when exiting from
+     * the event loop. This is the case if threaded I/O is enabled. */
+    // 判断是否从客户端延迟读取数据
+    if (postponeClientRead(c)) return;
+    ...
+}
+
+// https://github.com/redis/redis/blob/6.2/src/networking.c#L3746
+int postponeClientRead(client *c) {
+    // 当多线程 I/O 模式开启、主线程没有在处理阻塞任务时，将 client 加入异步队列。
+    if (server.io_threads_active &&
+        server.io_threads_do_reads &&
+        !ProcessingEventsWhileBlocked &&
+        !(c->flags & (CLIENT_MASTER|CLIENT_SLAVE|CLIENT_PENDING_READ|CLIENT_BLOCKED))) 
+    {
+        // 给客户端的flag添加CLIENT_PENDING_READ标记，表示推迟该客户端的读操作
+        c->flags |= CLIENT_PENDING_READ;
+        // 将可获得加入clients_pending_write列表
+        listAddNodeHead(server.clients_pending_read,c);
+        return 1;
+    } else {
+        return 0;
+    }
+}
+```
+
+使用 clients_pending_read 保存了需要进行读操作的客户端之后，这些客户端又是如何分配给多 IO 线程执行的呢？  
+
+handleClientsWithPendingWritesUsingThreads 函数：该函数主要负责将 clients_pending_write 列表中的客户端分配给 IO 线程进行处理。  
+
+看下如何实现  
+
+
+
+##### 命令的回复
+
+
 
 
 #### 原子性的单命令
