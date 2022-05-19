@@ -874,14 +874,113 @@ int handleClientsWithPendingReadsUsingThreads(void) {
 
 2、主线程会根据 clients_pending_read 中客户端数量对IO线程进行取模运算，取模的结果就是客户端分配给对应IO线程的编号；  
 
-3、忙轮询，等待所有的线程完成所有的任务，这一步用到了多线程的请求；  
+3、忙轮询，等待所有的线程完成读取客户端命令的操作，这一步用到了多线程的请求；  
 
 4、遍历 clients_pending_read，执行所有 client 的命令，这里就是在主线程中执行的，命令的执行是单线程的操作。  
 
 ##### 命令的回复
 
+完成命令的读取、解析以及执行之后，客户端命令的响应数据已经存入 client->buf 或者 client->reply 中。  
 
+主循环在捕获 IO 事件的时候，beforeSleep 函数会被调用，进而调用 handleClientsWithPendingWritesUsingThreads ，写回响应数据给客户端。  
 
+````
+// https://github.com/redis/redis/blob/6.2/src/networking.c#L3662
+int handleClientsWithPendingWritesUsingThreads(void) {
+    int processed = listLength(server.clients_pending_write);
+    if (processed == 0) return 0; /* Return ASAP if there are no clients. */
+
+    // 如果用户设置的 I/O 线程数等于 1 或者当前 clients_pending_write 队列中待写出的 client
+    // 数量不足 I/O 线程数的两倍，则不用多线程的逻辑，让所有 I/O 线程进入休眠，
+    // 直接在主线程把所有 client 的相应数据回写到客户端。
+    if (server.io_threads_num == 1 || stopThreadedIOIfNeeded()) {
+        return handleClientsWithPendingWrites();
+    }
+
+    // 唤醒正在休眠的 I/O 线程（如果有的话）。
+    if (!server.io_threads_active) startThreadedIO();
+
+    /* Distribute the clients across N different lists. */
+    // 和上面的handleClientsWithPendingReadsUsingThreads中的操作一样分配客户端给IO线程
+    listIter li;
+    listNode *ln;
+    listRewind(server.clients_pending_write,&li);
+    int item_id = 0;
+    while((ln = listNext(&li))) {
+        client *c = listNodeValue(ln);
+        c->flags &= ~CLIENT_PENDING_WRITE;
+
+        /* Remove clients from the list of pending writes since
+         * they are going to be closed ASAP. */
+        if (c->flags & CLIENT_CLOSE_ASAP) {
+            listDelNode(server.clients_pending_write, ln);
+            continue;
+        }
+
+        int target_id = item_id % server.io_threads_num;
+        listAddNodeTail(io_threads_list[target_id],c);
+        item_id++;
+    }
+
+    // 设置当前 I/O 操作为写出操作，给每个 I/O 线程的计数器设置分配的任务数量，
+    // 让 I/O 线程可以开始工作，把写出缓冲区（client->buf 或 c->reply）中的响应数据回写到客户端。
+    // 可以看到写回操作也是多线程执行的
+    io_threads_op = IO_THREADS_OP_WRITE;
+    for (int j = 1; j < server.io_threads_num; j++) {
+        int count = listLength(io_threads_list[j]);
+        setIOPendingCount(j, count);
+    }
+
+    // 主线程自己也会去执行读取客户端请求命令的任务，以达到最大限度利用 CPU。
+    listRewind(io_threads_list[0],&li);
+    while((ln = listNext(&li))) {
+        client *c = listNodeValue(ln);
+        writeToClient(c,0);
+    }
+    listEmpty(io_threads_list[0]);
+
+    /* Wait for all the other threads to end their work. */
+    // 等待所有的线程完成对应的工作
+    while(1) {
+        unsigned long pending = 0;
+        for (int j = 1; j < server.io_threads_num; j++)
+            pending += getIOPendingCount(j);
+        if (pending == 0) break;
+    }
+
+    // 最后再遍历一次 clients_pending_write 队列，检查是否还有 client 的写出缓冲区中有残留数据，
+    // 如果有，那就为 client 注册一个命令回复器 sendReplyToClient，等待客户端写就绪再继续把数据回写。
+    listRewind(server.clients_pending_write,&li);
+    while((ln = listNext(&li))) {
+        client *c = listNodeValue(ln);
+
+        // 检查 client 的写出缓冲区是否还有遗留数据。
+        if (clientHasPendingReplies(c) &&
+                connSetWriteHandler(c->conn, sendReplyToClient) == AE_ERR)
+        {
+            freeClientAsync(c);
+        }
+    }
+    listEmpty(server.clients_pending_write);
+
+    /* Update processed count on server */
+    server.stat_io_writes_processed += processed;
+
+    return processed;
+}
+````
+
+1、也是会将 client 分配给所有的 IO 线程；  
+
+2、忙轮询，等待所有的线程完成对应的任务，这里写回操作使用的多线程；  
+
+3、最后再遍历 clients_pending_write，为那些还残留有响应数据的 client 注册命令回复处理器 sendReplyToClient，等待客户端可写之后在事件循环中继续回写残余的响应数据。  
+
+通过上面的分析可以得出结论，Redis 多IO线程中多线程的应用  
+
+1、解析客户端的命令的时候用到了多线程，但是对于客户端命令的执行，使用的还是单线程；  
+
+2、给客户端回复数据的时候，使用到了多线程。   
 
 #### 原子性的单命令
 
