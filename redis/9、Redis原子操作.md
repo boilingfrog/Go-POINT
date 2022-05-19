@@ -786,13 +786,97 @@ int postponeClientRead(client *c) {
 }
 ```
 
-使用 clients_pending_read 保存了需要进行读操作的客户端之后，这些客户端又是如何分配给多 IO 线程执行的呢？  
+使用 clients_pending_read 保存了需要进行延迟读操作的客户端之后，这些客户端又是如何分配给多 IO 线程执行的呢？  
 
 handleClientsWithPendingWritesUsingThreads 函数：该函数主要负责将 clients_pending_write 列表中的客户端分配给 IO 线程进行处理。  
 
 看下如何实现  
 
+```
+// https://github.com/redis/redis/blob/6.2/src/networking.c#L3766
+int handleClientsWithPendingReadsUsingThreads(void) {
+    // 当多线程 I/O 模式开启,才能执行下面的流程
+    if (!server.io_threads_active || !server.io_threads_do_reads) return 0;
+    int processed = listLength(server.clients_pending_read);
+    if (processed == 0) return 0;
 
+    // 遍历待读取的 client 队列 clients_pending_read，
+    // 根据IO线程的数量，让clients_pending_read中客户端数量对IO线程进行取模运算
+    // 取模的结果就是客户端分配给对应IO线程的编号
+    listIter li;
+    listNode *ln;
+    listRewind(server.clients_pending_read,&li);
+    int item_id = 0;
+    while((ln = listNext(&li))) {
+        client *c = listNodeValue(ln);
+        int target_id = item_id % server.io_threads_num;
+        listAddNodeTail(io_threads_list[target_id],c);
+        item_id++;
+    }
+
+    // 设置当前 I/O 操作为读取操作，给每个 I/O 线程的计数器设置分配的任务数量，
+    // 让 I/O 线程可以开始工作：只读取和解析命令，不执行
+    io_threads_op = IO_THREADS_OP_READ;
+    for (int j = 1; j < server.io_threads_num; j++) {
+        int count = listLength(io_threads_list[j]);
+        setIOPendingCount(j, count);
+    }
+
+    // 主线程自己也会去执行读取客户端请求命令的任务，以达到最大限度利用 CPU。
+    listRewind(io_threads_list[0],&li);
+    while((ln = listNext(&li))) {
+        client *c = listNodeValue(ln);
+        readQueryFromClient(c->conn);
+    }
+    listEmpty(io_threads_list[0]);
+
+    // 忙轮询，等待所有 IO 线程完成待读客户端的处理
+    while(1) {
+        unsigned long pending = 0;
+        for (int j = 1; j < server.io_threads_num; j++)
+            pending += getIOPendingCount(j);
+        if (pending == 0) break;
+    }
+
+    // 遍历待读取的 client 队列，清除 CLIENT_PENDING_READ标记，
+    // 然后解析并执行所有 client 的命令。
+    while(listLength(server.clients_pending_read)) {
+        ln = listFirst(server.clients_pending_read);
+        client *c = listNodeValue(ln);
+        c->flags &= ~CLIENT_PENDING_READ;
+        listDelNode(server.clients_pending_read,ln);
+
+        serverAssert(!(c->flags & CLIENT_BLOCKED));
+        // client 的第一条命令已经被解析好了，直接尝试执行。
+        if (processPendingCommandsAndResetClient(c) == C_ERR) {
+            /* If the client is no longer valid, we avoid
+             * processing the client later. So we just go
+             * to the next. */
+            continue;
+        }
+
+        // 解析并执行 client 命令
+        processInputBuffer(c);
+
+        // 命令执行完成之后，如果 client 中有响应数据需要回写到客户端，则将 client 加入到待写出队列 clients_pending_write
+        if (!(c->flags & CLIENT_PENDING_WRITE) && clientHasPendingReplies(c))
+            clientInstallWriteHandler(c);
+    }
+
+    /* Update processed count on server */
+    server.stat_io_reads_processed += processed;
+
+    return processed;
+}
+```
+
+1、当客户端发送命令请求之后，会触发 Redis 主线程的事件循环，命令处理器 readQueryFromClient 被回调，多线程模式下，则会把 client 加入到 clients_pending_read 任务队列中去，后面主线程再分配到 I/O 线程去读取客户端请求命令；  
+
+2、主线程会根据 clients_pending_read 中客户端数量对IO线程进行取模运算，取模的结果就是客户端分配给对应IO线程的编号；  
+
+3、忙轮询，等待所有的线程完成所有的任务，这一步用到了多线程的请求；  
+
+4、遍历 clients_pending_read，执行所有 client 的命令，这里就是在主线程中执行的，命令的执行是单线程的操作。  
 
 ##### 命令的回复
 
