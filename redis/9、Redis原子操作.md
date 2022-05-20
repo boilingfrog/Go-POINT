@@ -691,7 +691,9 @@ Redis6.0 之前的版本用的是单线程 Reactor 模式，所有的操作都�
 
 由一个 mainReactor 线程接收连接，然后发送给多个 subReactor 线程处理，subReactor 负责处理具体的业务。   
 
-来看下 Redis 多IO线程的具体实现过程  
+来看下 Redis 多IO线程的具体实现过程    
+
+<img src="/img/redis/redis-multi.png"  alt="redis" />
 
 ##### 多 IO 线程的初始化
 
