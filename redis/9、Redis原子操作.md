@@ -984,6 +984,27 @@ int handleClientsWithPendingWritesUsingThreads(void) {
 
 2、给客户端回复数据的时候，使用到了多线程。   
 
+来总结下 Redis 中多线程的执行过程    
+
+1、Redis Server 启动后，主线程会启动一个时间循环(Event Loop),持续监听事件；
+
+2、client 到 server 的新连接，会调用 acceptTcpHandler 函数，之后会注册读事件 readQueryFromClient 函数，client 发给 server 的数据，都会在这个函数处理；
+
+3、客户端发送给服务端的数据，不会类似 6.0 之前的版本使用 socket 直接去读，而是会将 client 放入到 clients_pending_read 中，里面保存了需要进行延迟读操作的客户端；  
+
+4、处理 clients_pending_read 的函数 handleClientsWithPendingReadsUsingThreads，在每次事件循环的时候都会调用;  
+
+- 1、主线程会根据 clients_pending_read 中客户端数量对IO线程进行取模运算，取模的结果就是客户端分配给对应IO线程的编号;  
+
+- 2、忙轮询，等待所有的线程完成读取客户端命令的操作，这一步用到了多线程的请求；  
+
+- 3、遍历 clients_pending_read，执行所有 client 的命令，这里就是在主线程中执行的，命令的执行是单线程的操作。  
+
+5、
+
+
+
+
 #### 原子性的单命令
 
 通过上面的分析，我们知道，Redis 的主线程是单线程执行的，所有 Redis 中的单命令，都是原子性的。  
