@@ -974,7 +974,7 @@ int handleClientsWithPendingWritesUsingThreads(void) {
 
 1、也是会将 client 分配给所有的 IO 线程；  
 
-2、忙轮询，等待所有的线程完成对应的任务，这里写回操作使用的多线程；  
+2、忙轮询，等待所有的线程将缓存中的数据写回给客户端，这里写回操作使用的多线程；  
 
 3、最后再遍历 clients_pending_write，为那些还残留有响应数据的 client 注册命令回复处理器 sendReplyToClient，等待客户端可写之后在事件循环中继续回写残余的响应数据。  
 
@@ -1000,10 +1000,15 @@ int handleClientsWithPendingWritesUsingThreads(void) {
 
 - 3、遍历 clients_pending_read，执行所有 client 的命令，这里就是在主线程中执行的，命令的执行是单线程的操作。  
 
-5、
+5、命令执行完成以后，回复的内容还是会被写入到 client 的缓存区中，这些 client 和6.0之前的版本处理方式一样，也是会被放入到 clients_pending_write（待写回数据的客户端）；  
 
+6、6.0 对于clients_pending_write 的处理使用到了多线程；  
 
+1、也是会将 client 分配给所有的 IO 线程；
 
+2、忙轮询，等待所有的线程将缓存中的数据写回给客户端，这里写回操作使用的多线程；
+
+3、最后再遍历 clients_pending_write，为那些还残留有响应数据的 client 注册命令回复处理器 sendReplyToClient，等待客户端可写之后在事件循环中继续回写残余的响应数据。
 
 #### 原子性的单命令
 
