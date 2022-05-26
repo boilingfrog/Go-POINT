@@ -1012,7 +1012,9 @@ int handleClientsWithPendingWritesUsingThreads(void) {
 
 #### 原子性的单命令
 
-通过上面的分析，我们知道，Redis 的主线程是单线程执行的，所有 Redis 中的单命令，都是原子性的。  
+通过上面的分析，我们知道，Redis 的主线程是单线程执行的，所有 Redis 中的单命令，都是原子性的。
+
+所以对于一些场景的操作尽量去使用 Redis 中但命令去完成，就能保证命令执行的原子性。   
 
 比如对于上面的`读取-修改-写回`操作可以使用 Redis 中的原子计数器, INCRBY（自增）、DECRBR（自减）、INCR（加1） 和 DECR（减1） 等命令。  
 
@@ -1112,6 +1114,8 @@ void incrDecrCommand(client *c, long long incr) {
 ```
 
 #### 使用 LUA 脚本
+
+
 
 ### 2、分布式锁
 
