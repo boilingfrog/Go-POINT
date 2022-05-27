@@ -21,6 +21,7 @@
       - [命令的回复](#%E5%91%BD%E4%BB%A4%E7%9A%84%E5%9B%9E%E5%A4%8D-1)
     - [原子性的单命令](#%E5%8E%9F%E5%AD%90%E6%80%A7%E7%9A%84%E5%8D%95%E5%91%BD%E4%BB%A4)
     - [使用 LUA 脚本](#%E4%BD%BF%E7%94%A8-lua-%E8%84%9A%E6%9C%AC)
+      - [Redis 中如何使用 LUA 脚本](#redis-%E4%B8%AD%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8-lua-%E8%84%9A%E6%9C%AC)
   - [2、分布式锁](#2%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81)
   - [参考](#%E5%8F%82%E8%80%83)
 
@@ -1115,6 +1116,22 @@ void incrDecrCommand(client *c, long long incr) {
 
 #### 使用 LUA 脚本
 
+虽然 Redis 中的单命令是原子性的，但是很多业务场景中，需要多个命令组合的使用，例如上面介绍的 `读取-修改-写回` 场景，这时候就不能保证组合命令的原子性了。所以这时候 LUA 就登场了。  
+
+所以在 2.6 版本推出了 lua 脚本功能。引入 lua 脚本的优点  
+
+1、减少网络开销。可以将多个请求通过脚本的形式一次发送，减少网络时延。  
+
+2、原子操作。Redis会将整个脚本作为一个整体执行，中间不会被其他请求插入。因此在脚本运行过程中无需担心会出现竞态条件，无需使用事务。  
+
+3、复用。客户端发送的脚本会永久存在redis中，这样其他客户端可以复用这一脚本，而不需要使用代码完成相同的逻辑。  
+
+关于 lua 的语法和 lua 是一门什么样的语言，可以自行 google。  
+
+##### Redis 中如何使用 LUA 脚本
+
+
+
 
 
 ### 2、分布式锁
@@ -1131,5 +1148,7 @@ void incrDecrCommand(client *c, long long incr) {
 【Comparing Two High-Performance I/O Design Patterns】https://www.artima.com/articles/comparing-two-high-performance-io-design-patterns  
 【如何深刻理解Reactor和Proactor？】https://www.zhihu.com/question/26943938  
 【Go netpoller 原生网络模型之源码全面揭秘】https://strikefreedom.top/go-netpoll-io-multiplexing-reactor  
+【Redis中使用Lua脚本】https://zhuanlan.zhihu.com/p/77484377    
+【Lua 是怎样一门语言？】https://www.zhihu.com/question/19841006  
 
 
