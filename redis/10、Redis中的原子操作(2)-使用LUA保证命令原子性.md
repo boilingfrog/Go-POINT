@@ -3,8 +3,14 @@
 
 - [Redis 如何应对并发访问](#redis-%E5%A6%82%E4%BD%95%E5%BA%94%E5%AF%B9%E5%B9%B6%E5%8F%91%E8%AE%BF%E9%97%AE)
   - [使用 LUA 脚本](#%E4%BD%BF%E7%94%A8-lua-%E8%84%9A%E6%9C%AC)
-    - [Redis 中如何使用 LUA 脚本](#redis-%E4%B8%AD%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8-lua-%E8%84%9A%E6%9C%AC)
-      - [EVAL](#eval)
+  - [Redis 中如何使用 LUA 脚本](#redis-%E4%B8%AD%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8-lua-%E8%84%9A%E6%9C%AC)
+    - [EVAL](#eval)
+    - [EVALSHA](#evalsha)
+    - [SCRIPT 命令](#script-%E5%91%BD%E4%BB%A4)
+      - [SCRIPT LOAD](#script-load)
+      - [SCRIPT EXISTS](#script-exists)
+      - [SCRIPT FLUSH](#script-flush)
+      - [SCRIPT KILL](#script-kill)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -29,27 +35,27 @@ Redis 在 2.6 版本推出了 lua 脚本功能。
 
 关于 lua 的语法和 lua 是一门什么样的语言，可以自行 google。  
 
-#### Redis 中如何使用 LUA 脚本
+### Redis 中如何使用 LUA 脚本
 
 redis 中支持 LUA 脚本的几个命令  
 
 redis 自 2.6.0 加入了 lua 脚本相关的命令，
 
-EVAL：使用改命令来直接执行指定的Lua脚本。  
+EVAL：使用改命令来直接执行指定的Lua脚本；  
 
-EVALSHA、
+SCRIPT LOAD：将脚本 script 添加到脚本缓存中，以达到重复使用，避免多次加载浪费带宽，该命令不会执行脚本。仅加载脚本缓存中；  
 
-SCRIPT EXISTS、
+EVALSHA：执行由 `SCRIPT LOAD` 加载到缓存的命令；  
 
-SCRIPT FLUSH、
+SCRIPT EXISTS：以 SHA1 标识为参数,检查脚本是否存在脚本缓存里面
 
-SCRIPT KILL、
+SCRIPT FLUSH：清空 Lua 脚本缓存，这里是清理掉所有的脚本缓存；  
 
-SCRIPT LOAD，
+SCRIPT KILL：杀死当前正在运行的 Lua 脚本，当且仅当这个脚本没有执行过任何写操作时，这个命令才生效。
 
 在 3.2.0 加入了 lua 脚本的调试功能和命令SCRIPT DEBUG。这里对命令做下简单的介绍。
 
-##### EVAL
+#### EVAL
 
 通过这个命令来直接执行执行的 LUA 脚本，也是 Redis 中执行 LUA 脚本最常用的命令。  
 
@@ -80,23 +86,129 @@ EVAL script numkeys key [key ...] arg [arg ...]
 
 可以看到上面指定了 numkeys 的长度是2，然后后面 key 中放了两个键值 key1 和 key2，通过 `KEYS[1],KEYS[2]` 就能获取到传入的两个键值对。`arg1 arg2 arg3` 即为传入的自定义参数，通过 `ARGV[index]` 就能获取到对应的参数。   
 
+一般情况下，会将 lua 放在一个单独的 Lua 文件中，然后去执行这个 Lua 脚本。  
 
+执行语法 `--eval script  key1 key2 , arg1 age2`  
 
+举个栗子  
 
+```
+# cat test.lua
+return {KEYS[1],KEYS[2],ARGV[1],ARGV[2],ARGV[3]}
+
+# redis-cli --eval ./test.lua  key1 key2 ,  arg1 arg2 arg3
+1) "key1"
+2) "key2"
+3) "arg1"
+4) "arg2"
+5) "arg3"
+```
+
+需要注意的是，使用文件去执行，key 和 value 用一个逗号隔开，并且也不需要指定 numkeys。  
+
+Lua 脚本中一般会使用下面两个函数来调用 Redis 命令  
+
+```
+redis.call()
+redis.pcall()
+```
+
+redis.call() 与 redis.pcall() 很类似, 他们唯一的区别是当redis命令执行结果返回错误时， redis.call() 将返回给调用者一个错误，而 redis.pcall() 会将捕获的错误以 Lua 表的形式返回。  
+
+```
+127.0.0.1:6379> EVAL "return redis.call('SET','test')" 0
+(error) ERR Error running script (call to f_77810fca9b2b8e2d8a68f8a90cf8fbf14592cf54): @user_script:1: @user_script: 1: Wrong number of args calling Redis command From Lua script
+127.0.0.1:6379> EVAL "return redis.pcall('SET','test')" 0
+(error) @user_script: 1: Wrong number of args calling Redis command From Lua script
+```
+
+同样需要注意的是，脚本里使用的所有键都应该由 KEYS 数组来传递，就像这样：  
+
+```
+127.0.0.1:6379>  eval "return redis.call('set',KEYS[1],'bar')" 1 foo
+OK
+```
+
+下面这种就是不推荐的  
+
+```
+127.0.0.1:6379> eval "return redis.call('set','foo','bar')" 0
+OK
+```
+
+原因有下面两个  
+
+1、Redis 中所有的命令，在执行之前都会被分析，来确定会对那些键值对进行操作，对于 EVAL 命令来说，必须使用正确的形式来传递键，才能确保分析工作正确地执行；  
+
+2、使用正确的形式来传递键还有很多其他好处，它的一个特别重要的用途就是确保 Redis 集群可以将你的请求发送到正确的集群节点。  
+
+#### EVALSHA
+
+用来执行被 `SCRIPT LOAD` 加载到缓存的命令，具体看下文的 `SCRIPT LOAD` 命令介绍。  
+
+#### SCRIPT 命令
+
+Redis 提供了以下几个 SCRIPT 命令，用于对脚本子系统(scripting subsystem)进行控制。   
+
+##### SCRIPT LOAD
+
+将脚本 script 添加到脚本缓存中，以达到重复使用，避免多次加载浪费带宽，该命令不会执行脚本。仅加载脚本缓存中。    
+
+在脚本被加入到缓存之后，会返回一个通过SHA校验返回唯一字符串标识，使用 EVALSHA 命令来执行缓存后的脚本。  
+
+```
+127.0.0.1:6379> SCRIPT LOAD "return {KEYS[1]}"
+"8e5266f6a4373624739bd44187744618bc810de3"
+127.0.0.1:6379> EVALSHA 8e5266f6a4373624739bd44187744618bc810de3 1 hello
+1) "hello"
+```
+
+##### SCRIPT EXISTS
+
+以 SHA1 标识为参数,检查脚本是否存在脚本缓存里面。
+
+这个命令可以接受一个或者多个脚本 SHA1 信息，返回一个1或者0的列表。    
+
+```
+127.0.0.1:6379> SCRIPT EXISTS 8e5266f6a4373624739bd44187744618bc810de3 2323211
+1) (integer) 1
+2) (integer) 0
+```
+ 
+1 表示存在，0 表示不存在  
+
+##### SCRIPT FLUSH
+
+清空 Lua 脚本缓存 `Flush the Lua scripts cache`，这个是清掉所有的脚本缓存。要慎重使用。   
+
+##### SCRIPT KILL
+
+杀死当前正在运行的 Lua 脚本，当且仅当这个脚本没有执行过任何写操作时，这个命令才生效。  
+
+这个命令主要用于终止运行时间过长的脚本，比如一个因为 BUG 而发生无限 loop 的脚本。  
+
+```
+# 没有脚本在执行时
+127.0.0.1:6379> SCRIPT KILL
+(error) ERR No scripts in execution right now.
+
+# 成功杀死脚本时
+127.0.0.1:6379> SCRIPT KILL
+OK
+(1.10s)
+
+# 尝试杀死一个已经执行过写操作的脚本，失败
+127.0.0.1:6379> SCRIPT KILL
+(error) ERR Sorry the script already executed write commands against the dataset. You can either wait the script termination or kill the server in an hard way using the SHUTDOWN NOSAVE command.
+(1.19s)
+```
+
+假如当前正在运行的脚本已经执行过写操作，那么即使执行 `SCRIPT KILL` ，也无法将它杀死，因为这是违反 Lua 脚本的原子性执行原则的。在这种情况下，唯一可行的办法是使用 `SHUTDOWN NOSAVE` 命令，通过停止整个 Redis 进程来停止脚本的运行，并防止不完整(half-written)的信息被写入数据库中。
 
 ### 参考
 
 【Redis核心技术与实战】https://time.geekbang.org/column/intro/100056701    
 【Redis设计与实现】https://book.douban.com/subject/25900156/   
-【字符串命令的实现】https://mcgrady-forever.github.io/2018/02/10/redis-analysis-t-string/     
-【Redis 多线程网络模型全面揭秘】https://segmentfault.com/a/1190000039223696     
-【高性能IO模型分析-Reactor模式和Proactor模式】https://zhuanlan.zhihu.com/p/95662364  
-【什么是事件驱动架构？】https://www.redhat.com/zh/topics/integration/what-is-event-driven-architecture  
-【事件驱动架构】https://help.aliyun.com/document_detail/207135.html   
-【Comparing Two High-Performance I/O Design Patterns】https://www.artima.com/articles/comparing-two-high-performance-io-design-patterns  
-【如何深刻理解Reactor和Proactor？】https://www.zhihu.com/question/26943938  
-【Go netpoller 原生网络模型之源码全面揭秘】https://strikefreedom.top/go-netpoll-io-multiplexing-reactor  
-【Redis中使用Lua脚本】https://zhuanlan.zhihu.com/p/77484377    
-【Lua 是怎样一门语言？】https://www.zhihu.com/question/19841006  
+【EVAL简介】http://www.redis.cn/commands/eval.html   
 
 
