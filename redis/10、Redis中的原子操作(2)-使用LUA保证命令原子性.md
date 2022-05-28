@@ -4,6 +4,7 @@
 - [Redis 如何应对并发访问](#redis-%E5%A6%82%E4%BD%95%E5%BA%94%E5%AF%B9%E5%B9%B6%E5%8F%91%E8%AE%BF%E9%97%AE)
   - [使用 LUA 脚本](#%E4%BD%BF%E7%94%A8-lua-%E8%84%9A%E6%9C%AC)
     - [Redis 中如何使用 LUA 脚本](#redis-%E4%B8%AD%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8-lua-%E8%84%9A%E6%9C%AC)
+      - [EVAL](#eval)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -32,13 +33,55 @@ Redis 在 2.6 版本推出了 lua 脚本功能。
 
 redis 中支持 LUA 脚本的几个命令  
 
-````
-EVAL
-EVALSHA
-SCRIPT LOAD - SCRIPT EXISTS
-SCRIPT FLUSH
-SCRIPT KILL
-````
+redis 自 2.6.0 加入了 lua 脚本相关的命令，
+
+EVAL：使用改命令来直接执行指定的Lua脚本。  
+
+EVALSHA、
+
+SCRIPT EXISTS、
+
+SCRIPT FLUSH、
+
+SCRIPT KILL、
+
+SCRIPT LOAD，
+
+在 3.2.0 加入了 lua 脚本的调试功能和命令SCRIPT DEBUG。这里对命令做下简单的介绍。
+
+##### EVAL
+
+通过这个命令来直接执行执行的 LUA 脚本，也是 Redis 中执行 LUA 脚本最常用的命令。  
+
+```
+EVAL script numkeys key [key ...] arg [arg ...]
+```
+
+来看下具体的参数  
+
+- script: 需要执行的 LUA 脚本；  
+
+- numkeys: 指定的 Lua 脚本需要处理键的数量，其实就是 key 数组的长度；  
+
+- key: 传递给 Lua 脚本零到多个键，空格隔开，在 Lua 脚本中通过 `KEYS[INDEX]` 来获取对应的值，其中`1 <= INDEX <= numkeys`；  
+
+- arg: 自定义的参数,在 Lua 脚本中通过 `ARGV[INDEX]` 来获取对应的值，其中 INDEX 的值从1开始。   
+
+看了这些还是好迷糊，举个栗子  
+
+```go
+127.0.0.1:6379> eval "return {KEYS[1],KEYS[2],ARGV[1],ARGV[2],ARGV[3]}" 2 key1 key2 arg1 arg2 arg3
+1) "key1"
+2) "key2"
+3) "arg1"
+4) "arg2"
+5) "arg3"
+```
+
+可以看到上面指定了 numkeys 的长度是2，然后后面 key 中放了两个键值 key1 和 key2，通过 `KEYS[1],KEYS[2]` 就能获取到传入的两个键值对。`arg1 arg2 arg3` 即为传入的自定义参数，通过 `ARGV[index]` 就能获取到对应的参数。   
+
+
+
 
 
 ### 参考
