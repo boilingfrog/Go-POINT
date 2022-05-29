@@ -11,6 +11,7 @@
       - [SCRIPT EXISTS](#script-exists)
       - [SCRIPT FLUSH](#script-flush)
       - [SCRIPT KILL](#script-kill)
+    - [SCRIPT DEBUG](#script-debug)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -39,7 +40,7 @@ Redis 在 2.6 版本推出了 lua 脚本功能。
 
 redis 中支持 LUA 脚本的几个命令  
 
-redis 自 2.6.0 加入了 lua 脚本相关的命令，
+redis 自 2.6.0 加入了 lua 脚本相关的命令，在 3.2.0 加入了 lua 脚本的调试功能和命令 `SCRIPT DEBUG`。这里对命令做下简单的介绍。
 
 EVAL：使用改命令来直接执行指定的Lua脚本；  
 
@@ -51,9 +52,9 @@ SCRIPT EXISTS：以 SHA1 标识为参数,检查脚本是否存在脚本缓存里
 
 SCRIPT FLUSH：清空 Lua 脚本缓存，这里是清理掉所有的脚本缓存；  
 
-SCRIPT KILL：杀死当前正在运行的 Lua 脚本，当且仅当这个脚本没有执行过任何写操作时，这个命令才生效。
+SCRIPT KILL：杀死当前正在运行的 Lua 脚本，当且仅当这个脚本没有执行过任何写操作时，这个命令才生效；  
 
-在 3.2.0 加入了 lua 脚本的调试功能和命令SCRIPT DEBUG。这里对命令做下简单的介绍。
+SCRIPT DEBUG：设置调试模式，可设置同步、异步、关闭，同步会阻塞所有请求。
 
 #### EVAL
 
@@ -203,12 +204,44 @@ OK
 (1.19s)
 ```
 
-假如当前正在运行的脚本已经执行过写操作，那么即使执行 `SCRIPT KILL` ，也无法将它杀死，因为这是违反 Lua 脚本的原子性执行原则的。在这种情况下，唯一可行的办法是使用 `SHUTDOWN NOSAVE` 命令，通过停止整个 Redis 进程来停止脚本的运行，并防止不完整(half-written)的信息被写入数据库中。
+假如当前正在运行的脚本已经执行过写操作，那么即使执行 `SCRIPT KILL` ，也无法将它杀死，因为这是违反 Lua 脚本的原子性执行原则的。在这种情况下，唯一可行的办法是使用 `SHUTDOWN NOSAVE` 命令，通过停止整个 Redis 进程来停止脚本的运行，并防止不完整(half-written)的信息被写入数据库中。  
+
+#### SCRIPT DEBUG
+
+redis 从 v3.2.0 开始支持 lua debugger，可以加断点、print 变量信息、展示正在执行的代码......  
+
+如何进入调试模式？  
+
+在原本执行的命令中增加 `--ldb` 即可进入调试模式。  
+
+栗子  
+
+```
+# redis-cli --ldb  --eval ./test.lua  key1 key2 ,  arg1 arg2 arg3
+Lua debugging session started, please use:
+quit    -- End the session.
+restart -- Restart the script in debug mode again.
+help    -- Show Lua script debugging commands.
+
+* Stopped at 1, stop reason = step over
+-> 1   local key1   = tostring(KEYS[1])
+```
+
+调试模式有两种，同步模式和调试模式：  
+
+1、调试模式：使用 `--ldb` 开启，调试模式下 Redis 会 fork 一个进程进去到隔离环境中，不会影响到 Redis 中的正常执行，同样 Redis 中正常命令的执行也不会影响到调试模式，两者相互隔离，同时调试模式下，调试脚本时回滚脚本操作的所有数据更改。  
+
+2、同步模式：使用 `--ldb-sync-mode` 开启，同步模式下，会阻塞 Redis 中的命令，完全模拟了正常模式下的命令执行，调试命令的执行结果也会被记录。在此模式下调试会话期间，Redis 服务器将无法访问，因此需要谨慎使用。   
+
+这里简单下看下，Redis 中如何进行调试  
+
+
 
 ### 参考
 
 【Redis核心技术与实战】https://time.geekbang.org/column/intro/100056701    
 【Redis设计与实现】https://book.douban.com/subject/25900156/   
 【EVAL简介】http://www.redis.cn/commands/eval.html   
+【Redis Lua 脚本调试器】http://www.redis.cn/topics/ldb.html    
 
 
