@@ -208,7 +208,7 @@ OK
 
 #### SCRIPT DEBUG
 
-redis 从 v3.2.0 开始支持 lua debugger，可以加断点、print 变量信息、展示正在执行的代码......  
+redis 从 v3.2.0 开始支持 lua debugger，可以加断点、print 变量信息、调试正在执行的代码......  
 
 如何进入调试模式？  
 
@@ -229,13 +229,86 @@ help    -- Show Lua script debugging commands.
 
 调试模式有两种，同步模式和调试模式：  
 
-1、调试模式：使用 `--ldb` 开启，调试模式下 Redis 会 fork 一个进程进去到隔离环境中，不会影响到 Redis 中的正常执行，同样 Redis 中正常命令的执行也不会影响到调试模式，两者相互隔离，同时调试模式下，调试脚本时回滚脚本操作的所有数据更改。  
+1、调试模式：使用 `--ldb` 开启，调试模式下 Redis 会 fork 一个进程进去到隔离环境中，不会影响到 Redis 中的正常执行，同样 Redis 中正常命令的执行也不会影响到调试模式，两者相互隔离，同时调试模式下，调试脚本结束时，回滚脚本操作的所有数据更改。  
 
 2、同步模式：使用 `--ldb-sync-mode` 开启，同步模式下，会阻塞 Redis 中的命令，完全模拟了正常模式下的命令执行，调试命令的执行结果也会被记录。在此模式下调试会话期间，Redis 服务器将无法访问，因此需要谨慎使用。   
 
 这里简单下看下，Redis 中如何进行调试  
 
+看下 debugger 模式支持的命令  
 
+```
+lua debugger> h
+Redis Lua debugger help:
+[h]elp               Show this help.
+[s]tep               Run current line and stop again.
+[n]ext               Alias for step.
+[c]continue          Run till next breakpoint.
+[l]list              List source code around current line.
+[l]list [line]       List source code around [line].
+                     line = 0 means: current position.
+[l]list [line] [ctx] In this form [ctx] specifies how many lines
+                     to show before/after [line].
+[w]hole              List all source code. Alias for 'list 1 1000000'.
+[p]rint              Show all the local variables.
+[p]rint <var>        Show the value of the specified variable.
+                     Can also show global vars KEYS and ARGV.
+[b]reak              Show all breakpoints.
+[b]reak <line>       Add a breakpoint to the specified line.
+[b]reak -<line>      Remove breakpoint from the specified line.
+[b]reak 0            Remove all breakpoints.
+[t]race              Show a backtrace.
+[e]eval <code>       Execute some Lua code (in a different callframe).
+[r]edis <cmd>        Execute a Redis command.
+[m]axlen [len]       Trim logged Redis replies and Lua var dumps to len.
+                     Specifying zero as <len> means unlimited.
+[a]bort              Stop the execution of the script. In sync
+                     mode dataset changes will be retained.
+
+Debugger functions you can call from Lua scripts:
+redis.debug()        Produce logs in the debugger console.
+redis.breakpoint()   Stop execution like if there was a breakpoing.
+                     in the next line of code.
+```
+
+这里来个简单的分析  
+
+```
+# cat test.lua
+local key1   = tostring(KEYS[1])
+local key2   = tostring(KEYS[2])
+local arg1   = tostring(ARGV[1])
+
+if key1 == 'test1' then
+   return 1
+end
+
+if key2 == 'test2' then
+   return 2
+end
+
+return arg1
+
+# 进入 debuge 模式
+# redis-cli --ldb  --eval ./test.lua  key1 key2 ,  arg1 arg2 arg3
+Lua debugging session started, please use:
+quit    -- End the session.
+restart -- Restart the script in debug mode again.
+help    -- Show Lua script debugging commands.
+
+* Stopped at 1, stop reason = step over
+-> 1   local key1   = tostring(KEYS[1])
+
+# 添加断点 
+lua debugger> b 3
+   2   local key2   = tostring(KEYS[2])
+  #3   local arg1   = tostring(ARGV[1])
+   4
+   
+# 打印输入的参数 key
+lua debugger> p KEYS
+<value> {"key1"; "key2"}
+```
 
 ### 参考
 
