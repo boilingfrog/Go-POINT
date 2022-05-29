@@ -89,6 +89,8 @@ EVAL script numkeys key [key ...] arg [arg ...]
 
 一般情况下，会将 lua 放在一个单独的 Lua 文件中，然后去执行这个 Lua 脚本。  
 
+<img src="/img/redis/redis-lua.jpg"  alt="redis" />
+
 执行语法 `--eval script  key1 key2 , arg1 age2`  
 
 举个栗子  
