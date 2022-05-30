@@ -312,6 +312,243 @@ lua debugger> p KEYS
 <value> {"key1"; "key2"}
 ```
 
+### 为什么 Redis 中的 Lua 脚本的执行是原子性的
+
+我们知道 Redis 中的单命令的执行是原子性的，因为命令的执行都是单线程去处理的。  
+
+那么对于 Redis 中执行 Lua 脚本也是原子性的，是如何实现的呢？这里来探讨下。  
+
+Redis 使用单个 Lua 解释器去运行所有脚本，并且， Redis 也保证脚本会以原子性(atomic)的方式执行： 当某个脚本正在运行的时候，不会有其他脚本或 Redis 命令被执行。 这和使用 MULTI / EXEC 包围的事务很类似。 在其他别的客户端看来，脚本的效果(effect)要么是不可见的(not visible)，要么就是已完成的(already completed)。  
+
+这里看下里面核心 EVAL 的实现  
+
+```
+// https://github.com/redis/redis/blob/6.2/src/scripting.c#L1490
+void evalCommand(client *c) {
+    replicationFeedMonitors(c,server.monitors,c->db->id,c->argv,c->argc);
+    if (!(c->flags & CLIENT_LUA_DEBUG))
+        evalGenericCommand(c,0);
+    else
+        evalGenericCommandWithDebugging(c,0);
+}
+
+// https://github.com/redis/redis/blob/6.2/src/scripting.c#L1677  
+void evalGenericCommand(client *c, int evalsha) {
+    lua_State *lua = server.lua;
+    char funcname[43];
+    long long numkeys;
+    long long initial_server_dirty = server.dirty;
+    int delhook = 0, err;
+
+    /* When we replicate whole scripts, we want the same PRNG sequence at
+     * every call so that our PRNG is not affected by external state. */
+    redisSrand48(0);
+
+    /* We set this flag to zero to remember that so far no random command
+     * was called. This way we can allow the user to call commands like
+     * SRANDMEMBER or RANDOMKEY from Lua scripts as far as no write command
+     * is called (otherwise the replication and AOF would end with non
+     * deterministic sequences).
+     *
+     *  - lua_random_dirty 记录脚本是否执行了随机命令
+     *
+     *  - lua_write_dirty 记录脚本是否进行了写入命令
+     *
+     * Thanks to this flag we'll raise an error every time a write command
+     * is called after a random command was used. */
+     // 通过这两个变量，程序可以在脚本试图在执行随机命令之后执行写入时报错。
+    server.lua_random_dirty = 0;
+    server.lua_write_dirty = 0;
+    server.lua_replicate_commands = server.lua_always_replicate_commands;
+    server.lua_multi_emitted = 0;
+    server.lua_repl = PROPAGATE_AOF|PROPAGATE_REPL;
+
+    /* Get the number of arguments that are keys */
+    // 获取输入键的数量
+    if (getLongLongFromObjectOrReply(c,c->argv[2],&numkeys,NULL) != C_OK)
+        return;
+    // 对输入键的正确性做个快速检查
+    if (numkeys > (c->argc - 3)) {
+        addReplyError(c,"Number of keys can't be greater than number of args");
+        return;
+    } else if (numkeys < 0) {
+        addReplyError(c,"Number of keys can't be negative");
+        return;
+    }
+
+    // 我们获得脚本SHA1，然后检查这个函数是否已经定义为Lua状态
+    funcname[0] = 'f';
+    funcname[1] = '_';
+    if (!evalsha) {
+        // 如果执行的是 EVAL 命令，那么计算脚本的 SHA1 校验和
+        sha1hex(funcname+2,c->argv[1]->ptr,sdslen(c->argv[1]->ptr));
+    } else {
+        // 如果执行的是 EVALSHA 命令，直接使用传入的 SHA1 值
+        int j;
+        char *sha = c->argv[1]->ptr;
+
+        /* Convert to lowercase. We don't use tolower since the function
+         * managed to always show up in the profiler output consuming
+         * a non trivial amount of time. */
+        for (j = 0; j < 40; j++)
+            funcname[j+2] = (sha[j] >= 'A' && sha[j] <= 'Z') ?
+                sha[j]+('a'-'A') : sha[j];
+        funcname[42] = '\0';
+    }
+
+    /* Push the pcall error handler function on the stack. */
+    lua_getglobal(lua, "__redis__err__handler");
+
+    // 根据函数名，在 Lua 环境中检查函数是否已经定义
+    lua_getfield(lua, LUA_REGISTRYINDEX, funcname);
+    if (lua_isnil(lua,-1)) {
+        lua_pop(lua,1); /* remove the nil from the stack */
+         // 如果执行的函数不存在
+         // 如果执行的是 EVALSHA ，返回脚本未找到错误
+        if (evalsha) {
+            lua_pop(lua,1); /* remove the error handler from the stack. */
+            addReplyErrorObject(c, shared.noscripterr);
+            return;
+        }
+        
+        // 如果执行的是 EVAL ，那么创建新函数，然后将代码添加到脚本字典中
+        if (luaCreateFunction(c,lua,c->argv[1]) == NULL) {
+            lua_pop(lua,1); /* remove the error handler from the stack. */
+            /* The error is sent to the client by luaCreateFunction()
+             * itself when it returns NULL. */
+            return;
+        }
+        /* Now the following is guaranteed to return non nil */
+        lua_getfield(lua, LUA_REGISTRYINDEX, funcname);
+        serverAssert(!lua_isnil(lua,-1));
+    }
+
+     // 将用户传入的键数组和参数数组设为 Lua 环境中的 KEYS 全局变量和 ARGV 全局变量
+    luaSetGlobalArray(lua,"KEYS",c->argv+3,numkeys);
+    luaSetGlobalArray(lua,"ARGV",c->argv+3+numkeys,c->argc-3-numkeys);
+
+    /* Set a hook in order to be able to stop the script execution if it
+     * is running for too much time.
+     * We set the hook only if the time limit is enabled as the hook will
+     * make the Lua script execution slower.
+     *
+     * If we are debugging, we set instead a "line" hook so that the
+     * debugger is call-back at every line executed by the script. */
+    server.in_eval = 1;
+    server.lua_caller = c;
+    server.lua_cur_script = funcname + 2;
+    server.lua_time_start = getMonotonicUs();
+    server.lua_time_snapshot = mstime();
+    server.lua_kill = 0;
+    if (server.lua_time_limit > 0 && ldb.active == 0) {
+        lua_sethook(lua,luaMaskCountHook,LUA_MASKCOUNT,100000);
+        delhook = 1;
+    } else if (ldb.active) {
+        lua_sethook(server.lua,luaLdbLineHook,LUA_MASKLINE|LUA_MASKCOUNT,100000);
+        delhook = 1;
+    }
+
+    prepareLuaClient();
+
+    /* At this point whether this script was never seen before or if it was
+     * already defined, we can call it. We have zero arguments and expect
+     * a single return value. */
+    err = lua_pcall(lua,0,1,-2);
+
+    resetLuaClient();
+
+    /* Perform some cleanup that we need to do both on error and success. */
+    if (delhook) lua_sethook(lua,NULL,0,0); /* Disable hook */
+    if (server.lua_timedout) {
+        server.lua_timedout = 0;
+        blockingOperationEnds();
+        /* Restore the client that was protected when the script timeout
+         * was detected. */
+        unprotectClient(c);
+        if (server.masterhost && server.master)
+            queueClientForReprocessing(server.master);
+    }
+    server.in_eval = 0;
+    server.lua_caller = NULL;
+    server.lua_cur_script = NULL;
+
+    /* Call the Lua garbage collector from time to time to avoid a
+     * full cycle performed by Lua, which adds too latency.
+     *
+     * The call is performed every LUA_GC_CYCLE_PERIOD executed commands
+     * (and for LUA_GC_CYCLE_PERIOD collection steps) because calling it
+     * for every command uses too much CPU. */
+    #define LUA_GC_CYCLE_PERIOD 50
+    {
+        static long gc_count = 0;
+
+        gc_count++;
+        if (gc_count == LUA_GC_CYCLE_PERIOD) {
+            lua_gc(lua,LUA_GCSTEP,LUA_GC_CYCLE_PERIOD);
+            gc_count = 0;
+        }
+    }
+
+    if (err) {
+        addReplyErrorFormat(c,"Error running script (call to %s): %s\n",
+            funcname, lua_tostring(lua,-1));
+        lua_pop(lua,2); /* Consume the Lua reply and remove error handler. */
+    } else {
+        /* On success convert the Lua return value into Redis protocol, and
+         * send it to * the client. */
+        luaReplyToRedisReply(c,lua); /* Convert and consume the reply. */
+        lua_pop(lua,1); /* Remove the error handler. */
+    }
+
+    /* If we are using single commands replication, emit EXEC if there
+     * was at least a write. */
+    if (server.lua_replicate_commands) {
+        preventCommandPropagation(c);
+        if (server.lua_multi_emitted) {
+            execCommandPropagateExec(c->db->id);
+        }
+    }
+
+    /* EVALSHA should be propagated to Slave and AOF file as full EVAL, unless
+     * we are sure that the script was already in the context of all the
+     * attached slaves *and* the current AOF file if enabled.
+     *
+     * To do so we use a cache of SHA1s of scripts that we already propagated
+     * as full EVAL, that's called the Replication Script Cache.
+     *
+     * For replication, everytime a new slave attaches to the master, we need to
+     * flush our cache of scripts that can be replicated as EVALSHA, while
+     * for AOF we need to do so every time we rewrite the AOF file. */
+    if (evalsha && !server.lua_replicate_commands) {
+        if (!replicationScriptCacheExists(c->argv[1]->ptr)) {
+            /* This script is not in our script cache, replicate it as
+             * EVAL, then add it into the script cache, as from now on
+             * slaves and AOF know about it. */
+            robj *script = dictFetchValue(server.lua_scripts,c->argv[1]->ptr);
+
+            replicationScriptCacheAdd(c->argv[1]->ptr);
+            serverAssertWithInfo(c,NULL,script != NULL);
+
+            /* If the script did not produce any changes in the dataset we want
+             * just to replicate it as SCRIPT LOAD, otherwise we risk running
+             * an aborted script on slaves (that may then produce results there)
+             * or just running a CPU costly read-only script on the slaves. */
+            if (server.dirty == initial_server_dirty) {
+                rewriteClientCommandVector(c,3,
+                    shared.script,
+                    shared.load,
+                    script);
+            } else {
+                rewriteClientCommandArgument(c,0,shared.eval);
+                rewriteClientCommandArgument(c,1,script);
+            }
+            forceCommandPropagation(c,PROPAGATE_REPL|PROPAGATE_AOF);
+        }
+    }
+}
+```
+
+
 ### 参考
 
 【Redis核心技术与实战】https://time.geekbang.org/column/intro/100056701    
