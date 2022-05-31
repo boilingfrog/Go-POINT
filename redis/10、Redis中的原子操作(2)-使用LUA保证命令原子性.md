@@ -318,7 +318,9 @@ lua debugger> p KEYS
 
 那么对于 Redis 中执行 Lua 脚本也是原子性的，是如何实现的呢？这里来探讨下。  
 
-Redis 使用单个 Lua 解释器去运行所有脚本，并且， Redis 也保证脚本会以原子性(atomic)的方式执行： 当某个脚本正在运行的时候，不会有其他脚本或 Redis 命令被执行。 这和使用 MULTI / EXEC 包围的事务很类似。 在其他别的客户端看来，脚本的效果(effect)要么是不可见的(not visible)，要么就是已完成的(already completed)。  
+Redis 使用单个 Lua 解释器去运行所有脚本，并且， Redis 也保证脚本会以原子性(atomic)的方式执行： 当某个脚本正在运行的时候，不会有其他脚本或 Redis 命令被执行。 这和使用 MULTI / EXEC 包围的事务很类似。 在其他别的客户端看来，脚本的效果(effect)要么是不可见的(not visible)，要么就是已完成的(already completed)。
+
+redis执行lua脚本时可以简单的认为仅仅只是把命令打包执行了，命令还是依次执行的，只不过在lua脚本执行时是阻塞的，避免了其他指令的干扰。  
 
 这里看下里面核心 EVAL 的实现  
 
@@ -423,17 +425,14 @@ void evalGenericCommand(client *c, int evalsha) {
         serverAssert(!lua_isnil(lua,-1));
     }
 
-     // 将用户传入的键数组和参数数组设为 Lua 环境中的 KEYS 全局变量和 ARGV 全局变量
+    // 将用户传入的键数组和参数数组设为 Lua 环境中的 KEYS 全局变量和 ARGV 全局变量
     luaSetGlobalArray(lua,"KEYS",c->argv+3,numkeys);
     luaSetGlobalArray(lua,"ARGV",c->argv+3+numkeys,c->argc-3-numkeys);
 
-    /* Set a hook in order to be able to stop the script execution if it
-     * is running for too much time.
-     * We set the hook only if the time limit is enabled as the hook will
-     * make the Lua script execution slower.
-     *
-     * If we are debugging, we set instead a "line" hook so that the
-     * debugger is call-back at every line executed by the script. */
+    // 设置一个钩子，用于在脚本运行时间过长时，停止脚本并等待用户的 SCRIPT 命令
+    // 只有时间限制功能被开启时才使用钩子，因为它会拖慢脚本的运行速度。
+    
+    // 如果是处于 debugger 模式，设置了一个 "line" 钩子，方便用于调试
     server.in_eval = 1;
     server.lua_caller = c;
     server.lua_cur_script = funcname + 2;
@@ -453,6 +452,7 @@ void evalGenericCommand(client *c, int evalsha) {
     /* At this point whether this script was never seen before or if it was
      * already defined, we can call it. We have zero arguments and expect
      * a single return value. */
+    // 执行脚本对应的 Lua 函数
     err = lua_pcall(lua,0,1,-2);
 
     resetLuaClient();
