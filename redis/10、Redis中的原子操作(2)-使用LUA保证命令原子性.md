@@ -441,6 +441,7 @@ void luaCallFunction(scriptRunCtx* run_ctx, lua_State *lua, robj** keys, size_t 
 
     /* Populate the argv and keys table accordingly to the arguments that
      * EVAL received. */
+    // 根据EVAL接收到的参数填充 argv 和 keys table
     luaCreateArray(lua,keys,nkeys);
     /* On eval, keys and arguments are globals. */
     if (run_ctx->flags & SCRIPT_EVAL_MODE){
@@ -463,7 +464,12 @@ void luaCallFunction(scriptRunCtx* run_ctx, lua_State *lua, robj** keys, size_t 
      * In addition the error handler is located on position -2 on the Lua stack.
      * On function mode, we pass 2 arguments (the keys and args tables),
      * and the error handler is located on position -4 (stack: error_handler, callback, keys, args) */
+     // 调用执行函数
+     // 这里会有两种情况
+     // 1、没有参数，只有一个返回值
+     // 2、函数模式，有两个参数
     int err;
+    // 使用lua_pcall执行lua代码
     if (run_ctx->flags & SCRIPT_EVAL_MODE) {
         err = lua_pcall(lua,0,1,-2);
     } else {
@@ -487,6 +493,7 @@ void luaCallFunction(scriptRunCtx* run_ctx, lua_State *lua, robj** keys, size_t 
         }
     }
 
+    // 检查脚本是否出错
     if (err) {
         /* Error object is a table of the following format:
          * {err='<error msg>', source='<source file>', line=<line>}
@@ -511,8 +518,7 @@ void luaCallFunction(scriptRunCtx* run_ctx, lua_State *lua, robj** keys, size_t 
         }
         lua_pop(lua,1); /* Consume the Lua error */
     } else {
-        /* On success convert the Lua return value into Redis protocol, and
-         * send it to * the client. */
+        // 执行成功，给客户端进行回复
         luaReplyToRedisReply(c, run_ctx->c, lua); /* Convert and consume the reply. */
     }
 
