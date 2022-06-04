@@ -726,7 +726,9 @@ luaRedisGenericCommand 函数处理的大致流程
 
 4、环境的清理。   
 
-看下总体的命令处理过程  
+看下总体的命令处理过程    
+
+当然图中的这个栗子，incr 命令已经能够返回当前 key 的值，后面又加了个 get 仅仅是为了，演示 lua 脚本中多个 redis.call 的调用逻辑  
 
 <img src="/img/redis/redis-lua.png"  alt="redis" />
 
