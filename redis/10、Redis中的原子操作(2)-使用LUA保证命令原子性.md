@@ -551,8 +551,21 @@ void luaCallFunction(scriptRunCtx* run_ctx, lua_State *lua, robj** keys, size_t 
 }
 ```
 
-redis执行lua脚本时可以简单的认为仅仅只是把命令打包执行了，命令还是依次执行的，只不过在lua脚本执行时是阻塞的，避免了其他指令的干扰。
+这里总结下 EVAL 函数的执行中几个重要的操作流程  
 
+1、将 EVAL 命令中输入的 KEYS 参数和 ARGV 参数以全局数组的方式传入到 Lua 环境中。  
+
+2、为 Lua 环境装载超时钩子，保证在脚本执行出现超时时可以杀死脚本，或者停止 Redis 服务器。    
+
+3、执行脚本对应的 Lua 函数。    
+
+4、对 Lua 环境进行一次单步的渐进式 GC 。    
+
+5、执行清理操作：清除钩子；清除指向调用者客户端的指针；等等。    
+
+6、将 Lua 函数执行所得的结果转换成 Redis 回复，然后传给调用者客户端。    
+
+<img src="/img/redis/redis-lua.png"  alt="redis" />
 
 ### 参考
 
