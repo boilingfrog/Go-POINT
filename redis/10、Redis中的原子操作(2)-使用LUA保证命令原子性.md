@@ -565,6 +565,171 @@ void luaCallFunction(scriptRunCtx* run_ctx, lua_State *lua, robj** keys, size_t 
 
 6、将 Lua 函数执行所得的结果转换成 Redis 回复，然后传给调用者客户端。    
 
+上面可以看到 lua 中的脚本是由 lua_pcall 进行调用的，如果一个 lua 脚本中有多个 redis.call 调用或者 redis.pcall 调用的请求命令，又是如何处理的呢，这里来分析下  
+
+```
+/* redis.call() */
+static int luaRedisCallCommand(lua_State *lua) {
+    return luaRedisGenericCommand(lua,1);
+}
+
+/* redis.pcall() */
+static int luaRedisPCallCommand(lua_State *lua) {
+    return luaRedisGenericCommand(lua,0);
+}
+
+// https://github.com/redis/redis/blob/7.0/src/script_lua.c#L838
+static int luaRedisGenericCommand(lua_State *lua, int raise_error) {
+    int j;
+    scriptRunCtx* rctx = luaGetFromRegistry(lua, REGISTRY_RUN_CTX_NAME);
+    if (!rctx) {
+        luaPushError(lua, "redis.call/pcall can only be called inside a script invocation");
+        return luaError(lua);
+    }
+    sds err = NULL;
+    client* c = rctx->c;
+    sds reply;
+
+    // 处理请求的参数
+    int argc;
+    robj **argv = luaArgsToRedisArgv(lua, &argc);
+    if (argv == NULL) {
+        return raise_error ? luaError(lua) : 1;
+    }
+
+    static int inuse = 0;   /* Recursive calls detection. */
+
+    ...
+
+    /* Log the command if debugging is active. */
+    if (ldbIsEnabled()) {
+        sds cmdlog = sdsnew("<redis>");
+        for (j = 0; j < c->argc; j++) {
+            if (j == 10) {
+                cmdlog = sdscatprintf(cmdlog," ... (%d more)",
+                    c->argc-j-1);
+                break;
+            } else {
+                cmdlog = sdscatlen(cmdlog," ",1);
+                cmdlog = sdscatsds(cmdlog,c->argv[j]->ptr);
+            }
+        }
+        ldbLog(cmdlog);
+    }
+    // 执行 redis 中的命令
+    scriptCall(rctx, argv, argc, &err);
+    if (err) {
+        luaPushError(lua, err);
+        sdsfree(err);
+        /* push a field indicate to ignore updating the stats on this error
+         * because it was already updated when executing the command. */
+        lua_pushstring(lua,"ignore_error_stats_update");
+        lua_pushboolean(lua, true);
+        lua_settable(lua,-3);
+        goto cleanup;
+    }
+
+    /* Convert the result of the Redis command into a suitable Lua type.
+     * The first thing we need is to create a single string from the client
+     * output buffers. */
+     // 将返回值转换成 lua 类型
+     // 在客户端的输出缓冲区创建一个字符串
+    if (listLength(c->reply) == 0 && (size_t)c->bufpos < c->buf_usable_size) {
+        /* This is a fast path for the common case of a reply inside the
+         * client static buffer. Don't create an SDS string but just use
+         * the client buffer directly. */
+        c->buf[c->bufpos] = '\0';
+        reply = c->buf;
+        c->bufpos = 0;
+    } else {
+        reply = sdsnewlen(c->buf,c->bufpos);
+        c->bufpos = 0;
+        while(listLength(c->reply)) {
+            clientReplyBlock *o = listNodeValue(listFirst(c->reply));
+
+            reply = sdscatlen(reply,o->buf,o->used);
+            listDelNode(c->reply,listFirst(c->reply));
+        }
+    }
+    if (raise_error && reply[0] != '-') raise_error = 0;
+    // 将回复转换为 Lua 值
+    redisProtocolToLuaType(lua,reply);
+
+    /* If the debugger is active, log the reply from Redis. */
+    if (ldbIsEnabled())
+        ldbLogRedisReply(reply);
+
+    if (reply != c->buf) sdsfree(reply);
+    c->reply_bytes = 0;
+
+cleanup:
+    /* Clean up. Command code may have changed argv/argc so we use the
+     * argv/argc of the client instead of the local variables. */
+    freeClientArgv(c);
+    c->user = NULL;
+    inuse--;
+
+    if (raise_error) {
+        /* If we are here we should have an error in the stack, in the
+         * form of a table with an "err" field. Extract the string to
+         * return the plain error. */
+        return luaError(lua);
+    }
+    return 1;
+}
+
+// https://github.com/redis/redis/blob/7.0/src/script.c#L492
+// 调用Redis命令。并且写回结果到运行的ctx客户端，
+void scriptCall(scriptRunCtx *run_ctx, robj* *argv, int argc, sds *err) {
+    client *c = run_ctx->c;
+
+    // 设置伪客户端执行命令
+    c->argv = argv;
+    c->argc = argc;
+    c->user = run_ctx->original_client->user;
+
+    /* Process module hooks */
+    // 处理 hooks 模块
+    moduleCallCommandFilters(c);
+    argv = c->argv;
+    argc = c->argc;
+
+    // 查找命令的实现函数
+    struct redisCommand *cmd = lookupCommand(argv, argc);
+    c->cmd = c->lastcmd = c->realcmd = cmd;
+    
+    ...
+
+    int call_flags = CMD_CALL_SLOWLOG | CMD_CALL_STATS;
+    if (run_ctx->repl_flags & PROPAGATE_AOF) {
+        call_flags |= CMD_CALL_PROPAGATE_AOF;
+    }
+    if (run_ctx->repl_flags & PROPAGATE_REPL) {
+        call_flags |= CMD_CALL_PROPAGATE_REPL;
+    }
+    // 执行命令
+    call(c, call_flags);
+    serverAssert((c->flags & CLIENT_BLOCKED) == 0);
+    return;
+
+error:
+    afterErrorReply(c, *err, sdslen(*err), 0);
+    incrCommandStatsOnError(cmd, ERROR_COMMAND_REJECTED);
+}
+```
+
+luaRedisGenericCommand 函数处理的大致流程  
+
+1、检查执行的环境以及参数；  
+
+2、执行命令；  
+
+3、将命令的返回值从 Redis 类型转换成 Lua 类型，回复给 lua 环境;  
+
+4、环境的清理。   
+
+看下总体的命令处理过程  
+
 <img src="/img/redis/redis-lua.png"  alt="redis" />
 
 ### 参考
