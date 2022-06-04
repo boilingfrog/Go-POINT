@@ -321,9 +321,11 @@ lua debugger> p KEYS
 
 Redis 使用单个 Lua 解释器去运行所有脚本，并且， Redis 也保证脚本会以原子性(atomic)的方式执行： 当某个脚本正在运行的时候，不会有其他脚本或 Redis 命令被执行。 这和使用 MULTI / EXEC 包围的事务很类似。 在其他别的客户端看来，脚本的效果(effect)要么是不可见的(not visible)，要么就是已完成的(already completed)。
 
-Redis 中执行 Lua 脚本的时候，会创建一个客户端，来处理 Lua 中执行的 Redis 命令。  
+Redis 中执行命令需要响应的客户端状态，为了执行 Lua 脚本中的 Redis 命令，Redis 中专门创建了一个伪客户端，由这个客户端处理 Lua 脚本中包含的 Redis 命令。  
 
-Redis 中执行命令需要响应的客户端状态，为了执行 Lua 脚本中的 Redis 命令，Redis 中专门创建了一个为客户端，由这个客户端处理 Lua 脚本中包含的 Redis 命令。  
+Redis 从始到终都只是创建了一个 Lua 环境，以及一个 lua_client ，这就意味着 Redis 服务器端同一时刻只能处理一个脚本。
+
+Redis 执行 lua 脚本时可以简单的认为仅仅只是把命令打包执行了，命令还是依次执行的，只不过在 lua 脚本执行时是阻塞的，避免了其他指令的干扰。
 
 这里看下伪客户端如何处理命令的  
 
@@ -338,11 +340,6 @@ Redis 中执行命令需要响应的客户端状态，为了执行 Lua 脚本中
 5、Lua 环境收到命令的执行结果，将结果返回给 redis.call 函数或者 redis.pcall 函数；  
 
 6、接收到结果的 redis.call 函数或者 redis.pcall 函数会将结果作为函数的返回值返回脚本中的调用者。   
-
-Redis 从始到终都只是创建了一个 Lua 环境，以及一个 lua_client ，这就意味着 Redis 服务器端同一时刻只能处理一个脚本。  
-
-Redis 执行 lua 脚本时可以简单的认为仅仅只是把命令打包执行了，命令还是依次执行的，只不过在 lua 脚本执行时是阻塞的，避免了其他指令的干扰。  
-
 
 这里看下里面核心 EVAL 的实现  
 
@@ -540,7 +537,7 @@ void luaCallFunction(scriptRunCtx* run_ctx, lua_State *lua, robj** keys, size_t 
         }
         lua_pop(lua,1); /* Consume the Lua error */
     } else {
-        // 执行成功，给客户端进行回复
+        // 将 Lua 函数执行所得的结果转换成 Redis 回复，然后传给调用者客户端
         luaReplyToRedisReply(c, run_ctx->c, lua); /* Convert and consume the reply. */
     }
 
@@ -653,7 +650,7 @@ static int luaRedisGenericCommand(lua_State *lua, int raise_error) {
         }
     }
     if (raise_error && reply[0] != '-') raise_error = 0;
-    // 将回复转换为 Lua 值
+    // 将回复转换为 Lua 值，
     redisProtocolToLuaType(lua,reply);
 
     /* If the debugger is active, log the reply from Redis. */
