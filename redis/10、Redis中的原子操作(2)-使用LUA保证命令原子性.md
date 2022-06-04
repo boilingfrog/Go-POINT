@@ -12,6 +12,7 @@
       - [SCRIPT FLUSH](#script-flush)
       - [SCRIPT KILL](#script-kill)
     - [SCRIPT DEBUG](#script-debug)
+  - [为什么 Redis 中的 Lua 脚本的执行是原子性的](#%E4%B8%BA%E4%BB%80%E4%B9%88-redis-%E4%B8%AD%E7%9A%84-lua-%E8%84%9A%E6%9C%AC%E7%9A%84%E6%89%A7%E8%A1%8C%E6%98%AF%E5%8E%9F%E5%AD%90%E6%80%A7%E7%9A%84)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
