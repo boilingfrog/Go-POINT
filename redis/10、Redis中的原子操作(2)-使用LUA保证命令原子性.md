@@ -13,6 +13,7 @@
       - [SCRIPT KILL](#script-kill)
     - [SCRIPT DEBUG](#script-debug)
   - [为什么 Redis 中的 Lua 脚本的执行是原子性的](#%E4%B8%BA%E4%BB%80%E4%B9%88-redis-%E4%B8%AD%E7%9A%84-lua-%E8%84%9A%E6%9C%AC%E7%9A%84%E6%89%A7%E8%A1%8C%E6%98%AF%E5%8E%9F%E5%AD%90%E6%80%A7%E7%9A%84)
+  - [Redis 中 Lua 脚本的使用](#redis-%E4%B8%AD-lua-%E8%84%9A%E6%9C%AC%E7%9A%84%E4%BD%BF%E7%94%A8)
   - [总结](#%E6%80%BB%E7%BB%93)
   - [参考](#%E5%8F%82%E8%80%83)
 
@@ -732,6 +733,12 @@ luaRedisGenericCommand 函数处理的大致流程
 当然图中的这个栗子，incr 命令已经能够返回当前 key 的值，后面又加了个 get 仅仅是为了，演示 lua 脚本中多个 redis.call 的调用逻辑  
 
 <img src="/img/redis/redis-lua.png"  alt="redis" />
+
+### Redis 中 Lua 脚本的使用  
+
+限流是是我们在业务开发中经常遇到的场景，这里使用 Redis 中的 lua 脚本实现了一个简单的限流组件，具体细节可参见  
+
+[redis 实现 rate-limit](https://github.com/boilingfrog/rate-limit)
 
 ### 总结  
 
