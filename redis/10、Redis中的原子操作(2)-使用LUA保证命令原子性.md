@@ -13,6 +13,7 @@
       - [SCRIPT KILL](#script-kill)
     - [SCRIPT DEBUG](#script-debug)
   - [为什么 Redis 中的 Lua 脚本的执行是原子性的](#%E4%B8%BA%E4%BB%80%E4%B9%88-redis-%E4%B8%AD%E7%9A%84-lua-%E8%84%9A%E6%9C%AC%E7%9A%84%E6%89%A7%E8%A1%8C%E6%98%AF%E5%8E%9F%E5%AD%90%E6%80%A7%E7%9A%84)
+  - [总结](#%E6%80%BB%E7%BB%93)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -731,6 +732,28 @@ luaRedisGenericCommand 函数处理的大致流程
 当然图中的这个栗子，incr 命令已经能够返回当前 key 的值，后面又加了个 get 仅仅是为了，演示 lua 脚本中多个 redis.call 的调用逻辑  
 
 <img src="/img/redis/redis-lua.png"  alt="redis" />
+
+### 总结  
+
+当 Redis 中如果存在 `读取-修改-写回` 这种场景，我们就无法保证命令执行的原子性了；  
+
+Redis 在 2.6 版本推出了 lua 脚本功能。
+
+引入 lua 脚本的优点：
+
+1、减少网络开销。可以将多个请求通过脚本的形式一次发送，减少网络时延。
+
+2、原子操作。Redis会将整个脚本作为一个整体执行，中间不会被其他请求插入。因此在脚本运行过程中无需担心会出现竞态条件，无需使用事务。
+
+3、复用。客户端发送的脚本会永久存在redis中，这样其他客户端可以复用这一脚本，而不需要使用代码完成相同的逻辑。  
+
+Redis 使用单个 Lua 解释器去运行所有脚本，并且， Redis 也保证脚本会以原子性(atomic)的方式执行： 当某个脚本正在运行的时候，不会有其他脚本或 Redis 命令被执行。 这和使用 MULTI / EXEC 包围的事务很类似。 在其他别的客户端看来，脚本的效果(effect)要么是不可见的(not visible)，要么就是已完成的(already completed)。
+
+Redis 中执行命令需要响应的客户端状态，为了执行 Lua 脚本中的 Redis 命令，Redis 中专门创建了一个伪客户端，由这个客户端处理 Lua 脚本中包含的 Redis 命令。
+
+Redis 从始到终都只是创建了一个 Lua 环境，以及一个 lua_client ，这就意味着 Redis 服务器端同一时刻只能处理一个脚本。
+
+Redis 执行 lua 脚本时可以简单的认为仅仅只是把命令打包执行了，命令还是依次执行的，只不过在 lua 脚本执行时是阻塞的，避免了其他指令的干扰。  
 
 ### 参考
 
