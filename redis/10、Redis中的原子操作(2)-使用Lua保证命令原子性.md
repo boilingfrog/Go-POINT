@@ -2,8 +2,8 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Redis 如何应对并发访问](#redis-%E5%A6%82%E4%BD%95%E5%BA%94%E5%AF%B9%E5%B9%B6%E5%8F%91%E8%AE%BF%E9%97%AE)
-  - [使用 LUA 脚本](#%E4%BD%BF%E7%94%A8-lua-%E8%84%9A%E6%9C%AC)
-  - [Redis 中如何使用 LUA 脚本](#redis-%E4%B8%AD%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8-lua-%E8%84%9A%E6%9C%AC)
+  - [使用 Lua 脚本](#%E4%BD%BF%E7%94%A8-lua-%E8%84%9A%E6%9C%AC)
+  - [Redis 中如何使用 Lua 脚本](#redis-%E4%B8%AD%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8-lua-%E8%84%9A%E6%9C%AC)
     - [EVAL](#eval)
     - [EVALSHA](#evalsha)
     - [SCRIPT 命令](#script-%E5%91%BD%E4%BB%A4)
@@ -23,13 +23,13 @@
 
 上个文章中，我们分析了Redis 中命令的执行是单线程的，虽然 Redis6.0 版本之后，引入了 I/O 多线程，但是对于 Redis 命令的还是单线程去执行的。所以如果业务中，我们只用 Redis 中的单命令去处理业务的话，命令的原子性是可以得到保障的。  
 
-但是很多业务场景中，需要多个命令组合的使用，例如前面介绍的 `读取-修改-写回` 场景，这时候就不能保证组合命令的原子性了。所以这时候 LUA 就登场了。
+但是很多业务场景中，需要多个命令组合的使用，例如前面介绍的 `读取-修改-写回` 场景，这时候就不能保证组合命令的原子性了。所以这时候 Lua 就登场了。
 
-### 使用 LUA 脚本
+### 使用 Lua 脚本
 
-Redis 在 2.6 版本推出了 lua 脚本功能。  
+Redis 在 2.6 版本推出了 Lua 脚本功能。  
 
-引入 lua 脚本的优点：  
+引入 Lua 脚本的优点：  
 
 1、减少网络开销。可以将多个请求通过脚本的形式一次发送，减少网络时延。  
 
@@ -37,13 +37,13 @@ Redis 在 2.6 版本推出了 lua 脚本功能。
 
 3、复用。客户端发送的脚本会永久存在redis中，这样其他客户端可以复用这一脚本，而不需要使用代码完成相同的逻辑。  
 
-关于 lua 的语法和 lua 是一门什么样的语言，可以自行 google。  
+关于 Lua 的语法和 Lua 是一门什么样的语言，可以自行 google。  
 
-### Redis 中如何使用 LUA 脚本
+### Redis 中如何使用 Lua 脚本
 
-redis 中支持 LUA 脚本的几个命令  
+redis 中支持 Lua 脚本的几个命令  
 
-redis 自 2.6.0 加入了 lua 脚本相关的命令，在 3.2.0 加入了 lua 脚本的调试功能和命令 `SCRIPT DEBUG`。这里对命令做下简单的介绍。
+redis 自 2.6.0 加入了 Lua 脚本相关的命令，在 3.2.0 加入了 Lua 脚本的调试功能和命令 `SCRIPT DEBUG`。这里对命令做下简单的介绍。
 
 EVAL：使用改命令来直接执行指定的Lua脚本；  
 
@@ -61,7 +61,7 @@ SCRIPT DEBUG：设置调试模式，可设置同步、异步、关闭，同步�
 
 #### EVAL
 
-通过这个命令来直接执行执行的 LUA 脚本，也是 Redis 中执行 LUA 脚本最常用的命令。  
+通过这个命令来直接执行执行的 Lua 脚本，也是 Redis 中执行 Lua 脚本最常用的命令。  
 
 ```
 EVAL script numkeys key [key ...] arg [arg ...]
@@ -69,7 +69,7 @@ EVAL script numkeys key [key ...] arg [arg ...]
 
 来看下具体的参数  
 
-- script: 需要执行的 LUA 脚本；  
+- script: 需要执行的 Lua 脚本；  
 
 - numkeys: 指定的 Lua 脚本需要处理键的数量，其实就是 key 数组的长度；  
 
@@ -90,7 +90,7 @@ EVAL script numkeys key [key ...] arg [arg ...]
 
 可以看到上面指定了 numkeys 的长度是2，然后后面 key 中放了两个键值 key1 和 key2，通过 `KEYS[1],KEYS[2]` 就能获取到传入的两个键值对。`arg1 arg2 arg3` 即为传入的自定义参数，通过 `ARGV[index]` 就能获取到对应的参数。   
 
-一般情况下，会将 lua 放在一个单独的 Lua 文件中，然后去执行这个 Lua 脚本。  
+一般情况下，会将 Lua 放在一个单独的 Lua 文件中，然后去执行这个 Lua 脚本。  
 
 <img src="/img/redis/redis-lua.jpg"  alt="redis" />
 
@@ -213,7 +213,7 @@ OK
 
 #### SCRIPT DEBUG
 
-redis 从 v3.2.0 开始支持 lua debugger，可以加断点、print 变量信息、调试正在执行的代码......  
+redis 从 v3.2.0 开始支持 Lua debugger，可以加断点、print 变量信息、调试正在执行的代码......  
 
 如何进入调试模式？  
 
@@ -325,13 +325,13 @@ Redis 使用单个 Lua 解释器去运行所有脚本，并且， Redis 也保�
 
 Redis 中执行命令需要响应的客户端状态，为了执行 Lua 脚本中的 Redis 命令，Redis 中专门创建了一个伪客户端，由这个客户端处理 Lua 脚本中包含的 Redis 命令。  
 
-Redis 从始到终都只是创建了一个 Lua 环境，以及一个 lua_client ，这就意味着 Redis 服务器端同一时刻只能处理一个脚本。
+Redis 从始到终都只是创建了一个 Lua 环境，以及一个 Lua_client ，这就意味着 Redis 服务器端同一时刻只能处理一个脚本。
 
-Redis 执行 lua 脚本时可以简单的认为仅仅只是把命令打包执行了，命令还是依次执行的，只不过在 lua 脚本执行时是阻塞的，避免了其他指令的干扰。
+Redis 执行 Lua 脚本时可以简单的认为仅仅只是把命令打包执行了，命令还是依次执行的，只不过在 Lua 脚本执行时是阻塞的，避免了其他指令的干扰。
 
 这里看下伪客户端如何处理命令的  
 
-1、lua 环境将 redis.call 函数或者 redis.pcall 函数需要执行的命令传递给伪客户端；  
+1、Lua 环境将 redis.call 函数或者 redis.pcall 函数需要执行的命令传递给伪客户端；  
 
 2、伪客户端将想要执行的命令传送给命令执行器；  
 
@@ -724,19 +724,19 @@ luaRedisGenericCommand 函数处理的大致流程
 
 2、执行命令；  
 
-3、将命令的返回值从 Redis 类型转换成 Lua 类型，回复给 lua 环境;  
+3、将命令的返回值从 Redis 类型转换成 Lua 类型，回复给 Lua 环境;  
 
 4、环境的清理。   
 
 看下总体的命令处理过程    
 
-当然图中的这个栗子，incr 命令已经能够返回当前 key 的值，后面又加了个 get 仅仅是为了，演示 lua 脚本中多个 redis.call 的调用逻辑  
+当然图中的这个栗子，incr 命令已经能够返回当前 key 的值，后面又加了个 get 仅仅是为了，演示 Lua 脚本中多个 redis.call 的调用逻辑  
 
 <img src="/img/redis/redis-lua.png"  alt="redis" />
 
 ### Redis 中 Lua 脚本的使用  
 
-限流是是我们在业务开发中经常遇到的场景，这里使用 Redis 中的 lua 脚本实现了一个简单的限流组件，具体细节可参见  
+限流是是我们在业务开发中经常遇到的场景，这里使用 Redis 中的 Lua 脚本实现了一个简单的限流组件，具体细节可参见  
 
 [redis 实现 rate-limit](https://github.com/boilingfrog/rate-limit)
 
@@ -744,9 +744,9 @@ luaRedisGenericCommand 函数处理的大致流程
 
 当 Redis 中如果存在 `读取-修改-写回` 这种场景，我们就无法保证命令执行的原子性了；  
 
-Redis 在 2.6 版本推出了 lua 脚本功能。
+Redis 在 2.6 版本推出了 Lua 脚本功能。
 
-引入 lua 脚本的优点：
+引入 Lua 脚本的优点：
 
 1、减少网络开销。可以将多个请求通过脚本的形式一次发送，减少网络时延。
 
@@ -758,9 +758,9 @@ Redis 使用单个 Lua 解释器去运行所有脚本，并且， Redis 也保�
 
 Redis 中执行命令需要响应的客户端状态，为了执行 Lua 脚本中的 Redis 命令，Redis 中专门创建了一个伪客户端，由这个客户端处理 Lua 脚本中包含的 Redis 命令。
 
-Redis 从始到终都只是创建了一个 Lua 环境，以及一个 lua_client ，这就意味着 Redis 服务器端同一时刻只能处理一个脚本。
+Redis 从始到终都只是创建了一个 Lua 环境，以及一个 Lua_client ，这就意味着 Redis 服务器端同一时刻只能处理一个脚本。
 
-Redis 执行 lua 脚本时可以简单的认为仅仅只是把命令打包执行了，命令还是依次执行的，只不过在 lua 脚本执行时是阻塞的，避免了其他指令的干扰。  
+Redis 执行 Lua 脚本时可以简单的认为仅仅只是把命令打包执行了，命令还是依次执行的，只不过在 Lua 脚本执行时是阻塞的，避免了其他指令的干扰。  
 
 ### 参考
 
