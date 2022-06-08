@@ -18,6 +18,7 @@
 
 - [9、Redis 中的原子操作(1)-Redis 中命令的原子性](https://github.com/boilingfrog/Go-POINT/blob/master/redis/8%E3%80%81Redis%E4%BD%9C%E4%B8%BA%E7%BC%93%E5%AD%98%E7%9A%84%E5%BA%94%E7%94%A8.md)
 
+- [10、Redis中的原子操作(2)-使用Lua保证命令原子性](https://github.com/boilingfrog/Go-POINT/blob/master/redis/10%E3%80%81Redis%E4%B8%AD%E7%9A%84%E5%8E%9F%E5%AD%90%E6%93%8D%E4%BD%9C(2)-%E4%BD%BF%E7%94%A8Lua%E4%BF%9D%E8%AF%81%E5%91%BD%E4%BB%A4%E5%8E%9F%E5%AD%90%E6%80%A7.md)  
 
 - [Redis 中的内存缓冲区](https://github.com/boilingfrog/Go-POINT/blob/master/redis/%E5%86%85%E5%AD%98%E7%BC%93%E5%86%B2%E5%8C%BA%E6%BB%A1%E4%BA%86%E5%A6%82%E4%BD%95%E5%A4%84%E7%90%86.md#%E4%BB%80%E4%B9%88%E6%98%AF%E7%BC%93%E5%86%B2%E5%8C%BA)      
 

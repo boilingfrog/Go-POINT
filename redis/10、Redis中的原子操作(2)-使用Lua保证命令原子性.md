@@ -317,7 +317,7 @@ lua debugger> p KEYS
 
 ### 为什么 Redis 中的 Lua 脚本的执行是原子性的
 
-我们知道 Redis 中的单命令的执行是原子性的，因为命令的执行都是单线程去处理的。  
+我们知道 Redis 中单命令的执行是原子性的，因为命令的执行都是单线程去处理的。  
 
 那么对于 Redis 中执行 Lua 脚本也是原子性的，是如何实现的呢？这里来探讨下。  
 
@@ -327,7 +327,7 @@ Redis 中执行命令需要响应的客户端状态，为了执行 Lua 脚本中
 
 Redis 从始到终都只是创建了一个 Lua 环境，以及一个 Lua_client ，这就意味着 Redis 服务器端同一时刻只能处理一个脚本。
 
-Redis 执行 Lua 脚本时可以简单的认为仅仅只是把命令打包执行了，命令还是依次执行的，只不过在 Lua 脚本执行时是阻塞的，避免了其他指令的干扰。
+总结下就是：Redis 执行 Lua 脚本时可以简单的认为仅仅只是把命令打包执行了，命令还是依次执行的，只不过在 Lua 脚本执行时是阻塞的，避免了其他指令的干扰。
 
 这里看下伪客户端如何处理命令的  
 
@@ -760,13 +760,15 @@ Redis 中执行命令需要响应的客户端状态，为了执行 Lua 脚本中
 
 Redis 从始到终都只是创建了一个 Lua 环境，以及一个 Lua_client ，这就意味着 Redis 服务器端同一时刻只能处理一个脚本。
 
-Redis 执行 Lua 脚本时可以简单的认为仅仅只是把命令打包执行了，命令还是依次执行的，只不过在 Lua 脚本执行时是阻塞的，避免了其他指令的干扰。  
+总结下就是：Redis 执行 Lua 脚本时可以简单的认为仅仅只是把命令打包执行了，命令还是依次执行的，只不过在 Lua 脚本执行时是阻塞的，避免了其他指令的干扰。
 
 ### 参考
 
 【Redis核心技术与实战】https://time.geekbang.org/column/intro/100056701    
 【Redis设计与实现】https://book.douban.com/subject/25900156/   
 【EVAL简介】http://www.redis.cn/commands/eval.html   
-【Redis Lua 脚本调试器】http://www.redis.cn/topics/ldb.html    
+【Redis学习笔记】https://github.com/boilingfrog/Go-POINT/tree/master/redis
+【Redis Lua脚本调试器】http://www.redis.cn/topics/ldb.html    
+【redis中Lua脚本的使用】https://boilingfrog.github.io/2022/06/06/Redis%E4%B8%AD%E7%9A%84%E5%8E%9F%E5%AD%90%E6%93%8D%E4%BD%9C(2)-redis%E4%B8%AD%E4%BD%BF%E7%94%A8Lua%E8%84%9A%E6%9C%AC%E4%BF%9D%E8%AF%81%E5%91%BD%E4%BB%A4%E5%8E%9F%E5%AD%90%E6%80%A7/  
 
 
