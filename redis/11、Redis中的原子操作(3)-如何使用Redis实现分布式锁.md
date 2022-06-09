@@ -3,6 +3,7 @@
 
 - [Redis 中的分布式锁如何使用](#redis-%E4%B8%AD%E7%9A%84%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8)
   - [分布式锁的使用场景](#%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81%E7%9A%84%E4%BD%BF%E7%94%A8%E5%9C%BA%E6%99%AF)
+    - [使用 Redis 来实现分布式锁](#%E4%BD%BF%E7%94%A8-redis-%E6%9D%A5%E5%AE%9E%E7%8E%B0%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -18,6 +19,25 @@
 - 对于单体应用：多个线程之间访问可变共享变量，比较容易处理，可简单使用内存来存储标示即可；  
 
 - 分布式应用：这种场景下比较麻烦，因为多个应用，部署的地址可能在不同的机房，一个在北京一个在上海。不能简单的存储标示在内存中了，这时候需要使用公共内存来记录该标示，栗如 Redis，MySQL 。。。   
+
+### 使用 Redis 来实现分布式锁
+
+这里来聊聊如何使用 Redis 实现分布式锁  
+
+Redis 中分布式锁一般会用 `set key value px milliseconds nx` 或者 `SETNX+Lua`来实现。  
+
+因为 `SETNX` 命令，需要配合 `EXPIRE` 设置过期时间,Redis 中单命令的执行是原子性的，组合命令就需要使用 Lua 才能保证原子性了。  
+
+看下如何实现  
+
+#### 使用 `set key value px milliseconds nx` 实现  
+
+- 获取锁（unique_value可以是UUID等）
+  SET resource_name unique_value NX PX 30000
+
+#### setnx+lua 实现
+
+加锁 SET resource_name unique_value NX PX 30000
 
 
 
