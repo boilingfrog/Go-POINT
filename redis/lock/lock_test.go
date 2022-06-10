@@ -124,10 +124,14 @@ func TestTryLock(t *testing.T) {
 	for _, item := range tests {
 		t.Run(item.name, func(t *testing.T) {
 			ctx := context.Background()
-			isGetLock, err := redis.TryLock(ctx, item.key, item.Value, time.Second*10)
-			t.Log(err)
-			assert.Equal(t, item.isLockSuccess, isGetLock)
+			// 测试需要加锁
+			if item.isTryLock {
+				isGetLock, err := redis.TryLock(ctx, item.key, item.Value, time.Second*10)
+				t.Log(err)
+				assert.Equal(t, item.isLockSuccess, isGetLock)
+			}
 
+			// 测试需要解锁
 			if item.isUnLock {
 				err := redis.Unlock(ctx, item.key, item.Value)
 				if !item.isUnLockSuccess {
