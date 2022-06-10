@@ -46,11 +46,11 @@ func unLockScript() string {
 
 var UnLockErr = errors.New("未解锁成功")
 
+// 使用 set nx
+// res, err := r.Do(ctx, "set", key, value, "px", expire.Milliseconds(), "nx").Result()
 func (r *Redis) TryLock(ctx context.Context, key, value string, expire time.Duration) (isGetLock bool, err error) {
 	// 使用 Lua + SETNX
 	res, err := r.Eval(ctx, tryLockScript(), []string{key}, value, expire.Seconds()).Result()
-	// 使用 set nx
-	//res, err := r.Do(ctx, "set", key, value, "px", expire.Milliseconds(), "nx").Text()
 	if err != nil {
 		return false, err
 	}

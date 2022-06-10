@@ -3,7 +3,9 @@
 
 - [Redis 中的分布式锁如何使用](#redis-%E4%B8%AD%E7%9A%84%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8)
   - [分布式锁的使用场景](#%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81%E7%9A%84%E4%BD%BF%E7%94%A8%E5%9C%BA%E6%99%AF)
-    - [使用 Redis 来实现分布式锁](#%E4%BD%BF%E7%94%A8-redis-%E6%9D%A5%E5%AE%9E%E7%8E%B0%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81)
+  - [使用 Redis 来实现分布式锁](#%E4%BD%BF%E7%94%A8-redis-%E6%9D%A5%E5%AE%9E%E7%8E%B0%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81)
+    - [使用 `set key value px milliseconds nx` 实现](#%E4%BD%BF%E7%94%A8-set-key-value-px-milliseconds-nx-%E5%AE%9E%E7%8E%B0)
+    - [SETNX+Lua 实现](#setnxlua-%E5%AE%9E%E7%8E%B0)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -32,12 +34,58 @@ Redis 中分布式锁一般会用 `set key value px milliseconds nx` 或者 `SET
 
 #### 使用 `set key value px milliseconds nx` 实现  
 
-- 获取锁（unique_value可以是UUID等）
-  SET resource_name unique_value NX PX 30000
+因为这个命令同时能够设置键值和过期时间，同时Redis中的单命令都是原子性的，所以加锁的时候使用这个命令即可  
 
-#### setnx+lua 实现
+```go
+func (r *Redis) TryLock(ctx context.Context, key, value string, expire time.Duration) (isGetLock bool, err error) {
+	// 使用 set nx
+	res, err := r.Do(ctx, "set", key, value, "px", expire.Milliseconds(), "nx").Result()
+	if err != nil {
+		return false, err
+	}
+	if res == "OK" {
+		return true, nil
+	}
+	return false, nil
+}
+```
 
-加锁 SET resource_name unique_value NX PX 30000
+#### SETNX+Lua 实现
+
+如果使用 SETNX 命令，这个命令不能设置过期时间，需要配合 EXPIRE 命令来使用。  
+
+因为是用到了两个命令，这时候两个命令的组合使用是不能保障原子性的，在一些并发比较大的时候，需要配合使用 Lua 脚本来保证命令的原子性。  
+
+```go
+func tryLockScript() string {
+	script := `
+		local key = KEYS[1]
+
+		local value = ARGV[1] 
+		local expireTime = ARGV[2] 
+		local isSuccess = redis.call('SETNX', key, value)
+
+		if isSuccess == 1 then
+			redis.call('EXPIRE', key, expireTime)
+			return "OK"
+		end
+
+		return "unLock"    `
+	return script
+}
+
+func (r *Redis) TryLock(ctx context.Context, key, value string, expire time.Duration) (isGetLock bool, err error) {
+	// 使用 Lua + SETNX
+	res, err := r.Eval(ctx, tryLockScript(), []string{key}, value, expire.Seconds()).Result()
+	if err != nil {
+		return false, err
+	}
+	if res == "OK" {
+		return true, nil
+	}
+	return false, nil
+}
+```
 
 
 
