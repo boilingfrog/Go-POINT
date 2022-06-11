@@ -87,6 +87,7 @@ func (r *Redis) TryLock(ctx context.Context, key, value string, expire time.Dura
 }
 ```
 
+代码可参考[lock](https://github.com/boilingfrog/Go-POINT/blob/master/redis/lock/lock.go)
 
 
 ### 参考
