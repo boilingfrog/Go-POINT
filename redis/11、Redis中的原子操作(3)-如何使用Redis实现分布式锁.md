@@ -87,8 +87,58 @@ func (r *Redis) TryLock(ctx context.Context, key, value string, expire time.Dura
 }
 ```
 
-代码可参考[lock](https://github.com/boilingfrog/Go-POINT/blob/master/redis/lock/lock.go)
+除了上面加锁两个命令的区别之外，在解锁的时候需要注意下不能误删除别的线程持有的锁   
 
+为什么会出现这种情况呢，这里来分析下  
+
+举个栗子  
+
+1、线程1获取了锁，锁的过期时间为1s；  
+
+2、线程1完成了业务操作，用时1.5s ，这时候线程1的锁已经被过期时间自动释放了，这把锁已经被别的线程获取了；    
+
+3、但是线程1不知道，接着去释放锁，这时候就会将别的线程的锁，错误的释放掉。  
+
+面对这种情况，其实也很好处理  
+
+1、设置 value 具有唯一性；  
+
+2、每次删除锁的时候，先去判断下 value 的值是否能对的上，不相同就表示，锁已经被别的线程获取了；    
+
+看下代码实现  
+
+```go
+var UnLockErr = errors.New("未解锁成功")
+
+func unLockScript() string {
+	script := `
+		local value = ARGV[1] 
+		local key = KEYS[1]
+
+		local keyValue = redis.call('GET', key)
+		if tostring(keyValue) == tostring(value) then
+			return redis.call('DEL', key)
+		else
+			return 0
+		end
+    `
+	return script
+}
+
+func (r *Redis) Unlock(ctx context.Context, key, value string) error {
+	res, err := r.Eval(ctx, unLockScript(), []string{key}, value).Result()
+	if err != nil {
+		return err
+	}
+	if res.(int64) == 0 {
+		return UnLockErr
+	}
+
+	return nil
+}
+```
+
+代码可参考[lock](https://github.com/boilingfrog/Go-POINT/blob/master/redis/lock/lock.go)
 
 ### 参考
 
