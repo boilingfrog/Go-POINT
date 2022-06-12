@@ -97,7 +97,9 @@ func (r *Redis) TryLock(ctx context.Context, key, value string, expire time.Dura
 
 2、线程1完成了业务操作，用时1.5s ，这时候线程1的锁已经被过期时间自动释放了，这把锁已经被别的线程获取了；    
 
-3、但是线程1不知道，接着去释放锁，这时候就会将别的线程的锁，错误的释放掉。  
+3、但是线程1不知道，接着去释放锁，这时候就会将别的线程的锁，错误的释放掉。    
+
+<img src="/img/redis/redis-lock-1.png"  alt="redis" />
 
 面对这种情况，其实也很好处理  
 
