@@ -7,6 +7,7 @@
     - [使用 `set key value px milliseconds nx` 实现](#%E4%BD%BF%E7%94%A8-set-key-value-px-milliseconds-nx-%E5%AE%9E%E7%8E%B0)
     - [SETNX+Lua 实现](#setnxlua-%E5%AE%9E%E7%8E%B0)
   - [使用 Redlock 实现分布式锁](#%E4%BD%BF%E7%94%A8-redlock-%E5%AE%9E%E7%8E%B0%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81)
+    - [锁的续租](#%E9%94%81%E7%9A%84%E7%BB%AD%E7%A7%9F)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -128,16 +129,13 @@ func unLockScript() string {
 	return script
 }
 
-func (r *Redis) Unlock(ctx context.Context, key, value string) error {
+func (r *Redis) Unlock(ctx context.Context, key, value string) (bool, error) {
 	res, err := r.Eval(ctx, unLockScript(), []string{key}, value).Result()
 	if err != nil {
-		return err
-	}
-	if res.(int64) == 0 {
-		return UnLockErr
+		return false, err
 	}
 
-	return nil
+	return res.(int64) != 0, nil
 }
 ```
 
@@ -297,7 +295,77 @@ func (m *Mutex) release(ctx context.Context, pool redis.Pool, value string) (boo
 
 1、遍历所有的节点，然后尝试在所有的节点中执行加锁的操作；  
 
-2、收集加锁成功的节点书，如果没有达到指定的数目，释放刚刚添加的锁；
+2、收集加锁成功的节点数，如果没有达到指定的数目，释放刚刚添加的锁；
+
+#### 锁的续租  
+
+Redis 中分布式锁还有一个问题就是锁的续租问题，当锁的过期时间到了，但是业务的执行时间还没有完成，这时候就需要对锁进行续租了  
+
+续租的流程
+
+1、当客户端加锁成功后，可以启动一个定时的任务，每隔一段时间，检查业务是否完成，未完成，增加 key 的过期时间；  
+
+2、这里判断业务是否完成的依据是：  
+
+- 1、这个 key 是否存在，如果 key 不存在了，就表示业务已经执行完成了，也就不需要进行续租操作了；  
+
+- 2、同时需要校验下 value 值，如果 value 对应的值和之前写入的值不同了，说明当前锁已经被别的线程获取了；
+
+看下 redsync 中续租的实现  
+
+```go
+// Extend resets the mutex's expiry and returns the status of expiry extension.
+func (m *Mutex) Extend() (bool, error) {
+	return m.ExtendContext(nil)
+}
+
+// ExtendContext resets the mutex's expiry and returns the status of expiry extension.
+func (m *Mutex) ExtendContext(ctx context.Context) (bool, error) {
+	start := time.Now() 
+	// 尝试在所有的节点中加锁
+	n, err := m.actOnPoolsAsync(func(pool redis.Pool) (bool, error) {
+		return m.touch(ctx, pool, m.value, int(m.expiry/time.Millisecond))
+	})
+	if n < m.quorum {
+		return false, err
+	}
+	// 判断下锁的过期时间
+	now := time.Now()
+	until := now.Add(m.expiry - now.Sub(start) - time.Duration(int64(float64(m.expiry)*m.driftFactor)))
+	if now.Before(until) {
+		m.until = until
+		return true, nil
+	}
+	return false, ErrExtendFailed
+}
+
+var touchScript = redis.NewScript(1, `
+    // 需要先比较下当前的value值
+	if redis.call("GET", KEYS[1]) == ARGV[1] then
+		return redis.call("PEXPIRE", KEYS[1], ARGV[2])
+	else
+		return 0
+	end
+`)
+
+func (m *Mutex) touch(ctx context.Context, pool redis.Pool, value string, expiry int) (bool, error) {
+	conn, err := pool.Get(ctx)
+	if err != nil {
+		return false, err
+	}
+	defer conn.Close()
+	status, err := conn.Eval(touchScript, m.name, value, expiry)
+	if err != nil {
+		return false, err
+	}
+	return status != int64(0), nil
+}
+```
+
+1、锁的续租需要客户端去监听和操作；  
+
+2、每次续租操作的时候需要匹配下当前的 value 值，因为有可能把锁会被别的线程获取；  
+
 
 ### 参考
 

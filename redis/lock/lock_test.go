@@ -133,9 +133,9 @@ func TestTryLock(t *testing.T) {
 
 			// 测试需要解锁
 			if item.isUnLock {
-				err := redis.Unlock(ctx, item.key, item.Value)
+				isUnlock, err := redis.Unlock(ctx, item.key, item.Value)
 				if !item.isUnLockSuccess {
-					assert.Equal(t, err, UnLockErr)
+					assert.Equal(t, false, isUnlock)
 				} else {
 					assert.Equal(t, err, nil)
 				}

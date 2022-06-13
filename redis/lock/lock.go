@@ -60,14 +60,11 @@ func (r *Redis) TryLock(ctx context.Context, key, value string, expire time.Dura
 	return false, nil
 }
 
-func (r *Redis) Unlock(ctx context.Context, key, value string) error {
+func (r *Redis) Unlock(ctx context.Context, key, value string) (bool, error) {
 	res, err := r.Eval(ctx, unLockScript(), []string{key}, value).Result()
 	if err != nil {
-		return err
-	}
-	if res.(int64) == 0 {
-		return UnLockErr
+		return false, err
 	}
 
-	return nil
+	return res.(int64) != 0, nil
 }
