@@ -7,7 +7,8 @@
     - [使用 `set key value px milliseconds nx` 实现](#%E4%BD%BF%E7%94%A8-set-key-value-px-milliseconds-nx-%E5%AE%9E%E7%8E%B0)
     - [SETNX+Lua 实现](#setnxlua-%E5%AE%9E%E7%8E%B0)
   - [使用 Redlock 实现分布式锁](#%E4%BD%BF%E7%94%A8-redlock-%E5%AE%9E%E7%8E%B0%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81)
-    - [锁的续租](#%E9%94%81%E7%9A%84%E7%BB%AD%E7%A7%9F)
+  - [锁的续租](#%E9%94%81%E7%9A%84%E7%BB%AD%E7%A7%9F)
+  - [总结](#%E6%80%BB%E7%BB%93)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -295,9 +296,13 @@ func (m *Mutex) release(ctx context.Context, pool redis.Pool, value string) (boo
 
 1、遍历所有的节点，然后尝试在所有的节点中执行加锁的操作；  
 
-2、收集加锁成功的节点数，如果没有达到指定的数目，释放刚刚添加的锁；
+2、收集加锁成功的节点数，如果没有达到指定的数目，释放刚刚添加的锁；  
 
-#### 锁的续租  
+关于 Redlock 的缺点可参见    
+
+[How to do distributed locking](https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html)  
+
+### 锁的续租  
 
 Redis 中分布式锁还有一个问题就是锁的续租问题，当锁的过期时间到了，但是业务的执行时间还没有完成，这时候就需要对锁进行续租了  
 
@@ -362,15 +367,26 @@ func (m *Mutex) touch(ctx context.Context, pool redis.Pool, value string, expiry
 }
 ```
 
-1、锁的续租需要客户端去监听和操作；  
+1、锁的续租需要客户端去监听和操作，启动一个定时器，固定时间来调用续租函数给锁续租；    
 
-2、每次续租操作的时候需要匹配下当前的 value 值，因为有可能把锁会被别的线程获取；  
+2、每次续租操作的时候需要匹配下当前的 value 值，因为锁可能已经被当前的线程释放了，当前的持有者可能是别的线程；  
 
+### 总结  
+
+1、在分布式的场景下，使用分布式锁是我们经常遇到的一种场景；  
+
+2、使用 Redis 实现锁是个不错的选择，Redis 的单命令的执行是原子性的同时借助于 Lua 也可以很容易的实现命令的原子性；    
+
+3、针对分布式场景下主从切换，数据同步不及时的情况，redis 中引入了 redLock 来处理分布式锁；  
+
+4、根据 martin 的描述，redLock 是繁重的，且存在安全性，不过我们可以根据自己的业务场景做出判断；  
+
+5、需要注意的是在设置分布式锁的时候需要设置 value 的唯一性，并且每次主动删除锁的时候需要匹配下 value 的正确性，避免误删除其他线程的锁；  
 
 ### 参考
 
 【Redis核心技术与实战】https://time.geekbang.org/column/intro/100056701    
 【Redis设计与实现】https://book.douban.com/subject/25900156/   
 【Redis 分布式锁】https://redis.io/docs/reference/patterns/distributed-locks/  
-
+【How to do distributed locking】https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html  
 
