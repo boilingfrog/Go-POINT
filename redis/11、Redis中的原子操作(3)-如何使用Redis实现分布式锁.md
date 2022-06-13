@@ -6,6 +6,7 @@
   - [使用 Redis 来实现分布式锁](#%E4%BD%BF%E7%94%A8-redis-%E6%9D%A5%E5%AE%9E%E7%8E%B0%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81)
     - [使用 `set key value px milliseconds nx` 实现](#%E4%BD%BF%E7%94%A8-set-key-value-px-milliseconds-nx-%E5%AE%9E%E7%8E%B0)
     - [SETNX+Lua 实现](#setnxlua-%E5%AE%9E%E7%8E%B0)
+  - [使用 Redlock 实现分布式锁](#%E4%BD%BF%E7%94%A8-redlock-%E5%AE%9E%E7%8E%B0%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -142,13 +143,166 @@ func (r *Redis) Unlock(ctx context.Context, key, value string) error {
 
 代码可参考[lock](https://github.com/boilingfrog/Go-POINT/blob/master/redis/lock/lock.go)
 
+上面的这类锁的最大缺点就是只作用在一个节点上，即使 Redis 通过 sentinel 保证高可用，如果这个 master 节点由于某些原因放生了主从切换，那么就会出现锁丢失的情况：  
+
+1、在 Redis 的 master 节点上拿到了锁；
+
+2、但是这个加锁的 key 还没有同步到 slave 节点；
+
+3、master 故障，发生了故障转移，slave 节点升级为 master 节点；
+
+4、导致锁丢失。
+
+针对这种情况如何处理呢，下面来聊聊 Redlock 算法  
+
+### 使用 Redlock 实现分布式锁  
+
+在 Redis 的分布式环境中，我们假设有 N 个 `Redis master`。这些节点完全互相独立，不存在主从复制或者其他集群协调机制。我们确保将在 N 个实例上使用与在 Redis 单实例下相同方法获取和释放锁。现在我们假设有 5 个 `Redis master` 节点，同时我们需要在5台服务器上面运行这些 Redis 实例，这样保证他们不会同时都宕掉。  
+
+为了取到锁，客户端营该执行以下操作：  
+
+1、获取当前Unix时间，以毫秒为单位。  
+
+2、依次尝试从5个实例，使用相同的key和具有唯一性的 value（例如UUID）获取锁。当向 Redis 请求获取锁时，客户端应该设置一个网络连接和响应超时时间，这个超时时间应该小于锁的失效时间。例如你的锁自动失效时间为10秒，则超时时间应该在 5-50 毫秒之间。这样可以避免服务器端 Redis 已经挂掉的情况下，客户端还在死死地等待响应结果。如果服务器端没有在规定时间内响应，客户端应该尽快尝试去另外一个 Redis 实例请求获取锁；  
+
+3、客户端使用当前时间减去开始获取锁时间（步骤1记录的时间）就得到获取锁使用的时间。当且仅当从大多数（`N/2+1`，这里是3个节点）的 Redis 节点都取到锁，并且使用的时间小于锁失效时间时，锁才算获取成功；  
+
+4、如果取到了锁，key 的真正有效时间等于有效时间减去获取锁所使用的时间（步骤3计算的结果）；  
+
+5、如果因为某些原因，获取锁失败（没有在至少`N/2+1`个 Redis 实例取到锁或者取锁时间已经超过了有效时间），客户端应该在所有的Redis实例上进行解锁（即便某些 Redis 实例根本就没有加锁成功，防止某些节点获取到锁但是客户端没有得到响应而导致接下来的一段时间不能被重新获取锁）。
+
+根据官方的推荐，go 版本中 Redsync 实现了这一算法，这里看下具体的实现过程  
+
+[redsync项目地址](https://github.com/go-redsync/redsync)  
+
+```go
+// LockContext locks m. In case it returns an error on failure, you may retry to acquire the lock by calling this method again.
+func (m *Mutex) LockContext(ctx context.Context) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	value, err := m.genValueFunc()
+	if err != nil {
+		return err
+	}
+	
+	for i := 0; i < m.tries; i++ {
+		if i != 0 {
+			select {
+			case <-ctx.Done():
+				// Exit early if the context is done.
+				return ErrFailed
+			case <-time.After(m.delayFunc(i)):
+				// Fall-through when the delay timer completes.
+			}
+		}
+
+		start := time.Now()
+
+		// 尝试在所有的节点中加锁
+		n, err := func() (int, error) {
+			ctx, cancel := context.WithTimeout(ctx, time.Duration(int64(float64(m.expiry)*m.timeoutFactor)))
+			defer cancel()
+			return m.actOnPoolsAsync(func(pool redis.Pool) (bool, error) {
+				// acquire 加锁函数
+				return m.acquire(ctx, pool, value)
+			})
+		}()
+		if n == 0 && err != nil {
+			return err
+		}
+
+		// 如果加锁节点书没有达到的设定的数目
+		// 或者键值的过期时间已经到了
+		// 在所有的节点中解锁
+		now := time.Now()
+		until := now.Add(m.expiry - now.Sub(start) - time.Duration(int64(float64(m.expiry)*m.driftFactor)))
+		if n >= m.quorum && now.Before(until) {
+			m.value = value
+			m.until = until
+			return nil
+		}
+		_, err = func() (int, error) {
+			ctx, cancel := context.WithTimeout(ctx, time.Duration(int64(float64(m.expiry)*m.timeoutFactor)))
+			defer cancel()
+			return m.actOnPoolsAsync(func(pool redis.Pool) (bool, error) {
+				// 解锁函数
+				return m.release(ctx, pool, value)
+			})
+		}()
+		if i == m.tries-1 && err != nil {
+			return err
+		}
+	}
+
+	return ErrFailed
+}
+
+// 遍历所有的节点，并且在每个节点中执行传入的函数
+func (m *Mutex) actOnPoolsAsync(actFn func(redis.Pool) (bool, error)) (int, error) {
+	type result struct {
+		Status bool
+		Err    error
+	}
+
+	ch := make(chan result)
+	// 执行传入的函数
+	for _, pool := range m.pools {
+		go func(pool redis.Pool) {
+			r := result{}
+			r.Status, r.Err = actFn(pool)
+			ch <- r
+		}(pool)
+	}
+	n := 0
+	var err error
+	// 计算执行成功的节点数目
+	for range m.pools {
+		r := <-ch
+		if r.Status {
+			n++
+		} else if r.Err != nil {
+			err = multierror.Append(err, r.Err)
+		}
+	}
+	return n, err
+}
+
+// 手动解锁的lua脚本
+var deleteScript = redis.NewScript(1, `
+	if redis.call("GET", KEYS[1]) == ARGV[1] then
+		return redis.call("DEL", KEYS[1])
+	else
+		return 0
+	end
+`)
+
+// 手动解锁
+func (m *Mutex) release(ctx context.Context, pool redis.Pool, value string) (bool, error) {
+	conn, err := pool.Get(ctx)
+	if err != nil {
+		return false, err
+	}
+	defer conn.Close()
+	status, err := conn.Eval(deleteScript, m.name, value)
+	if err != nil {
+		return false, err
+	}
+	return status != int64(0), nil
+}
+```
+
+分析下思路  
+
+1、遍历所有的节点，然后尝试在所有的节点中执行加锁的操作；  
+
+2、收集加锁成功的节点书，如果没有达到指定的数目，释放刚刚添加的锁；
+
 ### 参考
 
 【Redis核心技术与实战】https://time.geekbang.org/column/intro/100056701    
 【Redis设计与实现】https://book.douban.com/subject/25900156/   
-【EVAL简介】http://www.redis.cn/commands/eval.html   
-【Redis学习笔记】https://github.com/boilingfrog/Go-POINT/tree/master/redis
-【Redis Lua脚本调试器】http://www.redis.cn/topics/ldb.html    
-【redis中Lua脚本的使用】https://boilingfrog.github.io/2022/06/06/Redis%E4%B8%AD%E7%9A%84%E5%8E%9F%E5%AD%90%E6%93%8D%E4%BD%9C(2)-redis%E4%B8%AD%E4%BD%BF%E7%94%A8Lua%E8%84%9A%E6%9C%AC%E4%BF%9D%E8%AF%81%E5%91%BD%E4%BB%A4%E5%8E%9F%E5%AD%90%E6%80%A7/  
+【Redis 分布式锁】https://redis.io/docs/reference/patterns/distributed-locks/  
 
 
