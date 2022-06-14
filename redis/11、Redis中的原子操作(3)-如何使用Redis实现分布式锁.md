@@ -345,7 +345,7 @@ func (m *Mutex) ExtendContext(ctx context.Context) (bool, error) {
 }
 
 var touchScript = redis.NewScript(1, `
-    // 需要先比较下当前的value值
+	// 需要先比较下当前的value值
 	if redis.call("GET", KEYS[1]) == ARGV[1] then
 		return redis.call("PEXPIRE", KEYS[1], ARGV[2])
 	else
@@ -375,7 +375,7 @@ func (m *Mutex) touch(ctx context.Context, pool redis.Pool, value string, expiry
 
 1、在分布式的场景下，使用分布式锁是我们经常遇到的一种场景；  
 
-2、使用 Redis 实现锁是个不错的选择，Redis 的单命令的执行是原子性的同时借助于 Lua 也可以很容易的实现命令的原子性；    
+2、使用 Redis 实现锁是个不错的选择，Redis 的单命令的执行是原子性的同时借助于 Lua 也可以很容易的实现组合命令的原子性；    
 
 3、针对分布式场景下主从切换，数据同步不及时的情况，redis 中引入了 redLock 来处理分布式锁；  
 
