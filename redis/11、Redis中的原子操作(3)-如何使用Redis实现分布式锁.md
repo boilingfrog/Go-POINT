@@ -8,6 +8,7 @@
     - [SETNX+Lua 实现](#setnxlua-%E5%AE%9E%E7%8E%B0)
   - [使用 Redlock 实现分布式锁](#%E4%BD%BF%E7%94%A8-redlock-%E5%AE%9E%E7%8E%B0%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81)
   - [锁的续租](#%E9%94%81%E7%9A%84%E7%BB%AD%E7%A7%9F)
+  - [看看 SETEX 的源码](#%E7%9C%8B%E7%9C%8B-setex-%E7%9A%84%E6%BA%90%E7%A0%81)
   - [总结](#%E6%80%BB%E7%BB%93)
   - [参考](#%E5%8F%82%E8%80%83)
 
@@ -370,6 +371,40 @@ func (m *Mutex) touch(ctx context.Context, pool redis.Pool, value string, expiry
 1、锁的续租需要客户端去监听和操作，启动一个定时器，固定时间来调用续租函数给锁续租；    
 
 2、每次续租操作的时候需要匹配下当前的 value 值，因为锁可能已经被当前的线程释放了，当前的持有者可能是别的线程；  
+
+### 看看 SETEX 的源码
+
+SETEX 能保证只有在 key 不存在时设置 key 的值，那么这里来看看，源码中是如何实现的呢  
+
+```go
+// https://github.com/redis/redis/blob/7.0/src/t_string.c#L78
+// setGenericCommand()函数是以下命令: SET, SETEX, PSETEX, SETNX.的最底层实现
+void setGenericCommand(client *c, int flags, robj *key, robj *val, robj *expire, int unit, robj *ok_reply, robj *abort_reply) {
+    ...
+
+    found = (lookupKeyWrite(c->db,key) != NULL);
+    // 这里是 SETEX 实现的重点
+	// 如果nx,并且在数据库中找到了这个值就返回
+	// 如果是 xx,并且在数据库中没有找到键值就会返回
+	
+	// 因为 Redis 中的命令执行都是单线程操作的
+	// 所以命令中判断如果存在就返回，能够保证正确性，不会出现并发访问的问题
+    if ((flags & OBJ_SET_NX && found) ||
+        (flags & OBJ_SET_XX && !found))
+    {
+        if (!(flags & OBJ_SET_GET)) {
+            addReply(c, abort_reply ? abort_reply : shared.null[c->resp]);
+        }
+        return;
+    }
+
+    ...
+}
+```
+
+1、命令的实现里面加入了键值是否存在的判断，来保证 NX 只有在 key 不存在时设置 key 的值；  
+
+2、因为 Redis 中总是一个线程处理命令的执行，单命令是能够保证原子性，不会出现并发的问题。   
 
 ### 总结  
 
