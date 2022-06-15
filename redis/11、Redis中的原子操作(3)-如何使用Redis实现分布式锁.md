@@ -9,6 +9,8 @@
   - [使用 Redlock 实现分布式锁](#%E4%BD%BF%E7%94%A8-redlock-%E5%AE%9E%E7%8E%B0%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81)
   - [锁的续租](#%E9%94%81%E7%9A%84%E7%BB%AD%E7%A7%9F)
   - [看看 SETEX 的源码](#%E7%9C%8B%E7%9C%8B-setex-%E7%9A%84%E6%BA%90%E7%A0%81)
+  - [为什么 Redis 可以用来做分布式锁](#%E4%B8%BA%E4%BB%80%E4%B9%88-redis-%E5%8F%AF%E4%BB%A5%E7%94%A8%E6%9D%A5%E5%81%9A%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81)
+  - [分布式锁如何选择](#%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81%E5%A6%82%E4%BD%95%E9%80%89%E6%8B%A9)
   - [总结](#%E6%80%BB%E7%BB%93)
   - [参考](#%E5%8F%82%E8%80%83)
 
@@ -406,6 +408,42 @@ void setGenericCommand(client *c, int flags, robj *key, robj *val, robj *expire,
 
 2、因为 Redis 中总是一个线程处理命令的执行，单命令是能够保证原子性，不会出现并发的问题。   
 
+### 为什么 Redis 可以用来做分布式锁
+
+分布式锁需要满足的特性
+
+- 互斥性：在任意时刻，对于同一个锁，只有一个客户端能持有，从而保证一个共享资源同一时间只能被一个客户端操作；
+
+- 安全性：即不会形成死锁，当一个客户端在持有锁的期间崩溃而没有主动解锁的情况下，其持有的锁也能够被正确释放，并保证后续其它客户端能加锁；
+
+- 可用性：当提供锁服务的节点发生宕机等不可恢复性故障时，“热备” 节点能够接替故障的节点继续提供服务，并保证自身持有的数据与故障节点一致。
+
+- 对称性：对于任意一个锁，其加锁和解锁必须是同一个客户端，即客户端 A 不能把客户端 B 加的锁给解了。  
+
+那么 Redis 对上面的特性是如何支持的呢？   
+
+1、Redis 中命令的执行都是单线程的，虽然在 Redis6.0 的版本中，引入了多线程来处理 IO 任务，但是命令的执行依旧是单线程处理的；  
+
+2、单线程的特点，能够保证命令的执行的是不存在并发的问题，同时命令执行的原子性也能得到保证；  
+
+3、Redis 中提供了针对 SETNX 这样的命令，能够保证同一时刻是只会有一个请求执行成功，提供互斥性的保障；  
+
+4、Redis 中也提供了 EXPIRE 超时释放的命令，可以实现锁的超时释放，避免死锁的出现；  
+
+5、高可用，针对如果发生主从切换，数据丢失的情况，Redis 引入了 RedLock 算法，保证了 Redis 中主要大部分节点正常运行，锁就可以正常运行；  
+
+6、Redis 中本身没有对锁提供续期的操作，不过一些第三方的实现中实现了 Redis 中锁的续期，类似 使用 java 实现的 Redisson，使用 go 实现的 redsync，当前自己实现也不是很难，实现过程可参见上文。  
+
+总体来说，Redis 中对分布式锁的一些特性都提供了支持，使用 Redis 实现分布式锁，是一个不错的选择。   
+
+### 分布式锁如何选择
+
+1、如果业务规模不大，qps 很小，使用 Redis，etcd，ZooKeeper 去实现分布式锁都不会有问题，就看公司了基础架构了，如果有现成的 Redis，etcd，ZooKeeper 直接用就可以了；  
+
+2、Redis 中分布式锁有一定的安全隐患，如果业务中对安全性要求很高，那么 Redis 可能就不适合了，etcd 或者 ZooKeeper 就比较合适了；   
+
+3、如果系统 qps 很大，但是可以容忍一些错误，那么 Redis 可能就更合适了，毕竟 etcd或者ZooKeeper 背面往往都是较低的吞吐量和较高的延迟。
+
 ### 总结  
 
 1、在分布式的场景下，使用分布式锁是我们经常遇到的一种场景；  
@@ -424,4 +462,5 @@ void setGenericCommand(client *c, int flags, robj *key, robj *val, robj *expire,
 【Redis设计与实现】https://book.douban.com/subject/25900156/   
 【Redis 分布式锁】https://redis.io/docs/reference/patterns/distributed-locks/  
 【How to do distributed locking】https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html  
+【etcd 实现分布式锁】https://www.cnblogs.com/ricklz/p/15033193.html#%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81  
 
