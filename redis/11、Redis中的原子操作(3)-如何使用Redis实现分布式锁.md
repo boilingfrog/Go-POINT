@@ -28,7 +28,7 @@
 
 - 分布式应用：这种场景下比较麻烦，因为多个应用，部署的地址可能在不同的机房，一个在北京一个在上海。不能简单的存储标示在内存中了，这时候需要使用公共内存来记录该标示，栗如 Redis，MySQL 。。。   
 
-### 使用 Redis 来实现分布式锁
+### 使用 Redis 来实现单机锁
 
 这里来聊聊如何使用 Redis 实现分布式锁  
 
@@ -432,7 +432,7 @@ void setGenericCommand(client *c, int flags, robj *key, robj *val, robj *expire,
 
 5、高可用，针对如果发生主从切换，数据丢失的情况，Redis 引入了 RedLock 算法，保证了 Redis 中主要大部分节点正常运行，锁就可以正常运行；  
 
-6、Redis 中本身没有对锁提供续期的操作，不过一些第三方的实现中实现了 Redis 中锁的续期，类似 使用 java 实现的 Redisson，使用 go 实现的 redsync，当前自己实现也不是很难，实现过程可参见上文。  
+6、Redis 中本身没有对锁提供续期的操作，不过一些第三方的实现中实现了 Redis 中锁的续期，类似 使用 java 实现的 Redisson，使用 go 实现的 redsync，当然自己实现也不是很难，实现过程可参见上文。  
 
 总体来说，Redis 中对分布式锁的一些特性都提供了支持，使用 Redis 实现分布式锁，是一个不错的选择。   
 
@@ -460,7 +460,9 @@ void setGenericCommand(client *c, int flags, robj *key, robj *val, robj *expire,
 
 【Redis核心技术与实战】https://time.geekbang.org/column/intro/100056701    
 【Redis设计与实现】https://book.douban.com/subject/25900156/   
+【Redis 的学习笔记】https://github.com/boilingfrog/Go-POINT/tree/master/redis
 【Redis 分布式锁】https://redis.io/docs/reference/patterns/distributed-locks/  
 【How to do distributed locking】https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html  
 【etcd 实现分布式锁】https://www.cnblogs.com/ricklz/p/15033193.html#%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81  
+【Redis中的原子操作(3)-使用Redis实现分布式锁】https://boilingfrog.github.io/2022/06/15/Redis%E4%B8%AD%E7%9A%84%E5%8E%9F%E5%AD%90%E6%93%8D%E4%BD%9C(3)-%E4%BD%BF%E7%94%A8Redis%E5%AE%9E%E7%8E%B0%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81/  
 
