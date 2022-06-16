@@ -460,7 +460,7 @@ void setGenericCommand(client *c, int flags, robj *key, robj *val, robj *expire,
 
 【Redis核心技术与实战】https://time.geekbang.org/column/intro/100056701    
 【Redis设计与实现】https://book.douban.com/subject/25900156/   
-【Redis 的学习笔记】https://github.com/boilingfrog/Go-POINT/tree/master/redis
+【Redis 的学习笔记】https://github.com/boilingfrog/Go-POINT/tree/master/redis  
 【Redis 分布式锁】https://redis.io/docs/reference/patterns/distributed-locks/  
 【How to do distributed locking】https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html  
 【etcd 实现分布式锁】https://www.cnblogs.com/ricklz/p/15033193.html#%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81  
