@@ -24,6 +24,9 @@
     - [持久性](#%E6%8C%81%E4%B9%85%E6%80%A7)
   - [为什么 Redis 不支持回滚](#%E4%B8%BA%E4%BB%80%E4%B9%88-redis-%E4%B8%8D%E6%94%AF%E6%8C%81%E5%9B%9E%E6%BB%9A)
   - [源码分析](#%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90)
+    - [1、MULTI声明事务](#1multi%E5%A3%B0%E6%98%8E%E4%BA%8B%E5%8A%A1)
+    - [2、命令入队](#2%E5%91%BD%E4%BB%A4%E5%85%A5%E9%98%9F)
+    - [3、执行事务](#3%E6%89%A7%E8%A1%8C%E4%BA%8B%E5%8A%A1)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -270,9 +273,178 @@ Redis 是会存在丢数据的情况的，如果在数据持久化之前，数�
 
 ### 为什么 Redis 不支持回滚
 
+Redis 中为什么没有提供事务的回滚，有下面两个方面的考量  
 
+1、支持回滚会对 Redis 的简单性和性能有很大的影响；  
+
+2、Redis 中只有在 **语法错误**或**者键值的类型操作错误** 中才会出错，这些问题应该在开发中解决，不应该出现在生产中。  
+
+基于上面两点的考虑，目前 Redis 中不支持事务的回滚。  
 
 ### 源码分析
+
+这里来简单分析下 Redis 中事务的实现过程  
+
+#### 1、MULTI声明事务 
+
+Redis 中使用 MULTI 命令来声明和开启一个事务  
+
+```go
+// https://github.com/redis/redis/blob/7.0/src/multi.c#L104
+void multiCommand(client *c) {
+	// 判断是否已经开启了事务
+	// 不持之事务的嵌套
+    if (c->flags & CLIENT_MULTI) {
+        addReplyError(c,"MULTI calls can not be nested");
+        return;
+    }
+	// 设置事务标识
+    c->flags |= CLIENT_MULTI;
+
+    addReply(c,shared.ok);
+}
+```
+
+1、首先会判断当前客户端是是否已经开启了事务，Redis 中的实物不支持嵌套；  
+
+2、给 flags 设置事务标识 CLIENT_MULTI。  
+
+#### 2、命令入队
+
+开始事务之后，后面所有的命令都会被添加到事务队列中  
+
+```
+// https://github.com/redis/redis/blob/7.0/src/multi.c#L59
+/* Add a new command into the MULTI commands queue */
+void queueMultiCommand(client *c) {
+    multiCmd *mc;
+
+    // 这里有两种情况的判断  
+    // 1、如果命令在入队是有问题就步不入队了
+    // 2、如果 watch 的键值有更改也不用入队了
+    if (c->flags & (CLIENT_DIRTY_CAS|CLIENT_DIRTY_EXEC))
+        return;
+        
+    // 在原commands后面配置空间以存放新命令
+    c->mstate.commands = zrealloc(c->mstate.commands,
+            sizeof(multiCmd)*(c->mstate.count+1));
+    // 微信新配置的空间设置执行的命令和参数
+    mc = c->mstate.commands+c->mstate.count;
+    mc->cmd = c->cmd;
+    mc->argc = c->argc;
+    mc->argv = c->argv;
+    mc->argv_len = c->argv_len;
+    ...
+}
+```
+
+#### 3、执行事务
+
+命令入队之后，再来看下事务的提交  
+
+```
+// https://github.com/redis/redis/blob/7.0/src/multi.c#L140
+void execCommand(client *c) {
+    ...
+    // 判断下是否开启了事务
+    if (!(c->flags & CLIENT_MULTI)) {
+        addReplyError(c,"EXEC without MULTI");
+        return;
+    }
+
+    // 事务中不能 watch 有过期时间的键值
+    if (isWatchedKeyExpired(c)) {
+        c->flags |= (CLIENT_DIRTY_CAS);
+    }
+
+     // 检查是否需要中退出事务，有下面两种情况  
+     // 1、 watch 的 key 有变化了
+     // 2、命令入队的时候，有语法错误  
+    if (c->flags & (CLIENT_DIRTY_CAS | CLIENT_DIRTY_EXEC)) {
+        if (c->flags & CLIENT_DIRTY_EXEC) {
+            addReplyErrorObject(c, shared.execaborterr);
+        } else {
+            addReply(c, shared.nullarray[c->resp]);
+        }
+        // 取消事务
+        discardTransaction(c);
+        return;
+    }
+
+    uint64_t old_flags = c->flags;
+
+    /* we do not want to allow blocking commands inside multi */
+    // 事务中允许出现阻塞命令
+    c->flags |= CLIENT_DENY_BLOCKING;
+
+    /* Exec all the queued commands */
+    unwatchAllKeys(c); /* Unwatch ASAP otherwise we'll waste CPU cycles */
+
+    server.in_exec = 1;
+
+    orig_argv = c->argv;
+    orig_argv_len = c->argv_len;
+    orig_argc = c->argc;
+    orig_cmd = c->cmd;
+    addReplyArrayLen(c,c->mstate.count);
+    // 循环处理执行事务队列中的命令
+    for (j = 0; j < c->mstate.count; j++) {
+        c->argc = c->mstate.commands[j].argc;
+        c->argv = c->mstate.commands[j].argv;
+        c->argv_len = c->mstate.commands[j].argv_len;
+        c->cmd = c->realcmd = c->mstate.commands[j].cmd;
+
+        
+        // 权限检查
+        int acl_errpos;
+        int acl_retval = ACLCheckAllPerm(c,&acl_errpos);
+        if (acl_retval != ACL_OK) {
+          ...
+        } else {
+            // 执行命令
+            if (c->id == CLIENT_ID_AOF)
+                call(c,CMD_CALL_NONE);
+            else
+                call(c,CMD_CALL_FULL);
+
+            serverAssert((c->flags & CLIENT_BLOCKED) == 0);
+        }
+
+        // 命令执行后可能会被修改，需要更新操作
+        c->mstate.commands[j].argc = c->argc;
+        c->mstate.commands[j].argv = c->argv;
+        c->mstate.commands[j].cmd = c->cmd;
+    }
+
+    // restore old DENY_BLOCKING value
+    if (!(old_flags & CLIENT_DENY_BLOCKING))
+        c->flags &= ~CLIENT_DENY_BLOCKING;
+        
+    // 恢复原命令
+    c->argv = orig_argv;
+    c->argv_len = orig_argv_len;
+    c->argc = orig_argc;
+    c->cmd = c->realcmd = orig_cmd;
+    // 清除事务
+    discardTransaction(c);
+
+    server.in_exec = 0;
+}
+```
+
+事务提交的时候，命令的执行逻辑还是比较简单的  
+
+1、首先会进行一些检查；  
+
+- 检查事务有没有嵌套；  
+
+- watch 监听的键值是否有变动；  
+
+- 事务中命令入队列的时候，是否有语法错误；  
+
+2、循环执行，事务队列中的命令。  
+
+
 
 ### 参考
 
@@ -280,4 +452,5 @@ Redis 是会存在丢数据的情况的，如果在数据持久化之前，数�
 【Redis设计与实现】https://book.douban.com/subject/25900156/   
 【Redis 的学习笔记】https://github.com/boilingfrog/Go-POINT/tree/master/redis    
 【数据库事务】https://baike.baidu.com/item/%E6%95%B0%E6%8D%AE%E5%BA%93%E4%BA%8B%E5%8A%A1/9744607  
+【transactions】https://redis.io/docs/manual/transactions/  
 
