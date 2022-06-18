@@ -27,6 +27,7 @@
     - [1、MULTI声明事务](#1multi%E5%A3%B0%E6%98%8E%E4%BA%8B%E5%8A%A1)
     - [2、命令入队](#2%E5%91%BD%E4%BB%A4%E5%85%A5%E9%98%9F)
     - [3、执行事务](#3%E6%89%A7%E8%A1%8C%E4%BA%8B%E5%8A%A1)
+    - [watch 是如何实现的呢](#watch-%E6%98%AF%E5%A6%82%E4%BD%95%E5%AE%9E%E7%8E%B0%E7%9A%84%E5%91%A2)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -320,8 +321,8 @@ void queueMultiCommand(client *c) {
     multiCmd *mc;
 
     // 这里有两种情况的判断  
-    // 1、如果命令在入队是有问题就步不入队了
-    // 2、如果 watch 的键值有更改也不用入队了
+    // 1、如果命令在入队是有问题就步不入队了，CLIENT_DIRTY_EXEC 表示入队的时候，命令有语法的错误
+    // 2、如果 watch 的键值有更改也不用入队了， CLIENT_DIRTY_CAS 表示该客户端监听的键值有变动
     if (c->flags & (CLIENT_DIRTY_CAS|CLIENT_DIRTY_EXEC))
         return;
         
@@ -337,6 +338,12 @@ void queueMultiCommand(client *c) {
     ...
 }
 ```
+
+入队的时候会做个判断：  
+
+1、如果命令在入队是有问题就步不入队了，CLIENT_DIRTY_EXEC 表示入队的时候，命令有语法的错误；  
+
+2、如果 watch 的键值有更改也不用入队了， CLIENT_DIRTY_CAS 表示该客户端监听的键值有变动；  
 
 #### 3、执行事务
 
@@ -444,7 +451,178 @@ void execCommand(client *c) {
 
 2、循环执行，事务队列中的命令。  
 
+#### watch 是如何实现的呢  
 
+WATCH 命令用于在事务开始之前监视任意数量的键： 当调用 EXEC 命令执行事务时， 如果任意一个被监视的键已经被其他客户端修改了， 那么整个事务不再执行， 直接返回失败。  
+
+看下 watch 的键值对是如何和客户端进行映射的  
+
+```
+// https://github.com/redis/redis/blob/7.0/src/server.h#L918
+typedef struct redisDb {
+    ...
+    dict *watched_keys;         /* WATCHED keys for MULTI/EXEC CAS */
+    ...
+} redisDb;
+
+// https://github.com/redis/redis/blob/7.0/src/server.h#L1083
+typedef struct client {
+    ...
+    list *watched_keys;     /* Keys WATCHED for MULTI/EXEC CAS */
+    ...
+} client;
+
+// https://github.com/redis/redis/blob/7.0/src/multi.c#L262
+// 服务端中每一个db 中都有一个 hash table 来记录客户端和 watching key 的映射，当这些 key 修改，可以标识监听这些 key 的客户端。   
+//
+// 每个客户端中也有一个被监听的键值对的列表，当客户端被释放或者 un-watch 被调用，可以取消监听这些 key .
+typedef struct watchedKey {
+    // 键值
+    robj *key;
+    // 键值所在的db
+    redisDb *db;
+    // 客户端
+    client *client;
+    // 正在监听过期key 的标识
+    unsigned expired:1; /* Flag that we're watching an already expired key. */
+} watchedKey;
+```
+
+分析完数据结构，看下 watch 的代码实现  
+
+```
+// https://github.com/redis/redis/blob/7.0/src/multi.c#L441
+void watchCommand(client *c) {
+    int j;
+
+    if (c->flags & CLIENT_MULTI) {
+        addReplyError(c,"WATCH inside MULTI is not allowed");
+        return;
+    }
+    /* No point in watching if the client is already dirty. */
+    if (c->flags & CLIENT_DIRTY_CAS) {
+        addReply(c,shared.ok);
+        return;
+    }
+    for (j = 1; j < c->argc; j++)
+        watchForKey(c,c->argv[j]);
+    addReply(c,shared.ok);
+}
+
+// https://github.com/redis/redis/blob/7.0/src/multi.c#L270
+/* Watch for the specified key */
+void watchForKey(client *c, robj *key) {
+    list *clients = NULL;
+    listIter li;
+    listNode *ln;
+    watchedKey *wk;
+
+    // 检查是否正在 watch 传入的 key 
+    listRewind(c->watched_keys,&li);
+    while((ln = listNext(&li))) {
+        wk = listNodeValue(ln);
+        if (wk->db == c->db && equalStringObjects(key,wk->key))
+            return; /* Key already watched */
+    }
+    // 没有监听，添加监听的 key 到 db 中的 watched_keys 中
+    clients = dictFetchValue(c->db->**watched_keys**,key);
+    if (!clients) {
+        clients = listCreate();
+        dictAdd(c->db->watched_keys,key,clients);
+        incrRefCount(key);
+    }
+    // 添加 key 到 client 中的  watched_keys 中
+    wk = zmalloc(sizeof(*wk));
+    wk->key = key;
+    wk->client = c;
+    wk->db = c->db;
+    wk->expired = keyIsExpired(c->db, key);
+    incrRefCount(key);
+    listAddNodeTail(c->watched_keys,wk);
+    listAddNodeTail(clients,wk);
+}
+```
+
+1、服务端中每一个db 中都有一个 hash table 来记录客户端和 watching key 的映射，当这些 key 修改，可以标识监听这些 key 的客户端；  
+
+2、每个客户端中也有一个被监听的键值对的列表，当客户端被释放或者 un-watch 被调用，可以取消监听这些 key ；
+
+3、当用 watch 命令的时候，过期键会被分别添加到 redisDb 中的 watched_keys 中，和 client 中的 watched_keys 中。  
+
+上面事务的执行的时候，客户端有一个状态 CLIENT_DIRTY_CAS 表示当前 watch 的键值对有更新，那么 CLIENT_DIRTY_CAS 是在何时被标记的呢？  
+
+```
+// https://github.com/redis/redis/blob/7.0/src/db.c#L535
+/*-----------------------------------------------------------------------------
+ * Hooks for key space changes.
+ *
+ * Every time a key in the database is modified the function
+ * signalModifiedKey() is called.
+ *
+ * Every time a DB is flushed the function signalFlushDb() is called.
+ *----------------------------------------------------------------------------*/
+
+// 每次修改数据库中的一个键时，都会调用函数signalModifiedKey()。
+// 每次DB被刷新时，函数signalFlushDb()被调用。
+/* Note that the 'c' argument may be NULL if the key was modified out of
+ * a context of a client. */
+// 当 键值对有变动的时候，会调用 touchWatchedKey 标识对应的客户端状态为 CLIENT_DIRTY_CAS
+void signalModifiedKey(client *c, redisDb *db, robj *key) {
+    touchWatchedKey(db,key);
+    trackingInvalidateKey(c,key,1);
+}
+
+// https://github.com/redis/redis/blob/7.0/src/multi.c#L348
+/* "Touch" a key, so that if this key is being WATCHed by some client the
+ * next EXEC will fail. */
+// 修改 key 对应的客户端状态为 CLIENT_DIRTY_CAS，当前客户端 watch 的 key 已经发生了更新
+void touchWatchedKey(redisDb *db, robj *key) {
+    list *clients;
+    listIter li;
+    listNode *ln;
+
+    if (dictSize(db->watched_keys) == 0) return;
+    clients = dictFetchValue(db->watched_keys, key);
+    if (!clients) return;
+
+    /* Mark all the clients watching this key as CLIENT_DIRTY_CAS */
+    /* Check if we are already watching for this key */
+    listRewind(clients,&li);
+    while((ln = listNext(&li))) {
+        watchedKey *wk = listNodeValue(ln);
+        client *c = wk->client;
+
+        if (wk->expired) {
+            /* The key was already expired when WATCH was called. */
+            if (db == wk->db &&
+                equalStringObjects(key, wk->key) &&
+                dictFind(db->dict, key->ptr) == NULL)
+            {
+                /* Already expired key is deleted, so logically no change. Clear
+                 * the flag. Deleted keys are not flagged as expired. */
+                wk->expired = 0;
+                goto skip_client;
+            }
+            break;
+        }
+
+        c->flags |= CLIENT_DIRTY_CAS;
+        /* As the client is marked as dirty, there is no point in getting here
+         * again in case that key (or others) are modified again (or keep the
+         * memory overhead till EXEC). */
+        unwatchAllKeys(c);
+
+    skip_client:
+        continue;
+    }
+}
+```
+
+1、每次修改数据库中的一个键时；  
+
+2、每次DB被刷新时；    
+
+上面的这两种情况发生，redis 就会修改 watch 对应的 key 的客户端状态为 CLIENT_DIRTY_CAS 表示该客户端 watch 有更新，事务处理就能通过这个状态来进行判断。
 
 ### 参考
 
