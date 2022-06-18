@@ -309,7 +309,7 @@ void multiCommand(client *c) {
 }
 ```
 
-1、首先会判断当前客户端是是否已经开启了事务，Redis 中的实物不支持嵌套；  
+1、首先会判断当前客户端是是否已经开启了事务，Redis 中的事务不支持嵌套；  
 
 2、给 flags 设置事务标识 CLIENT_MULTI。  
 
@@ -348,7 +348,7 @@ void queueMultiCommand(client *c) {
 
 2、如果 watch 的键值有更改也不用入队了， CLIENT_DIRTY_CAS 表示该客户端监听的键值有变动；  
 
-3、client watch 的 key 有更新，当前客户端的状态就会被标记成 CLIENT_DIRTY_CAS，CLIENT_DIRTY_CAS 是在何时被标记，可继续看下文。  
+3、client watch 的 key 有更新，当前客户端的 flags 就会被标记成 CLIENT_DIRTY_CAS，CLIENT_DIRTY_CAS 是在何时被标记，可继续看下文。  
 
 #### 3、执行事务
 
@@ -386,7 +386,7 @@ void execCommand(client *c) {
     uint64_t old_flags = c->flags;
 
     /* we do not want to allow blocking commands inside multi */
-    // 事务中允许出现阻塞命令
+    // 事务中不允许出现阻塞命令
     c->flags |= CLIENT_DENY_BLOCKING;
 
     /* Exec all the queued commands */
@@ -455,6 +455,8 @@ void execCommand(client *c) {
 - 事务中命令入队列的时候，是否有语法错误；  
 
 2、循环执行，事务队列中的命令。  
+
+通过源码可以看到语法错误的时候事务才会结束执行，如果明星操作的类型不对，事务是不会停止的，还是会把正确的命令执行。  
 
 #### watch 是如何实现的呢  
 
@@ -556,7 +558,7 @@ void watchForKey(client *c, robj *key) {
 
 3、当用 watch 命令的时候，过期键会被分别添加到 redisDb 中的 watched_keys 中，和 client 中的 watched_keys 中。  
 
-上面事务的执行的时候，客户端有一个状态 CLIENT_DIRTY_CAS 表示当前 watch 的键值对有更新，那么 CLIENT_DIRTY_CAS 是在何时被标记的呢？  
+上面事务的执行的时候，客户端有一个 flags， CLIENT_DIRTY_CAS 标识当前客户端 watch 的键值对有更新，那么 CLIENT_DIRTY_CAS 是在何时被标记的呢？  
 
 ```
 // https://github.com/redis/redis/blob/7.0/src/db.c#L535
@@ -629,11 +631,15 @@ void touchWatchedKey(redisDb *db, robj *key) {
 }
 ```
 
-1、每次修改数据库中的一个键时；  
+Redis 中 redisClient 的 flags 设置被设置成 REDIS_DIRTY_CAS 位，有下面两种情况：  
 
-2、每次DB被刷新时；    
+1、每次修改数据库中的一个键值时；  
 
-上面的这两种情况发生，redis 就会修改 watch 对应的 key 的客户端状态为 CLIENT_DIRTY_CAS 表示该客户端 watch 有更新，事务处理就能通过这个状态来进行判断。
+2、每次DB被 flush 时，整个 Redis 的键值被清空；    
+
+上面的这两种情况发生，redis 就会修改 watch 对应的 key 的客户端 flags 为 CLIENT_DIRTY_CAS 表示该客户端 watch 有更新，事务处理就能通过这个状态来进行判断。  
+
+几乎所有对 key 进行操作的函数都会调用 signalModifiedKey 函数，比如 `setKey、delCommand、hsetCommand` 等。也就所有修改 key 的值的函数，都会去调用 signalModifiedKey 来检查是否修改了被 watch 的 key，只要是修改了被 watch 的 key，就会对 redisClient 的 flags 设置 REDIS_DIRTY_CAS 位。
 
 ### 事务对比 Lua 脚本
 
@@ -671,7 +677,7 @@ Redis Lua脚本的定义是事务性的，所以你可以用 Redis 事务做的�
 
 3、事务本省没有实现隔离性，可以借助于 watch 命令来实现；  
 
-4、Redis 实物在执行的过程中，发生语法问题，整个事务才会报错不执行，如果仅仅是类型操作的错误，事务还是正常执行，还是会把正确的命令执行完成；  
+4、Redis 事务在执行的过程中，发生语法问题，整个事务才会报错不执行，如果仅仅是类型操作的错误，事务还是正常执行，还是会把正确的命令执行完成；  
 
 5、Redis 中为什么没有提供事务的回滚，有下面两个方面的考量；   
 
