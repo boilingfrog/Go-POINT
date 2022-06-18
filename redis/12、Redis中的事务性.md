@@ -259,7 +259,6 @@ QUEUED
 
 <img src="/img/redis/redis-multi.jpg"  alt="redis" />
 
-
 从上面的结果可以看到如果使用 watch 之后，如果当前键值，在事务之外有了修改，那么当前事务就会放弃本次事务的执行。这样就实现了事务的隔离性。  
 
 ##### 1、如果在事务提交之后，有并发操作
@@ -344,6 +343,8 @@ void queueMultiCommand(client *c) {
 1、如果命令在入队是有问题就步不入队了，CLIENT_DIRTY_EXEC 表示入队的时候，命令有语法的错误；  
 
 2、如果 watch 的键值有更改也不用入队了， CLIENT_DIRTY_CAS 表示该客户端监听的键值有变动；  
+
+3、client watch 的 key 有更新，当前客户端的状态就会被标记成 CLIENT_DIRTY_CAS，CLIENT_DIRTY_CAS 是在何时被标记，可继续看下文。  
 
 #### 3、执行事务
 
@@ -488,6 +489,8 @@ typedef struct watchedKey {
 } watchedKey;
 ```
 
+<img src="/img/redis/redis-watched-keys.png"  alt="redis" />
+
 分析完数据结构，看下 watch 的代码实现  
 
 ```
@@ -581,12 +584,15 @@ void touchWatchedKey(redisDb *db, robj *key) {
     listIter li;
     listNode *ln;
 
+    // 如果 redisDb 中的 watched_keys 为空，直接返回
     if (dictSize(db->watched_keys) == 0) return;
+    // 通过传入的 key 在 redisDb 的 watched_keys 中找到监听该 key 的客户端信息
     clients = dictFetchValue(db->watched_keys, key);
     if (!clients) return;
 
     /* Mark all the clients watching this key as CLIENT_DIRTY_CAS */
     /* Check if we are already watching for this key */
+    // 将监听该 key 的所有客户端信息标识成 CLIENT_DIRTY_CAS 状态  
     listRewind(clients,&li);
     while((ln = listNext(&li))) {
         watchedKey *wk = listNodeValue(ln);
@@ -610,6 +616,7 @@ void touchWatchedKey(redisDb *db, robj *key) {
         /* As the client is marked as dirty, there is no point in getting here
          * again in case that key (or others) are modified again (or keep the
          * memory overhead till EXEC). */
+         // 这个客户端应该被表示成 dirty，这个客户端就不需要在判断监听了，取消这个客户端监听的 key
         unwatchAllKeys(c);
 
     skip_client:
