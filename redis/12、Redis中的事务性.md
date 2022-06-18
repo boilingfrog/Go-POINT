@@ -28,6 +28,10 @@
     - [2、命令入队](#2%E5%91%BD%E4%BB%A4%E5%85%A5%E9%98%9F)
     - [3、执行事务](#3%E6%89%A7%E8%A1%8C%E4%BA%8B%E5%8A%A1)
     - [watch 是如何实现的呢](#watch-%E6%98%AF%E5%A6%82%E4%BD%95%E5%AE%9E%E7%8E%B0%E7%9A%84%E5%91%A2)
+  - [事务对比 Lua 脚本](#%E4%BA%8B%E5%8A%A1%E5%AF%B9%E6%AF%94-lua-%E8%84%9A%E6%9C%AC)
+    - [事务](#%E4%BA%8B%E5%8A%A1)
+    - [Lua](#lua)
+  - [总结](#%E6%80%BB%E7%BB%93)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -630,6 +634,52 @@ void touchWatchedKey(redisDb *db, robj *key) {
 2、每次DB被刷新时；    
 
 上面的这两种情况发生，redis 就会修改 watch 对应的 key 的客户端状态为 CLIENT_DIRTY_CAS 表示该客户端 watch 有更新，事务处理就能通过这个状态来进行判断。
+
+### 事务对比 Lua 脚本
+
+#### 事务
+
+1、事务的使用只有在最后提交事务，并且执行完成获取到执行的结果；   
+
+2、事务的隔离性，需要引入 watch 机制的使用，会增加事务使用的复杂度；  
+
+#### Lua 
+
+1、命令执行的过程中，整个 Lua 脚本的执行都是原子性的，所以不会存在事务中的隔离性问题；  
+
+2、Lua 的执行中，在运行的过程中，就能获取到执行的结果，可以使用前面命令的执行结果，做后续的操作；  
+
+3、因为 Lua 执行过程中是原子性的，所以不推荐用来执行耗时的命令；
+
+除了上面几个使用场景的限制，这里看下官方文档对此的描述  
+
+> Something else to consider for transaction like operations in redis are redis scripts which are transactional. Everything you can do with a Redis Transaction, you can also do with a script, and usually the script will be both simpler and faster.
+
+翻译下来就是 
+
+Redis Lua脚本的定义是事务性的，所以你可以用 Redis 事务做的所有事情，你也可以用 Lua 脚本来做，通常脚本会更简单和更快。  
+
+[文档地址](https://redis.io/docs/manual/transactions/)  
+
+所以可以知道，相比于事务，还是更推荐去使用 Lua 脚本。  
+
+### 总结
+
+1、事务在执行过程中不会被中断，所有事务命令执行完之后，事务才能结束；  
+
+2、多个命令会被入队到事务队列中，然后按先进先出（FIFO）的顺序执行；  
+
+3、事务本省没有实现隔离性，可以借助于 watch 命令来实现；  
+
+4、Redis 实物在执行的过程中，发生语法问题，整个事务才会报错不执行，如果仅仅是类型操作的错误，事务还是正常执行，还是会把正确的命令执行完成；  
+
+5、Redis 中为什么没有提供事务的回滚，有下面两个方面的考量；   
+
+- 1、支持回滚会对 Redis 的简单性和性能有很大的影响；  
+
+- 2、Redis 中只有在 **语法错误**或**者键值的类型操作错误** 中才会出错，这些问题应该在开发中解决，不应该出现在生产中。
+
+6、Redis 中的 Lua 脚本也是事务性的，相比于事务，还是更推荐去使用 Lua 脚本。
 
 ### 参考
 
