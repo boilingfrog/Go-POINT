@@ -704,4 +704,5 @@ Redis Lua脚本的定义是事务性的，所以你可以用 Redis 事务做的�
 【Redis 的学习笔记】https://github.com/boilingfrog/Go-POINT/tree/master/redis    
 【数据库事务】https://baike.baidu.com/item/%E6%95%B0%E6%8D%AE%E5%BA%93%E4%BA%8B%E5%8A%A1/9744607  
 【transactions】https://redis.io/docs/manual/transactions/  
+【Redis中的事务分析】https://boilingfrog.github.io/2022/06/19/Redis%E4%B8%AD%E7%9A%84%E4%BA%8B%E5%8A%A1%E5%88%86%E6%9E%90/  
 

@@ -22,6 +22,8 @@
 
 - [11、Redis中的原子操作(3)-如何使用Redis实现分布式锁](https://github.com/boilingfrog/Go-POINT/blob/master/redis/11%E3%80%81Redis%E4%B8%AD%E7%9A%84%E5%8E%9F%E5%AD%90%E6%93%8D%E4%BD%9C(3)-%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8Redis%E5%AE%9E%E7%8E%B0%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81.md)  
 
+- [12、Redis 中的事务分析，Redis 中的事务可以满足ACID属性吗？](https://github.com/boilingfrog/Go-POINT/blob/master/redis/12%E3%80%81Redis%E4%B8%AD%E7%9A%84%E4%BA%8B%E5%8A%A1%E6%80%A7.md)  
+
 - [Redis 中的内存缓冲区](https://github.com/boilingfrog/Go-POINT/blob/master/redis/%E5%86%85%E5%AD%98%E7%BC%93%E5%86%B2%E5%8C%BA%E6%BB%A1%E4%BA%86%E5%A6%82%E4%BD%95%E5%A4%84%E7%90%86.md#%E4%BB%80%E4%B9%88%E6%98%AF%E7%BC%93%E5%86%B2%E5%8C%BA)      
 
 
