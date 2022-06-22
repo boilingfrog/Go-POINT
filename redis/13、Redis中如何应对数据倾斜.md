@@ -71,13 +71,13 @@
 
 对于`bigkey`可以从以下两个方面进行处理
 
-合理优化数据结构  
+1、合理优化数据结构  
 
-1、对较大的数据进行压缩处理；
+- 1、对较大的数据进行压缩处理；
 
-2、拆分集合：将大的集合拆分成小集合（如以时间进行分片）或者单个的数据。
+- 2、拆分集合：将大的集合拆分成小集合（如以时间进行分片）或者单个的数据。
 
-- 选择其他的技术来存储 `bigkey`；  
+2、选择其他的技术来存储 `bigkey`；  
 
 - 使用其他的存储形式，考虑使用 cdn 或者文档性数据库 MongoDB。
 
@@ -216,5 +216,6 @@ if data == NULL {
 【Redis设计与实现】https://book.douban.com/subject/25900156/   
 【Redis 的学习笔记】https://github.com/boilingfrog/Go-POINT/tree/master/redis     
 【Redis中的切片集群】https://boilingfrog.github.io/2022/02/20/redis%E4%B8%AD%E5%B8%B8%E8%A7%81%E7%9A%84%E9%9B%86%E7%BE%A4%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/#%E5%88%87%E7%89%87%E9%9B%86%E7%BE%A4  
+【Redis 切片集群的数据倾斜分析】https://boilingfrog.github.io/2022/06/22/Redis%E5%88%87%E7%89%87%E9%9B%86%E7%BE%A4%E7%9A%84%E6%95%B0%E6%8D%AE%E5%80%BE%E6%96%9C%E5%88%86%E6%9E%90/  
 
 
