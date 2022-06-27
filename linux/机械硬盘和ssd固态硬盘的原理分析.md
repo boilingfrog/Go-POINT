@@ -43,7 +43,7 @@
 
 盘片可以有一个也可以有多个，现在机械硬盘内部通常会叠多个盘片提升数据容量，因为盘片的正反面都可以进行读写，所以对应的磁头也是多磁头的。  
 
-<img src="/img/linux/hhd-4.jpeg"  alt="hhd" />    
+<img src="/img/linux/hhd-4.jpeg"  alt="hhd" width="597" height="434"/>    
 
 再来看下机械硬盘中几个比较重要的概念  
 
