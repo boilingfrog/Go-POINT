@@ -1,5 +1,21 @@
-Vagrant.configure("2") do |config|
-  config.vm.provider "docker" do |d|
-    d.image = "ubuntu:14.04"
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure(2) do |config|
+  # Vagrant uses vagrant user by default. Docker uses root. Use root, it is
+  # a development environment anyway.
+  config.ssh.username = "root"
+  config.vm.boot_timeout = 100000000
+
+  config.vm.provider "docker" do |docker|
+      # The name of the image to use
+      docker.image = "ubuntu:14.04"
+
+      # vagrant docker images have SSH so why not to use it
+      docker.has_ssh = true
+
+      # Yes, containers are long running.
+      docker.remains_running = false
+
   end
 end
