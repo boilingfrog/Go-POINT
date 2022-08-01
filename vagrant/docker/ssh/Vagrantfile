@@ -1,8 +1,36 @@
-ENV['VAGRANT_DEFAULT_PROVIDER'] = 'docker'
+config = {
+  :image          => 'bashtoni/centos7-vagrant',
+}
 
-Vagrant.configure("2") do |config|
-  config.vm.provider "docker" do |d|
-    d.build_dir = "."
-    d.has_ssh = true
+nodes = [
+  {
+    :name => 'node1',
+    :image      => config[:image],
+    :ip       => '192.168.56.111'
+  },
+    {
+      :name => 'node2',
+      :image      => config[:image],
+      :ip       => '192.168.56.112'
+    }
+]
+
+Vagrant.configure("2") do |cfg|
+  ENV['VAGRANT_DEFAULT_PROVIDER'] = 'docker'
+  nodes.each do |node|
+   cfg.vm.define node[:name] do |node_config|
+      node_config.vm.provider "docker" do |v|
+        v.name = node[:name]
+        v.has_ssh = true
+        v.build_dir = "."
+       end
+      node_config.vm.provision "file", run: "always", source: "../authorized_keys", destination: "/tmp/authorized_keys"
+      node_config.vm.provision "shell", run: "always", inline: <<-SHELL
+          mkdir -p /root/.ssh/ && cat /tmp/authorized_keys > /root/.ssh/authorized_keys
+      SHELL
+       node_config.ssh.username = "vagrant"
+       node_config.ssh.password = "vagrant"
+       node_config.vm.host_name = node[:name]
+    end
   end
 end
