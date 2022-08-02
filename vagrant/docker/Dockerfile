@@ -1,13 +1,3 @@
-# Modified by Matthew Warman <mcwarman@gmail.com> 
-# Based on project with in CenOs/CentOS-Dockerfiles
-# https://github.com/CentOS/CentOS-Dockerfiles/blob/master/ssh/centos7
-#
-# Which was "ported" by Adam Miller <maxamillion@fedoraproject.org> from
-#   https://github.com/fedora-cloud/Fedora-Dockerfiles
-#
-# Originally written for Fedora-Dockerfiles by
-#   scollier <scollier@redhat.com>
-
 FROM centos:centos7
 MAINTAINER liz <rick.lizham@gmail.com>
 RUN yum -y update; yum clean all
