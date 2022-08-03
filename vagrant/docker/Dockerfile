@@ -1,7 +1,10 @@
 FROM centos:centos7
-MAINTAINER liz <rick.lizham@gmail.com>
-RUN yum -y update; yum clean all
-RUN yum -y install openssh-server openssh-clients passwd sudo; yum clean all
+MAINTAINER liz <rick.lizhan@gmail.com>
+RUN yum -y update
+RUN yum -y install openssh-server openssh-clients passwd sudo
+RUN yum clean all
+RUN rm -rf /tmp/* rm -rf /var/cache/yum/*
+
 RUN mkdir /var/run/sshd
 RUN ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -N ''
 
