@@ -1,9 +1,14 @@
 FROM centos:centos7
 MAINTAINER liz <rick.lizhan@gmail.com>
-RUN yum -y update
-RUN yum -y install openssh-server openssh-clients passwd sudo
-RUN yum clean all
-RUN rm -rf /tmp/* rm -rf /var/cache/yum/*
+
+RUN yum -y update &&\
+    yum -y install kde-l10n-Chinese telnet &&\
+    yum -y reinstall glibc-common &&\
+    yum -y install openssh-server openssh-clients passwd sudo &&\
+    yum clean all &&\
+    rm -rf /tmp/* rm -rf /var/cache/yum/* &&\
+    localedef -i en_US -f UTF-8 en_US.UTF-8 &&\
+    localedef -c -f UTF-8 -i zh_CN zh_CN.utf8
 
 RUN mkdir /var/run/sshd
 RUN ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -N ''
