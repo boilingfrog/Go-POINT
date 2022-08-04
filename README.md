@@ -26,7 +26,7 @@
 
 - [ansible 的学习笔记](https://github.com/boilingfrog/Go-POINT/tree/master/ansible)   
 
-- [vagrant 的学习笔记](https://github.com/boilingfrog/Go-POINT/tree/master/vagrant)   
+- [vagrant 的学习笔记](https://github.com/boilingfrog/vagrant-provider-script)      
 
 - [bazel 的学习笔记](https://github.com/boilingfrog/Go-POINT/tree/master/bazel)   
 
