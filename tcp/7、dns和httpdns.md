@@ -42,7 +42,7 @@
 
 **顶级域名服务器**  
 
-这些域名服务器负责管理在该顶级域名服务器注册的所有二级域名。当收到 DNS 查询请求时，就给出相应的回答(可能是最后的结果，也可能是下一步应当找找的域名服务器的 IP 地址)   
+这些域名服务器负责管理在该顶级域名服务器注册的所有二级域名。当收到 DNS 查询请求时，就给出相应的回答(可能是最后的结果，也可能是下一步应当查找的域名服务器的 IP 地址)   
 
 **权限域名服务器**  
 
@@ -172,3 +172,4 @@ HTTPNDS 其实就是，不走传统的 DNS 解析，而是自己搭建基于 HTT
 【计算机网络第八版】https://www.bilibili.com/video/BV1WP4y1j7JU?p=1    
 【计算机网络学习笔记】https://github.com/boilingfrog/Go-POINT/tree/master/tcp    
 【全面理解DNS及HTTPDNS】https://juejin.cn/post/6844903987796246542    
+【计算机网络-DNS和HTTPDNS】https://boilingfrog.github.io/2022/08/26/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-DNS%E5%92%8CHTTPDNS/    
