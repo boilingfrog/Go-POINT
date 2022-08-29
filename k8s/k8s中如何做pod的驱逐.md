@@ -1,3 +1,16 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [对 k8S 中的 NODE 进行迁移](#%E5%AF%B9-k8s-%E4%B8%AD%E7%9A%84-node-%E8%BF%9B%E8%A1%8C%E8%BF%81%E7%A7%BB)
+  - [处理思路](#%E5%A4%84%E7%90%86%E6%80%9D%E8%B7%AF)
+    - [1、设置节点不可调度](#1%E8%AE%BE%E7%BD%AE%E8%8A%82%E7%82%B9%E4%B8%8D%E5%8F%AF%E8%B0%83%E5%BA%A6)
+    - [2、驱逐节点上的POD](#2%E9%A9%B1%E9%80%90%E8%8A%82%E7%82%B9%E4%B8%8A%E7%9A%84pod)
+    - [3、node 迁移结束，设置 node 为可调度状态](#3node-%E8%BF%81%E7%A7%BB%E7%BB%93%E6%9D%9F%E8%AE%BE%E7%BD%AE-node-%E4%B8%BA%E5%8F%AF%E8%B0%83%E5%BA%A6%E7%8A%B6%E6%80%81)
+    - [4、pod 回迁](#4pod-%E5%9B%9E%E8%BF%81)
+  - [参考](#%E5%8F%82%E8%80%83)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## 对 k8S 中的 NODE 进行迁移
 
 ### 处理思路  
@@ -76,7 +89,7 @@ node2   Ready    <none>   468d   v1.19.9
 master  Ready    master   468d   v1.19.9
 ```
 
-##### 4、pod 回迁
+#### 4、pod 回迁
 
 重新部署发布即可。   
 
