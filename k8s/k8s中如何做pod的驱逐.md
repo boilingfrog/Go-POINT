@@ -8,6 +8,7 @@
     - [2、驱逐节点上的 pod](#2%E9%A9%B1%E9%80%90%E8%8A%82%E7%82%B9%E4%B8%8A%E7%9A%84-pod)
     - [3、node 迁移结束，设置 node 为可调度状态](#3node-%E8%BF%81%E7%A7%BB%E7%BB%93%E6%9D%9F%E8%AE%BE%E7%BD%AE-node-%E4%B8%BA%E5%8F%AF%E8%B0%83%E5%BA%A6%E7%8A%B6%E6%80%81)
     - [4、pod 回迁](#4pod-%E5%9B%9E%E8%BF%81)
+    - [驱逐中的 pod 保护](#%E9%A9%B1%E9%80%90%E4%B8%AD%E7%9A%84-pod-%E4%BF%9D%E6%8A%A4)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -54,7 +55,7 @@ $ kubectl drain node1 --delete-local-data --ignore-daemonsets --force
 
 执行之后对应 node 上的 pod 就会被驱逐出当前 node，然后部署到其他的 node 中。  
 
-```go
+```
 $ kubectl drain node1 --delete-local-data --ignore-daemonsets --force
 node/node1 already cordoned
 WARNING: ignoring DaemonSet-managed Pods: kube-system/calico-node-v27bp, kube-system/kube-proxy-fvfbk, kube-system/nodelocaldns-qbwvp
@@ -103,6 +104,15 @@ master  Ready    master   468d   v1.19.9
 #### 4、pod 回迁
 
 重新部署发布即可。   
+
+#### 驱逐中的 pod 保护
+
+有两种方法  
+
+1、为了防止 驱逐节点上的 pod，可用 pod 数量过少，使用 pdb 来保护； 
+
+2、也可以，执行完成步骤 1，设置节点不可用之后，重新部署 pod,让 pod 部署到其他的 node 中，来实现 node 中 pod 的驱逐。  
+
 
 ### 参考
 
