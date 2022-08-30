@@ -9,6 +9,7 @@
     - [3、node 迁移结束，设置 node 为可调度状态](#3node-%E8%BF%81%E7%A7%BB%E7%BB%93%E6%9D%9F%E8%AE%BE%E7%BD%AE-node-%E4%B8%BA%E5%8F%AF%E8%B0%83%E5%BA%A6%E7%8A%B6%E6%80%81)
     - [4、pod 回迁](#4pod-%E5%9B%9E%E8%BF%81)
     - [驱逐中的 pod 保护](#%E9%A9%B1%E9%80%90%E4%B8%AD%E7%9A%84-pod-%E4%BF%9D%E6%8A%A4)
+      - [什么是 PDB](#%E4%BB%80%E4%B9%88%E6%98%AF-pdb)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -113,6 +114,19 @@ master  Ready    master   468d   v1.19.9
 
 2、也可以，执行完成步骤 1，设置节点不可用之后，重新部署 pod,让 pod 部署到其他的 node 中，来实现 node 中 pod 的驱逐。  
 
+##### 什么是 PDB
+
+对于 K8s 集群，我们可能会有下面的操作  
+
+1、排空（drain）节点进行修复或升级；  
+
+2、从集群中排空节点以缩小集群；  
+
+3、从节点中移除一个 pod，以允许其他 pod 使用该节点。   
+
+当发生上面的这几种操作的时候，当前存活的 pod 的数量可能很少或者为0，我们的业务就可能发生中断，所以我们需要控制宕机 pod 的数量，保证有足够的 pod 保障业务的正常运行。    
+
+PDB（PodDisruptionBudget）意为主动驱逐保护，作用就是当 pod 发生自愿中断，也就是上面的三种情况的时候，保证在节点维护时有不低于一定数量的 pod 运行，从而保持服务质量。    
 
 ### 参考
 
