@@ -3,6 +3,9 @@
 
 - [1、使用kubespray部署k8s](https://github.com/boilingfrog/Go-POINT/tree/master/golang/bufio)  
 
+- [2、k8s 中几个主要组件的作用，pod,service,ingress](https://github.com/boilingfrog/Go-POINT/blob/master/k8s/2%E3%80%81k8s%E6%80%BB%E4%BD%93%E6%A6%82%E8%A7%88.md)    
+
+
 
 
 
