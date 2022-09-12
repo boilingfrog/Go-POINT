@@ -124,8 +124,13 @@ nginx-deployment-66b6c48dd5-xgzgh   1/1     Running   0          59s
  
 因为上面定义了 `replicas: 3` 也就是副本数为3，当我们删除一个 pod 的时候，马上就会有一个新的 Pod 被创建。    
 
+同样经常使用的到的控制器还有 DaemonSet 和 StatefulSet  
 
+DaemonSet：DaemonSet 确保全部（或者某些）节点上运行一个 Pod 的副本。 当有节点加入集群时， 也会为他们新增一个 Pod 。 当有节点从集群移除时，这些 Pod 也会被回收。删除 DaemonSet 将会删除它创建的所有 Pod。  
 
+StatefulSet：用来管理有状态应用的工作负载，和 Deployment 类似， StatefulSet 管理基于相同容器规约的一组 Pod。但和 Deployment 不同的是， StatefulSet 为它们的每个 Pod 维护了一个有粘性的 ID。这些 Pod 是基于相同的规约来创建的， 但是不能相互替换：无论怎么调度，每个 Pod 都有一个永久不变的 ID。  
+
+### 静态 Pod 
 
 
 
