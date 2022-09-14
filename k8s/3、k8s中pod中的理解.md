@@ -382,7 +382,7 @@ metadata:
   labels:
     app: nginx
 spec:
-  replicas: 1
+  replicas: 5
   selector:
     matchLabels:
       app: nginx
@@ -396,7 +396,6 @@ spec:
         image: nginx:1.14.2
         ports:
         - containerPort: 80
-          hostPort: 8000
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -445,7 +444,61 @@ operator 有下面几种取值：
 
 - Gt：标签的值大于某个值（字符串比较）；  
 
-- Lt：标签的值小于某个值（字符串比较）。  
+- Lt：标签的值小于某个值（字符串比较）。
+
+requiredDuringSchedulingIgnoredDuringExecution 是一种强制选择的规则。  
+
+preferredDuringSchedulingIgnoredDuringExecution 是优先选择规则，表示根据规则优先选择那些节点。   
+
+使用 preferredDuringSchedulingIgnoredDuringExecution 规则的时候，我们可以给 label 添加权重，这样 Pod 就能按照设计的规则调度到不同的节点中了。   
+
+```
+cat <<EOF >./pod-hostPort-affinity-weight.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 80 
+            preference: 
+              matchExpressions: 
+              - key: nodeName
+                operator: In 
+                values: 
+                - node7
+                - node9
+          - weight: 20 
+            preference: 
+              matchExpressions: 
+              - key: nodeName
+                operator: In 
+                values: 
+                - node8
+EOF
+```
+
+上面的栗子可以看到，可以给 label 添加 weight 权重，在 preferredDuringSchedulingIgnoredDuringExecution 的规则下，就能按照我们设计的权重，部署到 label 对应的节点中。     
+
+
 
 ### 资源限制
 
