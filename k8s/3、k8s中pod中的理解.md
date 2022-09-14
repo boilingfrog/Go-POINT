@@ -13,6 +13,8 @@
     - [hostNetwork](#hostnetwork)
     - [hostPort](#hostport)
     - [hostNetwork 和 hostPort 的对比](#hostnetwork-%E5%92%8C-hostport-%E7%9A%84%E5%AF%B9%E6%AF%94)
+  - [Label](#label)
+    - [什么是亲和（affinity）与反亲和（anti-affinity）调度](#%E4%BB%80%E4%B9%88%E6%98%AF%E4%BA%B2%E5%92%8Caffinity%E4%B8%8E%E5%8F%8D%E4%BA%B2%E5%92%8Canti-affinity%E8%B0%83%E5%BA%A6)
   - [资源限制](#%E8%B5%84%E6%BA%90%E9%99%90%E5%88%B6)
   - [参考](#%E5%8F%82%E8%80%83)
 
@@ -327,7 +329,123 @@ hostNetwork 和 hostPort 的本质都是暴露 Pod 所在的节点 IP 给终端�
 
 使用 hostNetwork，pod 实际上用的是 pod 宿主机的网络地址空间；  
 
-使用 hostPort，pod IP 并非宿主机 IP，而是 cni 分配的 pod IP，跟其他普通的 pod 使用一样的 ip 分配方式，端口并非宿主机网络监听端口，只是使用了 DNAT 机制将 hostPort 指定的端口映射到了容器的端口之上（可以通过 iptables 命令进行查看）。  
+使用 hostPort，pod IP 并非宿主机 IP，而是 cni 分配的 pod IP，跟其他普通的 pod 使用一样的 ip 分配方式，端口并非宿主机网络监听端口，只是使用了 DNAT 机制将 hostPort 指定的端口映射到了容器的端口之上。    
+
+### Label
+
+Label 是 kubernetes 系统中的一个重要概念。它的作用就是在资源上添加标识，用来对它们进行区分和选择。   
+
+Label 可以添加到各种资源对象上，如 `Node、Pod、Service、RC` 等。Label 通常在资源对象定义时确定，也可以在对象创建后动态添加或删除。当我们给一个对象打了标签之后，随后就可以通过 Label Selector（标签选择器）查询和筛选拥有某些 Label 的资源对象。通过使用 Label 就能实现多维度的资源分组管理功能。   
+
+`Label Selector` 在 Kubernetes 中的重要使用场景如下：  
+
+1、`Kube-controller` 进程通过资源对象RC上定义的 `Label Selector` 来筛选要监控的 Pod 副本的数量，从而实现 Pod 副本的数量始终符合预期设定的全自动控制流程；  
+
+2、`Kube-proxy` 进程通过 Service 的 `Label Selector` 来选择对应的 Pod，自动建立起每个 Service 到对应 Pod 的请求转发路由表，从而实现 Service 的智能负载均衡机制；  
+
+3、通过对某些 Node 定义特定的 Label，并且在 Pod 定义文件中使用 NodeSelector 这种标签调度策略，kube-scheduler 进程可以实现 Pod “定向调度”的特性。   
+
+同时借助于 Label，k8s 中可以实现亲和（affinity）与反亲和（anti-affinity）调度。  
+
+#### 什么是亲和（affinity）与反亲和（anti-affinity）调度   
+
+Kubernetes 支持节点和 Pod 两个层级的亲和与反亲和。通过配置亲和与反亲和规则，可以允许您指定硬性限制或者偏好，例如将前台 Pod 和后台 Pod 部署在一起、某类应用部署到某些特定的节点、不同应用部署到不同的节点等等。   
+
+在学习亲和性调度之前，首先来看下如何进行打标签的操作  
+
+**查看节点及其标签**  
+
+```
+$ kubectl get nodes --show-labels
+```
+
+**给节点添加标签**  
+
+```
+$ kubectl label nodes <your-node-name> nodeName=node9
+```
+
+**删除节点的标签**  
+
+```
+$ kubectl label nodes <your-node-name> nodeName-
+```
+
+亲和性调度策略  
+
+```
+cat <<EOF >./pod-hostPort-affinity.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+          hostPort: 8000
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: nodeName
+                operator: In
+                values:
+                - node7
+                - node8
+EOF
+```
+
+重点看下下面的  
+
+```
+      affinity: // 表示亲和
+        nodeAffinity: // 表示节点亲和
+          requiredDuringSchedulingIgnoredDuringExecution: 
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: nodeName
+                operator: In
+                values:
+                - node7
+                - node8
+```
+
+分下下具体的规则
+
+requiredDuringSchedulingIgnoredDuringExecution 非常长，不过可以将这个分作两段来看：   
+
+前半段 requiredDuringScheduling 表示下面定义的规则必须强制满足（require）才会调度Pod到节点上；  
+
+后半段 IgnoredDuringExecution 表示已经在节点上运行的 Pod 不需要满足下面定义的规则，即去除节点上的某个标签，那些需要节点包含该标签的 Pod 不会被重新调度。   
+
+operator 有下面几种取值：  
+
+- In：标签的值在某个列表中；
+
+- NotIn：标签的值不在某个列表中；  
+
+- Exists：某个标签存在；  
+
+- DoesNotExist：某个标签不存在；  
+
+- Gt：标签的值大于某个值（字符串比较）；  
+
+- Lt：标签的值小于某个值（字符串比较）。  
 
 ### 资源限制
 
@@ -363,3 +481,4 @@ spec:
 【初识Kubernetes（K8s）：各种资源对象的理解和定义】https://blog.51cto.com/andyxu/2329257  
 【Kubernetes系列学习文章 - Pod的深入理解（四）】https://cloud.tencent.com/developer/article/1443520  
 【详解 Kubernetes Pod 的实现原理】https://draveness.me/kubernetes-pod/  
+【亲和与反亲和调度】https://support.huaweicloud.com/intl/zh-cn/basics-cce/kubernetes_0018.html    
