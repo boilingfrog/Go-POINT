@@ -15,6 +15,8 @@
     - [hostNetwork 和 hostPort 的对比](#hostnetwork-%E5%92%8C-hostport-%E7%9A%84%E5%AF%B9%E6%AF%94)
   - [Label](#label)
     - [什么是亲和（affinity）与反亲和（anti-affinity）调度](#%E4%BB%80%E4%B9%88%E6%98%AF%E4%BA%B2%E5%92%8Caffinity%E4%B8%8E%E5%8F%8D%E4%BA%B2%E5%92%8Canti-affinity%E8%B0%83%E5%BA%A6)
+    - [Node 亲和性调度策略](#node-%E4%BA%B2%E5%92%8C%E6%80%A7%E8%B0%83%E5%BA%A6%E7%AD%96%E7%95%A5)
+    - [Pod 亲和性调度](#pod-%E4%BA%B2%E5%92%8C%E6%80%A7%E8%B0%83%E5%BA%A6)
   - [资源限制](#%E8%B5%84%E6%BA%90%E9%99%90%E5%88%B6)
   - [参考](#%E5%8F%82%E8%80%83)
 
@@ -371,10 +373,20 @@ $ kubectl label nodes <your-node-name> nodeName=node9
 $ kubectl label nodes <your-node-name> nodeName-
 ```
 
-亲和性调度策略  
+查看某个标签的的分布情况     
 
 ```
-cat <<EOF >./pod-hostPort-affinity.yaml
+$ kubectl get node -L nodeName
+NAME              STATUS   ROLES    AGE    VERSION   NODENAME
+kube-server7.zs   Ready    <none>   485d   v1.19.9   node7
+kube-server8.zs   Ready    <none>   485d   v1.19.9   node8
+kube-server9.zs   Ready    master   485d   v1.19.9   node9
+```
+
+#### Node 亲和性调度策略  
+
+```
+cat <<EOF >./pod-affinity.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -444,7 +456,9 @@ operator 有下面几种取值：
 
 - Gt：标签的值大于某个值（字符串比较）；  
 
-- Lt：标签的值小于某个值（字符串比较）。
+- Lt：标签的值小于某个值（字符串比较）。  
+
+需要说明的是并没有 nodeAntiAffinity（节点反亲和），通过 NotIn 和 DoesNotExist 即可实现反亲和性地调度。
 
 requiredDuringSchedulingIgnoredDuringExecution 是一种强制选择的规则。  
 
@@ -453,7 +467,7 @@ preferredDuringSchedulingIgnoredDuringExecution 是优先选择规则，表示�
 使用 preferredDuringSchedulingIgnoredDuringExecution 规则的时候，我们可以给 label 添加权重，这样 Pod 就能按照设计的规则调度到不同的节点中了。   
 
 ```
-cat <<EOF >./pod-hostPort-affinity-weight.yaml
+cat <<EOF >./pod-affinity-weight.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -497,6 +511,101 @@ EOF
 ```
 
 上面的栗子可以看到，可以给 label 添加 weight 权重，在 preferredDuringSchedulingIgnoredDuringExecution 的规则下，就能按照我们设计的权重，部署到 label 对应的节点中。     
+
+#### Pod 亲和性调度
+
+除了支持 Node 的亲和性调度，k8s 中还支持 Pod 和 Pod 之间的亲和。   
+
+栗如：将应用的前端和后端部署在同一个节点中，从而减少访问延迟。  
+
+Pod 亲和同样有 requiredDuringSchedulingIgnoredDuringExecution 和 preferredDuringSchedulingIgnoredDuringExecution 两种规则。  
+
+模拟后端的 Pod 部署  
+
+```shell
+cat <<EOF >./pod-affinity-backend.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  labels:
+    app: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+EOF
+```
+
+模拟前端的 Pod 部署，使得前端对应的业务使用 Pod 亲和性调度和后端 Pod 部署到一起     
+
+```shell
+cat <<EOF >./pod-affinity-frontend.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  labels:
+    app: frontend
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - topologyKey: kubernetes.io/hostname
+            labelSelector:
+              matchExpressions: 
+              - key: app
+                operator: In 
+                values: 
+                - backend
+EOF
+```
+
+这里把 backend 的 Pod 数量设置成 1，然后 frontend 的 Pod 数量设置成 5。这样来演示 frontend 向 backend 的亲和调度。  
+
+```
+$ kubectl get pods -n study-k8s -o wide
+NAME                        READY   STATUS    RESTARTS   AGE   IP              NODE              NOMINATED NODE   READINESS GATES
+backend-5f489d5d4f-xcv4d    1/1     Running   0          22s   10.233.67.179   kube-server8.zs   <none>           <none>
+frontend-64846f7fbf-6nsmd   1/1     Running   0          33s   10.233.67.181   kube-server8.zs   <none>           <none>
+frontend-64846f7fbf-7pfq7   1/1     Running   0          33s   10.233.67.182   kube-server8.zs   <none>           <none>
+frontend-64846f7fbf-dg7wx   1/1     Running   0          33s   10.233.67.178   kube-server8.zs   <none>           <none>
+frontend-64846f7fbf-q7jd5   1/1     Running   0          33s   10.233.67.177   kube-server8.zs   <none>           <none>
+frontend-64846f7fbf-v4hf9   1/1     Running   0          33s   10.233.67.180   kube-server8.zs   <none>           <none>
+```
+
+这里有两个点需要注意下  
+
+1、topologyKey 表示的指定的返回，指定也是一个 label，通过指定这个 label 来确定安装的范围；  
+
+2、matchExpressions 指定亲和的 Pod，例如上面的栗子就是 `APP IN [backend]`。     
+
+不过这里有个先后顺序，首先匹配 topologyKey，然后匹配下面的 matchExpressions 规则。   
 
 
 
