@@ -601,13 +601,64 @@ frontend-64846f7fbf-v4hf9   1/1     Running   0          33s   10.233.67.180   k
 
 这里有两个点需要注意下  
 
-1、topologyKey 表示的指定的返回，指定也是一个 label，通过指定这个 label 来确定安装的范围；  
+1、topologyKey 表示的指定的范围，指定的也是一个 label，通过指定这个 label 来确定安装的范围；  
 
-2、matchExpressions 指定亲和的 Pod，例如上面的栗子就是 `APP IN [backend]`。     
+2、matchExpressions 指定亲和的 Pod，例如上面的栗子就是 `app=frontend`。     
 
 不过这里有个先后顺序，首先匹配 topologyKey，然后匹配下面的 matchExpressions 规则。   
 
+Pod 的反亲和性调度   
 
+有时候我们希望 Pod 部署到一起，那么我们就会也有希望 Pod 不部署在一起的场景，这时候就需要用到反亲和性调度。  
+
+```shell
+cat <<EOF >./pod-affinity-frontend.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  labels:
+    app: frontend
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - topologyKey: kubernetes.io/hostname
+            labelSelector:
+              matchExpressions: 
+              - key: app
+                operator: In 
+                values: 
+                - backend
+EOF
+```
+
+使用 podAntiAffinity 即可定义反亲和性调度的策略  
+
+```
+$ kubectl get pods -n study-k8s -o wide
+NAME                        READY   STATUS    RESTARTS   AGE    IP               NODE              NOMINATED NODE   READINESS GATES
+backend-5f489d5d4f-xcv4d    1/1     Running   0          108m   10.233.67.179    kube-server8.zs   <none>           <none>
+frontend-567ddb4c45-6mf87   1/1     Running   0          23s    10.233.111.125   kube-server7.zs   <none>           <none>
+frontend-567ddb4c45-fbj6j   1/1     Running   0          23s    10.233.111.124   kube-server7.zs   <none>           <none>
+frontend-567ddb4c45-j5qpb   1/1     Running   0          21s    10.233.72.25     kube-server9.zs   <none>           <none>
+frontend-567ddb4c45-qsc8m   1/1     Running   0          21s    10.233.111.126   kube-server7.zs   <none>           <none>
+frontend-567ddb4c45-sfwjn   1/1     Running   0          23s    10.233.72.24     kube-server9.zs   <none>           <none>
+```
 
 ### 资源限制
 
