@@ -14,9 +14,11 @@
     - [hostPort](#hostport)
     - [hostNetwork 和 hostPort 的对比](#hostnetwork-%E5%92%8C-hostport-%E7%9A%84%E5%AF%B9%E6%AF%94)
   - [Label](#label)
-    - [什么是亲和（affinity）与反亲和（anti-affinity）调度](#%E4%BB%80%E4%B9%88%E6%98%AF%E4%BA%B2%E5%92%8Caffinity%E4%B8%8E%E5%8F%8D%E4%BA%B2%E5%92%8Canti-affinity%E8%B0%83%E5%BA%A6)
-    - [Node 亲和性调度策略](#node-%E4%BA%B2%E5%92%8C%E6%80%A7%E8%B0%83%E5%BA%A6%E7%AD%96%E7%95%A5)
-    - [Pod 亲和性调度](#pod-%E4%BA%B2%E5%92%8C%E6%80%A7%E8%B0%83%E5%BA%A6)
+    - [亲和性调度](#%E4%BA%B2%E5%92%8C%E6%80%A7%E8%B0%83%E5%BA%A6)
+      - [什么是亲和（affinity）与反亲和（anti-affinity）调度](#%E4%BB%80%E4%B9%88%E6%98%AF%E4%BA%B2%E5%92%8Caffinity%E4%B8%8E%E5%8F%8D%E4%BA%B2%E5%92%8Canti-affinity%E8%B0%83%E5%BA%A6)
+      - [Node 亲和性调度策略](#node-%E4%BA%B2%E5%92%8C%E6%80%A7%E8%B0%83%E5%BA%A6%E7%AD%96%E7%95%A5)
+      - [Pod 亲和性调度](#pod-%E4%BA%B2%E5%92%8C%E6%80%A7%E8%B0%83%E5%BA%A6)
+    - [DaemonSet](#daemonset)
   - [资源限制](#%E8%B5%84%E6%BA%90%E9%99%90%E5%88%B6)
   - [参考](#%E5%8F%82%E8%80%83)
 
@@ -349,7 +351,9 @@ Label 可以添加到各种资源对象上，如 `Node、Pod、Service、RC` 等
 
 同时借助于 Label，k8s 中可以实现亲和（affinity）与反亲和（anti-affinity）调度。  
 
-#### 什么是亲和（affinity）与反亲和（anti-affinity）调度   
+#### 亲和性调度
+
+##### 什么是亲和（affinity）与反亲和（anti-affinity）调度   
 
 Kubernetes 支持节点和 Pod 两个层级的亲和与反亲和。通过配置亲和与反亲和规则，可以允许您指定硬性限制或者偏好，例如将前台 Pod 和后台 Pod 部署在一起、某类应用部署到某些特定的节点、不同应用部署到不同的节点等等。   
 
@@ -383,7 +387,7 @@ kube-server8.zs   Ready    <none>   485d   v1.19.9   node8
 kube-server9.zs   Ready    master   485d   v1.19.9   node9
 ```
 
-#### Node 亲和性调度策略  
+##### Node 亲和性调度策略  
 
 ```
 cat <<EOF >./pod-affinity.yaml
@@ -512,7 +516,7 @@ EOF
 
 上面的栗子可以看到，可以给 label 添加 weight 权重，在 preferredDuringSchedulingIgnoredDuringExecution 的规则下，就能按照我们设计的权重，部署到 label 对应的节点中。     
 
-#### Pod 亲和性调度
+##### Pod 亲和性调度
 
 除了支持 Node 的亲和性调度，k8s 中还支持 Pod 和 Pod 之间的亲和。   
 
@@ -659,6 +663,50 @@ frontend-567ddb4c45-j5qpb   1/1     Running   0          21s    10.233.72.25    
 frontend-567ddb4c45-qsc8m   1/1     Running   0          21s    10.233.111.126   kube-server7.zs   <none>           <none>
 frontend-567ddb4c45-sfwjn   1/1     Running   0          23s    10.233.72.24     kube-server9.zs   <none>           <none>
 ```
+
+#### DaemonSet
+
+DaemonSet（守护进程），会在每一个节点中运行一个 Pod,同时也能保证只有一个 Pod 运行。    
+
+如果有新节点加入集群，Daemonset 会自动的在该节点上运行我们需要部署的 Pod 副本，如果有节点退出集群，Daemonset 也会移除掉部署在旧节点的 Pod 副本。  
+
+DaemonSet 适合一些系统层面的应用，例如日志收集，资源监控等，等这类需要每个节点都运行，且不需要太多的实例。    
+
+```shell
+cat <<EOF >./pod-daemonset.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-daemonset
+  labels:
+    app: nginx-daemonset
+spec:
+  selector:
+    matchLabels:
+      app: nginx-daemonset
+  template:
+    metadata:
+      labels:
+        app: nginx-daemonset
+    spec:
+      nodeSelector: # 节点选择，当节点拥有nodeName=node7时才在节点上创建Pod
+        nodeName: node7
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+EOF
+```
+
+可以看到 DaemonSet 也是通过 label 来选择部署的目标节点  
+
+```
+      nodeSelector: # 节点选择，当节点拥有nodeName=node7时才在节点上创建Pod
+        nodeName: node7
+```
+
+如果不添加目标节点，那么就是在所有节点中进行部署了。   
 
 ### 资源限制
 
