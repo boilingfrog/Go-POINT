@@ -18,8 +18,12 @@
       - [什么是亲和（affinity）与反亲和（anti-affinity）调度](#%E4%BB%80%E4%B9%88%E6%98%AF%E4%BA%B2%E5%92%8Caffinity%E4%B8%8E%E5%8F%8D%E4%BA%B2%E5%92%8Canti-affinity%E8%B0%83%E5%BA%A6)
       - [Node 亲和性调度策略](#node-%E4%BA%B2%E5%92%8C%E6%80%A7%E8%B0%83%E5%BA%A6%E7%AD%96%E7%95%A5)
       - [Pod 亲和性调度](#pod-%E4%BA%B2%E5%92%8C%E6%80%A7%E8%B0%83%E5%BA%A6)
-    - [DaemonSet](#daemonset)
+    - [NodeSelector 定向调度](#nodeselector-%E5%AE%9A%E5%90%91%E8%B0%83%E5%BA%A6)
   - [资源限制](#%E8%B5%84%E6%BA%90%E9%99%90%E5%88%B6)
+  - [Pod 的持久化存储](#pod-%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E5%AD%98%E5%82%A8)
+    - [1、emptyDir](#1emptydir)
+    - [2、hostPath](#2hostpath)
+    - [3、Pod 持久化存储](#3pod-%E6%8C%81%E4%B9%85%E5%8C%96%E5%AD%98%E5%82%A8)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -828,6 +832,8 @@ EOF
 ```
 
 2、pv 和 pvc  
+
+具体什么是 pv 和 pvc,可参见 [pv和pvc](https://github.com/boilingfrog/Go-POINT/blob/master/k8s/k8s%E4%B8%AD%E7%9A%84pv%E5%92%8Cpvc%E7%90%86%E8%A7%A3.md)
 
 创建 pv 
 
