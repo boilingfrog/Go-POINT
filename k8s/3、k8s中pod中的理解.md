@@ -664,7 +664,11 @@ frontend-567ddb4c45-qsc8m   1/1     Running   0          21s    10.233.111.126  
 frontend-567ddb4c45-sfwjn   1/1     Running   0          23s    10.233.72.24     kube-server9.zs   <none>           <none>
 ```
 
-#### DaemonSet
+####  NodeSelector 定向调度    
+
+kubernetes 中 kube-scheduler 负责实现 Pod 的调度，内部系统通过一系列算法最终计算出最佳的目标节点。如果需要将 Pod 调度到指定 Node 上，则可以通过 Node 的标签（Label）和 Pod 的 nodeSelector 属性相匹配来达到目的。  
+
+栗如：DaemonSet 中使用到了 NodeSelector 定向调度。  
 
 DaemonSet（守护进程），会在每一个节点中运行一个 Pod,同时也能保证只有一个 Pod 运行。    
 
@@ -736,10 +740,171 @@ spec:
         cpu: "500m"
 ```
 
-最小0.25个CPU及64MB内存，最大0.5个CPU及128MB内存。
+最小0.25个CPU及64MB内存，最大0.5个CPU及128MB内存。  
+
+### Pod 的持久化存储
+
+volume 是 `kubernetes Pod` 中多个容器访问的共享目录。volume 被定义在 pod 上，被这个 pod 的多个容器挂载到相同或不同的路径下。volume 的生命周期与 pod 的生命周期相同，pod 内的容器停止和重启时一般不会影响 volume 中的数据。所以一般 volume 被用于持久化 pod 产生的数据。Kubernetes 提供了众多的 volume 类型，包括 `emptyDir、hostPath、nfs、glusterfs、cephfs、ceph rbd` 等。   
+
+#### 1、emptyDir  
+
+emptyDir 类型的 volume 在 pod 分配到 node 上时被创建，kubernetes 会在 node 上自动分配 一个目录，因此无需指定宿主机 node 上对应的目录文件。这个目录的初始内容为空，当 Pod 从 node 上移除时，emptyDir 中的数据会被永久删除。`emptyDir Volume` 主要用于某些应用程序无需永久保存的临时目录，多个容器的共享目录等。   
+
+容器的 crashing 事件并不会导致 emptyDir 中的数据被删除。  
+
+配置示例  
+
+```
+cat <<EOF >./pod-emptyDir.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pd
+spec:
+  containers:
+  - image: liz2019/test-webserver
+    name: test-container
+    volumeMounts:
+    - mountPath: /cache
+      name: cache-volume
+  volumes:
+  - name: cache-volume
+    emptyDir: {}
+EOF
+```
+
+#### 2、hostPath
+
+`hostPath Volume` 为 pod 挂载宿主机上的目录或文件，使得容器可以使用宿主机的高速文件系统进行存储。缺点是，在 k8s 中，pod 都是动态在各 node 节点上调度。当一个 pod 在当前 node 节点上启动并通过 hostPath 存储了文件到本地以后，下次调度到另一个节点上启动时，就无法使用在之前节点上存储的文件。   
+
+配置示例
+
+```
+cat <<EOF >./pod-hostPath.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pd
+spec:
+  containers:
+  - image: liz2019/test-webserver
+    name: test-container
+    volumeMounts:
+    - mountPath: /cache
+      name: test-volume
+  volumes:
+  - name: test-volume
+    hostPath:
+      # directory location on host
+      path: /data-test
+EOF
+```
+
+#### 3、Pod 持久化存储  
+
+1、 pod直接挂载nfs-server  
+
+我们能将 NFS (网络文件系统) 挂载到Pod 中,不像 emptyDir 那样会在删除 Pod 的同时也会被删除，nfs 卷的内容在删除 Pod 时会被保存，卷只是被卸载。 这意味着 nfs 卷可以被预先填充数据，并且这些数据可以在 Pod 之间共享，NFS 卷可以由多个pod同时挂载。   
+
+```
+cat <<EOF >./pod-nfs.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pd
+spec:
+  containers:
+  - image: liz2019/test-webserver
+    name: test-container
+    volumeMounts:
+    - mountPath: /cache
+      name: test-nfs
+  volumes:
+  - name: test-nfs
+    nfs:
+      path: /data-test
+      server: 192.268.56.111
+EOF
+```
+
+2、pv 和 pvc  
+
+创建 pv 
+
+```
+cat <<EOF >./pv-demp.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv001
+  labels:
+    name: pv001
+spec:
+  nfs:
+    path: /data/volumes/v1
+    server: nfs
+  accessModes: ["ReadWriteMany","ReadWriteOnce"]
+  capacity:
+    storage: 2Gi
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv002
+  labels:
+    name: pv002
+spec:
+  nfs:
+    path: /data/volumes/v2
+    server: nfs
+  accessModes: ["ReadWriteOnce"]
+  capacity:
+    storage: 1Gi
+EOF
+```
+
+创建 pvc  
+
+```
+cat <<EOF >./pvc-demp.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: testpvc
+  namespace: default
+spec:
+  accessModes: ["ReadWriteMany"]
+  resources:
+    requests:
+      storage: 1Gi
+EOF
+```
+
+业务绑定 pvc
+
+```
+cat <<EOF >./pod-pvc-cache.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pd
+spec:
+  containers:
+  - image: liz2019/test-webserver
+    name: test-container
+    volumeMounts:
+    - mountPath: /cache
+      name: test-pvc-cache
+  volumes:
+  - name: test-pvc-cache
+    persistentVolumeClaim:
+      claimName: testpvc
+EOF
+```
 
 ### 参考
 【初识Kubernetes（K8s）：各种资源对象的理解和定义】https://blog.51cto.com/andyxu/2329257  
 【Kubernetes系列学习文章 - Pod的深入理解（四）】https://cloud.tencent.com/developer/article/1443520  
 【详解 Kubernetes Pod 的实现原理】https://draveness.me/kubernetes-pod/  
+【Kubernetes 之Pod学习】https://www.cnblogs.com/kevingrace/p/11309409.html    
 【亲和与反亲和调度】https://support.huaweicloud.com/intl/zh-cn/basics-cce/kubernetes_0018.html    
