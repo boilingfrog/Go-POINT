@@ -908,9 +908,26 @@ spec:
 EOF
 ```
 
+### Pod 的健康检查
+
+### 使用 HPA 实现 Pod 的自动扩容
+
+我们通过手动更改 RS 副本集的大小就能实现 Pod 的扩容，但是这是我们手动操作的，人工不可能24小时不间断的检测业务的复杂变化。所以需要自动扩容的机制，能够根据业务的变化，自动的实现 Pod 的扩容和缩容。  
+
+Kubernetes 提供 `Horizontal Pod Autoscaling（Pod 水平自动伸缩）`，简称 HPA。能够基于 CPU 使用率进行自动 Pod 伸缩。  
+
+
+
+
+
+### 总结
+
+
+
 ### 参考
 【初识Kubernetes（K8s）：各种资源对象的理解和定义】https://blog.51cto.com/andyxu/2329257  
 【Kubernetes系列学习文章 - Pod的深入理解（四）】https://cloud.tencent.com/developer/article/1443520  
 【详解 Kubernetes Pod 的实现原理】https://draveness.me/kubernetes-pod/  
 【Kubernetes 之Pod学习】https://www.cnblogs.com/kevingrace/p/11309409.html    
 【亲和与反亲和调度】https://support.huaweicloud.com/intl/zh-cn/basics-cce/kubernetes_0018.html    
+【hpa】https://kubernetes.io/zh-cn/docs/tasks/run-application/horizontal-pod-autoscale/  
