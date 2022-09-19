@@ -914,7 +914,27 @@ EOF
 
 我们通过手动更改 RS 副本集的大小就能实现 Pod 的扩容，但是这是我们手动操作的，人工不可能24小时不间断的检测业务的复杂变化。所以需要自动扩容的机制，能够根据业务的变化，自动的实现 Pod 的扩容和缩容。  
 
-Kubernetes 提供 `Horizontal Pod Autoscaling（Pod 水平自动伸缩）`，简称 HPA。能够基于 CPU 使用率进行自动 Pod 伸缩。  
+Kubernetes 提供 `Horizontal Pod Autoscaling（Pod 水平自动伸缩）`，简称 HPA。通过使用 HPA 可以自动缩放在 `Replication Controller，Deployment` 或者 `Replica Set` 中的 Pod。HPA 将自动缩放正在运行的 Pod 的数量，以实现最高效率。    
+
+HPA 中影响 Pod 数量的因素包括：  
+
+- 用户定义的允许运行的 Pod 的最小和最大数量；  
+
+- 资源指标中报告的观察到的 CPU 或内存使用情况；  
+
+- 第三方指标应用程序（例如 Prometheus，Datadog 等）提供的自定义指标。   
+
+#### HPA 是如何工作的
+
+<img src="/img/k8s/k8s-hpa.jpeg"  alt="k8s" />   
+
+首先 HPA 会周期性的监控指定指标的利用率，间隔由 `kube-controller-manager` 的 `--horizontal-pod-autoscaler-sync-period` 参数设置（默认间隔为 15 秒）；   
+
+然后计算当前资源的利用率，
+
+
+
+
 
 
 
