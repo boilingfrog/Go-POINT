@@ -24,6 +24,10 @@
     - [1、emptyDir](#1emptydir)
     - [2、hostPath](#2hostpath)
     - [3、Pod 持久化存储](#3pod-%E6%8C%81%E4%B9%85%E5%8C%96%E5%AD%98%E5%82%A8)
+  - [Pod 的健康检查](#pod-%E7%9A%84%E5%81%A5%E5%BA%B7%E6%A3%80%E6%9F%A5)
+  - [使用 HPA 实现 Pod 的自动扩容](#%E4%BD%BF%E7%94%A8-hpa-%E5%AE%9E%E7%8E%B0-pod-%E7%9A%84%E8%87%AA%E5%8A%A8%E6%89%A9%E5%AE%B9)
+    - [HPA 是如何工作的](#hpa-%E6%98%AF%E5%A6%82%E4%BD%95%E5%B7%A5%E4%BD%9C%E7%9A%84)
+  - [总结](#%E6%80%BB%E7%BB%93)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -926,23 +930,116 @@ HPA 中影响 Pod 数量的因素包括：
 
 #### HPA 是如何工作的
 
-<img src="/img/k8s/k8s-hpa.jpeg"  alt="k8s" />   
+<img src="/img/k8s/k8s-hpa.jpeg"  alt="k8s" />     
 
-首先 HPA 会周期性的监控指定指标的利用率，间隔由 `kube-controller-manager` 的 `--horizontal-pod-autoscaler-sync-period` 参数设置（默认间隔为 15 秒）；   
+HPA 是用来控制 Pod 水平伸缩的控制器，基于设定的扩缩容规则，实时采集监控指标数据，根据用户设定的指标阈值计算副本数，进而调整目标资源的副本数量，完成扩缩容操作。  
 
-然后计算当前资源的利用率，
+**算法的细节**  
 
+Pod 水平自动扩缩控制器根据当前指标和期望指标来计算扩缩比例   
 
+```
+期望副本数 = ceil[当前副本数 * (当前指标 / 期望指标)]
+```
 
+例如，如果当前指标值为 200m，而期望值为 100m，则副本数将加倍， 因为 200.0 / 100.0 == 2.0 如果当前值为 50m，则副本数将减半， 因为 50.0 / 100.0 == 0.5。如果比率足够接近 1.0（在全局可配置的容差范围内，默认为 0.1）， 则控制平面会跳过扩缩操作。  
 
+如果 HorizontalPodAutoscaler 指定的是 targetAverageValue 或 targetAverageUtilization， 那么将会把指定 Pod 度量值的平均值做为当前指标。  
 
+HPA 控制器执行扩缩操作并不是马上完成的，会有一个扩缩操作的时间窗口。首先每次的扩缩操作建议会被记录，在扩缩操作的时间窗口内，会根据规则选出一个缩容的策略。这样就能让系统更平滑的进行扩缩操作，消除短时间内指标波动带来的影响。时间窗口的值可通过 `kube-controller-manager` 服务的启动参数 `--horizontal-pod-autoscaler-downscale-stabilization` 进行配置， 默认值为 5 分钟。   
 
+来个栗子实践下  
 
+```
+cat <<EOF >./pod-hpa.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: go-web
+  name: go-web
+  namespace: study-k8s
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: go-web
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: go-web
+    spec:
+      containers:
+      - image: liz2019/test-docker-go-hub
+        name: go-app-container
+        resources: 
+          requests:
+            cpu: 0.1
+            memory: 50Mi
+          limits:
+            cpu: 0.2
+            memory: 100Mi
+status: {}
+---
 
+apiVersion: v1
+kind: Service
+metadata:
+  name: go-web-svc
+  labels:
+    run: go-web-svc
+spec:
+  selector:
+    app: go-web
+  type: NodePort # 服务类型
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
+      nodePort: 30001  # 对外暴露的端口
+      name: go-web-http
+EOF
+```
+
+配置 HPA 策略  
+
+```
+cat <<EOF >./pod-hpa-config.yaml
+apiVersion: autoscaling/v2beta2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: go-web-hpa
+  namespace: study-k8s
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: go-web
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+      
+        type: Utilization
+        averageUtilization: 50
+EOF
+```
+
+关于 HPA 的版本支持  
+
+`autoscaling/v1`只支持CPU一个指标的弹性伸缩；  
+
+`autoscaling/v2beta1`支持自定义指标；  
+
+`autoscaling/v2beta2`支持外部指标；    
 
 ### 总结
-
-
 
 ### 参考
 【初识Kubernetes（K8s）：各种资源对象的理解和定义】https://blog.51cto.com/andyxu/2329257  
