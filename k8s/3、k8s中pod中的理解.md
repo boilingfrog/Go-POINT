@@ -914,19 +914,69 @@ EOF
 
 ### Pod 的探针
 
-k8s 中当 Pod 的运行出现异常的时候，需要能够检测到 Pod 的这种状态，将流量路由到其他正常的 Pod 中，同时去回复损坏的组件。   
+k8s 中当 Pod 的运行出现异常的时候，需要能够检测到 Pod 的这种状态，将流量路由到其他正常的 Pod 中，同时去恢复损坏的组件。   
 
 默认情况下，Kubernetes 会观察 Pod 生命周期，并在容器从挂起（pending）状态转移到成功（succeeded）状态时，将流量路由到 Pod。Kubelet 会监控崩溃的应用程序，并重新启动 Pod 进行恢复。   
 
-但是 Pod 的健康并不代表，Pod 中应用程序已经能够可以处理请求，例如，这时候的应用可能正在启动，处于连接数据库的状态中，处于编译的状态中，这时候打进来的流量，得到的返回肯定就是异常的了。   
+但是 Pod 的健康并不代表，Pod 中所有的容器都已经专准备好了，例如，这时候的应用可能正在启动，处于连接数据库的状态中，处于编译的状态中，这时候打进来的流量，得到的返回肯定就是异常的了。   
 
-k8s 中引入了活跃（Liveness）、就绪（Readiness）和启动（Startup）探针来解决上面的问题。     
+k8s 中引入了活跃（Liveness）、就绪（Readiness）和启动（Startup）探针来解决上面的问题。
 
-存活探针：主要来检测容器中的应用程序是否正常运行，如果检测失败，就会使用 Pod 中设置的 restartPolicy 策略来判断，Pod是否要进行重启， 例如，存活探针可以探测到应用死锁；   
+存活探针：主要来检测容器中的应用程序是否正常运行，如果检测失败，就会使用 Pod 中设置的 restartPolicy 策略来判断，Pod是否要进行重启， 例如，存活探针可以探测到应用死锁。
 
-就绪探针：可以判断容器已经启动就绪能够接收流量请求了，当一个 Pod 中所有的容器都就绪的时候，才认为该 Pod 已经就绪了。就绪探针就能够用来避免上文中提到的，应用程序未完全就绪，然后就有流量打进来的情况发生；   
+就绪探针：可以判断容器已经启动就绪能够接收流量请求了，当一个 Pod 中所有的容器都就绪的时候，才认为该 Pod 已经就绪了。就绪探针就能够用来避免上文中提到的，应用程序未完全就绪，然后就有流量打进来的情况发生。
 
-启动探针：
+启动探针：kubelet 使用启动探针来了解应用容器何时启动。 如果配置了这类探针，你就可以控制容器在启动成功后再进行存活性和就绪态检查， 确保这些存活、就绪探针不会影响应用的启动。 启动探针可以用于对慢启动容器进行存活性检测，避免它们在启动运行之前就被杀掉。  
+
+在配置探针之前先来看下几个主要的配置  
+
+`initialDelaySeconds`：容器启动后要等待多少秒后才启动存活和就绪探针， 默认是 0 秒，最小值是 0；  
+
+`periodSeconds`：执行探测的时间间隔（单位是秒）。默认是 10 秒。最小值是 1；  
+
+`timeoutSeconds`：探测的超时后等待多少秒。默认值是 1 秒。最小值是 1；  
+
+`successThreshold`：探针在失败后，被视为成功的最小连续成功数。默认值是 1。 存活和启动探测的这个值必须是 1。最小值是 1；  
+
+`failureThreshold`：当探测失败时，Kubernetes 的重试次数。 对存活探测而言，放弃就意味着重新启动容器。 对就绪探测而言，放弃意味着 Pod 会被打上未就绪的标签。默认值是 3。最小值是 1。
+
+目前 ReadinessProbe 和 LivenessProbe 都支持下面三种探测方法  
+
+`ExecAction`：在容器中执行指定的命令，如果能成功执行，则探测成功；  
+
+`HTTPGetAction`：通过容器的IP地址、端口号及路径调用HTTP Get方法，如果响应的状态码200-400，则认为容器探测成功；  
+
+`TCPSocketAction`：通过容器IP地址和端口号执行TCP检查，如果能建立TCP连接，则探测成功；  
+
+`gRPC 活跃探针`：在 `Kubernetes v1.24 [beta]`中引入了，gRPC 活跃探针，如果应用实现了 [gRPC 健康检查协议](https://github.com/grpc/grpc/blob/master/doc/health-checking.md) ,kubelet 可以配置为使用该协议来执行应用活跃性检查。不过使用的时候需要先开启。   
+
+这里来看下使用 HTTPGetAction 的方式，来看下存活探针和就绪探针的配置，其他的可参考[配置存活、就绪和启动探针](https://kubernetes.io/zh-cn/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/)   
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    test: liveness
+  name: liveness-http
+spec:
+  containers:
+  - name: liveness
+    image: k8s.gcr.io/liveness
+    args:
+    - /server
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: 8080
+        httpHeaders:
+        - name: Custom-Header
+          value: Awesome
+      initialDelaySeconds: 3
+      periodSeconds: 3
+```
+
+
 
 
 ### 使用 HPA 实现 Pod 的自动扩容
