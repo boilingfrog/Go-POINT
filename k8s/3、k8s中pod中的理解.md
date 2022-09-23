@@ -147,7 +147,7 @@ StatefulSet：用来管理有状态应用的工作负载，和 Deployment 类似
 
 主要是用来对集群中的组件进行容器化操作，例如 `etcd  kube-apiserver  kube-controller-manager  kube-scheduler` 这些都是静态 Pod 资源。   
 
-因为这些 Pod 不受 apiserver 的控制，就不会不小新被删掉的情况，同时 kube-apiserver 也不能自己去控制自己。静态 Pod 的存在将集群中的容器化操作提供了可能。    
+因为这些 Pod 不受 apiserver 的控制，就不会不小心被删掉的情况，同时 kube-apiserver 也不能自己去控制自己。静态 Pod 的存在将集群中的容器化操作提供了可能。    
 
 静态 Pod 的创建有两种方式，配置文件和 HTTP 两种方式，具体参见。[静态 Pod 的创建](https://kubernetes.io/zh-cn/docs/tasks/configure-Pod-container/static-Pod/#static-Pod-creation)   
 
@@ -1219,4 +1219,5 @@ EOF
 【详解 Kubernetes Pod 的实现原理】https://draveness.me/kubernetes-pod/  
 【Kubernetes 之Pod学习】https://www.cnblogs.com/kevingrace/p/11309409.html    
 【亲和与反亲和调度】https://support.huaweicloud.com/intl/zh-cn/basics-cce/kubernetes_0018.html    
-【hpa】https://kubernetes.io/zh-cn/docs/tasks/run-application/horizontal-pod-autoscale/  
+【hpa】https://kubernetes.io/zh-cn/docs/tasks/run-application/horizontal-pod-autoscale/    
+【k8s中的Pod细节了解】https://boilingfrog.github.io/2022/09/23/k8s%E4%B8%AD%E7%9A%84Pod%E7%BB%86%E8%8A%82%E4%BA%86%E8%A7%A3/    
