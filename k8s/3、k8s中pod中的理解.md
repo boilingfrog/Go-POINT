@@ -24,7 +24,7 @@
     - [1、emptyDir](#1emptydir)
     - [2、hostPath](#2hostpath)
     - [3、Pod 持久化存储](#3pod-%E6%8C%81%E4%B9%85%E5%8C%96%E5%AD%98%E5%82%A8)
-  - [Pod 的健康检查](#pod-%E7%9A%84%E5%81%A5%E5%BA%B7%E6%A3%80%E6%9F%A5)
+  - [Pod 的探针](#pod-%E7%9A%84%E6%8E%A2%E9%92%88)
   - [使用 HPA 实现 Pod 的自动扩容](#%E4%BD%BF%E7%94%A8-hpa-%E5%AE%9E%E7%8E%B0-pod-%E7%9A%84%E8%87%AA%E5%8A%A8%E6%89%A9%E5%AE%B9)
     - [HPA 是如何工作的](#hpa-%E6%98%AF%E5%A6%82%E4%BD%95%E5%B7%A5%E4%BD%9C%E7%9A%84)
   - [总结](#%E6%80%BB%E7%BB%93)
@@ -926,7 +926,11 @@ k8s 中引入了活跃（Liveness）、就绪（Readiness）和启动（Startup�
 
 就绪探针：可以判断容器已经启动就绪能够接收流量请求了，当一个 Pod 中所有的容器都就绪的时候，才认为该 Pod 已经就绪了。就绪探针就能够用来避免上文中提到的，应用程序未完全就绪，然后就有流量打进来的情况发生。
 
-启动探针：kubelet 使用启动探针来了解应用容器何时启动。 如果配置了这类探针，你就可以控制容器在启动成功后再进行存活性和就绪态检查， 确保这些存活、就绪探针不会影响应用的启动。 启动探针可以用于对慢启动容器进行存活性检测，避免它们在启动运行之前就被杀掉。  
+启动探针：kubelet 使用启动探针来了解应用容器何时启动。启动探针主要是用于对慢启动容器进行存活性检测，避免它们在启动运行之前就被杀掉。  
+
+如果提供了启动探针，则所有其他探针都会被禁用，直到此探针成功为止。   
+
+如果启动探测失败，kubelet 将杀死容器，而容器依其重启策略进行重启。     
 
 在配置探针之前先来看下几个主要的配置  
 
@@ -938,7 +942,7 @@ k8s 中引入了活跃（Liveness）、就绪（Readiness）和启动（Startup�
 
 `successThreshold`：探针在失败后，被视为成功的最小连续成功数。默认值是 1。 存活和启动探测的这个值必须是 1。最小值是 1；  
 
-`failureThreshold`：当探测失败时，Kubernetes 的重试次数。 对存活探测而言，放弃就意味着重新启动容器。 对就绪探测而言，放弃意味着 Pod 会被打上未就绪的标签。默认值是 3。最小值是 1。
+`failureThreshold`：将探针标记为失败之前的重试次数。对于 liveness 探针，这将导致 Pod 重新启动。对于 readiness 探针，将标记 Pod 为未就绪（unready）。   
 
 目前 ReadinessProbe 和 LivenessProbe 都支持下面三种探测方法  
 
@@ -953,31 +957,104 @@ k8s 中引入了活跃（Liveness）、就绪（Readiness）和启动（Startup�
 这里来看下使用 HTTPGetAction 的方式，来看下存活探针和就绪探针的配置，其他的可参考[配置存活、就绪和启动探针](https://kubernetes.io/zh-cn/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/)   
 
 ```
-apiVersion: v1
-kind: Pod
+cat <<EOF >./pod-test-go-liveness.yaml
+
+apiVersion: apps/v1
+kind: Deployment
 metadata:
   labels:
-    test: liveness
-  name: liveness-http
+    app: test-go-liveness
+  name: test-go-liveness
+  namespace: study-k8s
 spec:
-  containers:
-  - name: liveness
-    image: k8s.gcr.io/liveness
-    args:
-    - /server
-    livenessProbe:
-      httpGet:
-        path: /healthz
-        port: 8080
-        httpHeaders:
-        - name: Custom-Header
-          value: Awesome
-      initialDelaySeconds: 3
-      periodSeconds: 3
+  replicas: 5
+  selector:
+    matchLabels:
+      app: go-web
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: go-web
+    spec:
+      containers:
+      - image: liz2019/test-go-liveness
+        name: test-go-liveness
+        livenessProbe: # 活跃探针
+          httpGet:
+            path: /healthz
+            port: 8001
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe: # 存活探针
+          httpGet:
+            path: /healthz
+            port: 8001
+          initialDelaySeconds: 5 # 容器启动后多少秒启动探针
+          periodSeconds: 10 # 执行探针检测的时间建个间隔
+          timeoutSeconds: 5 探测的超时后等待多少秒
+status: {}
+EOF
 ```
 
+可以看到上面同时设置了存活探针和就绪探针；  
 
+对于镜像中的代码设置了超过十秒即返回错误，这样上面的示例就能模拟探针检测失败，然后重启的效果了  
 
+```go
+func healthz(w http.ResponseWriter, r *http.Request) {
+
+	duration := time.Now().Sub(started)
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if duration.Seconds() > 10 {
+		w.WriteHeader(500)
+		w.Write([]byte(fmt.Sprintf("error: %v", duration.Seconds())))
+	} else {
+		w.WriteHeader(200)
+		w.Write([]byte("ok"))
+	}
+}
+```
+
+查看 Pod 的重启情况  
+
+````
+kubectl get pods -n study-k8s
+NAME                                READY   STATUS             RESTARTS   AGE
+test-go-liveness-66755487cd-ck4mz   0/1     CrashLoopBackOff   6          11m
+test-go-liveness-66755487cd-f54lz   0/1     CrashLoopBackOff   6          11m
+test-go-liveness-66755487cd-hts8k   0/1     CrashLoopBackOff   7          11m
+test-go-liveness-66755487cd-jzsmb   0/1     Running            7          11m
+test-go-liveness-66755487cd-k9hdk   1/1     Running            7          11m
+````
+
+下面在简单看下启动探针的配置
+
+```
+ports:
+- name: liveness-port
+  containerPort: 8080
+  hostPort: 8080
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: liveness-port
+  failureThreshold: 1
+  periodSeconds: 10
+
+startupProbe:
+  httpGet:
+    path: /healthz
+    port: liveness-port
+  failureThreshold: 30 # 将探针标记为失败之前的重试次数
+  periodSeconds: 10 # 执行探测的时间间隔（单位是秒）
+```
+
+上面配置了启动探针，那么程序就会有 `30 * 10 = 300s` 来完成启动过程。 一旦启动探测成功一次，存活探测任务就会接管对容器的探测，对容器死锁作出快速响应。 如果启动探测一直没有成功，容器会在 300 秒后被杀死，并且根据 restartPolicy 来 执行进一步处置。    
 
 ### 使用 HPA 实现 Pod 的自动扩容
 
