@@ -161,7 +161,7 @@ Pod的重启策略包括
 
 - Always 只要失败，就会重启；  
 
-- OnFile 当容器终止运行，且退出吗不是0，就会重启；  
+- OnFile 当容器终止运行，且退出码不是0，就会重启；  
 
 - Never  从来不会重启。   
 
@@ -750,6 +750,12 @@ spec:
 
 最小0.25个CPU及64MB内存，最大0.5个CPU及128MB内存。  
 
+当然 CPU 的指定也可以不使用 m。`cpu: "2"`，就表示 2 个 cpu。    
+
+添加资源限制的目的  
+
+在业务流量请求较低的时候，释放多余的资源。当有一些突发性的活动，就能根据资源占用情况，申请合理的资源。    
+
 ### Pod 的持久化存储
 
 volume 是 `kubernetes Pod` 中多个容器访问的共享目录。volume 被定义在 pod 上，被这个 pod 的多个容器挂载到相同或不同的路径下。volume 的生命周期与 pod 的生命周期相同，pod 内的容器停止和重启时一般不会影响 volume 中的数据。所以一般 volume 被用于持久化 pod 产生的数据。Kubernetes 提供了众多的 volume 类型，包括 `emptyDir、hostPath、nfs、glusterfs、cephfs、ceph rbd` 等。   
@@ -1181,7 +1187,31 @@ EOF
 
 `autoscaling/v2beta2`支持外部指标；    
 
-### 总结
+### 总结 
+
+1、Pod 是 Kubernetes 集群中能够被创建和管理的最小部署单元；  
+
+2、通常使用控制起来管理 Pod,来实现 Pod 的滚动升级，副本管理，集群级别的自愈能力；  
+
+3、Deployment 可以用来创建一个新的服务，更新一个新的服务，也可以用来滚动升级一个服务。借助于 ReplicaSet 也可以实现 Pod 的副本管理功能；  
+
+4、静态 Pod 是由 kubelet 进行管理的仅存在与特定 node 上的 Pod，他们不能通过 api server 进行管理，无法与 rc,deployment,ds 进行关联，并且 kubelet 无法对他们进行健康检查；  
+
+5、静态 Pod 主要是用来对集群中的组件进行容器化操作，例如 etcd kube-apiserver kube-controller-manager kube-scheduler 这些都是静态 Pod 资源;  
+
+6、Pod 一般不直接对外暴露服务，一个 Pod 只是一个运行服务的实例，随时可能在节点上停止，然后再新的节点上用一个新的 IP 启动一个新的 Pod,因此不能使用确定的 IP 和端口号提供服务；  
+
+7、Pod 中可以使用 hostNetwork 和 hostPort，可以直接暴露 node 的 ip 地址；  
+
+8、Label 是 kubernetes 系统中的一个重要概念。它的作用就是在资源上添加标识，用来对它们进行区分和选择；  
+
+9、Kubernetes 支持节点和 Pod 两个层级的亲和与反亲和。通过配置亲和与反亲和规则，可以允许您指定硬性限制或者偏好，例如将前台 Pod 和后台 Pod 部署在一起、某类应用部署到某些特定的节点、不同应用部署到不同的节点等等；  
+
+10、为了合理的利用 k8s 中的资源，一般会对 Pod 添加资源限制；  
+
+11、k8s 中当 Pod 的运行出现异常的时候，需要能够检测到 Pod 的这种状态，将流量路由到其他正常的 Pod 中，同时去恢复损坏的组件，这种情况可以通过 K8s 中的探针去解决；   
+
+12、面对业务情况的变化，使用 HPA 实现 Pod 的自动扩容；
 
 ### 参考
 【初识Kubernetes（K8s）：各种资源对象的理解和定义】https://blog.51cto.com/andyxu/2329257  
