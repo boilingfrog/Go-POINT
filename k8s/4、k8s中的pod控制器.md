@@ -6,6 +6,8 @@
   - [Replication Controller](#replication-controller)
   - [ReplicaSet](#replicaset)
   - [Deployment](#deployment)
+    - [更新 Deployment](#%E6%9B%B4%E6%96%B0-deployment)
+    - [回滚 deployment](#%E5%9B%9E%E6%BB%9A-deployment)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -103,7 +105,175 @@ spec:
 EOF
 ```
 
+部署  
+
+```
+$ kubectl apply -f nginx-deployment.yaml -n study-k8s
+deployment.apps/nginx-deployment created
+
+$ study-k8s kubectl describe deployment nginx-deployment -n study-k8s
+Name:                   nginx-deployment
+Namespace:              study-k8s
+CreationTimestamp:      Mon, 26 Sep 2022 09:06:16 +0800
+Labels:                 app=nginx
+Annotations:            deployment.kubernetes.io/revision: 1
+Selector:               app=nginx
+Replicas:               3 desired | 3 updated | 3 total | 1 available | 2 unavailable
+StrategyType:           RollingUpdate # 默认是滚动更新  
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge  # 滚动更新的策略，最大 25% 不可用，最大 25% 增加
+Pod Template:
+  Labels:  app=nginx
+  Containers:
+   nginx:
+    Image:        nginx:1.14.2
+    Port:         80/TCP
+    Host Port:    0/TCP
+    Environment:  <none>
+    Mounts:       <none>
+  Volumes:        <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Available      False   MinimumReplicasUnavailable
+  Progressing    True    ReplicaSetUpdated
+OldReplicaSets:  <none>
+NewReplicaSet:   nginx-deployment-66b6c48dd5 (3/3 replicas created)
+Events:
+  Type    Reason             Age   From                   Message
+  ----    ------             ----  ----                   -------
+  Normal  ScalingReplicaSet  3s    deployment-controller  Scaled up replica set nginx-deployment-66b6c48dd5 to 3
+```
+
+可以看到 Deployment 中默认的更新方式滚动更新，并且默认的滚动更新的策略是 最大 25% 不可用，最大 25% 增加。   
+
+#### 更新 Deployment
+
+1、直接更新  
+
+```
+$ kubectl set image deployment.v1.apps/nginx-deployment nginx=nginx:1.20.1 -n study-k8s
+
+# 或者  
+
+$ kubectl set image deployment/nginx-deployment nginx=nginx:1.20.1 -n study-k8s
+```
+
+2、对 Deployment 执行 edit 操作  
+
+```
+$ kubectl get deployment -n study-k8s
+NAME               READY   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   3/3     3            3           18m
+
+$ kubectl edit deployment -n study-k8s
+# 修改对应的镜像版本，保存即可  
+
+    spec:
+      containers:
+      - image: nginx:1.20.3
+        imagePullPolicy: IfNotPresent
+        name: nginx
+```
+
+3、直接编辑部署的 YAML 文件，然后重新 Apply   
+
+```
+$ kubectl apply -f nginx-deployment.yaml -n study-k8s
+deployment.apps/nginx-deployment configured
+
+$ kubectl get pods -n study-k8s
+NAME                                READY   STATUS              RESTARTS   AGE
+nginx-deployment-6bcf8f4884-dxxxg   1/1     Running             0          38s
+nginx-deployment-6bcf8f4884-plbkh   0/1     ContainerCreating   0          13s
+nginx-deployment-cc4b758d6-lzlxl    1/1     Running             0          7m25s
+nginx-deployment-cc4b758d6-r5rkb    1/1     Running             0          7m11s
+```
+
+#### 回滚 deployment  
+
+了解了如何更新 deployment，那么当部署出现问题，如果回滚呢，下面来详细介绍下   
+
+查看之前部署的版本  
+
+```
+$ kubectl rollout history deployment/nginx-deployment -n study-k8s
+deployment.apps/nginx-deployment
+REVISION  CHANGE-CAUSE
+1         <none>
+2         <none>
+3         <none>
+4         <none>
+5         <none>
+6         <none>
+7         image updated to 1.21.1
+```
+
+REVISION:就是之前部署的版本信息；  
+
+CHANGE-CAUSE：变动的备注信息。   
+
+```
+$ kubectl apply -f nginx-deployment.yaml -n study-k8s --record
+```
+
+加上 `--record`，或者每次部署完之后，使用
+
+```
+$ kubectl annotate deployment/nginx-deployment kubernetes.io/change-cause="image updated to 1.21.1" -n study-k8s
+```
+
+CHANGE-CAUSE 信息就会被记录   
+
+查看历史版本的详细详细  
+
+```
+$ kubectl rollout history deployment/nginx-deployment --revision=6 -n study-k8s
+deployment.apps/nginx-deployment with revision #6
+Pod Template:
+  Labels:	app=nginx
+	pod-template-hash=d985dd8bf
+  Containers:
+   nginx:
+    Image:	nginx:1.20.3
+    Port:	80/TCP
+    Host Port:	0/TCP
+    Environment:	<none>
+    Mounts:	<none>
+  Volumes:	<none>
+```
+
+回滚  
+
+```
+# 回滚到上一个版本
+$ kubectl rollout undo deployment/nginx-deployment -n study-k8s
+
+# 回滚到指定的版本
+$ kubectl rollout undo deployment/nginx-deployment --to-revision=5 -n study-k8s
+```
+
+缩放 Deployment  
+
+```
+$ kubectl scale deployment/nginx-deployment --replicas=10 -n study-k8s
+
+$  kubectl get pods -n study-k8s
+NAME                                READY   STATUS    RESTARTS   AGE
+nginx-deployment-66b6c48dd5-5scbj   1/1     Running   0          44s
+nginx-deployment-66b6c48dd5-7nmtp   1/1     Running   0          44s
+nginx-deployment-66b6c48dd5-f5xsg   1/1     Running   0          12m
+nginx-deployment-66b6c48dd5-fnpnb   1/1     Running   0          12m
+nginx-deployment-66b6c48dd5-gg4ng   1/1     Running   0          44s
+nginx-deployment-66b6c48dd5-qd5z7   1/1     Running   0          44s
+nginx-deployment-66b6c48dd5-qqh4m   1/1     Running   0          44s
+nginx-deployment-66b6c48dd5-xww49   1/1     Running   0          44s
+nginx-deployment-66b6c48dd5-zndlh   1/1     Running   0          44s
+nginx-deployment-66b6c48dd5-zp45g   1/1     Running   0          12m
+```
+
 
 ### 参考
 
 【Deployments】https://kubernetes.io/zh-cn/docs/concepts/workloads/controllers/deployment/    
+【Kubernetes 部署策略详解】https://www.qikqiak.com/post/k8s-deployment-strategies/    
