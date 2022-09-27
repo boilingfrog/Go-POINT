@@ -8,6 +8,7 @@
   - [Deployment](#deployment)
     - [更新 Deployment](#%E6%9B%B4%E6%96%B0-deployment)
     - [回滚 deployment](#%E5%9B%9E%E6%BB%9A-deployment)
+  - [StatefulSet](#statefulset)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -272,8 +273,98 @@ nginx-deployment-66b6c48dd5-zndlh   1/1     Running   0          44s
 nginx-deployment-66b6c48dd5-zp45g   1/1     Running   0          12m
 ```
 
+关于使用 deployment 实现 k8s 中的几种部署策略，可参见[Kubernetes 部署策略详解](https://www.qikqiak.com/post/k8s-deployment-strategies/)    
+
+### StatefulSet
+
+StatefulSet 用来管理有状态的应用。    
+
+在 Pods 管理的基础上，保证 Pods 的顺序和一致性。与 Deployment一样，StatefulSet 也是使用容器的 Spec 来创建Pod，与之不同 StatefulSet 创建的 Pods 在生命周期中会保持持久的标记（例如Pod Name）。
+
+StatefulSet 适用于具有以下特点的应用：
+
+1、稳定的、唯一的网络标识符；  
+
+2、稳定的、持久的存储；  
+
+3、有序的、优雅的部署和扩缩；  
+
+4、有序的、自动的滚动更新。
+
+那么什么是有状态服务什么是无状态服务呢？    
+
+**无状态服务**
+
+无状态服务不会在本地存储持久化数据。多个服务实例对于同一个用户请求的响应结果是完全一致的。这种多服务实例之间是没有依赖关系,比如web应用,在k8s控制器 中动态启停无状态服务的pod并不会对其它的pod产生影响。   
+
+**有状态服务**  
+
+有状态服务需要在本地存储持久化数据，典型的是分布式数据库的应用,分布式节点实例之间有依赖的拓扑关系。  
+
+比如,主从关系。 如果 K8S 停止分布式集群中任 一实例 pod，就可能会导致数据丢失或者集群的 crash。
+
+来个栗子
+
+```
+cat <<EOF >./pod-statefulSet.yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+  labels:
+    app: nginx
+spec:
+  ports:
+  - port: 80
+    name: web
+  clusterIP: None
+  selector:
+    app: nginx
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: web
+spec:
+  selector:
+    matchLabels:
+      app: nginx # 必须匹配 .spec.template.metadata.labels
+  serviceName: "nginx"
+  replicas: 3 # 默认值是 1
+  template:
+    metadata:
+      labels:
+        app: nginx # 必须匹配 .spec.selector.matchLabels
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: nginx
+        image: nginx:1.14.2 
+        ports:
+        - containerPort: 80
+          name: web
+        volumeMounts:
+        - name: www
+          mountPath: /usr/share/nginx/html
+  volumeClaimTemplates:
+  - metadata:
+      name: www
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "my-storage-class"
+      resources:
+        requests:
+          storage: 1Gi
+EOF
+```
+
+
 
 ### 参考
 
 【Deployments】https://kubernetes.io/zh-cn/docs/concepts/workloads/controllers/deployment/    
 【Kubernetes 部署策略详解】https://www.qikqiak.com/post/k8s-deployment-strategies/    
+【StatefulSet 和 Deployment 区别及选择方式】https://blog.csdn.net/nickDaDa/article/details/90401635    
+【K8S: 有状态 vs 无状态服务】https://zhuanlan.zhihu.com/p/390440336      
+【StatefulSet】https://support.huaweicloud.com/basics-cce/kubernetes_0015.html    
