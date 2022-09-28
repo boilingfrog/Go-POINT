@@ -9,6 +9,7 @@
     - [更新 Deployment](#%E6%9B%B4%E6%96%B0-deployment)
     - [回滚 deployment](#%E5%9B%9E%E6%BB%9A-deployment)
   - [StatefulSet](#statefulset)
+  - [DaemonSet](#daemonset)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -352,13 +353,99 @@ spec:
       name: www
     spec:
       accessModes: [ "ReadWriteOnce" ]
-      storageClassName: "my-storage-class"
       resources:
         requests:
           storage: 1Gi
 EOF
 ```
 
+### DaemonSet
+
+DaemonSet：主要是用来保证集群中的每个节点只运行一个 Pod，且保证只有一个 Pod，这非常适合一些系统层面的应用，例如日志收集、资源监控等，这类应用需要每个节点都运行，且不需要太多实例，一个比较好的例子就是 Kubernetes 的 kube-proxy。   
+
+当有节点加入集群时， 也会为他们新增一个 Pod 。 当有节点从集群移除时，这些 Pod 也会被回收。   
+
+DaemonSet 的应用场景：  
+
+1、在每个节点上运行集群守护进程；  
+
+2、在每个节点上运行日志收集守护进程；  
+
+3、在每个节点上运行监控守护进程。    
+
+来个栗子  
+
+```
+cat <<EOF >./nginx-daemonset.yaml
+
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nginx-daemonset
+  labels:
+    app: nginx-daemonset
+spec:
+  selector:
+    matchLabels:
+      app: nginx-daemonset
+  template:
+    metadata:
+      labels:
+        app: nginx-daemonset
+    spec:
+      containers:
+      - name: nginx-daemonset
+        image: nginx:alpine
+        resources:
+          limits:
+            cpu: 250m
+            memory: 512Mi
+          requests:
+            cpu: 250m
+            memory: 512Mi
+      imagePullSecrets:
+      - name: default-secret
+EOF
+```
+
+这样就能在每个节点中部署一个 Pod 了，不过 DaemonSet 也支持通过 label 来选择部署的目标节点  
+
+```
+cat <<EOF >./nginx-daemonset.yaml
+
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nginx-daemonset
+  labels:
+    app: nginx-daemonset
+spec:
+  selector:
+    matchLabels:
+      app: nginx-daemonset
+  template:
+    metadata:
+      labels:
+        app: nginx-daemonset
+    spec:
+      nodeSelector: # 节点选择，当节点拥有nodeName=node7时才在节点上创建Pod
+        nodeName: node7
+      containers:
+      - name: nginx-daemonset
+        image: nginx:alpine
+        resources:
+          limits:
+            cpu: 250m
+            memory: 512Mi
+          requests:
+            cpu: 250m
+            memory: 512Mi
+      imagePullSecrets:
+      - name: default-secret
+EOF
+```
+
+### Job 和 CronJob
 
 
 ### 参考
