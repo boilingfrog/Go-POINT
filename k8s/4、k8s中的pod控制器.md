@@ -10,6 +10,8 @@
     - [回滚 deployment](#%E5%9B%9E%E6%BB%9A-deployment)
   - [StatefulSet](#statefulset)
   - [DaemonSet](#daemonset)
+  - [Job 和 CronJob](#job-%E5%92%8C-cronjob)
+    - [Job 的并行执行](#job-%E7%9A%84%E5%B9%B6%E8%A1%8C%E6%89%A7%E8%A1%8C)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -446,6 +448,62 @@ EOF
 ```
 
 ### Job 和 CronJob
+
+Job 和 CronJob 是负责处理定时任务的。
+
+两者的区别主要在于：  
+
+Job 负责处理一次性的定时任务，即仅需执行一次的任务；   
+
+CronJob 是基于时间的 Job，就类似于 Linux 系统的 crontab 文件中的一行，在指定的时间周期运行指定的 Job。  
+
+首先来创建一个 Job 
+
+```
+cat <<EOF >./job-demo.yaml
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: job-demo
+spec:
+  template:
+    metadata:
+      name: job-demo
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: counter
+        image: busybox
+        command:
+        - "bin/sh"
+        - "-c"
+        - "echo hello"  
+EOF
+```
+
+运行  
+
+```
+$ kubectl apply -f job-demo.yaml
+
+$ kubectl get pods
+NAME             READY   STATUS      RESTARTS   AGE
+job-demo-8qrd9   0/1     Completed   0          40s
+$ study-k8s kubectl get job
+NAME       COMPLETIONS   DURATION   AGE
+job-demo   1/1           36s        45s
+$ kubectl logs -f job-demo-8qrd9
+hello
+```
+
+#### Job 的并行执行  
+
+1、非并行 Job:通常创建一个Pod直至其成功结束;  
+
+2、有固定完成次数的 Job：使用 `.spec.completions` 创建多个 Pod，当成功的 Pod 数达到 `.spec.completions`，Job 被视为完成；   
+
+3、带工作队列的并行 Job：
 
 
 ### 参考
