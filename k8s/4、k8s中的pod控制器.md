@@ -11,7 +11,6 @@
   - [StatefulSet](#statefulset)
   - [DaemonSet](#daemonset)
   - [Job 和 CronJob](#job-%E5%92%8C-cronjob)
-    - [Job 的并行执行](#job-%E7%9A%84%E5%B9%B6%E8%A1%8C%E6%89%A7%E8%A1%8C)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -497,14 +496,43 @@ $ kubectl logs -f job-demo-8qrd9
 hello
 ```
 
-#### Job 的并行执行  
+再来看下 CronJob  
 
-1、非并行 Job:通常创建一个Pod直至其成功结束;  
+```
+cat <<EOF >./cronJob-demo.yaml
 
-2、有固定完成次数的 Job：使用 `.spec.completions` 创建多个 Pod，当成功的 Pod 数达到 `.spec.completions`，Job 被视为完成；   
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: hello
+spec:
+  schedule: "* * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: hello
+            image: busybox:1.28
+            imagePullPolicy: IfNotPresent
+            command:
+            - /bin/sh
+            - -c
+            - date; echo Hello
+          restartPolicy: OnFailure
+EOF
+```
 
-3、带工作队列的并行 Job：
+通过 `kubectl get jobs --watch` 就能查看 CronJob 的调度  
 
+```
+$ kubectl get jobs --watch
+NAME               COMPLETIONS   DURATION   AGE
+hello-1664449860   1/1           2s         4s
+hello-1664449920   0/1                      0s
+hello-1664449920   0/1           0s         0s
+hello-1664449920   1/1           2s         2s
+```
 
 ### 参考
 
