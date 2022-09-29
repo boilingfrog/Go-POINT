@@ -11,6 +11,7 @@
   - [StatefulSet](#statefulset)
   - [DaemonSet](#daemonset)
   - [Job 和 CronJob](#job-%E5%92%8C-cronjob)
+  - [总结](#%E6%80%BB%E7%BB%93)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -533,6 +534,22 @@ hello-1664449920   0/1                      0s
 hello-1664449920   0/1           0s         0s
 hello-1664449920   1/1           2s         2s
 ```
+
+### 总结
+
+关于 pod 中的几个控制器最常用的就是 Deployment 和 ReplicaSet；  
+
+使用 Deployment 来管理 RS，来实现服务的部署，更新和滚动升级；  
+
+StatefulSet 主要用来管理无状态应用；  
+
+DaemonSet：主要是用来保证集群中的每个节点只运行一个 Pod，且保证只有一个 Pod，这非常适合一些系统层面的应用，例如日志收集、资源监控等，这类应用需要每个节点都运行，且不需要太多实例，一个比较好的例子就是 Kubernetes 的 kube-proxy；  
+
+Job 和 CronJob 是负责处理定时任务的；  
+
+Job 负责处理一次性的定时任务，即仅需执行一次的任务；    
+
+CronJob 是基于时间的 Job，就类似于 Linux 系统的 crontab 文件中的一行，在指定的时间周期运行指定的 Job。  
 
 ### 参考
 
