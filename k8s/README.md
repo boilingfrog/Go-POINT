@@ -7,6 +7,7 @@
 
 - [3、k8s 中的 Pod 细节了解](https://github.com/boilingfrog/Go-POINT/blob/master/k8s/3%E3%80%81k8s%E4%B8%ADpod%E4%B8%AD%E7%9A%84%E7%90%86%E8%A7%A3.md)      
 
+- [4、k8s 中的 Pod 的控制器](https://github.com/boilingfrog/Go-POINT/blob/master/k8s/4%E3%80%81k8s%E4%B8%AD%E7%9A%84pod%E6%8E%A7%E5%88%B6%E5%99%A8.md)        
 
 
 

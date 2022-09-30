@@ -558,3 +558,4 @@ CronJob 是基于时间的 Job，就类似于 Linux 系统的 crontab 文件中�
 【StatefulSet 和 Deployment 区别及选择方式】https://blog.csdn.net/nickDaDa/article/details/90401635    
 【K8S: 有状态 vs 无状态服务】https://zhuanlan.zhihu.com/p/390440336      
 【StatefulSet】https://support.huaweicloud.com/basics-cce/kubernetes_0015.html    
+【k8s 中 Pod 的控制器】https://boilingfrog.github.io/2022/09/30/k8s%E4%B8%ADPod%E6%8E%A7%E5%88%B6%E5%99%A8/  
