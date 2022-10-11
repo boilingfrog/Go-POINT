@@ -4,6 +4,7 @@
 - [k8s 中如何进行 Pod 的调度](#k8s-%E4%B8%AD%E5%A6%82%E4%BD%95%E8%BF%9B%E8%A1%8C-pod-%E7%9A%84%E8%B0%83%E5%BA%A6)
   - [前言](#%E5%89%8D%E8%A8%80)
   - [endpoint](#endpoint)
+  - [kube-proxy](#kube-proxy)
   - [服务发现](#%E6%9C%8D%E5%8A%A1%E5%8F%91%E7%8E%B0)
   - [负载均衡](#%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1)
   - [参考](#%E5%8F%82%E8%80%83)
@@ -56,6 +57,15 @@ go-web-svc   10.233.111.171:8000,10.233.111.172:8000,10.233.72.153:8000 + 2 more
 
 6、监听到 pod 事件，则更新对应的 service 的 endpoint 对象，将 podIp 记录到 endpoint中；  
 
+### kube-proxy  
+
+kube-proxy 是一个简单的网络代理和负载均衡器，它的作用主要是负责 Service 的实现，具体来说，就是实现了内部从 Pod 到 Service 和外部的从 NodePort 向 Service 的访问，每台机器上都运行一个 kube-proxy 服务，它监听 API server 中 service 和 endpoint 的变化情况，并通过 iptables 等来为服务配置负载均衡（仅支持 TCP 和 UDP）。    
+
+在 k8s 中提供相同服务的一组 pod 可以抽象成一个 service，通过 service 提供统一的服务对外提供服务，kube-proxy 存在于各个 node 节点上，负责为 service 提供 cluster 内部的服务发现和负载均衡，负责 Pod 的网络代理，它会定时从 etcd 中获取 service 信息来做响应的策略，维护网络规则和四层负载均衡工作。k8s 中集群内部的负载均衡就是由 kube-proxy 实现的，它是 k8s 中内部的负载均衡器，也是一个分布式代理服务器，可以在每个节点中部署一个，部署的节点越多，提供负载均衡能力的 Kube-proxy 就越多，高可用节点就越多。   
+
+简单点讲就是 k8s 内部的 pod 要访问 service ，kube-proxy 会将请求转发到 service 所代表的一个具体 pod，也就是 service 关联的 Pod。  
+
+同理对于外部访问 service 的请求，不论是 `Cluster IP+TargetPort` 的方式；还是用 Node 节点 `IP+NodePort` 的方式，都被 Node 节点的 Iptables 规则重定向到 Kube-proxy 监听 Service 服务代理端口。kube-proxy 接收到 Service 的访问请求后，根据负载策略，转发到后端的 Pod。   
 
 ### 服务发现
 
@@ -67,6 +77,8 @@ go-web-svc   10.233.111.171:8000,10.233.111.172:8000,10.233.72.153:8000 + 2 more
 ### 参考
 
 【kubernetes service 原理解析】https://zhuanlan.zhihu.com/p/111244353     
-【service selector】https://blog.csdn.net/luanpeng825485697/article/details/84296765    
+【service selector】https://blog.csdn.net/luanpeng825485697/article/details/84296765   
+【一文看懂 Kube-proxy】https://zhuanlan.zhihu.com/p/337806843  
+【Kubernetes 【网络组件】kube-proxy使用详解】https://blog.csdn.net/xixihahalelehehe/article/details/115370095     
 
 
