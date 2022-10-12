@@ -79,15 +79,17 @@ userspace 模式在 `k8s v1.2` 后就已经被淘汰了，userspace 的作用就
 
 userspace 模式下，流量的转发主要是在用户空间下完成的，上面提到了客户端的请求需要借助于 iptables 规则找到对应的 `Proxy Port`，因为 iptables 是在内核空间，这里就会请求就会有一次从用户态到内核态再返回到用户态的传递过程, 一定程度降低了服务性能。所以就会认为这种方式会有一定的性能损耗。  
 
+#### iptables
 
+首先来简单了解下 iptables：  
 
+iptables 是 Linux 中最常用的一种防火墙工具，除了防火墙它还可以用作 IP 转发和简单的负载均衡功能。基于 Linux 中的 netfilter 内核模块实现。 Netfilter 在协议中添加了一些钩子，它允许内核模块通过这些钩子注册回调函数，这样经过钩子的所有数据都会被注册在响应钩子上的函数处理，包括修改数据包内容、给数据包打标记或者丢掉数据包等。iptables 是运行在用户态的一个程序，通过 netlink 和内核的 netfilter 框架打交道，具有足够的灵活性来处理各种常见的数据包操作和过滤需求。它允许将灵活的规则序列附加到内核的数据包处理管道中的各种钩子上。  
 
+Netfilter 是 `Linux 2.4.x` 引入的一个子系统，它作为一个通用的、抽象的框架，提供一整套的 hook 函数的管理机制，使得诸如数据包过滤、网络地址转换(NAT)和基于协议类型的连接跟踪成为了可能。  
 
+在 `kubernetes v1.2` 之后 iptables 成为默认代理模式，这种模式下，kube-proxy 会监视 `Kubernetes master` 对 Service 对象和 Endpoints 对象的添加和移除。 对每个 Service，它会安装 iptables 规则，从而捕获到达该 Service 的 clusterIP（虚拟 IP）和端口的请求，进而将请求重定向到 Service 的一组 backend 中的某个上面。因为流量转发都是在内核进行的，所以性能更高更加可靠。  
 
-
-
-
-
+<img src="/img/k8s/services-iptables-overview.jpeg"  alt="k8s" />   
 
 ### 负载均衡
 
@@ -98,5 +100,6 @@ userspace 模式下，流量的转发主要是在用户空间下完成的，上�
 【service selector】https://blog.csdn.net/luanpeng825485697/article/details/84296765   
 【一文看懂 Kube-proxy】https://zhuanlan.zhihu.com/p/337806843  
 【Kubernetes 【网络组件】kube-proxy使用详解】https://blog.csdn.net/xixihahalelehehe/article/details/115370095     
+【Service】https://jimmysong.io/kubernetes-handbook/concepts/service.html    
 
 
