@@ -7,7 +7,7 @@
   - [kube-proxy](#kube-proxy)
     - [userspace 模式](#userspace-%E6%A8%A1%E5%BC%8F)
     - [iptables](#iptables)
-  - [负载均衡](#%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1)
+    - [ipvs](#ipvs)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -76,7 +76,7 @@ userspace 模式在 `k8s v1.2` 后就已经被淘汰了，userspace 的作用就
 
 从客户端到 `ClusterIP:Port` 的报文都会通过 iptables 规则被重定向到 `Proxy Port`，Kube-Proxy 收到报文后，然后分发给对应的 Pod。  
 
-<img src="/img/k8s/kube-proxy-userspace-mode.png"  alt="k8s" />   
+<img src="/img/k8s/services-userspace-overview.jpeg"  alt="k8s" />   
 
 userspace 模式下，流量的转发主要是在用户空间下完成的，上面提到了客户端的请求需要借助于 iptables 规则找到对应的 `Proxy Port`，因为 iptables 是在内核空间，这里就会请求就会有一次从用户态到内核态再返回到用户态的传递过程, 一定程度降低了服务性能。所以就会认为这种方式会有一定的性能损耗。  
 
@@ -96,7 +96,38 @@ Netfilter 是 `Linux 2.4.x` 引入的一个子系统，它作为一个通用的�
 
 该模式相比 userspace 模式，克服了请求在用户态-内核态反复传递的问题，性能上有所提升，但使用 iptables NAT 来完成转发，存在不可忽视的性能损耗，iptables 模式最主要的问题是在 service 数量大的时候会产生太多的 iptables 规则，使用非增量式更新会引入一定的时延，大规模情况下有明显的性能问题。  
 
-### 负载均衡
+#### ipvs  
+
+当集群的规模比较大时，iptables 规则刷新就会很慢，难以支撑大规模的集群。因为 iptables 的底层实现是链表，对路由规则的增删查改都需要遍历一次链表。  
+
+在 `kubernetes v1.2` 之后 ipvs 成为kube-proxy的默认代理模式。ipvs 正是解决这一问题的，ipvs 是 LVS 的负载均衡模块，与 iptables 比较像的是，ipvs 的实现虽然也基于 netfilter 的钩子函数，但是它却使用哈希表作为底层的数据结构并且工作在内核态，也就是说 ipvs 在重定向流量和同步代理规则有着更好的性能，几乎允许无限的规模扩张。  
+
+<img src="/img/k8s/service-ipvs-overview.png"  alt="k8s" />   
+
+
+ipvs 支持三种负载均衡模式：  
+
+1、DR模式（Direct Routing）；   
+
+2、NAT 模式（Network Address Translation）；  
+
+3、Tunneling（也称 ipip 模式）。  
+
+三种模式中只有 NAT 支持端口映射，所以 ipvs 使用 NAT 模式。linux 内核原生的 ipvs 只支持 DNAT，当在数据包过滤，SNAT 和支持 NodePort 类型的服务这几个场景中ipvs 还是会使用 iptables。  
+
+ipvs 也支持更多的负载均衡算法：    
+
+- rr：round-robin/轮询；  
+
+- lc：least connection/最少连接；  
+
+- dh：destination hashing/目标哈希；  
+
+- sh：source hashing/源哈希；  
+
+- sed：shortest expected delay/预计延迟时间最短；  
+
+- nq：never queue/从不排队
 
 
 ### 参考
