@@ -6,6 +6,7 @@
   - [endpoint](#endpoint)
   - [kube-proxy](#kube-proxy)
     - [userspace 模式](#userspace-%E6%A8%A1%E5%BC%8F)
+    - [iptables](#iptables)
   - [负载均衡](#%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1)
   - [参考](#%E5%8F%82%E8%80%83)
 
@@ -90,6 +91,10 @@ Netfilter 是 `Linux 2.4.x` 引入的一个子系统，它作为一个通用的�
 在 `kubernetes v1.2` 之后 iptables 成为默认代理模式，这种模式下，kube-proxy 会监视 `Kubernetes master` 对 Service 对象和 Endpoints 对象的添加和移除。 对每个 Service，它会安装 iptables 规则，从而捕获到达该 Service 的 clusterIP（虚拟 IP）和端口的请求，进而将请求重定向到 Service 的一组 backend 中的某个上面。因为流量转发都是在内核进行的，所以性能更高更加可靠。  
 
 <img src="/img/k8s/services-iptables-overview.jpeg"  alt="k8s" />   
+
+可以看到该模式下 iptables 来做用户态的入口，kube-proxy 只是持续监听 Service 以及 Endpoints 对象的变化， iptables 通过设置的转发策略，直接将对 VIP 的请求转发给后端 Pod，iptables 使用 DNAT 来完成转发，其采用了随机数实现负载均衡。  
+
+该模式相比 userspace 模式，克服了请求在用户态-内核态反复传递的问题，性能上有所提升，但使用 iptables NAT 来完成转发，存在不可忽视的性能损耗，iptables 模式最主要的问题是在 service 数量大的时候会产生太多的 iptables 规则，使用非增量式更新会引入一定的时延，大规模情况下有明显的性能问题。  
 
 ### 负载均衡
 
