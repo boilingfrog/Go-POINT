@@ -8,6 +8,11 @@
     - [userspace 模式](#userspace-%E6%A8%A1%E5%BC%8F)
     - [iptables](#iptables)
     - [ipvs](#ipvs)
+    - [kernelspace](#kernelspace)
+  - [服务发现](#%E6%9C%8D%E5%8A%A1%E5%8F%91%E7%8E%B0)
+    - [环境变量](#%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F)
+    - [DNS](#dns)
+  - [总结](#%E6%80%BB%E7%BB%93)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -60,7 +65,7 @@ go-web-svc   10.233.111.171:8000,10.233.111.172:8000,10.233.72.153:8000 + 2 more
 
 ### kube-proxy  
 
-kube-proxy 是一个简单的网络代理和负载均衡器，它的作用主要是负责 Service 的实现，具体来说，就是实现了内部从 Pod 到 Service 和外部的从 NodePort 向 Service 的访问，每台机器上都运行一个 kube-proxy 服务，它监听 API server 中 service 和 endpoint 的变化情况，并通过 iptables 等来为服务配置负载均衡（仅支持 TCP 和 UDP）。    
+kube-proxy 是 Kubernetes 的核心组件，部署在每个 Node 节点上，它是实现 `Kubernetes Service` 的通信与负载均衡机制的重要组件; kube-proxy 负责为 Pod 创建代理服务，从 apiserver 获取所有 server 信息，并根据 server 信息创建代理服务，实现server到Pod的请求路由和转发，从而实现K8s层级的虚拟转发网络。   
 
 在 k8s 中提供相同服务的一组 pod 可以抽象成一个 service，通过 service 提供统一的服务对外提供服务，kube-proxy 存在于各个 node 节点上，负责为 service 提供 cluster 内部的服务发现和负载均衡，负责 Pod 的网络代理，它会定时从 etcd 中获取 service 信息来做相应的策略，维护网络规则和四层负载均衡工作。k8s 中集群内部的负载均衡就是由 kube-proxy 实现的，它是 k8s 中内部的负载均衡器，也是一个分布式代理服务器，可以在每个节点中部署一个，部署的节点越多，提供负载均衡能力的 Kube-proxy 就越多，高可用节点就越多。   
 
@@ -78,7 +83,9 @@ userspace 模式在 `k8s v1.2` 后就已经被淘汰了，userspace 的作用就
 
 <img src="/img/k8s/services-userspace-overview.jpeg"  alt="k8s" />   
 
-userspace 模式下，流量的转发主要是在用户空间下完成的，上面提到了客户端的请求需要借助于 iptables 规则找到对应的 `Proxy Port`，因为 iptables 是在内核空间，这里就会请求就会有一次从用户态到内核态再返回到用户态的传递过程, 一定程度降低了服务性能。所以就会认为这种方式会有一定的性能损耗。  
+userspace 模式下，流量的转发主要是在用户空间下完成的，上面提到了客户端的请求需要借助于 iptables 规则找到对应的 `Proxy Port`，因为 iptables 是在内核空间，这里就会请求就会有一次从用户态到内核态再返回到用户态的传递过程, 一定程度降低了服务性能。所以就会认为这种方式会有一定的性能损耗。    
+
+默认情况下，用户空间模式下的 kube-proxy 通过轮转算法选择后端。
 
 #### iptables
 
@@ -92,7 +99,9 @@ Netfilter 是 `Linux 2.4.x` 引入的一个子系统，它作为一个通用的�
 
 <img src="/img/k8s/services-iptables-overview.jpeg"  alt="k8s" />   
 
-可以看到该模式下 iptables 来做用户态的入口，kube-proxy 只是持续监听 Service 以及 Endpoints 对象的变化， iptables 通过设置的转发策略，直接将对 VIP 的请求转发给后端 Pod，iptables 使用 DNAT 来完成转发，其采用了随机数实现负载均衡。  
+可以看到该模式下 iptables 来做用户态的入口，kube-proxy 只是持续监听 Service 以及 Endpoints 对象的变化， iptables 通过设置的转发策略，直接将对 VIP 的请求转发给后端 Pod，iptables 使用 DNAT 来完成转发，其采用了随机数实现负载均衡。    
+
+如果 kube-proxy 在 iptables 模式下运行，并且所选的第一个 Pod 没有响应，则连接失败。 这与用户空间模式不同：在这种情况下，kube-proxy 将检测到与第一个 Pod 的连接已失败， 并会自动使用其他后端 Pod 重试。   
 
 该模式相比 userspace 模式，克服了请求在用户态-内核态反复传递的问题，性能上有所提升，但使用 iptables NAT 来完成转发，存在不可忽视的性能损耗，iptables 模式最主要的问题是在 service 数量大的时候会产生太多的 iptables 规则，使用非增量式更新会引入一定的时延，大规模情况下有明显的性能问题。  
 
@@ -102,7 +111,7 @@ Netfilter 是 `Linux 2.4.x` 引入的一个子系统，它作为一个通用的�
 
 在 `kubernetes v1.2` 之后 ipvs 成为kube-proxy的默认代理模式。ipvs 正是解决这一问题的，ipvs 是 LVS 的负载均衡模块，与 iptables 比较像的是，ipvs 的实现虽然也基于 netfilter 的钩子函数，但是它却使用哈希表作为底层的数据结构并且工作在内核态，也就是说 ipvs 在重定向流量和同步代理规则有着更好的性能，几乎允许无限的规模扩张。  
 
-<img src="/img/k8s/service-ipvs-overview.png"  alt="k8s" width="1304" height="2006"/>   
+<img src="/img/k8s/service-ipvs-overview.png"  alt="k8s" />   
 
 ipvs 支持三种负载均衡模式：  
 
@@ -132,6 +141,52 @@ ipvs 也支持更多的负载均衡算法：
 
 kernelspace 模式是 windows 上的代理模式，这里不展开讨论了  
 
+### 服务发现
+
+service 的 endpoints 解决了容器发现问题，但是不提前知道 service 的 `Cluster IP`，就无法知道 service 服务了。Kubernetes 支持两种基本的服务发现模式 —— 环境变量和 DNS。  
+
+#### 环境变量
+
+当一个 pod 创建完成之后，kubelet 会在该 pod 中注册该集群已经创建的所有 service 相关的环境变量，但是需要注意的是，在 service 创建之前的所有 pod 是不会注册该环境变量的，所以在平时使用时，建议通过 DNS 的方式进行 service 之间的服务发现。  
+
+举个例子，一个名称为 redis-primary 的 Service 暴露了 TCP 端口 6379， 同时给它分配了 Cluster IP 地址 10.0.0.11，这个 Service 生成了如下环境变量：  
+
+```
+REDIS_PRIMARY_SERVICE_HOST=10.0.0.11
+REDIS_PRIMARY_SERVICE_PORT=6379
+REDIS_PRIMARY_PORT=tcp://10.0.0.11:6379
+REDIS_PRIMARY_PORT_6379_TCP=tcp://10.0.0.11:6379
+REDIS_PRIMARY_PORT_6379_TCP_PROTO=tcp
+REDIS_PRIMARY_PORT_6379_TCP_PORT=6379
+REDIS_PRIMARY_PORT_6379_TCP_ADDR=10.0.0.11
+```
+
+#### DNS 
+
+可以在集群中部署 CoreDNS 服务(旧版本的 kubernetes 群使用的是 kubeDNS)， 来达到集群内部的 pod 通过DNS 的方式进行集群内部各个服务之间的通讯。  
+
+当前 kubernetes 集群默认使用 CoreDNS 作为默认的 DNS 服务，主要原因是 CoreDNS 是基于 Plugin 的方式进行扩展的，简单，灵活，并且不完全被Kubernetes所捆绑。  
+
+同时 k8s 中也建议使用 DNS 来做服务发现。  
+
+Kubernetes DNS 服务器是唯一的一种能够访问 ExternalName 类型的 Service 的方式。
+
+### 总结
+
+k8s 中一般使用 Service 为 Pod 对象提供一个固定、统一的访问接口及负载均衡的能力；  
+
+k8s 中的负载均衡主要借助于 endpoint 和 kube-proxy 来实现；  
+
+endpoint 是 k8s 集群中的一个资源对象，存储在 etcd 中，用来记录一个 service 对应的所有 pod 的访问地址，当一个 service 关联的 pod 被删除，更新，新增，对应的 endpoint 资源都会更新；  
+
+kube-proxy 是 Kubernetes 的核心组件，部署在每个 Node 节点上，它是实现 `Kubernetes Service` 的通信与负载均衡机制的重要组件; kube-proxy 负责为 Pod 创建代理服务，从 apiserver 获取所有 server 信息，并根据 server 信息创建代理服务，实现server到Pod的请求路由和转发，从而实现K8s层级的虚拟转发网络；  
+
+kube-proxy 的路由转发规则是通过其后端的代理模块实现的，其中 kube-proxy 的代理模块目前有四种实现方案，userspace、iptables、ipvs、kernelspace ；   
+
+service 的 endpoints 和 kube-proxy 解决了容器的发现和负载均衡的问题，但是 service 服务如何被内部的服务找到呢，Kubernetes 支持两种基本的服务发现模式 —— 环境变量和 DNS；  
+
+其中 k8s 中推荐使用 DNS 来做 service 的服务发现，当前 kubernetes 集群默认使用 CoreDNS 作为默认的 DNS 服务，主要原因是 CoreDNS 是基于 Plugin 的方式进行扩展的，简单，灵活，并且不完全被Kubernetes所捆绑。   
+
 ### 参考
 
 【kubernetes service 原理解析】https://zhuanlan.zhihu.com/p/111244353     
@@ -139,5 +194,6 @@ kernelspace 模式是 windows 上的代理模式，这里不展开讨论了
 【一文看懂 Kube-proxy】https://zhuanlan.zhihu.com/p/337806843  
 【Kubernetes 【网络组件】kube-proxy使用详解】https://blog.csdn.net/xixihahalelehehe/article/details/115370095     
 【Service】https://jimmysong.io/kubernetes-handbook/concepts/service.html    
+【Service】https://kubernetes.io/zh-cn/docs/concepts/services-networking/service/  
 
 
