@@ -102,7 +102,7 @@ Netfilter 是 `Linux 2.4.x` 引入的一个子系统，它作为一个通用的�
 
 在 `kubernetes v1.2` 之后 ipvs 成为kube-proxy的默认代理模式。ipvs 正是解决这一问题的，ipvs 是 LVS 的负载均衡模块，与 iptables 比较像的是，ipvs 的实现虽然也基于 netfilter 的钩子函数，但是它却使用哈希表作为底层的数据结构并且工作在内核态，也就是说 ipvs 在重定向流量和同步代理规则有着更好的性能，几乎允许无限的规模扩张。  
 
-<img src="/img/k8s/service-ipvs-overview.png"  alt="k8s" width="2006" height="1304"/>   
+<img src="/img/k8s/service-ipvs-overview.png"  alt="k8s" width="1304" height="2006"/>   
 
 ipvs 支持三种负载均衡模式：  
 
@@ -128,6 +128,9 @@ ipvs 也支持更多的负载均衡算法：
 
 - nq：never queue/从不排队
 
+#### kernelspace
+
+kernelspace 模式是 windows 上的代理模式，这里不展开讨论了  
 
 ### 参考
 
