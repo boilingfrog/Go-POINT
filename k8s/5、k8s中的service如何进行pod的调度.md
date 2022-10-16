@@ -1,7 +1,7 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [k8s 中如何进行 Pod 的调度](#k8s-%E4%B8%AD%E5%A6%82%E4%BD%95%E8%BF%9B%E8%A1%8C-pod-%E7%9A%84%E8%B0%83%E5%BA%A6)
+- [k8s 中的 service 如何找到绑定的 Pod 以及如何实现 Pod 负载均衡](#k8s-%E4%B8%AD%E7%9A%84-service-%E5%A6%82%E4%BD%95%E6%89%BE%E5%88%B0%E7%BB%91%E5%AE%9A%E7%9A%84-pod-%E4%BB%A5%E5%8F%8A%E5%A6%82%E4%BD%95%E5%AE%9E%E7%8E%B0-pod-%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1)
   - [前言](#%E5%89%8D%E8%A8%80)
   - [endpoint](#endpoint)
   - [kube-proxy](#kube-proxy)
@@ -17,7 +17,7 @@
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-## k8s 中如何进行 Pod 的调度
+## k8s 中的 service 如何找到绑定的 Pod 以及如何实现 Pod 负载均衡
 
 ### 前言
 
@@ -195,5 +195,6 @@ service 的 endpoints 和 kube-proxy 解决了容器的发现和负载均衡的�
 【Kubernetes 【网络组件】kube-proxy使用详解】https://blog.csdn.net/xixihahalelehehe/article/details/115370095     
 【Service】https://jimmysong.io/kubernetes-handbook/concepts/service.html    
 【Service】https://kubernetes.io/zh-cn/docs/concepts/services-networking/service/  
+【k8s 中的 service 如何找到绑定的 Pod 以及如何实现 Pod 负载均衡】https://boilingfrog.github.io/2022/10/16/k8s%E4%B8%AD%E7%9A%84service%E5%A6%82%E4%BD%95%E6%89%BE%E5%88%B0%E7%BB%91%E5%AE%9A%E7%9A%84Pod%E4%BB%A5%E5%8F%8A%E5%A6%82%E4%BD%95%E5%AE%9E%E7%8E%B0Pod%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1/  
 
 
