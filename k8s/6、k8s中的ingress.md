@@ -22,7 +22,11 @@
 
 ### 什么是ingress
 
-`Ingress`对象，其实就是对“反向代理”的一种抽象，简单的说就是一个全局的负载均衡器，可以通过访问URL定位到后端的`Service`。
+k8s 中使用 Service 为相同业务的 Pod 对象提供一个固定、统一的访问接口及负载均衡的能力，那么这些 Service 如何被外部的应用访问，其中常用的就是借助于 `Ingress`对象。  
+
+Ingress 是 Kubernetes 中的一个资源对象，用来管理集群外部访问集群内部服务的方式。可以通过 Ingress 资源来配置不同的转发规则，从而达到根据不同的规则设置访问集群内不同的 Service 所对应的后端Pod。`Ingress`对象，其实就是对“反向代理”的一种抽象，简单的说就是一个全局的负载均衡器，可以通过访问URL定位到后端的`Service`。  
+
+<img src="/img/k8s/k8s-ingress.jpg"  alt="k8s" /> 
 
 有了`Ingress`这个抽象，K8S就不需要关心`Ingress`的细节了，实际使用时，只需要选择一个具体的`Ingress Controller`部署就行了，业界常用的反向代理项目有：`Nginx、HAProxy、Envoy、Traefik`，都已经成为了K8S专门维护的`Ingress Controller`。
 
