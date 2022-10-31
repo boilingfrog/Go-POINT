@@ -24,21 +24,29 @@
 
 k8s 中使用 Service 为相同业务的 Pod 对象提供一个固定、统一的访问接口及负载均衡的能力，那么这些 Service 如何被外部的应用访问，其中常用的就是借助于 `Ingress`对象。  
 
-Ingress 是 Kubernetes 中的一个资源对象，用来管理集群外部访问集群内部服务的方式。可以通过 Ingress 资源来配置不同的转发规则，从而达到根据不同的规则设置访问集群内不同的 Service 所对应的后端Pod。`Ingress`对象，其实就是对“反向代理”的一种抽象，简单的说就是一个全局的负载均衡器，可以通过访问URL定位到后端的`Service`。  
+Ingress 是 Kubernetes 中的一个资源对象，用来管理集群外部访问集群内部服务的方式。  
 
-<img src="/img/k8s/k8s-ingress.jpg"  alt="k8s" /> 
+Ingress 对象由 `Ingress Controller` 和 Ingress 策略设置来共同完成。  
 
-有了`Ingress`这个抽象，K8S就不需要关心`Ingress`的细节了，实际使用时，只需要选择一个具体的`Ingress Controller`部署就行了，业界常用的反向代理项目有：`Nginx、HAProxy、Envoy、Traefik`，都已经成为了K8S专门维护的`Ingress Controller`。
+- Ingress 策略：用来配置不同的转发规则；  
 
-`Service`是基于四层TCP和UDP协议转发的，而`Ingress`可以基于七层的HTTP和HTTPS协议转发，可以通过域名和路径做到更细粒度的划分。
+- `Ingress Controller` ：Ingress 对象的域名解析都由 `Ingress Controller` 来完成，Ingress Controller 就是一个反向代理程序，它负责解析 Ingress 的反向代理规则，如果 Ingress 有增删改的变动，所有的 `Ingress Controller` 都会及时更新自己相应的转发规则，当 `Ingress Controller` 收到请求后就会根据这些规则将请求转发到对应的 Service。
 
-![ingress](/img/k8s/ingress_7.jpg?raw=true)
+<img src="/img/k8s/k8s-ingress.jpg"  alt="k8s" />   
+
+### Ingress 如何使用
+
+这里来个简单的 demo 来看下 Ingress 如何使用    
+
+首先来部署下 `Ingress Controller`  
+
+
 
 ### 理解Ingress 实现
 
 k8s 有一个贯穿始终的设计理念，即需求和供给的分离。`Ingress Controller`和 `Ingress` 的实现也很好的实践了这一点。 要理解k8s ，时刻记住 需求供给分离的设计理念。
 
-为使用Ingress，需要创建`Ingress Controller`（带一个默认backend服务）和Ingres s策略设置来共同完成。
+为使用Ingress，需要创建`Ingress Controller`（带一个默认backend服务）和 Ingress 策略设置来共同完成。
 
 #### Ingress Controller
 
@@ -212,6 +220,5 @@ spec:
 【Kubernetes的Ingress是啥】https://www.cnblogs.com/chenqionghe/p/11726231.html  
 【理解k8s 的 Ingress】https://www.jianshu.com/p/189fab1845c5  
 【Ingress】https://www.huaweicloud.com/zhishi/Ingress.html   
-【四层、七层负载均衡的区别】https://cloud.tencent.com/developer/article/1082047  
-【四层、七层负载均衡的区别】https://www.jianshu.com/p/fa937b8e6712  
+【Ingress 控制器】https://kubernetes.io/zh-cn/docs/concepts/services-networking/ingress-controllers/  
 
