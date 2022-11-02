@@ -38,7 +38,11 @@ Ingress 对象由 `Ingress Controller` 和 Ingress 策略设置来共同完成�
 
 这里来个简单的 demo 来看下 Ingress 如何使用    
 
-首先来部署下 `Ingress Controller`  
+首先来部署下 `Ingress Controller`    
+
+使用的 k8s 版本是 `v1.19.9`，所以这里选择的 [ingress-nginx](https://github.com/kubernetes/ingress-nginx) 是 `v1.1.3`    
+
+里面的镜像是需要翻墙的，这里打包了镜像到 docker-hub [安装脚本](https://github.com/boilingfrog/Go-POINT/tree/master/k8s/ingress-nginx-controller)    
 
 
 
