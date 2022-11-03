@@ -38,13 +38,123 @@ Ingress 对象由 `Ingress Controller` 和 Ingress 策略设置来共同完成�
 
 这里来个简单的 demo 来看下 Ingress 如何使用    
 
-首先来部署下 `Ingress Controller`    
+1、部署ingress-controller
+
+首先来部署下 `Ingress Controller` 这是使用的是 `ingress-nginx`     
 
 使用的 k8s 版本是 `v1.19.9`，所以这里选择的 [ingress-nginx](https://github.com/kubernetes/ingress-nginx) 是 `v1.1.3`    
 
-里面的镜像是需要翻墙的，这里打包了镜像到 docker-hub [安装脚本](https://github.com/boilingfrog/Go-POINT/tree/master/k8s/ingress-nginx-controller)    
+里面的镜像是需要翻墙的，这里打包了镜像到 docker-hub [安装脚本](https://github.com/boilingfrog/Go-POINT/tree/master/k8s/ingress-nginx-controller)
 
+```
+$ kubectl apply -f deploy.yaml
+```
 
+2、部署应用  
+
+```
+cat <<EOF >./go-web.yaml
+# deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: go-web
+  name: go-web
+  namespace: study-k8s
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: go-web
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: go-web
+    spec:
+      containers:
+        - image: liz2019/test-docker-go-hub
+          name: go-app-container
+          resources: {}
+status: {}
+
+---
+# service
+apiVersion: v1
+kind: Service
+metadata:
+  name: go-web-svc
+  labels:
+    run: go-web-svc
+spec:
+  selector:
+    app: go-web
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
+      name: go-web-http
+
+---
+# ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: go-web-ingress
+  annotations:
+    kubernetes.io/ingress.class: nginx
+spec:
+  rules:
+    - host: www.go-web.com
+      http:
+        paths:
+          - path: /index
+            pathType: Prefix
+            backend:
+              service:
+                name: go-web-svc
+                port:
+                  number: 8000
+EOF
+```
+
+在最下面放了 ingress 的配置，通过 `path: /index` 将 ingress 请求转发到 go-web-svc 的 service。   
+
+```
+➜  ~ kubectl get ingress -n study-k8s
+NAME             CLASS    HOSTS            ADDRESS                       PORTS   AGE
+go-web-ingress   <none>   www.go-web.com   192.168.56.112,192.168.56.111   80      28m
+```
+
+访问  
+
+```
+$ curl '192.168.56.111:80/index' \
+--header 'Host: www.go-web.com'
+
+<h1>hello world</h1><div>你好</div>%
+```
+
+#### 需要注意的点
+
+**1、一个集群中可以有多个 `Ingress Controller`， 在Ingress 中可以指定使用哪一个`Ingress Controller`；**
+
+**2、多个Ingress 规则可能出现竞争；**
+
+**3、Ingress 可以为多个命名空间服务；**
+
+**4、关于如何暴露 ingress 服务，让外面的服务访问到？**
+
+1、Ingress Controller 用 Deployment 方式部署，给它添加一个 Service，类型为 LoadBalancer，这样会自动生成一个 IP 地址，通过这个 IP 就能访问到了，并且一般这个 IP 是高可用的（前提是集群支持 LoadBalancer，通常云服务提供商才支持，自建集群一般没有）；
+
+2、使用 hostPort；
+
+- 1、`Ingress Controller` 用 DaemonSet 方式部署，使用集群内部的某个或某些节点作为边缘节点，给 node 添加 label 来标识，使用 nodeSelector 绑定到边缘节点，保证每个边缘节点启动一个 `Ingress Controller` 实例，用 hostPort 直接在这些边缘节点宿主机暴露端口，然后我们可以访问边缘节点中 `Ingress Controller` 暴露的端口，这样外部就可以访问到 `Ingress Controller` 了；
+
+- 2、使用亲和性调度策略，使需要部署 `Ingress Controller` 的节点，每个节点都有一个 `Ingress Controller` 部署，然后用 hostPort 直接在这些边缘节点宿主机暴露端口，我们就能通过这些节点的 IP 和 hostPort来访问 `Ingress Controller` 了。
 
 ### 理解Ingress 实现
 
@@ -60,133 +170,6 @@ k8s 有一个贯穿始终的设计理念，即需求和供给的分离。`Ingres
 
 为了让`Ingress Controller`正常启动，还需要为它配置一个默认的backend，用于在 客户端访问的URL地址不存在时，返回一个正确的404应答。这个backend服务用任何应用 实现都可以，只要满足对根路径“/”的访问返回404应答，并且提供`/healthz`路径以使`kubelet`完成对它的健康检查。
 
-`注意事项`
-
-1、一个集群中可以有多个 `Ingress Controller`， 在Ingress 中可以指定使用哪一个`Ingress Controller`；  
-2、多个Ingress 规则可能出现竞争；   
-3、`Ingress Controller` 本身需要以hostport 或者 service形式暴露出来。 云端可以使用云供应商lb 服务；    
-4、Ingress 可以为多个命名空间服务。
-
-### 配置ingress规则
-
-关于ingress的部署可以参考另一篇文章[k8s发布go应用](https://www.cnblogs.com/ricklz/p/14071965.html)
-
-#### 转发到单个后端服务上
-
-无需定义rule,直接指定到需要转发的service上就好了。
-
-```
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
-  name: web
-spec:
-  rules:
-  - host: liz-test.com
-    http:
-      paths:
-      - backend:
-          serviceName: go-app-svc
-          servicePort: 8000
-```
-
-这样定义就能将`liz-test.com`转发到，集群的`go-app-svc`service的8000端口上。
-
-#### 同一个域名，不同的URL路径被转发到不同的服务上
-
-```
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
-  name: web
-spec:
-  rules:
-  - host: liz-test.com
-    http:
-      paths:
-      - path: /test1
-        backend:
-          serviceName: go-app-svc-1
-          servicePort: 8001
-      - path: /test2
-        backend:
-          serviceName: go-app-svc-2
-          servicePort: 8002
-```
-
-通过设置不同的path，将同一个host中不同的路径转发到不同的service中。
-
-#### 不同的域名（虚拟主机名）被转发到不同的服务上
-
-```
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
-  name: web
-spec:
-  rules:
-  - host: liz-test-1.com
-    http:
-      paths:
-      - backend:
-          serviceName: go-app-svc-1
-          servicePort: 8001
-  - host: liz-test-2.com
-    http:
-      paths:
-      - backend:
-          serviceName: go-app-svc-2
-          servicePort: 8002
-```
-
-设置不同的host，然后转发不同的host到不同的service中。
-
-#### 不使用域名的转发规则
-
-这种配置用于一个网站不使用域名直接提供服务的场景，此时通过任意一台运行`ingress-controller`的Node都能访问到后端的服务。
-
-```
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
-  name: web-1
-spec:
-  rules:
-   - http:
-      paths:
-      - path: /test1
-        backend:
-          serviceName: go-app-svc
-          servicePort: 8000
-```
-
-访问`<ingress-controller-ip>/demo`即可
-
-注意，使用无域名的Ingress转发规则时，将默认禁用非安全HTTP，强制启用HTTPS。所以必须使用https方式访问。
-
-```
-$ curl -k https://192.168.56.202/test1
-<h1>hello world</h1><div>你好</div>
-```
-
-可以在Ingress的定义中设置一个annotation“ingress.kubernetes.io/ssl-redirect=false”来关闭强制启用HTTPS的设置
-
-```
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
-  name: web-2
-  annotations:
-    ingress.kubernetes.io/ssl-redirect: "false"
-spec:
-  rules:
-   - http:
-      paths:
-      - path: /test1
-        backend:
-          serviceName: go-app-svc
-          servicePort: 8000
-```
 
 ### 四层、七层负载均衡的区别
 

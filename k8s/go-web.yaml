@@ -1,0 +1,64 @@
+# deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: go-web
+  name: go-web
+  namespace: study-k8s
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: go-web
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: go-web
+    spec:
+      containers:
+        - image: liz2019/test-docker-go-hub
+          name: go-app-container
+          resources: {}
+status: {}
+
+---
+# service
+apiVersion: v1
+kind: Service
+metadata:
+  name: go-web-svc
+  labels:
+    run: go-web-svc
+spec:
+  selector:
+    app: go-web
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
+      name: go-web-http
+
+---
+# ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: go-web-ingress
+  annotations:
+    kubernetes.io/ingress.class: nginx
+spec:
+  rules:
+    - host: www.go-web.com
+      http:
+        paths:
+          - path: /index
+            pathType: Prefix
+            backend:
+              service:
+                name: go-web-svc
+                port:
+                  number: 8000
