@@ -154,4 +154,5 @@ $ curl '192.168.56.111:80/index' \
 【理解k8s 的 Ingress】https://www.jianshu.com/p/189fab1845c5  
 【Ingress】https://www.huaweicloud.com/zhishi/Ingress.html   
 【Ingress 控制器】https://kubernetes.io/zh-cn/docs/concepts/services-networking/ingress-controllers/  
+【k8s中的ingress】https://boilingfrog.github.io/2022/11/05/k8s%E4%B8%AD%E7%9A%84ingress/  
 
