@@ -4,6 +4,7 @@
 - [docker 容器原理分析](#docker-%E5%AE%B9%E5%99%A8%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90)
   - [docker 的工作方式](#docker-%E7%9A%84%E5%B7%A5%E4%BD%9C%E6%96%B9%E5%BC%8F)
     - [Namespace](#namespace)
+      - [容器对比虚拟机](#%E5%AE%B9%E5%99%A8%E5%AF%B9%E6%AF%94%E8%99%9A%E6%8B%9F%E6%9C%BA)
     - [Cgroups](#cgroups)
   - [参考](#%E5%8F%82%E8%80%83)
 
@@ -33,13 +34,37 @@ Namespace 是 Linux 中隔离内核资源的方式，通过 Namespace 可以这�
 
 docker 容器的实现正是用到了 Namespace 的隔离，docker 容器通过启动的时候给进程添加  Namespace 参数，这样，容器就只能“看”到当前 Namespace 所限定的资源、文件、设备、状态，或者配置。而对于宿主机以及其他不相关的程序，它就完全看不到了。  
 
+##### 容器对比虚拟机
 
+虚拟机
 
+使用虚拟机，就需要使用 Hypervisor 来负责创建虚拟机，这个虚拟机是真实存在的，并且里面需要运行 `Guest OS` 才能执行用户的应用进程，这就不可避免会带来额外的资源消耗和占用。
 
+虚拟机本身的运行就会占用一定的资源，同时虚拟机对宿主机文件的调用，就不可避免的需要经过虚拟化软件的连接和处理，这本身就是一层性能消耗，尤其对计算资源、网络和磁盘 I/O 的损耗非常大。
 
+容器
 
+容器化后的应用，还是宿主机上的一个普通的进程，不会存在虚拟化带来的性能损耗，同时容器使用的是 Namespace 进行隔离的，所以不需要单独的 `Guest OS`，这就使得容器额外的资源占用几乎可以忽略不计。
+
+容器的缺点
+
+基于 Linux Namespace 的隔离机制相比于虚拟化技术也有很多不足之处，其中最主要的问题就是：隔离得不彻底。
+
+1、容器只是运行在宿主机中的一中特殊的进程，容器时间使用的还是同一个宿主机的操作系统内核；
+
+尽管你可以在容器里通过 Mount Namespace 单独挂载其他不同版本的操作系统文件，比如 CentOS 或者 Ubuntu，但这并不能改变共享宿主机内核的事实。这意味着，如果你要在 Windows 宿主机上运行 Linux 容器，或者在低版本的 Linux 宿主机上运行高版本的 Linux 容器，都是行不通的。
+
+2、在 Linux 内核中，有很多资源和对象是不能被 Namespace 化的，最典型的例子就是：时间；
+
+如果容器中的程序使用了 `settimeofday(2)` 系统调用修改了时间，整个宿主机的时间都会被随之修改，所以容器中我们应该尽量避免这种操作。
+
+3、容器共享宿主机内核，会给应用暴露出更大的攻击面。
+
+在是生产环境中，不会把物理机中 Linux 的容器直接暴露在公网上。
 
 #### Cgroups
+
+`Linux Cgroups` 的全称是 `Linux Control Group`。它最主要的作用，就是限制一个进程组能够使用的资源上限，包括 CPU、内存、磁盘、网络带宽等等。   
 
 
 ### 参考
@@ -47,6 +72,7 @@ docker 容器的实现正是用到了 Namespace 的隔离，docker 容器通过�
 【深入剖析 Kubernetes】https://time.geekbang.org/column/intro/100015201?code=UhApqgxa4VLIA591OKMTemuH1%2FWyLNNiHZ2CRYYdZzY%3D   
 【Linux Namespace】https://www.cnblogs.com/sparkdev/p/9365405.html  
 【浅谈 Linux Namespace】https://xigang.github.io/2018/10/14/namespace-md/   
+【理解Docker（4）：Docker 容器使用 cgroups 限制资源使用 】https://www.cnblogs.com/sammyliu/p/5886833.html     
 
 
 
