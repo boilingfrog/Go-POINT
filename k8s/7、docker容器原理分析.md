@@ -62,9 +62,26 @@ docker 容器的实现正是用到了 Namespace 的隔离，docker 容器通过�
 
 在是生产环境中，不会把物理机中 Linux 的容器直接暴露在公网上。
 
-#### Cgroups
+#### Cgroups  
+
+docker 容器中的进程使用 Namespace 来进行隔离，使得这些在容器中运行的进程像是运行在一个独立的环境中一样。但是，被隔离的进程还是运行在宿主机中的，如果这些进程没有对资源进行限制，这些进程可能会占用很多的系统资源，影响到其他的进程。Docker 使用 `Linux cgroups` 来限制容器中的进程允许使用的系统资源。  
 
 `Linux Cgroups` 的全称是 `Linux Control Group`。它最主要的作用，就是限制一个进程组能够使用的资源上限，包括 CPU、内存、磁盘、网络带宽等等。   
+
+在 Linux 中，Cgroups 给用户暴露出来的操作接口是文件系统，即它以文件和目录的方式组织在操作系统的 `/sys/fs/cgroup` 路径下。    
+
+`centos 7.2` 下面的文件  
+
+```
+# mount -t cgroup
+cgroup on /sys/fs/cgroup/systemd type cgroup (rw,nosuid,nodev,noexec,relatime,xattr,release_agent=/usr/lib/systemd/systemd-cgroups-agent,name=systemd)
+cgroup on /sys/fs/cgroup/cpu,cpuacct type cgroup (rw,nosuid,nodev,noexec,relatime,cpuacct,cpu)
+cgroup on /sys/fs/cgroup/net_cls type cgroup (rw,nosuid,nodev,noexec,relatime,net_cls)
+cgroup on /sys/fs/cgroup/freezer type cgroup (rw,nosuid,nodev,noexec,relatime,freezer)
+cgroup on /sys/fs/cgroup/memory type cgroup (rw,nosuid,nodev,noexec,relatime,memory)
+...
+```
+
 
 
 ### 参考
