@@ -82,6 +82,16 @@ cgroup on /sys/fs/cgroup/memory type cgroup (rw,nosuid,nodev,noexec,relatime,mem
 ...
 ```
 
+`Linux Cgroups` 的设计还是比较易用的，简单粗暴地理解呢，它就是一个子系统目录加上一组资源限制文件的组合。而对于 Docker 等 Linux 容器项目来说，它们只需要在每个子系统下面，为每个容器创建一个控制组（即创建一个新目录），然后在启动容器进程之后，把这个进程的 PID 填写到对应控制组的 tasks 文件中就可以了。  
+
+总结下来就是，一个正在运行的 Docker 容器，其实就是一个启用了多个 `Linux Namespace` 的应用进程，而这个进程能够使用的资源量，则受 Cgroups 配置的限制。  
+
+### 容器中的文件
+
+
+
+
+
 
 
 ### 参考
