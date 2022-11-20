@@ -6,6 +6,7 @@
     - [Namespace](#namespace)
       - [容器对比虚拟机](#%E5%AE%B9%E5%99%A8%E5%AF%B9%E6%AF%94%E8%99%9A%E6%8B%9F%E6%9C%BA)
     - [Cgroups](#cgroups)
+  - [容器看到的文件](#%E5%AE%B9%E5%99%A8%E7%9C%8B%E5%88%B0%E7%9A%84%E6%96%87%E4%BB%B6)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -86,9 +87,21 @@ cgroup on /sys/fs/cgroup/memory type cgroup (rw,nosuid,nodev,noexec,relatime,mem
 
 总结下来就是，一个正在运行的 Docker 容器，其实就是一个启用了多个 `Linux Namespace` 的应用进程，而这个进程能够使用的资源量，则受 Cgroups 配置的限制。  
 
-### 容器中的文件
+### 容器看到的文件
 
+首先来了解下 `Mount namespace`  
 
+`Mount namespace` 为进程提供独立的文件系统视图。简单点说就是，`mount namespace` 用来隔离文件系统的挂载点，这样进程就只能看到自己的 mount namespace 中的文件系统挂载点。  
+
+进程的 `mount namespace` 中的挂载点信息可以在 `/proc/[pid]/mounts、/proc/[pid]/mountinfo` 和 `/proc/[pid]/mountstats` 这三个文件中找到。  
+
+每个 `mount namespace` 都有一份自己的挂载点列表。当我们使用 clone 函数或 unshare 函数并传入 CLONE_NEWNS 标志创建新的 `mount namespace` 时， 新 `mount namespace` 中的挂载点其实是从调用者所在的 mount namespace 中拷贝的。但是在新的 `mount namespace` 创建之后，这两个 `mount namespace` 及其挂载点就基本上没啥关系了(除了 `shared subtree` 的情况)，两个 `mount namespace` 是相互隔离的。  
+
+容器中，即使开启了 Mount Namespace，容器进程看到的文件系统也跟宿主机完全一样。为什么呢？  
+
+`Mount Namespace` 修改的，是容器进程对文件系统“挂载点”的认知。但是，这也就意味着，只有在“挂载”这个操作发生之后，进程的视图才会被改变。而在此之前，新创建的容器会直接继承宿主机的各个挂载点。   
+
+这就是 `Mount Namespace` 跟其他 Namespace 的使用略有不同的地方：它对容器进程视图的改变，一定是伴随着挂载操作（mount）才能生效。  
 
 
 
@@ -100,6 +113,7 @@ cgroup on /sys/fs/cgroup/memory type cgroup (rw,nosuid,nodev,noexec,relatime,mem
 【Linux Namespace】https://www.cnblogs.com/sparkdev/p/9365405.html  
 【浅谈 Linux Namespace】https://xigang.github.io/2018/10/14/namespace-md/   
 【理解Docker（4）：Docker 容器使用 cgroups 限制资源使用 】https://www.cnblogs.com/sammyliu/p/5886833.html     
+【Linux Namespace : Mount 】https://www.cnblogs.com/sparkdev/p/9424649.html  
 
 
 
