@@ -7,6 +7,9 @@
       - [容器对比虚拟机](#%E5%AE%B9%E5%99%A8%E5%AF%B9%E6%AF%94%E8%99%9A%E6%8B%9F%E6%9C%BA)
     - [Cgroups](#cgroups)
   - [容器看到的文件](#%E5%AE%B9%E5%99%A8%E7%9C%8B%E5%88%B0%E7%9A%84%E6%96%87%E4%BB%B6)
+    - [Mount namespace](#mount-namespace)
+    - [chroot](#chroot)
+    - [rootfs](#rootfs)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -87,7 +90,9 @@ cgroup on /sys/fs/cgroup/memory type cgroup (rw,nosuid,nodev,noexec,relatime,mem
 
 总结下来就是，一个正在运行的 Docker 容器，其实就是一个启用了多个 `Linux Namespace` 的应用进程，而这个进程能够使用的资源量，则受 Cgroups 配置的限制。  
 
-### 容器看到的文件
+### 容器看到的文件  
+
+#### Mount namespace
 
 首先来了解下 `Mount namespace`  
 
@@ -97,14 +102,37 @@ cgroup on /sys/fs/cgroup/memory type cgroup (rw,nosuid,nodev,noexec,relatime,mem
 
 每个 `mount namespace` 都有一份自己的挂载点列表。当我们使用 clone 函数或 unshare 函数并传入 CLONE_NEWNS 标志创建新的 `mount namespace` 时， 新 `mount namespace` 中的挂载点其实是从调用者所在的 mount namespace 中拷贝的。但是在新的 `mount namespace` 创建之后，这两个 `mount namespace` 及其挂载点就基本上没啥关系了(除了 `shared subtree` 的情况)，两个 `mount namespace` 是相互隔离的。  
 
-容器中，即使开启了 Mount Namespace，容器进程看到的文件系统也跟宿主机完全一样。为什么呢？  
-
 `Mount Namespace` 修改的，是容器进程对文件系统“挂载点”的认知。但是，这也就意味着，只有在“挂载”这个操作发生之后，进程的视图才会被改变。而在此之前，新创建的容器会直接继承宿主机的各个挂载点。   
 
-这就是 `Mount Namespace` 跟其他 Namespace 的使用略有不同的地方：它对容器进程视图的改变，一定是伴随着挂载操作（mount）才能生效。  
+这就是 `Mount Namespace` 跟其他 Namespace 的使用略有不同的地方：它对容器进程视图的改变，一定是伴随着挂载操作（mount）才能生效。    
 
+#### chroot
 
+当一个容器被创建的时候，我们希望容器中进程看到的文件是一个独立的隔离环境，我们可以在容器进程重启之前挂载整个根目录 `/`,由于 `Mount Namespace` 的存在，这个挂载对宿主机不可见，所以容器进程就可以在里面随便折腾了。     
 
+在 Linux 中可以使用 chroot 来改变某进程的根目录。  
+
+来看下 chroot  
+
+chroot 主要是用来改换根目录的，在新设定的虚拟根目录中运行指定的命令或交互 Shell。一个运行在这个环境下，经由 chroot 设置根目录的程序，它不能够对这个指定根目录之外的文件进行访问动作，不能读取，也不能更改它的内容。    
+
+#### rootfs
+
+为了让容器这个根目录看起来更'真实',一般会在容器的根目录下面挂载一个完整的操作系统的文件系统，比如 `Ubuntu16.04` 的 ISO。这样，在容器启动之后，我们在容器里通过执行 `ls /` 查看根目录下的内容，就是 `Ubuntu 16.04` 的所有目录和文件。     
+
+这个挂载到容器根目录，用来给容器提供隔离后的执行环境的文件系统，称为为'容器镜像'，或者 rootfs（根文件系统）。   
+
+对于 Docker 来讲,最核心的原理就是为待创建的用户进程执行下面三个操作：  
+
+1、启用 Linux Namespace 配置；  
+
+2、设置指定的 Cgroups 参数；  
+
+3、切换进程的根目录（Change Root）。   
+
+第三步，进程根目录的切换,Docker 会优先使用 pivot_root 系统调用，如果系统不支持，才会使用 chroot。  
+
+rootfs 是一个操作系统包含的所有的文件、配置和目录。
 
 
 ### 参考
