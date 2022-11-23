@@ -132,7 +132,25 @@ chroot 主要是用来改换根目录的，在新设定的虚拟根目录中运�
 
 第三步，进程根目录的切换,Docker 会优先使用 pivot_root 系统调用，如果系统不支持，才会使用 chroot。  
 
-rootfs 是一个操作系统包含的所有的文件、配置和目录。
+rootfs 是一个操作系统包含的所有的文件、配置和目录，并不包括操作系统内核。同一宿主机中的容器都共享主机操作系统的内核。   
+
+正是由于 rootfs 的存在，容器中的一个很重要的特性才能实现，一致性。   
+
+因为 rootfs 中打包的不止是应用，还包括整个操作系统的文件和目录，应用和应用运行的所有依赖都会被封装在一起。这样无在任何一台机器中，只需要解压打包好的镜像，直接运行即可，因为镜像里面已经包含了应用运行的所有环境。    
+
+对于基础 rootfs 的制作，如果后续有更改的需求，一个很简单的操作就是，新 fork 一个然后修改，这样的缺点就是有很多碎片化的版本。   
+
+基础 rootfs 的制作，也是支持增量的方式进行操作的，Docker 在镜像的设计中，引入了层（layer）的概念。也就是说，用户制作镜像的每一步操作，都会生成一个层，也就是一个增量 rootfs。  
+
+<img src="/img/k8s/container-layers.jpeg"  alt="k8s" />      
+
+
+
+
+
+
+
+
 
 
 ### 参考
@@ -141,7 +159,8 @@ rootfs 是一个操作系统包含的所有的文件、配置和目录。
 【Linux Namespace】https://www.cnblogs.com/sparkdev/p/9365405.html  
 【浅谈 Linux Namespace】https://xigang.github.io/2018/10/14/namespace-md/   
 【理解Docker（4）：Docker 容器使用 cgroups 限制资源使用 】https://www.cnblogs.com/sammyliu/p/5886833.html     
-【Linux Namespace : Mount 】https://www.cnblogs.com/sparkdev/p/9424649.html  
+【Linux Namespace : Mount 】https://www.cnblogs.com/sparkdev/p/9424649.html    
+【About storage drivers】https://docs.docker.com/storage/storagedriver/    
 
 
 
