@@ -36,7 +36,7 @@ type slice struct {
 切片一共三个属性：指针，指向底层的数组；长度，表示切片可用元素的个数，也就是说使用下标
 对元素进行访问的时候，下标不能超过的长度；容量，底层数组的元素个数，容量》=长度。
 
-![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/slice_1.png?raw=true)
+![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/golang/slice_1.png?raw=true)
 
 底层的数组是可以被多个切片同时指向的，因此对一个切片元素的操作可能会影响到其他的切片。
 
@@ -55,7 +55,7 @@ type slice struct {
 这里比较混淆的是empty slice，它的长度和容量也都为0，但是所有的空切片的数据指针都指向同一个地址 0xc42003bda0。空切片和 nil 比较的结果为false。
 
 下面是它的内部结构：
-![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/slice_2.png?raw=true)
+![Aaron Swartz](https://github.com/zhan-liz/Go-POINT/blob/master/img/golang/slice_2.png?raw=true)
 
 |     创建方式  |    nil切片               |             空切片                |
 | ------------ | ------------------      | -------------------------------   |
