@@ -10,6 +10,7 @@
     - [Mount namespace](#mount-namespace)
     - [chroot](#chroot)
     - [rootfs](#rootfs)
+  - [Volume（数据卷)](#volume%E6%95%B0%E6%8D%AE%E5%8D%B7)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -154,7 +155,45 @@ rootfs 的制作，也是支持增量的方式进行操作的，Docker 在镜像
 
 最上面的可读可写层，就是专门存放修改后 rootfs 后产生的增量，修改，新增，删除产生的文件都会被记录到这里。这就是 rootfs 制作能支持增量模式的最主要实现。   
 
-这些增量的 rootfs，还可以使用 docker commit 和 push 指令，保存这个被修改过的可读写层，并上传到 Docker Hub 上。同时，原先只读层中的内容不会发生任何变化。    
+这些增量的 rootfs，还可以使用 docker commit 和 push 指令，保存这个被修改过的可读写层，并上传到 Docker Hub 上。同时，原先只读层中的内容不会发生任何变化。当然这些读写层的增量 rootfs 在 commit 之后就会变成一个新的只读层了。       
+
+### Volume（数据卷)  
+
+Volume 机制，允许将宿主机中指定的目录或者文件，挂载到容器中进行取和修改操作。   
+
+Volume 有两种挂载方式  
+
+```
+$ docker run -v /test ...
+$ docker run -v /home:/test ...
+```
+
+两种挂载方式实质上是一样的，第一种，没有指定挂载的宿主机的目录，docker 就会默认在宿主机上创建一个临时目录 `/var/lib/docker/volumes/[VOLUME_ID]/_data`，然后把它挂载到容器的 /test 目录上。  
+
+第二种，指定了宿主机中的目录，docker 就会把指定的宿主机中的 `/home` 目录挂载到容器的 `/test` 目录上。   
+
+docker 中使用了 rootfs 机制和 `Mount Namespace`，构建出了一个同宿主机完全隔离开的文件系统环境。对于 Volume 挂载又是如何实现的呢？这里来具体的分析下。   
+
+当容器进程被创建之后，尽管开启了` Mount Namespace`，但是在它执行 chroot（或者 pivot_root）之前，容器进程一直可以看到宿主机上的整个文件系统。   
+
+所以只需要在 rootfs 准备好之后，在执行 chroot 之前，把 Volume 指定的宿主机目录挂载到容器中的目录上即可，这样 Volume 挂载工作就完成了。   
+
+在执行这个挂载操作时，“容器进程”已经创建了，也就意味着此时 `Mount Namespace` 已经开启了。所以，这个挂载事件只在这个容器里可见。你在宿主机上，是看不见容器内部的这个挂载点的。这就保证了容器的隔离性不会被 Volume 打破。  
+
+这里用到了 Linux 的绑定挂载（bind mount）机制，它的主要作用就是，允许你将一个目录或者文件，而不是整个设备，挂载到一个指定的目录上。并且，这时你在该挂载点上进行的任何操作，只是发生在被挂载的目录或者文件上，而原挂载点的内容则会被隐藏起来且不受影响。   
+
+绑定挂载实际上是一个 inode 替换的过程，在 Linux 操作系统中，inode 可以理解为存放文件内容的"对象"，dentry 也叫目录项，就是访问 inode 所有的指针。   
+
+<img src="/img/k8s/bind-mount.webp"  alt="k8s" />    
+
+上面图片的栗子  
+
+`mount --bind /home /test`，会将 `/home` 挂载到 `/test` 上。其实相当于将 /test 的 dentry，重定向到了 `/home` 的 inode。这样当我们修改 `/test` 目录时，实际修改的是 `/home` 目录的 inode。  
+
+如果执行 umount 命令，解除绑定，`/test` 文件中的内容就会恢复，因为修改发生的目录是在 `/home` 中。   
+
+同样如果对这个镜像执行 commit 操作，docker 容器 Volume 里的信息也是不会被提交的，但是这个挂载点的 `/test` 空目录会被提交。   
+
 
 ### 参考
 
