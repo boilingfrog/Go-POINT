@@ -194,6 +194,62 @@ docker 中使用了 rootfs 机制和 `Mount Namespace`，构建出了一个同�
 
 同样如果对这个镜像执行 commit 操作，docker 容器 Volume 里的信息也是不会被提交的，但是这个挂载点的 `/test` 空目录会被提交。   
 
+### 打包一个go镜像
+
+了解了 docker 的基本原理，这里来构建一个简单的 docker 镜像  
+
+首先一个简单的 go 服务  
+
+```go
+package main
+
+import (
+	"encoding/json"
+	"log"
+	"net/http"
+)
+
+func main() {
+	http.HandleFunc("/hello", sayHello)
+
+	log.Println("【默认项目】服务启动成功 监听端口 80")
+	er := http.ListenAndServe("0.0.0.0:80", nil)
+	if er != nil {
+		log.Fatal("ListenAndServe: ", er)
+	}
+}
+
+func sayHello(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	log.Println("request hello")
+	data := map[string]interface{}{
+		"status":  "ok",
+		"message": "hello",
+	}
+
+	json.NewEncoder(w).Encode(&data)
+}
+```
+
+编写 Dockerfile 文件  
+
+```docker
+# 基础镜像
+FROM alpine
+WORKDIR /app
+
+# 将编译好的go程序，复制到 app 目录下  
+COPY ./go-server ./app
+
+# 允许外接访问的端口
+EXPOSE 80
+
+
+ENTRYPOINT  ["/app/go-server"]
+```
+
+
+
 
 ### 参考
 
