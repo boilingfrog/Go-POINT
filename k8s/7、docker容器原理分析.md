@@ -231,11 +231,23 @@ func sayHello(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
+交叉编译  
+
+```
+export CGO_ENABLED=0
+export GOOS=linux
+export GOARCH=amd64
+
+go build  -o go-server .
+```
+
 编写 Dockerfile 文件  
 
 ```docker
 # 基础镜像
 FROM alpine
+
+# Dockerfile 后面的操作都以这一句指定的 /app 目录作为当前目录
 WORKDIR /app
 
 # 将编译好的go程序，复制到 app 目录下  
@@ -244,11 +256,14 @@ COPY ./go-server ./app
 # 允许外接访问的端口
 EXPOSE 80
 
-
-ENTRYPOINT  ["/app/go-server"]
+CMD  ["/app/go-server"]
 ```
 
+Dockerfile 中的命令都是按照顺序执行的。  
 
+最后使用 CMD 来启动 go 应用，在 Dockerfile 中除了 CMD 还可以使用 ENTRYPOINT 来执行一些容器中的命令操作。  
+
+默认情况下，Docker 会为你提供一个隐含的 ENTRYPOINT，即：`/bin/sh -c`。所以，在不指定 ENTRYPOINT 时，比如在我们这个例子里，实际上运行在容器里的完整进程是：`/bin/sh -c “/app/go-server”`，即 CMD 的内容就是 ENTRYPOINT 的参数。    
 
 
 ### 参考
