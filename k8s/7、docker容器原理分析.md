@@ -11,6 +11,8 @@
     - [chroot](#chroot)
     - [rootfs](#rootfs)
   - [Volume（数据卷)](#volume%E6%95%B0%E6%8D%AE%E5%8D%B7)
+  - [打包一个go镜像](#%E6%89%93%E5%8C%85%E4%B8%80%E4%B8%AAgo%E9%95%9C%E5%83%8F)
+  - [总结](#%E6%80%BB%E7%BB%93)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -198,7 +200,7 @@ docker 中使用了 rootfs 机制和 `Mount Namespace`，构建出了一个同�
 
 了解了 docker 的基本原理，这里来构建一个简单的 docker 镜像  
 
-首先一个简单的 go 服务  
+首先一个简单的 go 服务,[示例代码](https://github.com/boilingfrog/Go-POINT/tree/master/k8s/go-server-hub)    
 
 ```go
 package main
@@ -265,6 +267,31 @@ Dockerfile 中的命令都是按照顺序执行的。
 
 默认情况下，Docker 会为你提供一个隐含的 ENTRYPOINT，即：`/bin/sh -c`。所以，在不指定 ENTRYPOINT 时，比如在我们这个例子里，实际上运行在容器里的完整进程是：`/bin/sh -c “/app/go-server”`，即 CMD 的内容就是 ENTRYPOINT 的参数。    
 
+### 总结  
+
+1、对于 Docker 来讲,最核心的原理就是为待创建的用户进程执行下面三个操作：
+
+- 1、启用 Linux Namespace 配置；
+
+- 2、设置指定的 Cgroups 参数；
+
+- 3、切换进程的根目录（Change Root）。  
+
+2、Docker 容器启动的进程还是在宿主机中运行的，和宿主机中其他运行的进程是没有区别的，只是 docker 容器会给这些进程，添加各种各样的 Namespace 参数，使这些进程和宿主机中的其它进程隔离开来，感知不到有其它进程的存在；    
+
+3、Docker 通过 Namespace 可以这些进程只能看到自己 Namespace 的相关资源，这样和其它 Namespace 的进程起到了隔离的作用，使得这些在容器中运行的进程像是运行在一个独立的环境中一样；  
+
+4、Docker 使用 Linux cgroups 来限制容器中的进程允许使用的系统资源，防止这些进程可能会占用很多的系统资源，影响到其他的进程；  
+
+5、`Mount namespace` 为进程提供独立的文件系统视图。简单点说就是，`mount namespace` 用来隔离文件系统的挂载点，这样进程就只能看到自己的 mount namespace 中的文件系统挂载点；  
+
+6、当一个容器被创建的时候，我们希望容器中进程看到的文件是一个独立的隔离环境，为了让容器这个根目录看起来更'真实',一般会在容器的根目录下面挂载一个完整的操作系统的文件系统，比如 Ubuntu16.04 的 ISO。这样，在容器启动之后，我们在容器里通过执行 ls / 查看根目录下的内容，就是 Ubuntu 16.04 的所有目录和文件；   
+
+7、rootfs 是一个操作系统包含的所有的文件、配置和目录，并不包括操作系统内核。同一宿主机中的容器都共享主机操作系统的内核；  
+
+8、正是由于 rootfs 的存在，容器中的一个很重要的特性才能实现，一致性；    
+
+9、对于基础 rootfs 的制作，如果后续有更改的需求，一个很简单的操作就是，新 fork 一个然后修改，这样的缺点就是有很多碎片化的版本。rootfs 的制作，也是支持增量的方式进行操作的，Docker 在镜像的设计中，引入了层（layer）的概念。也就是说，用户制作镜像的每一步操作，都会生成一个层，也就是一个增量 rootfs。  
 
 ### 参考
 
