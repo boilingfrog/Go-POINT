@@ -301,6 +301,7 @@ Dockerfile 中的命令都是按照顺序执行的。
 【理解Docker（4）：Docker 容器使用 cgroups 限制资源使用 】https://www.cnblogs.com/sammyliu/p/5886833.html     
 【Linux Namespace : Mount 】https://www.cnblogs.com/sparkdev/p/9424649.html    
 【About storage drivers】https://docs.docker.com/storage/storagedriver/    
+【Docker工作原理分析】https://boilingfrog.github.io/2022/11/27/docker%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/    
 
 
 
