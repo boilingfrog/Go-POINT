@@ -3,6 +3,7 @@
 
 - [声明式API](#%E5%A3%B0%E6%98%8E%E5%BC%8Fapi)
   - [声明式和命令式的对比](#%E5%A3%B0%E6%98%8E%E5%BC%8F%E5%92%8C%E5%91%BD%E4%BB%A4%E5%BC%8F%E7%9A%84%E5%AF%B9%E6%AF%94)
+  - [Kubernetes编程范式](#kubernetes%E7%BC%96%E7%A8%8B%E8%8C%83%E5%BC%8F)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -37,8 +38,24 @@
 
 配置文件更容易审错和多人维护，并且如果当前的部署失败，我们只需要更改部署文件为之前的版本，重新部署就能回退到之前的版本。   
 
-Kubernetes 就是用声明式的设计思想设计的  
+Kubernetes 的设计用的就是声明式的设计思想。  
 
+Kubernetes 不仅仅是一个编排系统，实际上它消除了编排的需要。 编排的技术定义是执行已定义的工作流程：首先执行 A，然后执行 B，再执行 C。 而 Kubernetes 包含了一组独立可组合的控制过程，可以连续地将当前状态驱动到所提供的预期状态。 你不需要在乎如何从 A 移动到 C，也不需要集中控制，这使得系统更易于使用且功能更强大、 系统更健壮，更为弹性和可扩展。这正是声明式的设计思想的体现。  
+
+###  Kubernetes 声明式 API 的工作原理
+
+当一个 YAML 文件提交给 Kubernetes 之后，它究竟是如何创建出一个 API 对象的呢？  
+
+在 Kubernetes 项目中，一个 API 对象在 Etcd 里的完整资源路径，是由：Group（API 组）、Version（API 版本）和 Resource（API 资源类型）三个部分组成的。   
+
+<img src="/img/k8s/k8s-api.webp"  alt="k8s" />    
+
+可以看到 Kubernetes 中 API 对象组织方式，其实是层层递进的。   
+
+例如下面的栗子  
+
+```
+```
 
 ### 参考
 
