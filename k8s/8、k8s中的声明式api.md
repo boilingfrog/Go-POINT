@@ -3,7 +3,7 @@
 
 - [声明式API](#%E5%A3%B0%E6%98%8E%E5%BC%8Fapi)
   - [声明式和命令式的对比](#%E5%A3%B0%E6%98%8E%E5%BC%8F%E5%92%8C%E5%91%BD%E4%BB%A4%E5%BC%8F%E7%9A%84%E5%AF%B9%E6%AF%94)
-  - [Kubernetes编程范式](#kubernetes%E7%BC%96%E7%A8%8B%E8%8C%83%E5%BC%8F)
+  - [Kubernetes 声明式 API 的工作原理](#kubernetes-%E5%A3%B0%E6%98%8E%E5%BC%8F-api-%E7%9A%84%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -55,7 +55,54 @@ Kubernetes 不仅仅是一个编排系统，实际上它消除了编排的需要
 例如下面的栗子  
 
 ```
+apiVersion: batch/v2alpha1
+kind: CronJob
+...
 ```
+
+在这个 YAML 文件中，“CronJob”就是这个 API 对象的资源类型（Resource），“batch”就是它的组（Group），v2alpha1 就是它的版本（Version）。   
+
+这个 YAML 会被 Kubernetes 转化成一个 CronJob 对象，这里来看下是如何转化的。  
+
+1、首先匹配 API 对象的组；  
+
+Kubernetes 中的核心 API 对象，例如 Pod、Node。不需要 Group,(Group 为 "")，这些 API 对象会在 `/api` 这个层级进行匹配；  
+
+非核心的 Api 对象类似 CronJob 会在 `/apis` 这个层级进行匹配，上面 CronJob 的 Group 是 batch，所以就会找到 `/apis/batch`；   
+
+2、匹配 API 的版本号；  
+
+上面栗子 CronJob 的版本号是 v2alpha1，所以当前匹配的路径就是 `/apis/batch/v2alpha1`;   
+
+和我们 API 中的设计原则一样，Kubernetes 中的版本号也是用来进行 API 版本管理的。   
+
+3、匹配 API 对象的资源类型；   
+
+在匹配好版本之后，Kubernetes 根据路径和资源类型，就能确定创建的是 `/apis/batch/v2alpha1` 下的 CronJob 对象。    
+
+当发起创建 CronJob 的 POST 请求之后，编写的 YAML 的信息就被提交给 APIServer 处理。   
+
+APIServer 如何处理 API 请求    
+
+1、请求过滤请求，进行一些前置性的工作，比如授权、超时处理、审计等；  
+
+2、API 路由匹配；  
+
+进入 MUX 和 Routes 流程，MUX 和 Routes 的主要作用是完成 APIServer 的 URL 和 Handler 绑定，Handler 找到对应的 CronJob 类型定义。  
+
+3、根据提交的 YAML 文件创建资源；   
+
+上面的栗子，根据这个 CronJob 类型定义，使用提交的 YAML 文件里的字段，创建一个 CronJob 对象。   
+
+4、使用准入控制器，进行变更操作或验证操作；    
+
+准入控制器 是一段代码，它会在请求通过认证和鉴权之后、对象被持久化之前拦截到达 API 服务器的请求。
+
+准入控制器可以执行验证（Validating） 和/或变更（Mutating） 操作。  
+
+5、序列化，保存到 Etcd 中。  
+
+APIServer 会把验证过的 API 对象转换成用户最初提交的版本，进行序列化操作，并调用 Etcd 的 API 把它保存起来。  
 
 ### 参考
 
