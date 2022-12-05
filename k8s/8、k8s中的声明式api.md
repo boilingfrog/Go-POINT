@@ -82,7 +82,7 @@ Kubernetes 中的核心 API 对象，例如 Pod、Node。不需要 Group,(Group 
 
 当发起创建 CronJob 的 POST 请求之后，编写的 YAML 的信息就被提交给 APIServer 处理。   
 
-APIServer 如何处理 API 请求    
+#### APIServer 如何处理 API 请求    
 
 1、请求过滤请求，进行一些前置性的工作，比如授权、超时处理、审计等；  
 
@@ -96,9 +96,13 @@ APIServer 如何处理 API 请求
 
 4、使用准入控制器，进行变更操作或验证操作；    
 
-准入控制器 是一段代码，它会在请求通过认证和鉴权之后、对象被持久化之前拦截到达 API 服务器的请求。
+准入控制器（`Admission Controller`）位于 API Server 中，在对象被持久化之前，准入控制器拦截对 API Server 的请求，一般用来做身份验证和授权。  
 
-准入控制器可以执行验证（Validating） 和/或变更（Mutating） 操作。  
+准入控制器包括以下两种：  
+
+- 1、变更（Mutating）准入控制：修改请求的对象；  
+
+- 2、验证（Validating）准入控制：验证请求的对象。    
 
 5、序列化，保存到 Etcd 中。  
 
