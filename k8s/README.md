@@ -13,8 +13,11 @@
 
 - [6、k8s 中的 ingress 使用细节](https://github.com/boilingfrog/Go-POINT/blob/master/k8s/6%E3%80%81k8s%E4%B8%AD%E7%9A%84ingress.md)
 
-- [7、Docker 工作原理分析](https://boilingfrog.github.io/2022/11/27/docker%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/)            
+- [7、Docker 工作原理分析](https://github.com/boilingfrog/Go-POINT/blob/master/k8s/7%E3%80%81docker%E5%AE%B9%E5%99%A8%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90.md)              
 
+- [8、k8s中的声明式API](https://github.com/boilingfrog/Go-POINT/blob/master/k8s/8%E3%80%81k8s%E4%B8%AD%E7%9A%84%E5%A3%B0%E6%98%8E%E5%BC%8Fapi.md)            
+
+- [9、容器中的网络](https://github.com/boilingfrog/Go-POINT/blob/master/k8s/9%E3%80%81%E5%AE%B9%E5%99%A8%E7%BD%91%E7%BB%9C.md)              
 
 
 
