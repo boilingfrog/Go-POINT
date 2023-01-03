@@ -19,6 +19,7 @@
 
 - [9、容器中的网络](https://github.com/boilingfrog/Go-POINT/blob/master/k8s/9%E3%80%81%E5%AE%B9%E5%99%A8%E7%BD%91%E7%BB%9C.md)              
 
+- [10、k8s 中的网络](https://github.com/boilingfrog/Go-POINT/blob/master/k8s/10%E3%80%81k8s%E4%B8%AD%E7%9A%84%E7%BD%91%E7%BB%9C.md)                
 
 
 
