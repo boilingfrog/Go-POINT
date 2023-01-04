@@ -20,6 +20,8 @@
       - [Pod 亲和性调度](#pod-%E4%BA%B2%E5%92%8C%E6%80%A7%E8%B0%83%E5%BA%A6)
     - [NodeSelector 定向调度](#nodeselector-%E5%AE%9A%E5%90%91%E8%B0%83%E5%BA%A6)
   - [资源限制](#%E8%B5%84%E6%BA%90%E9%99%90%E5%88%B6)
+    - [QoS 模型](#qos-%E6%A8%A1%E5%9E%8B)
+    - [cpuset 的设置](#cpuset-%E7%9A%84%E8%AE%BE%E7%BD%AE)
   - [Pod 的持久化存储](#pod-%E7%9A%84%E6%8C%81%E4%B9%85%E5%8C%96%E5%AD%98%E5%82%A8)
     - [1、emptyDir](#1emptydir)
     - [2、hostPath](#2hostpath)
@@ -732,7 +734,18 @@ EOF
 
 - Requests：该资源的最小申请量，系统必须满足要求。  
 
-- Limits：该资源最大允许使用的量，不能超过这个使用限制，当容器试图使用超过这个量的资源时，可能会被Kubernetes Kill并重启。
+- Limits：该资源最大允许使用的量，不能超过这个使用限制，当容器试图使用超过这个量的资源时，可能会被 `Kubernetes Kill` 并重启。   
+
+```
+spec.containers[].resources.limits.cpu
+spec.containers[].resources.limits.memory
+spec.containers[].resources.requests.cpu
+spec.containers[].resources.requests.memory
+```
+
+Docker 使用 `Linux cgroups` 来限制容器中的进程允许使用的系统资源,`Linux Cgroups` 的设计还是比较易用的，简单粗暴地理解呢，它就是一个子系统目录加上一组资源限制文件的组合。而对于 Docker 等 Linux 容器项目来说，它们只需要在每个子系统下面，为每个容器创建一个控制组（即创建一个新目录），然后在启动容器进程之后，把这个进程的 PID 填写到对应控制组的 tasks 文件中就可以了。   
+
+Kubernetes 的 `requests+limits` 的思路就是，在调度的时候，kube-scheduler 只会按照 requests 的值进行计算，requests 的资源保证容器能够正常启动。而在真正设置 Cgroups 限制的时候，kubelet 则会按照 limits 的值来进行设置。    
 
 通常我们应该把 Requests 设置为一个比较小的数值，满足容器平时的工作负载情况下的资源需求，而把 Limits 设置为峰值负载情况下资源占用的最大量。下面是一个资源配额的简单定义：  
 
@@ -756,7 +769,61 @@ spec:
 
 添加资源限制的目的  
 
-在业务流量请求较低的时候，释放多余的资源。当有一些突发性的活动，就能根据资源占用情况，申请合理的资源。    
+在业务流量请求较低的时候，释放多余的资源。当有一些突发性的活动，就能根据资源占用情况，申请合理的资源。     
+
+#### QoS 模型  
+
+在 k8s 中不同的 requests 和 limits 的设置方式，会将这个 pod 划分到不同的 QoS 级别中。   
+
+k8s 中使用 QoS 来决定 Pod 的调度和驱逐策略，描述了 POD 在被调度和驱逐时的优先顺序。   
+
+QoS 中有下面三种等级：  
+
+- Guaranteed：Pod 里的每一个 Container 都同时设置了 requests 和 limits，并且 requests 和 limits 值相等的时候；    
+
+- Burstable： Pod 不满足 Guaranteed 的条件，但至少有一个 Container 设置了 requests。那么这个 Pod 就会被划分到 Burstable 类别；     
+
+- BestEffort：Pod 中 requests 和 limits 都没有设置，那就属于 BestEffort。    
+
+QoS 等级决定了 k8s 处理 POD 的方式，栗如对于内存资源：   
+
+当内存资源不足的时候 QoS 会决定 POD 被 kill 的顺序   
+
+```
+BestEffort -> Burstable -> Guaranteed
+```
+
+#### cpuset 的设置  
+
+kubelet 将系统的 cpu 分为2个资源池：  
+
+独占池（exclusive pool）：同时只有一个任务能够分配到 cpu；  
+
+共享池（shared pool）：多个进程分配到 cpu。     
+
+在使用容器的时候，可以通过设置 cpuset 把容器绑定到某个 CPU 的核上，而不是像 cpushare 那样共享 CPU 的计算能力。这种情况下，由于操作系统在 CPU 之间进行上下文切换的次数大大减少，容器里应用的性能会得到大幅提升。   
+
+如何使用呢？   
+
+1、Pod 必须是 Guaranteed 的 QoS 类型；  
+
+2、 Pod 的 CPU 资源的 requests 和 limits 要设置成整数。     
+
+```
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    resources:
+      limits:
+        memory: "200Mi"
+        cpu: "2"
+      requests:
+        memory: "200Mi"
+        cpu: "2"
+```
+
+上面示例中，pod 会被绑定到 2 个独占的 CPU 上面去，具体使用哪两个 CPU 核，由 kubelet 进行分配。     
 
 ### Pod 的持久化存储
 
@@ -1223,3 +1290,4 @@ EOF
 【亲和与反亲和调度】https://support.huaweicloud.com/intl/zh-cn/basics-cce/kubernetes_0018.html    
 【hpa】https://kubernetes.io/zh-cn/docs/tasks/run-application/horizontal-pod-autoscale/    
 【k8s中的Pod细节了解】https://boilingfrog.github.io/2022/09/23/k8s%E4%B8%AD%E7%9A%84Pod%E7%BB%86%E8%8A%82%E4%BA%86%E8%A7%A3/    
+【配置 Pod 的服务质量】https://kubernetes.io/zh-cn/docs/tasks/configure-pod-container/quality-service-pod/  
