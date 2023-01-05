@@ -1256,6 +1256,26 @@ EOF
 
 `autoscaling/v2beta2`支持外部指标；    
 
+使用率计算方式   
+
+默认 HPA 提供了 Resource 类型，通过 `CPU/MEM` 使用率指标（由 metrics-server 提供原始指标）来扩缩应用。   
+
+在 Resource 类型中，使用率计算是通 过 request 而不是 limit。   
+
+一般配置资源限制 request 是该资源的最小申请量，requests 的资源保证容器能够正常启动。这时候  HPA 按照 request 来计算使用率，很容易就达到上限了。    
+
+如何避免呢？   
+
+1、可以考虑使用自定义指标来替代；  
+
+2、对于资源的一下配置也需要注意下。   
+
+核心业务可以考虑 `requests/limits` 值，设成相等的，保证服务质量等级为 Guaranteed，HPA，一般来说，期望值设为 60% 到 70% 可能是比较合适的，最小副本数建议设为 `2 - 5`。   
+
+非核心业务 `requests/limits` 值，可以考虑 requests 设为 limits 的 `0.6 - 0.9` 倍（仅供参考），对应的服务质量等级为 Burstable。HPA，一般来说 `80% ~ 90%`，最小副本数建议设为 `1 - 3`。   
+
+当然只是参考，具体可根据实际业务进行调优。    
+
 ### 总结 
 
 1、Pod 是 Kubernetes 集群中能够被创建和管理的最小部署单元；  
