@@ -4,6 +4,7 @@
 - [为什么 K8s 会抛弃 docker](#%E4%B8%BA%E4%BB%80%E4%B9%88-k8s-%E4%BC%9A%E6%8A%9B%E5%BC%83-docker)
   - [前言](#%E5%89%8D%E8%A8%80)
   - [CRI](#cri)
+  - [containerd](#containerd)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -12,7 +13,7 @@
 
 ### 前言
 
-在这之前先来了解下，k8s 是如何和 docker 镜像进行交互的。   
+在这之前先来了解下，k8s 是如何和 docker 进行交互的。   
 
 ### CRI  
 
@@ -25,6 +26,8 @@ kubelet 调用下层容器运行时的执行过程，并不会直接调用 Docke
 把 kubelet 对容器的操作，统一地抽象成一个接口，这样 kubelet 只需要和这个接口打交道，而不用关心底层容器，底层容器它们就只需要自己提供一个该接口的实现，然后对 kubelet 暴露出 gRPC 服务即可，这样底层容器就能很容器的进行切换了，而不是仅限于 Docker 这种容器了。  
 
 同时，引入 CRI 接口，这样就不会受限于 docker 了，可以随时切换到其它的运行时。意味着容器运行时和镜像的实现与 Docker 项目完全剥离，让其他玩家不依赖 Docker 实现自己的运行时成为可能。   
+
+### containerd
 
 面对挑战，Docker 采取了“断臂求生”的策略，推动自身重构，将原有单一架构的 `Docker Engine` 拆分成多个模块，其中 `Docker daemon` 部分捐赠给 CNCF，containerd 形成。   
 
@@ -53,6 +56,7 @@ kubelet --> cri plugin（在 containerd 进程中） --> containerd
 【深入剖析 Kubernetes】https://time.geekbang.org/column/intro/100015201?code=UhApqgxa4VLIA591OKMTemuH1%2FWyLNNiHZ2CRYYdZzY%3D  
 【K8s 为什么要弃用 Docker？】https://mp.weixin.qq.com/s/qEKyEseD370xWI-2yIyUzg     
 【Docker与k8s的恩怨情仇】https://www.cnblogs.com/powertoolsteam/p/14980851.html     
+【k8s为什么会抛弃docker】https://boilingfrog.github.io/2023/01/07/k8s%E4%B8%BA%E4%BB%80%E4%B9%88%E4%BC%9A%E6%8A%9B%E5%BC%83docker/   
 
 
 
