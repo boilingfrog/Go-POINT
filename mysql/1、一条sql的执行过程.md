@@ -94,11 +94,26 @@ MySQL 查询缓存，为了提高相同 Query 语句的响应速度，会缓存�
 
 MySQL 会解析查询，并创建内部的数据结构(解析树)，然后对其进行各种优化，包括重写查询，决定表的读取顺序，以及选择合适的索引。      
 
-### 日志模块
+### 日志模块  
+
+首先来看下 InnoDB 中的存储   
+
+InnoDB 存储引擎是基于磁盘存储的，并将其中的记录按照页的方式进行管理。因此可以将其视为基于磁盘的数据库系统，由于 CPU 速度与磁盘速度之间的鸿沟，基于
+磁盘的数据库系统通常使用缓存池技术来提供数据库整体性能。   
+
+缓存池简单来说就是一块内存区域，通过内存速度来弥补磁盘速度较慢对数据库性能的影响。  
+
+- 数据库读取页的操作，会将从磁盘读出的页存放到缓存池中，下次读相同的页就可以在缓存池中查询了，查询不到还是会从磁盘中读取。     
+
+- 数据库中页的修改操作，首先修改缓存池中的页，然后一定频率刷新到新的磁盘上。页从缓存池中刷新到磁盘中的操作并不是在每次页发生更新时触发，而是通过一种称为 Checkpoint 的机制刷新回磁盘。  
+
+如果每一个页发生变化，就将新页的版本刷新到磁盘，那么这个开销是很大的，如果数据都集中在某几个页，那么数据库的性能将变的很差。  
+
+同时，如果在从缓存中将页的新版本刷新到磁盘时发生了宕机，那么数据就不能恢复了，为了避免发生数据丢失的问题，当前事务数据系统都采用了 `Write Ahead Log` 策略，当事务提交的时候，先写重做日志，再修改页。通过重做日志来处理宕机时候的数据丢失问题。   
 
 #### redo log (重做日志)  
 
-InnoDB 是事务的存储引擎，通过 `Force Log at Commit` 机制实现事务的持久性，即当事务提交 Commit 时，必须将该事务的所有日志写入到重做日志文件进行持久化，待事务 Commit 操作完成才能算完成，这里的日志值得就是重做日志，在 InnoDB 引擎中由两部分组成，`redo log` 和 `undo log`。  
+InnoDB 中的重做日志，由两部分组成，`redo log` 和 `undo log`。  
 
 - `redo log` 用来从保证事务的持久性；  
 
@@ -110,6 +125,8 @@ InnoDB 是事务的存储引擎，通过 `Force Log at Commit` 机制实现事�
 
 MySQL 每执行一条 DML 语句，先将记录写入 `redo log buffer`，后续某个时间点再一次性将多个操作记录写到 `redo log file` 。这种 先写日志，再写磁盘 的技术就是 MySQL 里经常说到的 `WAL(Write-Ahead Logging)` 技术。    
 
+<img src="/img/mysql/mysql-redo-log-buffer.png"  alt="mysql" />
+
 MySQL 支持三种将 `redo log buffer` 写入 `redo log file` 的时机，可以通过 `innodb_flush_log_at_trx_commit ` 参数配置，各参数值含义如下：   
 
 |     参数值      |             含义                                          |
@@ -117,6 +134,20 @@ MySQL 支持三种将 `redo log buffer` 写入 `redo log file` 的时机，可�
 | 0(延迟写)             |   事务提交时不会将 redo log buffer 中日志写入到 os buffer ，而是每秒写入 os buffer 并调用 fsync() 写入到 redo log file 中。也就是说设置为0时是(大约)每秒刷新写入到磁盘中的，当系统崩溃，会丢失1秒钟的数据。|
 | 1(实时写,实时刷)       |   事务每次提交都会将 redo log buffer 中的日志写入 os buffer 并调用 fsync() 刷到 redo log file 中。这种方式即使系统崩溃也不会丢失任何数据，但是因为每次提交都写入磁盘，IO的性能较差。                     |
 | 2(实时写，延迟刷)       |  2（实时写，延迟刷）	每次提交都仅写入到 os buffer ，然后是每秒调用 fsync() 将 os buffer 中的日志写入到 redo log file 。 |
+
+参数 innodb_flush_log_at_trx_commit 建议设置成 1 ，这样可以保证MySQL异常重启之后数据不丢失。   
+
+`redo log` 的日志文件会一直追加吗？    
+
+InnoDB 中的 `redo log` 是固定大小的，比如可以配置为一组 4 个文件，每个文件的大小为 1GB 那么 `redo log` 中就可以记录 4GB 的数据操作。`redo log` 中日志的写入是循环写入的，当写到结尾时，会回到开头循环写日志。    
+
+<img src="/img/mysql/mysql-redo-logfile.png"  alt="mysql" />  
+
+`write pos` 表示当前记录的位置，一边写一边后移，`checkpoint` 表示当前要擦除的位置，`checkpoint` 之前的页被会刷新到磁盘中。  
+
+`write pos` 和 `checkpoint` 之间的区域就是还能写入到 `redo log` 中的日志文件。    
+
+有了 `redo log`，InnoDB 就可以保证即使数据库发生异常重启，之前提交的记录都不会丢失，这个能力称为 crash-safe。   
 
 #### binlog (归档日志)
 
