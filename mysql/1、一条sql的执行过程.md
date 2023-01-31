@@ -151,6 +151,84 @@ InnoDB 中的 `redo log` 是固定大小的，比如可以配置为一组 4 个�
 
 #### binlog (归档日志)
 
+binlog 记录了 MySQL 数据执行更改的所有操作，以二进制的形式保存在磁盘中，binlog 是 MySQL 中的逻辑日志，由 server 层进行记录，使用任何引擎的 MySQL 都会记录 binlog 日志。   
+
+binlog 是通过追加的方式进行写入的，可以通过 max_binlog_size 参数设置每个 binlog 文件的大小，当文件大小达到给定值之后，会生成新的文件来保存日志。    
+
+**使用场景**   
+
+binlog 主要有下面几种作用：  
+
+- 主从复制：在主从复制中，从库利用主库上的binlog进行重播，实现主从同步；  
+
+- 数据恢复：用户数据库基于时间点的数据还原；   
+
+- 审计：用户通过二进制日志中的信息来进行审计，判断是否有对数据库进行注入的攻击。   
+
+**binlog 刷盘时机**  
+
+在默认情况下，二进制文件并不是每次写的时候同步到磁盘，因此当数据库所在的操作系统宕机的时候，可能会存在一部分数据没有写入到二进制文件中。   
+
+具体的刷盘时机可以通过 sync_binlog 参数来控制  
+
+|     参数值      |             含义                                        |
+| -------------------- | -------------------------------                  |
+| 0                    |   不去强制要求，由系统自行判断何时写入到磁盘中          |
+| 1                    |   每次 commit 的时候都要将 binlog 写入磁盘           |
+| N                    |   每N个事务，才会将 binlog 写入磁盘                  |
+
+在 MySQL 5.7.7 之后的版本 sync_binlog 的默认值都是1。    
+
+### 两阶段提交
+
+这里来看下一条 Update 语句的执行过程   
+
+```
+UPDATE user SET username = '小张-001' WHERE id = 2;
+```
+
+1、执行器先找引擎取 `id = 2` 这一行；  
+
+- 如果 `id = 2` 这一行的数据页、本来就在 `buffer pool` 中，就直接返回给执行器更新；   
+
+- 如果记录不在 `buffer pool` 中，将数据从磁盘读入到 `buffer pool`，返回记录给执行器。   
+
+2、执行器得到数据之后吗，首先看下更新前的记录和更新后的记录时候一样；   
+
+- 如果一样，不执行后面的更新流程；  
+
+- 如果不一样，就把更新前的数据和更新后的数据都传给 InnoDB 引擎，让 InnoDB 来执行更新操作；   
+
+3、引擎将数据更新到内存中，同时将更新操作记录到 `redo log` 中，此时的 `redo log` 处于 prepare 状态，然后告知执行器执行完成了，随时可以提交事务；  
+
+4、执行器生成这个操作的 binlog，并把 binlog 写入到磁盘中；   
+
+5、执行器调用引擎的提交事务接口，引擎把刚刚写入的 `redo log` 改成提交(commit)状态，更新完成。   
+
+<img src="/img/mysql/mysql-log-xa.png"  alt="mysql" />  
+
+其中在写 binlog 和 `redo log` 的过程中，为了保证两个文件写入的原子性，这里使用了内部 XA 事务的两阶段提交。   
+
+Prepare 阶段：
+
+将(内部事务的id) xid 写入到 `redo log` 中，InnoDB 将事务状态设置为 prepare 状态，将 redolog 写文件并刷盘；    
+
+Commit 阶段：  
+
+将 xid 写入到 binlog, binlog 写入文件,binlog 刷盘,然后 InnoDB 提交事务。    
+
+两阶段提交保证了事务在多个引擎和 binlog 之间的原子性，binlog 承担内部 XA 事务的协调者，以 binlog 写入成功作为事务提交的标志。   
+
+在崩溃恢复中，是以 binlog 中的 xid 和 `redo log` 中的 xid 进行比较，xid 在 binlog 里存在则提交，不存在则回滚。我们来看崩溃恢复时具体的情况：  
+
+在 prepare 阶段崩溃，即已经写入 redolog，在写入 binlog 之前崩溃，则会回滚；  
+
+在 commit 阶段，当没有成功写入 binlog 时崩溃，也会回滚；   
+
+如果已经写入 binlog，在写入 InnoDB commit 标志时崩溃，则重新写入 commit 标志，完成提交。       
+
+#### 为什么需要两阶段提交
+
 #### undo log (回滚日志)
 
 
@@ -159,3 +237,4 @@ InnoDB 中的 `redo log` 是固定大小的，比如可以配置为一组 4 个�
 【高性能MySQL(第3版)】https://book.douban.com/subject/23008813/    
 【MySQL 实战 45 讲】https://time.geekbang.org/column/100020801  
 【MySQL技术内幕】https://book.douban.com/subject/24708143/    
+【MySQL · 源码分析 · 内部 XA 和组提交】http://mysql.taobao.org/monthly/2020/05/07/     
