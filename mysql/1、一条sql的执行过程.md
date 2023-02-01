@@ -277,3 +277,4 @@ InnoDB 通过 `undo log` 保存每条数据的多个版本，并且能够找回�
 【MySQL 实战 45 讲】https://time.geekbang.org/column/100020801  
 【MySQL技术内幕】https://book.douban.com/subject/24708143/    
 【MySQL · 源码分析 · 内部 XA 和组提交】http://mysql.taobao.org/monthly/2020/05/07/     
+【MySQL学习笔记】https://github.com/boilingfrog/Go-POINT/tree/master/mysql  
