@@ -89,6 +89,18 @@ V1、V2 的值是1，V3 的值是 2。
 
 V1、V2 的值是1，V3 的值是 2。因为事务2，先启动查询，所以事务1必须等到事务2提交之后才能提交事务的修改，所以 V1、V2 的值是1，因为 V3 的查询时在事务1提交之后，所以 V3 查询的值就是2。   
 
+#### 事务隔离是如何实现
+
+在了解了四种隔离级别，下面来聊聊这几种隔离级别是如何实现的。   
+
+首先来介绍一个非常重要的概念 `Read View`。   
+
+`Read View` 是一个数据库的内部快照，用于 InnoDB 中 MVCC 机制。
+
+##### 可重复度
+
+可重复读主要是通过 `Read View` 来实现的，
+
 
 
 ### 参考
@@ -96,6 +108,7 @@ V1、V2 的值是1，V3 的值是 2。因为事务2，先启动查询，所以�
 【高性能MySQL(第3版)】https://book.douban.com/subject/23008813/    
 【MySQL 实战 45 讲】https://time.geekbang.org/column/100020801  
 【MySQL技术内幕】https://book.douban.com/subject/24708143/    
+【MySQL总结--MVCC（read view和undo log）】https://blog.csdn.net/huangzhilin2015/article/details/115195777       
 
 
 
