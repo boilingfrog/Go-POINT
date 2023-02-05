@@ -108,7 +108,8 @@ V1、V2 的值是1，V3 的值是 2。因为事务2，先启动查询，所以�
 【高性能MySQL(第3版)】https://book.douban.com/subject/23008813/    
 【MySQL 实战 45 讲】https://time.geekbang.org/column/100020801  
 【MySQL技术内幕】https://book.douban.com/subject/24708143/    
-【MySQL总结--MVCC（read view和undo log）】https://blog.csdn.net/huangzhilin2015/article/details/115195777       
+【MySQL总结--MVCC（read view和undo log）】https://blog.csdn.net/huangzhilin2015/article/details/115195777     
+【深入理解 MySQL 事务：隔离级别、ACID 特性及其实现原理】https://blog.csdn.net/qq_35246620/article/details/61200815     
 
 
 
