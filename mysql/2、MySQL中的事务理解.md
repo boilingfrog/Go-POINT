@@ -5,6 +5,8 @@
   - [前言](#%E5%89%8D%E8%A8%80)
   - [隔离性](#%E9%9A%94%E7%A6%BB%E6%80%A7)
     - [事务的隔离级别](#%E4%BA%8B%E5%8A%A1%E7%9A%84%E9%9A%94%E7%A6%BB%E7%BA%A7%E5%88%AB)
+    - [事务隔离是如何实现](#%E4%BA%8B%E5%8A%A1%E9%9A%94%E7%A6%BB%E6%98%AF%E5%A6%82%E4%BD%95%E5%AE%9E%E7%8E%B0)
+      - [可重复读 和 读提交](#%E5%8F%AF%E9%87%8D%E5%A4%8D%E8%AF%BB-%E5%92%8C-%E8%AF%BB%E6%8F%90%E4%BA%A4)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -97,9 +99,28 @@ V1、V2 的值是1，V3 的值是 2。因为事务2，先启动查询，所以�
 
 `Read View` 是一个数据库的内部快照，用于 InnoDB 中 MVCC 机制。
 
-##### 可重复度
+##### 可重复读 和 读提交
 
-可重复读主要是通过 `Read View` 来实现的，
+可重复读 和 读提交 主要是通过 MVCC 来实现，MVCC 的实现主要用到了 `undo log` 日志版本链和 `Read View`。   
+
+**`undo log` 日志版本链**   
+
+`undo log` 是一种逻辑日志，当一个事务对记录做了变更操作就会产生 `undo log`，里面记录的是数据的逻辑变更。  
+
+对于使用  InnoDB  存储引擎的表来说，它的聚簇索引记录中都包含两个必要的隐藏列。   
+
+- trx_id：每次对某条聚簇索引记录进行改动时，都会把对应的事务 id 赋值给 trx_id 隐藏列；  
+
+- roll_pointer：每次对某条聚簇索引记录进行改动时，都会把旧的版本写入到 undo 日志中，然后这个隐藏列就相当于一个指针，可以通过它来找到该记录修改前的信息。      
+
+每次事务更新的时候，`undo log` 就会用 trx_id 记录下当前事务的实物 ID，同时记录下当前更新的数据，通过 roll_pointer 指向上个更新的旧版本数据。   
+
+<img src="/img/mysql/mysql-mvcc-undolog.png"  alt="mysql" />  
+
+
+**`Read View`**
+
+`Read View` 没有物理结构，作用是事务执行期间用来定义“我能看到什么数据”。   
 
 
 
