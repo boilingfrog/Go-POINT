@@ -1,6 +1,47 @@
 <mxfile host="65bd71144e" pages="34">
+    <diagram id="06R4g4CewN80diImGovf" name="mysql-read-view">
+        <mxGraphModel dx="883" dy="571" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3300" pageHeight="4681" math="0" shadow="0">
+            <root>
+                <mxCell id="eBJBt1_BDjpxEeyf58Fv-0"/>
+                <mxCell id="eBJBt1_BDjpxEeyf58Fv-1" parent="eBJBt1_BDjpxEeyf58Fv-0"/>
+                <mxCell id="y6J7TiWNtfV6GoMwFHr2-0" value="&lt;span style=&quot;font-size: 17px&quot;&gt;已提交事务&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillStyle=solid;fontSize=16;strokeColor=default;strokeWidth=2;fillColor=#005700;fontColor=default;opacity=60;fillWeight=2;hachureGap=8;hachureAngle=45;sketch=1;" vertex="1" parent="eBJBt1_BDjpxEeyf58Fv-1">
+                    <mxGeometry x="280" y="840" width="150" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="bheMwDuQisMkQHxtI6Mr-0" value="未提交事务集合" style="rounded=1;whiteSpace=wrap;html=1;fillStyle=solid;fontSize=16;strokeColor=default;strokeWidth=2;fillColor=#E9C46A;fontColor=default;opacity=60;fillWeight=2;hachureGap=8;hachureAngle=45;sketch=1;" vertex="1" parent="eBJBt1_BDjpxEeyf58Fv-1">
+                    <mxGeometry x="430" y="840" width="150" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="bheMwDuQisMkQHxtI6Mr-1" value="&lt;span style=&quot;font-size: 17px&quot;&gt;未开始事务&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillStyle=solid;fontSize=16;strokeColor=default;strokeWidth=2;fillColor=#E63946;fontColor=default;opacity=60;fillWeight=2;hachureGap=8;hachureAngle=45;sketch=1;" vertex="1" parent="eBJBt1_BDjpxEeyf58Fv-1">
+                    <mxGeometry x="580" y="840" width="150" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="bheMwDuQisMkQHxtI6Mr-5" value="" style="shape=curlyBracket;whiteSpace=wrap;html=1;rounded=1;flipH=1;fillStyle=solid;fontSize=17;strokeColor=#5FAD56;strokeWidth=2;fillColor=#E9C46A;opacity=60;direction=south;" vertex="1" parent="eBJBt1_BDjpxEeyf58Fv-1">
+                    <mxGeometry x="440" y="810" width="130" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="bheMwDuQisMkQHxtI6Mr-6" value="m_ids" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=17;" vertex="1" parent="eBJBt1_BDjpxEeyf58Fv-1">
+                    <mxGeometry x="475" y="780" width="60" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="bheMwDuQisMkQHxtI6Mr-9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;entryX=0;entryY=0;entryDx=0;entryDy=0;fontSize=17;exitX=0.456;exitY=1.017;exitDx=0;exitDy=0;exitPerimeter=0;" edge="1" parent="eBJBt1_BDjpxEeyf58Fv-1" source="bheMwDuQisMkQHxtI6Mr-7" target="bheMwDuQisMkQHxtI6Mr-0">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="bheMwDuQisMkQHxtI6Mr-7" value="min_trx_id" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=17;" vertex="1" parent="eBJBt1_BDjpxEeyf58Fv-1">
+                    <mxGeometry x="320" y="780" width="90" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="bheMwDuQisMkQHxtI6Mr-12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;entryX=0;entryY=0;entryDx=0;entryDy=0;fontSize=17;" edge="1" parent="eBJBt1_BDjpxEeyf58Fv-1" source="bheMwDuQisMkQHxtI6Mr-11" target="bheMwDuQisMkQHxtI6Mr-1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="bheMwDuQisMkQHxtI6Mr-11" value="max_trx_id" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=17;" vertex="1" parent="eBJBt1_BDjpxEeyf58Fv-1">
+                    <mxGeometry x="580" y="780" width="100" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="bheMwDuQisMkQHxtI6Mr-15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;fontSize=17;" edge="1" parent="eBJBt1_BDjpxEeyf58Fv-1" source="bheMwDuQisMkQHxtI6Mr-13" target="bheMwDuQisMkQHxtI6Mr-0">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="bheMwDuQisMkQHxtI6Mr-13" value="当前事务" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=17;" vertex="1" parent="eBJBt1_BDjpxEeyf58Fv-1">
+                    <mxGeometry x="465" y="940" width="80" height="30" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
     <diagram id="D5WNsF7SjQdevUL5bSLl" name="mysql-mvcc-undolog">
-        <mxGraphModel dx="898" dy="680" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3300" pageHeight="4681" math="0" shadow="0">
+        <mxGraphModel dx="883" dy="571" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3300" pageHeight="4681" math="0" shadow="0">
             <root>
                 <mxCell id="q_E4oddG3_Drv03ctLGm-0"/>
                 <mxCell id="q_E4oddG3_Drv03ctLGm-1" parent="q_E4oddG3_Drv03ctLGm-0"/>
@@ -104,7 +145,7 @@
         </mxGraphModel>
     </diagram>
     <diagram id="mX-UH3VdsVsm4J8shtKE" name="mysql-acid-durability">
-        <mxGraphModel dx="898" dy="680" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3300" pageHeight="4681" math="0" shadow="0">
+        <mxGraphModel dx="883" dy="571" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3300" pageHeight="4681" math="0" shadow="0">
             <root>
                 <mxCell id="AN7UPiiHz3ZN9YLO5DTp-0"/>
                 <mxCell id="AN7UPiiHz3ZN9YLO5DTp-1" parent="AN7UPiiHz3ZN9YLO5DTp-0"/>
@@ -203,7 +244,7 @@
         </mxGraphModel>
     </diagram>
     <diagram id="3n921f3iXirqcN1u3Ysv" name="mysql-log-xa">
-        <mxGraphModel dx="898" dy="680" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3300" pageHeight="4681" math="0" shadow="0">
+        <mxGraphModel dx="883" dy="571" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3300" pageHeight="4681" math="0" shadow="0">
             <root>
                 <mxCell id="KkZHtV6HfjBjP-QfyIvR-0"/>
                 <mxCell id="KkZHtV6HfjBjP-QfyIvR-1" parent="KkZHtV6HfjBjP-QfyIvR-0"/>
@@ -303,7 +344,7 @@
         </mxGraphModel>
     </diagram>
     <diagram id="9PueQ3iuS_BbfX4mG7ux" name="mysql-redo-logfile">
-        <mxGraphModel dx="898" dy="680" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3300" pageHeight="4681" math="0" shadow="0">
+        <mxGraphModel dx="883" dy="571" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3300" pageHeight="4681" math="0" shadow="0">
             <root>
                 <mxCell id="_AbgoNR5f22-4XCcsYsd-0"/>
                 <mxCell id="_AbgoNR5f22-4XCcsYsd-1" parent="_AbgoNR5f22-4XCcsYsd-0"/>
@@ -357,7 +398,7 @@
         </mxGraphModel>
     </diagram>
     <diagram id="vJ12f3vIBQ6xE2jun5z5" name="mysql-query">
-        <mxGraphModel dx="898" dy="680" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3300" pageHeight="4681" math="0" shadow="0">
+        <mxGraphModel dx="883" dy="571" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3300" pageHeight="4681" math="0" shadow="0">
             <root>
                 <mxCell id="xYU_37f2Vizp6hwaCbxq-0"/>
                 <mxCell id="xYU_37f2Vizp6hwaCbxq-1" parent="xYU_37f2Vizp6hwaCbxq-0"/>
@@ -471,7 +512,7 @@
         </mxGraphModel>
     </diagram>
     <diagram id="xz_41wDXjVn4lQZiP1j_" name="mysql-redo-log">
-        <mxGraphModel dx="898" dy="680" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3300" pageHeight="4681" math="0" shadow="0">
+        <mxGraphModel dx="883" dy="571" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3300" pageHeight="4681" math="0" shadow="0">
             <root>
                 <mxCell id="yshcTaEUCNdmU_ZUwayz-0"/>
                 <mxCell id="yshcTaEUCNdmU_ZUwayz-1" parent="yshcTaEUCNdmU_ZUwayz-0"/>
@@ -515,7 +556,7 @@
         </mxGraphModel>
     </diagram>
     <diagram id="SihR-3rMrDKXmETeyq03" name="reactor-1">
-        <mxGraphModel dx="898" dy="680" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3300" pageHeight="4681" math="0" shadow="0">
+        <mxGraphModel dx="883" dy="571" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3300" pageHeight="4681" math="0" shadow="0">
             <root>
                 <mxCell id="U_S4nQfk2S35pz2fE1vD-0"/>
                 <mxCell id="U_S4nQfk2S35pz2fE1vD-1" parent="U_S4nQfk2S35pz2fE1vD-0"/>
