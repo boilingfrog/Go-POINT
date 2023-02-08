@@ -165,11 +165,7 @@ V1、V2 的值是1，V3 的值是 2。因为事务2，先启动查询，所以�
 
 下面来个栗子具体分析下读取的过程   
 
-
-
-
-
-
+<img src="/img/mysql/mysql-read-view-demo.png"  alt="mysql" />  
 
 
 ### 参考
