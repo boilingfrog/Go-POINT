@@ -167,6 +167,26 @@ V1、V2 的值是1，V3 的值是 2。因为事务2，先启动查询，所以�
 
 <img src="/img/mysql/mysql-read-view-demo.png"  alt="mysql" />  
 
+栗如，上面的三个事务，在可重复读隔离级别中，事务的查询结果   
+
+其中 V1 的查询结果是 3，V2 的查询结果是 1。   
+
+这里具体的分析下，假定现在有下面几种场景   
+
+1、事务 1 开始前，系统里面只有一个活跃事务 ID 是 99；
+
+2、事务1,2，3的版本号分别是 100、101、102，且当前系统里只有这四个事务；
+
+3、三个事务开始前，(2,1）这一行数据的 trx_id 是 90。    
+
+这样三个事务的 `Read View` 分别是   
+
+<img src="/img/mysql/mysql-read-view-demo-2.png"  alt="mysql" />  
+
+随着事务3 和 事务2 提交修改，会出现下面的版本记录  
+
+<img src="/img/mysql/mysql-read-view-demo-3.png"  alt="mysql" />  
+
 
 ### 参考
 
