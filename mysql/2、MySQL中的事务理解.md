@@ -7,6 +7,8 @@
     - [事务的隔离级别](#%E4%BA%8B%E5%8A%A1%E7%9A%84%E9%9A%94%E7%A6%BB%E7%BA%A7%E5%88%AB)
     - [事务隔离是如何实现](#%E4%BA%8B%E5%8A%A1%E9%9A%94%E7%A6%BB%E6%98%AF%E5%A6%82%E4%BD%95%E5%AE%9E%E7%8E%B0)
       - [可重复读 和 读提交](#%E5%8F%AF%E9%87%8D%E5%A4%8D%E8%AF%BB-%E5%92%8C-%E8%AF%BB%E6%8F%90%E4%BA%A4)
+      - [串行化](#%E4%B8%B2%E8%A1%8C%E5%8C%96)
+      - [读未提交](#%E8%AF%BB%E6%9C%AA%E6%8F%90%E4%BA%A4)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -225,7 +227,9 @@ select age from user where id=2 for update;
 
 <img src="/img/mysql/mysql-read-view-demo-3.png"  alt="mysql" />  
 
-这时候虽然事务3还没有提交，但是数据已经生成了，这时候事务2去读取，是不能读取的，这里会用到两阶段提交，首先事务3会给数据加写锁，事务2读取的时候会加读锁，这样数据会被锁住，直到事务3释放锁。   
+这时候虽然事务3还没有提交，但是数据已经生成了，这时候事务2去读取，是不能读取的，这里会用到两阶段锁协议，首先事务3会给数据加写锁，事务2读取的时候会加读锁，这样数据会被锁住，直到事务3释放锁。      
+
+什么是两阶段锁协议：在InnoDB事务中，行锁是在需要的时候才加上的，但并不是不需要了就立刻释放，而是要等到事务结束时才释放。这个就是两阶段锁协议。   
 
 事务更新数据的时候，只能用当前读。如果当前的记录的行锁被其他事务占用的话，就需要进入锁等待。      
 
@@ -237,6 +241,16 @@ select age from user where id=2 for update;
 
 读提交隔离级别，这里就不展开分析了。    
 
+##### 串行化
+
+读写都需要加锁，读的时候加读锁，写的时候加写锁。    
+
+##### 读未提交
+
+读取最新的数据，读不用加锁，不用遍历版本链，直接读取最新的数据，不管这条记录是不是已提交。不过这种会导致脏读。  
+
+对写仍需要锁定，策略和读已提交类似，避免脏写。   
+
 ### 参考
 
 【高性能MySQL(第3版)】https://book.douban.com/subject/23008813/    
@@ -244,6 +258,7 @@ select age from user where id=2 for update;
 【MySQL技术内幕】https://book.douban.com/subject/24708143/    
 【MySQL总结--MVCC（read view和undo log）】https://blog.csdn.net/huangzhilin2015/article/details/115195777     
 【深入理解 MySQL 事务：隔离级别、ACID 特性及其实现原理】https://blog.csdn.net/qq_35246620/article/details/61200815     
+【分布式事务】https://mp.weixin.qq.com/s/MbPRpBudXtdfl8o4hlqNlQ    
 
 
 
