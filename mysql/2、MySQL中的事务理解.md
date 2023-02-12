@@ -320,12 +320,11 @@ insert into user values(8, "小白", 1);
 
 <img src="/img/mysql/mysql-next-key-demo.png"  alt="mysql" />  
 
+上面的这两个实物，事务1 中的 `select * from where age>4 for updated` 除了会加上行锁，同时也会加上一个间隙锁 `(4,6]` 这样事务 2 中的插入就是被锁住了，直到事务 1 中的事务提交。      
 
+事务 1 中的前后两次查询，就不会出现幻读的情况了。   
 
-
-
-
-
+<img src="/img/mysql/mysql-next-key-demo2.png"  alt="mysql" />  
 
 
 ### 参考
