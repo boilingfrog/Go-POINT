@@ -3,12 +3,17 @@
 
 - [MySQL 中的事务](#mysql-%E4%B8%AD%E7%9A%84%E4%BA%8B%E5%8A%A1)
   - [前言](#%E5%89%8D%E8%A8%80)
+  - [并发事务存在的问题](#%E5%B9%B6%E5%8F%91%E4%BA%8B%E5%8A%A1%E5%AD%98%E5%9C%A8%E7%9A%84%E9%97%AE%E9%A2%98)
+    - [脏读](#%E8%84%8F%E8%AF%BB)
+    - [幻读](#%E5%B9%BB%E8%AF%BB)
+    - [不可重复读](#%E4%B8%8D%E5%8F%AF%E9%87%8D%E5%A4%8D%E8%AF%BB)
   - [隔离性](#%E9%9A%94%E7%A6%BB%E6%80%A7)
     - [事务的隔离级别](#%E4%BA%8B%E5%8A%A1%E7%9A%84%E9%9A%94%E7%A6%BB%E7%BA%A7%E5%88%AB)
     - [事务隔离是如何实现](#%E4%BA%8B%E5%8A%A1%E9%9A%94%E7%A6%BB%E6%98%AF%E5%A6%82%E4%BD%95%E5%AE%9E%E7%8E%B0)
       - [可重复读 和 读提交](#%E5%8F%AF%E9%87%8D%E5%A4%8D%E8%AF%BB-%E5%92%8C-%E8%AF%BB%E6%8F%90%E4%BA%A4)
       - [串行化](#%E4%B8%B2%E8%A1%8C%E5%8C%96)
       - [读未提交](#%E8%AF%BB%E6%9C%AA%E6%8F%90%E4%BA%A4)
+  - [可重复读解决了幻读吗](#%E5%8F%AF%E9%87%8D%E5%A4%8D%E8%AF%BB%E8%A7%A3%E5%86%B3%E4%BA%86%E5%B9%BB%E8%AF%BB%E5%90%97)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -49,9 +54,21 @@ MySQL 中的事务操作，要么修改都成功，要么就什么也不做，�
 
 #### 幻读
 
+> The so-called phantom problem occurs within a transaction when the same query produces different sets of rows at different times. For example, if a SELECT is executed twice, but returns a row the second time that was not returned the first time, the row is a “phantom” row.
+
+幻读是指当事务不是独立执行时发生的一种现象，例如第一个事务对一个表中的数据进行了修改，比如这种修改涉及到表中的“全部数据行”。同时，第二个事务也修改这个表中的数据，这种修改是向表中插入“一行新数据”。那么，以后就会发生操作第一个事务的用户发现表中还存在没有修改的数据行，就好象发生了幻觉一样.一般解决幻读的方法是增加范围锁 RangeS，锁定检索范围为只读，这样就避免了幻读。    
+
+简单的讲就是，幻读指的是一个事务在前后两次查询同一个范围的时候，后一次查询看到了前一次查询没有看到的行。
+
 #### 不可重复读
 
+不可重复读，是指在数据库访问中，一个事务范围内两个相同的查询却返回了不同数据。   
 
+在一个事务内，多次读同一个数据。在这个事务还没有结束时，另一个事务也访问该同一数据并修改数据。那么，在第一个事务的两次读数据之间。由于另一个事务的修改，那么第一个事务两次读到的数据可能不一样，这样就发生了在一个事务内两次读到的数据是不一样的，因此称为不可重复读，即原始读取不可重复。   
+
+**幻读和不可重复读的的区别**  
+
+不可重复读和幻读都是读的过程中数据前后不一致，只是前者侧重于修改，后者侧重于增删。  
 
 ### 隔离性
 
@@ -65,15 +82,18 @@ MySQL 中标准的事务隔离级别包括：读未提交（read uncommitted）�
 
 - 可重复读：MySQL 中默认的实物隔离级别，一个事务执行的过程中看到的数据，总是跟这个事务在启动时看到的数据是一致的，在此隔离级别下，未提交的变更对其它事务也是不可见的，此隔离级别基本上避免了幻读；   
 
-什么是幻读    
-
-> The so-called phantom problem occurs within a transaction when the same query produces different sets of rows at different times. For example, if a SELECT is executed twice, but returns a row the second time that was not returned the first time, the row is a “phantom” row.
-
-简单的讲就是，幻读指的是一个事务在前后两次查询同一个范围的时候，后一次查询看到了前一次查询没有看到的行。   
-
 - 串行化：这是事务的最高级别，顾名思义就是对于同一行记录，“写”会加“写锁”，“读”会加“读锁”。当出现读写锁冲突的时候，后访问的事务必须等前一个事务执行完成，才能继续执行。     
 
 串行化，不是所有的事务都串行执行，没冲突的事务是可以并发执行的。   
+
+|    隔离级别       |    脏读  | 不可重复读   |     幻读   |
+| ---------------- | --------| ---------- | ------     |
+|   读未提交         |  可能   |  可能       |  可能       |
+|   读提交          |   不可能 |  可能       |  可能       |
+|   可重复读        |   不可能 |  不可能      |  可能       |
+|   串行化          |   不可能 |  不可能      |  不可能     |
+
+可以看到，只有串行化的隔离级别解决了【脏读，不可重复读，幻读】这 3 个问题。  
 
 下面来详细的介绍下 `读提交` 和 `可重复读`    
 
@@ -233,7 +253,7 @@ V1、V2 的值是1，V3 的值是 2。因为事务2，先启动查询，所以�
 
 这样更新的时候使用当前读，就保证了事务2拿到的最新的数据，所以更新完成之后的查询 `id = 2` 的 age 就为 3 了。   
 
-除了update语句外，select语句如果加锁，也是当前读。  
+除了update语句外，select语句如果加锁，也是当前读。例如，加上 读锁（S锁，共享锁） `lock in share mode` 或 写锁（X锁，排他锁）`for update`。   
 
 ```
 select age from user where id=2 lock in share mode;
@@ -268,6 +288,45 @@ select age from user where id=2 for update;
 读取最新的数据，读不用加锁，不用遍历版本链，直接读取最新的数据，不管这条记录是不是已提交。不过这种会导致脏读。  
 
 对写仍需要锁定，策略和读已提交类似，避免脏写。   
+
+### 可重复读解决了幻读吗   
+
+MySQL InnoDB 引擎的默认隔离级别虽然是「可重复读」，但是它很大程度上避免幻读现象（并不是完全解决了），解决的方案有两种：
+
+针对快照读（普通 select 语句），是通过 MVCC 方式解决了幻读，因为可重复读隔离级别下，事务执行过程中看到的数据，一直跟这个事务启动时看到的数据是一致的，即使中途有其他事务插入了一条数据，是查询不出来这条数据的，所以就很好了避免幻读问题。  
+
+针对当前读（`select ... for update` 等语句），是通过 `next-key lock`（记录锁+间隙锁）方式解决了幻读，因为当执行 `select ... for update` 语句的时候，会加上 `next-key lock`，如果有其他事务在 `next-key lock` 锁范围内插入了一条记录，那么这个插入语句就会被阻塞，无法成功插入，所以就很好了避免幻读问题。    
+
+可重复读是如何解决幻读的呢？    
+
+读操作，可重复读隔离级别会使用 MVCC 针对当前事务生成事务快照，通过对比事务版本，就能保证事务中的快照读。   
+
+读写操作，这种就需要借助于 `Next-Key`，MySQL 把行锁和间隙锁合并在一起，解决了并发写和幻读的问题，这个锁叫做 `Next-Key` 锁。   
+
+`Next-Key` 算法中，对于索引的扫描，不仅仅是锁住扫描到的索引，而且还锁着这些索引覆盖的范围。因此对于范围内的插入都是不允许的，这样就能避免幻读的发生。    
+
+```
+create table user
+(
+id int auto_increment primary key,
+username varchar(64) not null,
+age int not null
+);
+insert into user values(2, "小张", 1);
+insert into user values(4, "小明", 1);
+insert into user values(6, "小红", 1);
+insert into user values(8, "小白", 1);
+```
+
+<img src="/img/mysql/mysql-next-key-demo.png"  alt="mysql" />  
+
+
+
+
+
+
+
+
 
 ### 参考
 
