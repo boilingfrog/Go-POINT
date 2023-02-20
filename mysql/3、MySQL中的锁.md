@@ -156,8 +156,7 @@ InnoDB 存储引擎支持多粒度锁，这种锁定允许事务在行级别上�
 
 不过自增锁(AUTO-INC)在进行大量插入的时候，另一个事务中的插入会被阻塞。从 MySQL 5.1.22 版本开始，InnoDB 提供了一种轻量级互斥的自增实现机制，大大提高了自增插入的性能。  
 
-通过 innodb_autoinc_lock_mode 来控制锁的类型。   
-
+通过 innodb_autoinc_lock_mode 来控制锁的类型。
 
 |    innodb_autoinc_lock_mode    |    说明                                     | 
 | -------------------------------| -------------------------------------------| 
@@ -171,11 +170,56 @@ InnoDB 存储引擎支持多粒度锁，这种锁定允许事务在行级别上�
 
 binlog 有三种格式：  
 
-- Statement(Statement-Based Replication,SBR)：每一条会修改数据的 SQL 都会记录在 binlog 中;  
+1、Statement(Statement-Based Replication,SBR)：每一条会修改数据的 SQL 都会记录在 binlog 中，里面记录的是执行的 SQL;      
 
-- Row(Row-Based Replication,RBR)：不记录 SQL 语句上下文信息，仅保存哪条记录被修改;  
+Statement 模式只记录执行的 SQL，不需要记录每一行数据的变化，因此极大的减少了 binlog 的日志量，避免了大量的 IO 操作，提升了系统的性能。  
 
-- Mixed(Mixed-Based Replication,MBR)：Statement 和 Row 的混合体。    
+正是由于 Statement 模式只记录 SQL，而如果一些 SQL 中包含了函数，那么可能会出现执行结果不一致的情况。  
+
+比如说 uuid() 函数，每次执行的时候都会生成一个随机字符串，在 master 中记录了 uuid，当同步到 slave 之后，再次执行，就获取到另外一个结果了。     
+
+所以使用 Statement 格式会出现一些数据一致性问题。  
+
+2、Row(Row-Based Replication,RBR)：不记录 SQL 语句上下文信息，仅仅只需要记录某一条记录被修改成什么样子;    
+
+Row 格式的日志内容会非常清楚的记录下每一行数据修改的细节，这样就不会出现 Statement 中存在的那种数据无法被正常复制的情况。     
+
+比如一个修改，满足条件的数据有 100 行，则会把这 100 行数据详细记录在 binlog 中。当然此时，binlog 文件的内容要比第一种多很多。
+
+不过 Row 格式也有一个很大的问题，那就是日志量太大了，特别是批量 update、整表 delete、alter 表等操作，由于要记录每一行数据的变化，此时会产生大量的日志，大量的日志也会带来 IO 性能问题。  
+
+3、Mixed(Mixed-Based Replication,MBR)：Statement 和 Row 的混合体。      
+
+在 Mixed 模式下，系统会自动判断该用 Statement 还是 Row：一般的语句修改使用 Statement 格式保存 binlog;对于一些 Statement 无法准确完成主从复制的操作，则采用 Row 格式保存 binlog。  
+
+下面分析下 当 `innodb_autoinc_lock_mode = 2` 搭配 binlog 的日志格式是 statement 一起使用的时候，在`主从复制的场景`中为什么会发生数据不一致。     
+
+```
+CREATE TABLE `t` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `c` int(11) DEFAULT NULL,
+  `d` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `c` (`c`)
+) ENGINE=InnoDB;
+```
+
+|    session A                         |    session B                                     | 
+| -------------------------------------| -------------------------------------------| 
+|   insert into t values(null,1,1) <br /> insert into t values(null,2,2)  <br /> insert into t values(null,3,3) <br /> insert into t values(null,4,4) | |
+|                                                                                                                                                    |  create table t2 like t;|
+|   insert into t values(null,5,5)                                  |  insert into t2(c,d) select c,d from t;                |
+
+分析下上面语句的执行  
+
+
+
+
+
+
+
+
+
 
 ### 行锁
 
