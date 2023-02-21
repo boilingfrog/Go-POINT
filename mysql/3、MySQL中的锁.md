@@ -208,18 +208,67 @@ CREATE TABLE `t` (
 | -------------------------------------| -------------------------------------------| 
 |   insert into t values(null,1,1) <br /> insert into t values(null,2,2)  <br /> insert into t values(null,3,3) <br /> insert into t values(null,4,4) | |
 |                                                                                                                                                    |  create table t2 like t;|
-|   insert into t values(null,5,5)                                  |  insert into t2(c,d) select c,d from t;                |
+|   insert into t2 values(null,5,5)                                  |  insert into t2(c,d) select c,d from t;                |
 
 分析下上面语句的执行  
 
+首先 `session A` 先写入了4条数据，然后 `session B` 创建了相同的 t2 表。   
 
+接下来 `session A` 和 `session B` 在相同的时刻写入数据到表  t 中。
 
+因为 `innodb_autoinc_lock_mode = 2` 插入语句在申请万自增主键之后就会马上释放自增锁，不需要等待插入语句执行完成。  
 
+那么就可能出现下面的情况  
 
+1、`session B` 首先插入语句 (1,1,1),(2,2,2),(3,3,3);   
 
+2、`session A` 申请到了自增的 id = 4,插入数据 (4,5,5);  
 
+3、`session B` 继续执行插入数据 (5,4,4)。   
 
+这样看下来没什么影响，表 t 中的数据也都插入到了 t2 中，只是主键 ID 有点不同。   
 
+当 `binlog_format=statement` 的时候在来看下 binlog 是如何同步从库的数据。   
+
+因为两个 session 是同时插入数据的，binlog 对表 t2 的更新日志只会有两种情况，先记录 `session A` 的或者先记录 `session B` 的，同时 binlog 在从库中的数据执行，也都是顺序性的，生成的id都是连续的，不会出现主库中，两个 session 并行间隙插入的情况，这样就会出现从库和主库数据不一致的情况。   
+
+如何解决呢？可以设置 binlog 的类型为 row，这样 binlog 会把插入数据的操作都如实记录进来，到备库执行的时候，不再依赖于自增主键去生成，同时 innodb_autoinc_lock_mode 设置为 2。   
+
+对于普通的 insert 语句里面包含多个 value 值，即使 innodb_autoinc_lock_mode 设置为 1，也不会等语句执行完成才释放锁。因为这类语句在申请自增 id 的时候，是可以精确计算出需要多少个 id 的，然后一次性申请，申请完成后锁就可以释放了。   
+
+对于批量的数据插入，类似 `insert … select、replace … select`和 `load data` 语句。这种是不能这样操作的，因为不知道预先要申请多少个 ID。   
+
+批量的数据插入，如果一个个的申请 id,不仅速度很慢，同时也会影响插入的性能，这肯定是不合适的。   
+
+因此，对于批量插入数据的语句，MySQL有一个批量申请自增id的策略：  
+
+1、语句执行过程中，第一次申请自增id，会分配1个；  
+
+2、1个用完以后，这个语句第二次申请自增id，会分配2个；  
+
+3、2个用完以后，还是这个语句，第三次申请自增id，会分配4个；  
+
+4、依此类推，同一个语句去申请自增id，每次申请到的自增id个数都是上一次的两倍。     
+
+```
+insert into t values(null, 1,1);
+insert into t values(null, 2,2);
+insert into t values(null, 3,3);
+insert into t values(null, 4,4);
+create table t2 like t;
+insert into t2(c,d) select c,d from t;
+insert into t2 values(null, 5,5);
+``` 
+
+`insert…select`，实际上往表 t2 中插入了 4 行数据。但是，这四行数据是分三次申请的自增 id，第一次申请到了 `id=1`，第二次被分配了 `id=2` 和 `id=3`， 第三次被分配到 `id=4` 到 `id=7`。  
+
+由于这条语句实际只用上了 4 个 id，所以 `id=5` 到 `id=7` 就被浪费掉了。之后，再执行 `insert into t2 values(null, 5,5)`，实际上插入的数据就是`（8,5,5)`。     
+
+所以总结下来数据插入，主键 ID 不连续的情况大概有下面几种：  
+
+1、事务回滚，事务在执行过程中出错，主键冲突，或者主动发生回滚，会导致已经申请的自增 ID 被弃用；  
+
+2、批量数据插入的插入优化，批量数据插入 MySQL 会有一个批量的预申请自增 ID 的策略。   
 
 ### 行锁
 
