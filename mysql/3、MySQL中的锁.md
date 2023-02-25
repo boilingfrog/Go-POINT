@@ -15,6 +15,7 @@
     - [Record Lock](#record-lock)
     - [Gap Lock](#gap-lock)
     - [Next-Key Lock](#next-key-lock)
+    - [插入意向锁](#%E6%8F%92%E5%85%A5%E6%84%8F%E5%90%91%E9%94%81)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -339,8 +340,11 @@ select ... for update;
 
 #### 插入意向锁
 
+插入意向锁是一种间隙锁形式的意向锁，在真正执行 INSERT 操作之前设置。   
 
- 
+一个事务在数据插入的是时候会判断插入的位置是否加了被其它的事务加了间隙锁或临键锁。如果有的话，就会阻塞，直到间隙锁或临键锁被释放才能执行后面的插入。   
+
+因为插入意向锁也是一种意向锁，意向锁只是表示一种意向，所以插入意向锁之间不会互相冲突，多个插入操作同时插入同一个 gap 时，无需互相等待。   
 
 ### 参考
 
