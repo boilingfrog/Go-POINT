@@ -22,6 +22,8 @@
     - [3、主键索引范围锁](#3%E4%B8%BB%E9%94%AE%E7%B4%A2%E5%BC%95%E8%8C%83%E5%9B%B4%E9%94%81)
     - [4、非唯一索引范围查询](#4%E9%9D%9E%E5%94%AF%E4%B8%80%E7%B4%A2%E5%BC%95%E8%8C%83%E5%9B%B4%E6%9F%A5%E8%AF%A2)
     - [5、非唯一索引等值查询](#5%E9%9D%9E%E5%94%AF%E4%B8%80%E7%B4%A2%E5%BC%95%E7%AD%89%E5%80%BC%E6%9F%A5%E8%AF%A2)
+    - [6、limit 语句加锁](#6limit-%E8%AF%AD%E5%8F%A5%E5%8A%A0%E9%94%81)
+  - [总结](#%E6%80%BB%E7%BB%93)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -494,6 +496,51 @@ select * from t where id>=10 and id<11 for update;
 假定目前表中的数据见下文，有两条 `c=10` 的数据。  
 
 <img src="/img/mysql/mysql-index-search.png"  alt="mysql" />  
+
+来看下下面的查询栗子  
+
+
+|    session A                                                    |    session B                                |    session C                               |  
+| ----------------------------------------                        | ------------------------------------------- | -------------------------------------------| 
+|begin <br/> select * from t where c=10 for update   |                                               |                                            |
+|                                                                 | insert into t values(12,12,12)  <br/> (blocked)|                                            |
+|                                                                 |                                              | update t set d=d+1 where id=15   <br/>  (blocked)   |
+
+可以看到上面 `session B` 中 `id=12` 的数据插入被阻塞了，来分析下原因  
+
+`session A`  
+
+查询的条件是 `c=10`,上面的图示可以看到 `c=10` 的书有两条；  
+
+首先加锁的基本单位是 `next-key lock`，所以会加一个 `(c=5,id=5)` 到 `(c=10,id=10)` 的 `next-key lock`；   
+
+因为这是个等值查询的索引，索引中的等值查询，索引是唯一索引，查询的值没有找到，或者索引是普通索引 就会锁住一个范围，向右遍历最后一个不满足条件的值，并将其锁住，这时候`next-key lock`，就会变成 `Gap Lock` 了，所以 `(c=10,id=10)` 到 `(c=15,id=15)` 也会被加一个间隙锁。  
+
+所以 `session A` 中的锁就是 `(c=5,id=5)` 到 `(c=15,id=15)` 的间隙锁。   
+
+<img src="/img/mysql/mysql-index-search-lock.png"  alt="mysql" />  
+
+#### 6、limit 语句加锁
+
+|    session A                                                    |    session B                                |   
+| ----------------------------------------                        | ------------------------------------------- | 
+|begin <br/> select * from t where c=10 limit 2 for update   |                                               | 
+|                                                                 | insert into t values(12,12,12) | 
+
+`session A` 中加入了 limit 查询，还是栗子5 中的插入语句，这时候  `session B` 的插入就不会被阻塞了。     
+
+因为有 `limit 2` 的限制，因此在遍历到 `(c=10, id=13)` 这一行之后，满足条件的语句已经有两条，循环就结束了。
+
+因此，索引c上的加锁范围就变成了从（`c=5,id=5)` 到 `(c=10,id=13)` 这个前开后闭区间。 
+
+所以业务中如果加入 limit 条件，能够减小锁的范围。    
+
+<img src="/img/mysql/mysql-index-search-lock-limit.png"  alt="mysql" />  
+
+### 总结  
+
+
+
 
 
 ### 参考
