@@ -19,6 +19,9 @@
   - [加锁的原则](#%E5%8A%A0%E9%94%81%E7%9A%84%E5%8E%9F%E5%88%99)
     - [1、主键等值查询](#1%E4%B8%BB%E9%94%AE%E7%AD%89%E5%80%BC%E6%9F%A5%E8%AF%A2)
     - [2、非唯一索引等值查询](#2%E9%9D%9E%E5%94%AF%E4%B8%80%E7%B4%A2%E5%BC%95%E7%AD%89%E5%80%BC%E6%9F%A5%E8%AF%A2)
+    - [3、主键索引范围锁](#3%E4%B8%BB%E9%94%AE%E7%B4%A2%E5%BC%95%E8%8C%83%E5%9B%B4%E9%94%81)
+    - [4、非唯一索引范围查询](#4%E9%9D%9E%E5%94%AF%E4%B8%80%E7%B4%A2%E5%BC%95%E8%8C%83%E5%9B%B4%E6%9F%A5%E8%AF%A2)
+    - [5、非唯一索引等值查询](#5%E9%9D%9E%E5%94%AF%E4%B8%80%E7%B4%A2%E5%BC%95%E7%AD%89%E5%80%BC%E6%9F%A5%E8%AF%A2)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -438,7 +441,60 @@ insert into t values(0,0,0),(5,5,5),
 
 `session C` 和 `session B=D`：  
 
-两个插入操作，都会加插入意向锁，因为间隙 `(0,10)` 被 `session A` 锁住了，所以插入操作就会被阻塞了。     
+两个插入操作，都会加插入意向锁，因为间隙 `(0,10)` 被 `session A` 锁住了，所以插入操作就会被阻塞了。    
+
+#### 3、主键索引范围锁
+
+例如下面的栗子  
+
+```
+select * from t where id=10 for update;  
+
+select * from t where id>=10 and id<11 for update;
+```
+
+上面这两个查询，看起来是等价的，其实他们加锁的方式是不同的，下面来分析下    
+
+|    session A                                                    |    session B                                |    session C                               |  
+| ----------------------------------------                        | ------------------------------------------- | -------------------------------------------| 
+|begin <br/> select * from t where id>=10 and id <11 for update   |                                               |                                            |
+|                                                                 | insert into t values(8,8,8) <br/> (Query OK) <br/>  insert into t values(13,13,13)   <br/> (blocked)|                                            |
+|                                                                 |                                              | update t set d=d+1 where id=15   <br/>  (blocked)   |
+
+可以看到上面插入的 id=13 的数据会被阻塞，还有 id=15 的数据修改也会被阻塞，下面来分析下  
+
+`session A`  
+
+首先 id>=10 这个条件，按照加锁的基本对象首先加 `next-key lock` `(5,10]`，因为 id 是主键，等值查询会退化成行锁，所以 `next-key lock` `(5,10]`就会退化成 `id=10` 的行锁；    
+
+同时因为是范围查询，向右查询，所以右边界会找到 15，会加 `next-key lock` `(10,15]`;  
+
+所以加的锁就是 `(10,15]` 的 `next-key lock` 还有 `id=10` 的行锁。   
+
+#### 4、非唯一索引范围查询  
+
+|    session A                                                    |    session B                                |    session C                               |  
+| ----------------------------------------                        | ------------------------------------------- | -------------------------------------------| 
+|begin <br/> select * from t where c>=10 and c <11 for update   |                                               |                                            |
+|                                                                 | insert into t values(8,8,8)  <br/> (blocked)|                                            |
+|                                                                 |                                              | update t set d=d+1 where id=15   <br/>  (blocked)   |
+
+可以看到上面插入的 id=13 的数据会被阻塞，还有 id=15 的数据修改也会被阻塞，下面来分析下   
+
+`session A`  
+
+按照加锁的基本对象首先加 c 的 `next-key lock` `(5,10]`，因为 c 是不同索引，等值查询不会退化成行锁；  
+
+同时因为是范围查询，向右查询，所以右边界会找到 15，会加 c 的 `next-key lock` `(10,15]`;   
+
+所以 `session A` 会加索引 c 上的 `(5,10]` 和 `(10,15]` 这两个 `next-key lock`。
+
+#### 5、非唯一索引等值查询
+
+假定目前表中的数据见下文，有两条 `c=10` 的数据。  
+
+<img src="/img/mysql/mysql-index-search.png"  alt="mysql" />  
+
 
 ### 参考
 
