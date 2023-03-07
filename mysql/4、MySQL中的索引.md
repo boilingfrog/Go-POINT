@@ -61,8 +61,23 @@ InnoDB 最早是不支持存储全文索引的，想要使用全文索引就要�
 
 下面来举个栗子  
 
+<img src="/img/mysql/mysql-full-text-search-demo-1.jpg"  alt="mysql" />     
 
+DocumentId 表示全文索引中文件的 id, Text 表示存储的内容。这些存储的文档就是全文索引需要查询的对象。     
 
+`inverted file index`  
+
+<img src="/img/mysql/mysql-full-text-search-demo-2.jpg"  alt="mysql" />    
+
+可以看到关联中，记录了单词和 DocumentId 的映射，这样通过对应的单词就能找到，单词所在的文档，不用一个个遍历文档了。   
+
+`full inverted index`
+
+<img src="/img/mysql/mysql-full-text-search-demo-3.jpg"  alt="mysql" />  
+
+这种方式和上面的 `inverted file index` 一样也会记录单词和文档的映射，只不过记录的更详细了，还记录了单词在文档中的具体位置。   
+
+相比于 `inverted file index` 优点就是定位更精确，缺点也是很明显，需要用更多的空间。    
 
 
 
