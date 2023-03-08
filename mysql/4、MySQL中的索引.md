@@ -4,6 +4,9 @@
 - [MySQL 中的索引](#mysql-%E4%B8%AD%E7%9A%84%E7%B4%A2%E5%BC%95)
   - [前言](#%E5%89%8D%E8%A8%80)
   - [索引的实现](#%E7%B4%A2%E5%BC%95%E7%9A%84%E5%AE%9E%E7%8E%B0)
+    - [哈希索引](#%E5%93%88%E5%B8%8C%E7%B4%A2%E5%BC%95)
+    - [全文索引](#%E5%85%A8%E6%96%87%E7%B4%A2%E5%BC%95)
+    - [B+ 树索引](#b-%E6%A0%91%E7%B4%A2%E5%BC%95)
   - [索引的分类](#%E7%B4%A2%E5%BC%95%E7%9A%84%E5%88%86%E7%B1%BB)
   - [参考](#%E5%8F%82%E8%80%83)
 
@@ -93,9 +96,20 @@ InnoDB 存储引擎支持全文索引采用 `full inverted index` 的方式，�
 
 辅助表是存在与磁盘上的持久化的表，由于磁盘 `I/O` 比较慢，因此提供 `FTS Index Cache`（全文检索索引缓存）来提高性能。`FTS Index Cache` 是一个红黑树结构，根据`（word, list）`排序，在有数据插入时，索引先更新到缓存中，而后 InnoDB 存储引擎会批量进行更新到辅助表中。    
 
+#### B+ 树索引
+
+B+ 树就是传统意义上的索引，这是目前关系型数据库中查找最为常用和最为有效的索引。B+ 树构造的索引类似于二叉树，根据键值快速 (Key Value) 快速找到数据。    
+
+有一点需要注意的是，B+ 树索引并不能找到给定键值具体的行。B+ 树索引能找到的只是被查找数据行所在的页。然后把页读入到内存中，再在内存中查找，找到查询的目标数据。   
+
+为什么用的是 B+ 树 而不是 B 树呢，这里来看下区别？   
+
+`B-tree` 和 `B+` 树最重要的区别是 `B+` 树只有叶子节点存储数据，其他节点用于索引，而 `B-tree` 对于每个索引节点都有 `Data` 字段。   
+
+<img src="/img/mysql/mysql-btree"  alt="mysql" />     
 
 
-
+<img src="/img/mysql/mysql-b+tree"  alt="mysql" />     
 
 
 
@@ -108,6 +122,7 @@ InnoDB 存储引擎支持全文索引采用 `full inverted index` 的方式，�
 【MySQL 实战 45 讲】https://time.geekbang.org/column/100020801  
 【MySQL技术内幕】https://book.douban.com/subject/24708143/    
 【MySQL学习笔记】https://github.com/boilingfrog/Go-POINT/tree/master/mysql    
+【what-is-the-difference-between-mysql-innodb-b-tree-index-and-hash-index】https://medium.com/@mena.meseha/what-is-the-difference-between-mysql-innodb-b-tree-index-and-hash-index-ed8f2ce66d69  
 
 
 
