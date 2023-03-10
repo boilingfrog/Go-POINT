@@ -8,6 +8,7 @@
     - [全文索引](#%E5%85%A8%E6%96%87%E7%B4%A2%E5%BC%95)
     - [B+ 树索引](#b-%E6%A0%91%E7%B4%A2%E5%BC%95)
   - [索引的分类](#%E7%B4%A2%E5%BC%95%E7%9A%84%E5%88%86%E7%B1%BB)
+    - [聚簇索引（clustered index）](#%E8%81%9A%E7%B0%87%E7%B4%A2%E5%BC%95clustered-index)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -158,7 +159,28 @@ B+ 树相比与 B 树：
 
 ### 索引的分类  
 
-主键索引  
+从物理角度可分为  
+
+1、聚簇索引（clustered index）；  
+
+2、非聚簇索引（non-clustered index）。   
+
+#### 聚簇索引（clustered index）
+
+聚簇索引并不是一种单独的索引类型，而是一种数据存储的方式。在 InnoDB 中聚簇索引实际上是在同一个结构中保存了 B+ 索引和数据行。   
+
+聚簇字面意思就是数据行和索引紧紧在一起的存储在一起。因为一个所以只能和一个数据存储在一起，所以一个表中只有一个聚簇索引。    
+
+下面这里来讨论下 InnoDB 中聚簇索引的实现。   
+
+InnoDB 中必有要求有聚簇索引的存在，默认会在主键上建立聚簇索引，如果没有主键字段，表中第一个非空唯一索引将会被建立聚簇索引，在前面两者都没有的情况下，InnoDB 将自动生成一个隐式的自增 id 列，并在此列上建立聚簇索引。   
+
+<img src="/img/mysql/mysql-b+tree-clustered-index.png"  alt="mysql" />     
+
+聚簇索引的优点  
+
+1、
+
 
 
 
