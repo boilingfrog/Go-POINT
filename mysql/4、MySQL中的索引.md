@@ -12,6 +12,7 @@
     - [非聚簇索引（clustered index）](#%E9%9D%9E%E8%81%9A%E7%B0%87%E7%B4%A2%E5%BC%95clustered-index)
     - [覆盖索引](#%E8%A6%86%E7%9B%96%E7%B4%A2%E5%BC%95)
   - [回表查询](#%E5%9B%9E%E8%A1%A8%E6%9F%A5%E8%AF%A2)
+  - [索引优化](#%E7%B4%A2%E5%BC%95%E4%BC%98%E5%8C%96)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -204,6 +205,38 @@ InnoDB 中必有要求有聚簇索引的存在，默认会在主键上建立聚�
 
 <img src="/img/mysql/mysql-b+tree-secondry-key.png"  alt="mysql" />       
 
+#### 联合索引
+
+联合索引指对表上多个列进行索引，联合索引的创建方法和单列索引的创建方法一样，不同的是联合索引有多个索引列。    
+
+联合索引中有一个很重要的原则就是最左匹配原则，即最左优先，在检索数据时从联合索引的最左边开始匹配。  
+
+```
+create table t
+(
+id int auto_increment primary key,
+a int,
+b int,
+key index_a_b (a,b)
+)ENGINE=INNODB; 
+```  
+
+比如上面的建立了 a 和 b 的联合索引，来看下下面几种查询：   
+
+1、`SELECT * FROM t WHERE a=1 AND b=3` 这样 a 和 b 的查询会命中联合索引 `index_a_b`；  
+
+2、`SELECT * FROM t WHERE a=1` 这样 `a=3` 的查询会命中联合索引 `index_a_b`；   
+
+3、`SELECT * FROM t WHERE b=3 AND a=1 ` 这样 a 和 b 的查询也会命中联合索引 `index_a_b`；  
+
+4、`SELECT * FROM t WHERE b=3` 这样 `b=3` 是不会命中联合索引 `index_a_b`，因为 b 位于联和索引 `index_a_b` 第二个位置，不满足最左匹配原则；   
+
+来看下联合索引中的最左匹配原则的实现     
+
+<img src="/img/mysql/mysql-joint-index.png"  alt="mysql" />       
+
+
+
 #### 覆盖索引  
 
 索引确实能够提高查询的效率，但二级索引会有某些情况会存在二次查询也就是回表的问题，这种情况合理的使用覆盖索引，能够提高索引的效率，减少回表的查询。   
@@ -219,6 +252,10 @@ InnoDB 中必有要求有聚簇索引的存在，默认会在主键上建立聚�
 如果根据索引查找到了需要的数据，如果查询的值仅仅是索引中的值和主键值，那么这时候是不需要进行二次查询的，也就是回表查询，因为当前索引中的信息已经能够满足当前查询值的请求，如果查询的字段是还有其他的字段，这种情况，索引中的值不能覆盖了，就需要二次查询了，通过主键值去聚簇索引中找到对应的行，然后返回。   
 
 所以说非聚簇索引一定会回表查询吗，答案是否定的，这涉及到查询语句所要求的字段是否全部命中了索引，如果是，那么就不需要回表查询。    
+
+### 索引优化
+
+
 
 ### 参考
 
