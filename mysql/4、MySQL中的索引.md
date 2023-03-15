@@ -10,6 +10,7 @@
   - [索引的分类](#%E7%B4%A2%E5%BC%95%E7%9A%84%E5%88%86%E7%B1%BB)
     - [聚簇索引（clustered index）](#%E8%81%9A%E7%B0%87%E7%B4%A2%E5%BC%95clustered-index)
     - [非聚簇索引（clustered index）](#%E9%9D%9E%E8%81%9A%E7%B0%87%E7%B4%A2%E5%BC%95clustered-index)
+    - [联合索引](#%E8%81%94%E5%90%88%E7%B4%A2%E5%BC%95)
     - [覆盖索引](#%E8%A6%86%E7%9B%96%E7%B4%A2%E5%BC%95)
   - [回表查询](#%E5%9B%9E%E8%A1%A8%E6%9F%A5%E8%AF%A2)
   - [索引优化](#%E7%B4%A2%E5%BC%95%E4%BC%98%E5%8C%96)
@@ -28,6 +29,22 @@
 在关系数据库中，索引是一种单独的、物理的对数据库表中一列或多列的值进行排序的一种存储结构，它是某个表中一列或若干列值的集合和相应的指向表中物理标识这些值的数据页的逻辑指针清单。  
 
 索引的作用相当于图书的目录，可以根据目录中的页码快速找到所需的内容。  
+
+索引的优点:  
+
+1、索引大大减少了服务器需要扫描的数据量；  
+
+2、索引可以帮助服务器避免排序和临时表；  
+
+3、索引可以将随机 I/O 变成顺序 I/O。   
+
+如何评价一个索引，`Relational Database Index Design and the Optimizers` 一书介绍了如何评价一个索引是否符合某个查询的三个星际判断标准：   
+
+1、一星：索引将相关的记录放在一起就评定为一星；  
+
+2、二星：如果索引中的数据顺序和查找中的排序顺序一致就评定为二星；     
+
+3、三星：如果索引中的列包含了查询中需要的全部列就评定为三星。   
 
 ### 索引的实现   
 
@@ -235,7 +252,23 @@ key index_a_b (a,b)
 
 <img src="/img/mysql/mysql-joint-index.png"  alt="mysql" />       
 
+可以看到联合索引中 `index_a_b (a,b)` a 是有顺序的，所以索引 a 列是可以使用这个联合索引的，索引 b 列只是相对索引 a 列是有序的，本身是无序，所以单索引 b 列是不能使用这个联合索引的。   
 
+同时因为联合索引在第一个键值固定的情况下，第二个键值进行了排序，所以适合下面的查询   
+
+````
+SELECT * FROM t WHERE a=6 ORDER BY b desc
+````
+
+联合索引中索引字段的先后顺序该如何选择，栗如 `index_a_b (a,b)` 这个联合索引，创建的时候，应该将索引列 a 放前面还是索引 b 列放前面呢？   
+
+有一个原则就是：将选择性最高的列放到最前面。   
+
+选择性最高值得是数据的重复值最少，因为区分度高的列能够很容易过滤掉很多的数据。因为组合索引中第一次能够过滤掉很多的数据，后面的索引查询的数据范围就小了很多了。   
+
+栗如，一个性别字段，值只有两种男或者女，这种区分度就很低了，搜索的话也只能够过滤掉一半的数据，数据量大的时候，这种效果是不明显的。   
+
+这里有一个区分度的公式 `count(distinct col)/count(*)` 表示字段不重复的比例，比例越大扫描的记录书越少，唯一键的区分都是1，例如性别等的字段在数据量很大的情况下接近于0。这个值多少是个标准呢？使用场景不同，这个值也很难确定，一般需要 join 的字段我们都要求是 0.1 以上，即平均 1 条扫描 10 条记录。      
 
 #### 覆盖索引  
 
@@ -255,8 +288,6 @@ key index_a_b (a,b)
 
 ### 索引优化
 
-
-
 ### 参考
 
 【高性能MySQL(第3版)】https://book.douban.com/subject/23008813/    
@@ -264,6 +295,7 @@ key index_a_b (a,b)
 【MySQL技术内幕】https://book.douban.com/subject/24708143/    
 【MySQL学习笔记】https://github.com/boilingfrog/Go-POINT/tree/master/mysql    
 【what-is-the-difference-between-mysql-innodb-b-tree-index-and-hash-index】https://medium.com/@mena.meseha/what-is-the-difference-between-mysql-innodb-b-tree-index-and-hash-index-ed8f2ce66d69  
+【MySQL索引原理及慢查询优化】https://tech.meituan.com/2014/06/30/mysql-index.html     
 
 
 
