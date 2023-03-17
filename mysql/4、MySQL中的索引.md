@@ -313,15 +313,17 @@ SELECT * FROM t WHERE a=6 ORDER BY b desc
 
 ```
 SELECT * FROM people
-WHERE age = 12
+WHERE age = 24
 AND name LIKE '%小%';
 ```
 
-因为 name 使用了通配符开头的 like，就需要全表扫描了。所以上面的联合索引，只命中了 age。   
+因为 name 使用了通配符开头的 like，就需要全表扫描了。所以上面的联合索引，只命中了索引 age。   
 
 在没有索引下推之前：MySQL 就首先通过 age 索引定位查询的数据，然后命中一部分数据，之后 name 会在这些数据中进行全数据的扫描，首先通过 id 回表查询到对应的数据，然后在对比字段值。  
 
 有了索引下推：可以在索引遍历过程中，对索引中包含的字段先做判断，直接过滤掉不满足条件的记录，减少回表次数。  
+
+没有添加索引下推   
 
 <img src="/img/mysql/mysql-icp-without.png"  alt="mysql" />       
 
@@ -329,6 +331,7 @@ AND name LIKE '%小%';
 
 <img src="/img/mysql/mysql-icp-have.png"  alt="mysql" />       
 
+这样可以看到经过索引下推的优化，原本需要进行 4 次的回表查询，优化之后只需要 2 次的回表查询了。   
 
 ### 参考
 
