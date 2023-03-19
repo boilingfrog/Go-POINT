@@ -141,9 +141,15 @@ Using where 的作用只是提醒我们 MySQL 将用 where 子句来过滤结果
 
 表示查询后结果需要使用临时表来存储，一般在排序或者分组查询时用到。   
 
-5、 Using join buffer  
+5、Using join buffer  
 
 改值强调了在获取连接条件时没有使用索引，并且需要连接缓冲区来存储中间结果。如果出现了这个值，那应该注意，根据查询的具体情况可能需要添加索引来改进能。  
+
+6、Using Index Condition
+
+在 `MySQL 5.6` 版本后加入的新特性`（Index Condition Pushdown）`，索引下推，主要是用来通过减少回表的次数，提高查询的性能。简单点讲就是在索引遍历过程中，对索引中包含的字段先做判断，直接过滤掉不满足条件的记录，减少回表次数。   
+
+`Using index condition` 的出现，意味着 MySQL 在执行这条语句时使用了`Index Condition Pushdown`(ICP)。    
 
 ### 总结
 
