@@ -9,7 +9,7 @@
     - [B+ 树索引](#b-%E6%A0%91%E7%B4%A2%E5%BC%95)
   - [索引的分类](#%E7%B4%A2%E5%BC%95%E7%9A%84%E5%88%86%E7%B1%BB)
     - [聚簇索引（clustered index）](#%E8%81%9A%E7%B0%87%E7%B4%A2%E5%BC%95clustered-index)
-    - [非聚簇索引（clustered index）](#%E9%9D%9E%E8%81%9A%E7%B0%87%E7%B4%A2%E5%BC%95clustered-index)
+    - [非聚簇索引（clustered index）](#%E9%9D%9E%E8%81%9A%E743%B0%87%E7%B4%A2%E5%BC%95clustered-index)
     - [联合索引](#%E8%81%94%E5%90%88%E7%B4%A2%E5%BC%95)
     - [覆盖索引](#%E8%A6%86%E7%9B%96%E7%B4%A2%E5%BC%95)
   - [回表查询](#%E5%9B%9E%E8%A1%A8%E6%9F%A5%E8%AF%A2)
@@ -17,6 +17,7 @@
   - [索引优化](#%E7%B4%A2%E5%BC%95%E4%BC%98%E5%8C%96)
     - [索引下推](#%E7%B4%A2%E5%BC%95%E4%B8%8B%E6%8E%A8)
     - [给字符串字段加索引](#%E7%BB%99%E5%AD%97%E7%AC%A6%E4%B8%B2%E5%AD%97%E6%AE%B5%E5%8A%A0%E7%B4%A2%E5%BC%95)
+    - [MySQL 中的 count 查询](#mysql-%E4%B8%AD%E7%9A%84-count-%E6%9F%A5%E8%AF%A2)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -411,6 +412,30 @@ select field_list from t where id_card = reverse('input_id_card_string');
 ```
 select field_list from t where id_card_crc=crc32('input_id_card_string') and id_card='input_id_card_string'
 ```
+
+#### MySQL 中的 count 查询
+
+MySQL中的 count(*) 的实现方式  
+
+- MyISAM 引擎把一个表的总行数存在了磁盘上，因此执行 `count(*)` 的时候会直接返回这个数，效率很高； 
+
+- 而 InnoDB 引擎就麻烦了，它执行 `count(*)` 的时候，需要把数据一行一行地从引擎里面读出来，然后累积计数。   
+
+InnoDB 中 `count(*)、count(主键id)和count(1)` ，返回的都是满足条件的结果集的总行数，`count(字段)`，则表示返回满足条件的数据行里面，参数“字段”不为 NULL 的总个数。   
+
+count(主键id): InnoDB 引擎会遍历整张表，把每一行的 id 值取出来，返回给 server 层，server层拿到 id 后，判断是不可能为空的，就按行累加；   
+
+count(1): InnoDB引 擎遍历整张表，但不取值。server层对于返回的每一行，放一个数字“1”进去，判断是不可能为空的，按行累加；   
+
+count(字段): 
+
+1、如果这个“字段”是定义为 `not null` 的话，一行行地从记录里面读出这个字段，判断不能为 null，按行累加；
+
+2、如果这个“字段”定义允许为 null，那么执行的时候，判断到有可能是 null，还要把值取出来再判断一下，不是 null 才累加。   
+
+count(*): 这个统计专门做了优化，不用取值，`count(*)` 肯定不是 null，按行累加。  
+
+所以按照效率排序 `count(字段)<count(主键id)<count(1)≈count(*)`。    
 
 
 ### 参考
