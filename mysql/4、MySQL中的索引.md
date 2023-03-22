@@ -9,7 +9,7 @@
     - [B+ 树索引](#b-%E6%A0%91%E7%B4%A2%E5%BC%95)
   - [索引的分类](#%E7%B4%A2%E5%BC%95%E7%9A%84%E5%88%86%E7%B1%BB)
     - [聚簇索引（clustered index）](#%E8%81%9A%E7%B0%87%E7%B4%A2%E5%BC%95clustered-index)
-    - [非聚簇索引（clustered index）](#%E9%9D%9E%E8%81%9A%E743%B0%87%E7%B4%A2%E5%BC%95clustered-index)
+    - [非聚簇索引（clustered index）](#%E9%9D%9E%E8%81%9A%E7%B0%87%E7%B4%A2%E5%BC%95clustered-index)
     - [联合索引](#%E8%81%94%E5%90%88%E7%B4%A2%E5%BC%95)
     - [覆盖索引](#%E8%A6%86%E7%9B%96%E7%B4%A2%E5%BC%95)
   - [回表查询](#%E5%9B%9E%E8%A1%A8%E6%9F%A5%E8%AF%A2)
@@ -18,6 +18,7 @@
     - [索引下推](#%E7%B4%A2%E5%BC%95%E4%B8%8B%E6%8E%A8)
     - [给字符串字段加索引](#%E7%BB%99%E5%AD%97%E7%AC%A6%E4%B8%B2%E5%AD%97%E6%AE%B5%E5%8A%A0%E7%B4%A2%E5%BC%95)
     - [MySQL 中的 count 查询](#mysql-%E4%B8%AD%E7%9A%84-count-%E6%9F%A5%E8%AF%A2)
+    - [MySQL 中的 order by](#mysql-%E4%B8%AD%E7%9A%84-order-by)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -436,6 +437,64 @@ count(字段):
 count(*): 这个统计专门做了优化，不用取值，`count(*)` 肯定不是 null，按行累加。  
 
 所以按照效率排序 `count(字段)<count(主键id)<count(1)≈count(*)`。    
+
+#### MySQL 中的 order by   
+
+MySQL 中的排序是我们经常用到的操作，下面来研究下排序的实现过程。   
+
+```
+CREATE TABLE `t_user_city` (
+  `id` int(11) NOT NULL,
+  `city` varchar(16) NOT NULL,
+  `name` varchar(16) NOT NULL,
+  `age` int(11) NOT NULL,
+  `addr` varchar(128) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `city` (`city`)
+) ENGINE=InnoDB;
+
+insert into t_user_city values(1, "郑州", "小明",12,"郑州大街6666号201");
+insert into t_user_city values(2, "杭州", "小红",20,"杭州大街6666号201");
+insert into t_user_city values(3, "杭州", "小白",19,"杭州大街6666号201");
+insert into t_user_city values(4, "上海", "张三",24,"上海大街6666号201");
+insert into t_user_city values(5, "上海", "李四",25,"上海大街6666号201");
+insert into t_user_city values(6, "上海", "王五",26,"上海大街6666号201");
+insert into t_user_city values(7, "上海", "王六",29,"上海大街6666号201");
+insert into t_user_city values(8, "郑州", "小明001",12,"郑州大街6666号201");
+insert into t_user_city values(9, "郑州", "小明002",12,"郑州大街6666号201");
+insert into t_user_city values(10, "郑州", "小明003",12,"郑州大街6666号201");
+```
+
+可以看到上面的表，是有一个 city 字段的索引。       
+
+```
+select city,name,age from t_user_city where city='上海' order by name limit 1000  ;
+```
+
+来分析下排序的过程  
+
+**全字段排序**  
+
+MySQL 会给每个查询线程分配一个用于排序的内存: sort_buffer。  
+
+通过上面查询的栗子来看下MySQL 中是如何使用 sort_buffer 来进行排序的。     
+
+1、首先 MySQL 会给米一个查询线程分配一快大小为 sort_buffer_size 的排序内存 sort_buffer，放入查询和排序的字段，所以字段 `city,name,age` 都会被放入到排序内存 sort_buffer 中；  
+
+2、查询首先使用索引 city 来确定查询的数据，然后查询到的数据都会通过查询到的主键 id 进行一次回表操作，查询到 `city,name,age` 字段，然后放入到 sort_buffer 中；   
+
+3、所有的数据都放入到排序内存 sort_buffer 之后，会根据排序字段对 sort_buffer 中的数据进行排序；  
+
+4、按照排序结果取前 1000 行返回给客户端，整个排序结束。    
+
+<img src="/img/mysql/mysql-order-by-all-date.png"  alt="mysql" />       
+
+
+
+
+
+
+
 
 
 ### 参考
