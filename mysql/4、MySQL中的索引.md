@@ -489,6 +489,10 @@ MySQL 会给每个查询线程分配一个用于排序的内存: sort_buffer。
 
 <img src="/img/mysql/mysql-order-by-all-date.png"  alt="mysql" />       
 
+如果查询的数据量很大，sort_buffer 内存中就放不下了，这时候就需要使用磁盘临时文件辅助排序。   
+
+使用的就是外部排序，一般使用归并排序，
+
 
 
 
