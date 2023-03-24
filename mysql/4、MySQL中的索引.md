@@ -491,12 +491,80 @@ MySQL 会给每个查询线程分配一个用于排序的内存: sort_buffer。
 
 如果查询的数据量很大，sort_buffer 内存中就放不下了，这时候就需要使用磁盘临时文件辅助排序。   
 
-使用的就是外部排序，一般使用归并排序，
+使用的就是外部排序，一般使用归并排序。使用外部排序的时候，MySQL 会将排序的文件分成 N 份，每一份单独排序后放入到一个临时文件中，然后再把这 N 个有序文件合成一个有序的大文件。   
 
+如果 sort_buffer_size 超过了需要排序的数据量的大小，number_of_tmp_files 就是0，表示排序可以直接在内存中完成。  
 
+在排序的文件在一定额度的情况下，如果 sort_buffer_size 越小，那么借助于磁盘排序徐的时候，需要的临时文件也就越多，发生 I/O 的次数也就越多，性能也就越差。    
 
+可以通过下面的命令来查看一个排序语句是否使用了临时文件  
 
+```
+/* 打开optimizer_trace，只对本线程有效 */
+SET optimizer_trace='enabled=on'; 
 
+/* @a保存Innodb_rows_read的初始值 */
+select VARIABLE_VALUE into @a from  performance_schema.session_status where variable_name = 'Innodb_rows_read';
+
+/* 执行语句 */
+select city,name,age from t_user_city where city='上海' order by name limit 1000  ;
+
+/* 查看 OPTIMIZER_TRACE 输出 */
+SELECT * FROM `information_schema`.`OPTIMIZER_TRACE`\G
+
+/* @b保存Innodb_rows_read的当前值 */
+select VARIABLE_VALUE into @b from performance_schema.session_status where variable_name = 'Innodb_rows_read';
+
+/* 计算Innodb_rows_read差值 */
+select @b-@a;
+```
+
+这里来重点看下  
+
+```
+"filesort_summary": {
+	"memory_available": 262144,
+	"key_size": 512,
+	"row_size": 654,
+	"max_rows_per_buffer": 15,
+	"num_rows_estimate": 15,
+	"num_rows_found": 4, // 参与排序的行
+	"num_initial_chunks_spilled_to_disk": 0, // 表示产生了多少个文件用于外部排序，如果为0，说明没有外部排序
+	"peak_memory_used": 32800,
+	"sort_algorithm": "std::sort",
+	"sort_mode": "<fixed_sort_key, packed_additional_fields>"
+}
+```
+
+sort_mode 
+
+MySQL 有 3 种排序模式         
+
+1、`< sort_key, rowid >` 对应的是 `MySQL 4.1` 之前的“原始排序模式”，即 rowid 排序；  
+
+2、`< sort_key, additional_fields >` 对应的是 `MySQL 4.1` 以后引入的“修改后排序模式”即全字段排序；  
+
+3、`< sort_key, packed_additional_fields >` 是 `MySQL 5.7.3` 以后引入的进一步优化的”打包数据排序模式”，是对全字段排序的优化。对于额外字段数据类型为：`CHAR、VARCHAR、`以及可为 NULL 的固定长度数据类型，其字段值长度是可以被压缩的。例如，在无压缩的情况下，字段数据类型为`VARCHAR(255)`，当字段值只有 3 个字符时，却需要占用 `sort buffer 255` 个字符长度的内存空间大小；而在有压缩的情况下，字段值为 3 个字符，却只占用 3 个字符长度 + 2 个字节长度标记的内存空间大小；当字段值为 NULL 时，只需通过一个位掩码来标识。    
+
+**rowid 排序**
+
+全字段排序 会把字段放入到在 sort_buffer 或 临时文件中进行排序，但是当查询的返回的字段很多，那么 sort_buffer 中要放入的字段很多，那么就意味着能够放下的条数很少了，需要生成的临时文件就会变多，排序的性能会变差。      
+
+如何优化呢？MySQL 中使用了 rowid 排序来解决这种场景。   
+
+rowid 排序原理的大致思路就是，不会将 SQL 语句中 select 后面的所有字段都放入到 sort_buffer 中，而是只会将需要被排序的字段和主键 id 放入到 sort_buffer 中，对应到本文的例子中就是：将 name 字段和主键 id 字段放入到 sort_buffer 中。    
+
+那么 MySQL 判断单行长度的标准是什么呢？   
+
+通过 max_length_for_sort_data 字段，MySQL 中专门用于控制排序的行数据长度的字段，如果超过了这个长度，那么就会使用 rowid 排序算法了。   
+
+先来设置 max_length_for_sort_data 长度，让我们上面的查询能够走 rowid 排序。  
+
+```
+SET max_length_for_sort_data = 10;
+
+show variables like 'max_length_for_sort_data';
+```
 
 
 
