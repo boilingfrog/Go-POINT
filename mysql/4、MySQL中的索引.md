@@ -558,15 +558,19 @@ rowid 排序原理的大致思路就是，不会将 SQL 语句中 select 后面�
 
 通过 max_length_for_sort_data 字段，MySQL 中专门用于控制排序的行数据长度的字段，如果超过了这个长度，那么就会使用 rowid 排序算法了。   
 
-先来设置 max_length_for_sort_data 长度，让我们上面的查询能够走 rowid 排序。  
+来看下 rowid 排序的过程  
 
-```
-SET max_length_for_sort_data = 10;
+1、首先 MySQL 会为应用进程分配一块内存大小为 sort_buffer_size 的内存，然后确定放入的字段，假定这时候字段 `city,name,age` 的长度之和已超过了 max_length_for_sort_data 的限制，这时候就需要用到 rowid 排序了，这时候放入到 sort_buffer 中的字段只有要排序的列 name 字段和主键 id;   
 
-show variables like 'max_length_for_sort_data';
-```
+2、查询首先使用索引 city 来确定查询的数据，然后查询到的数据都会通过查询到的主键 id 进行一次回表操作(第一次回表)，查询到的 `name,id` 字段放入到 sort_buffer 中；   
 
+3、所有的数据都放入到排序内存 sort_buffer 之后，会根据排序字段对 sort_buffer 中的数据进行排序；
 
+4、遍历排序结果，取前 1000 行，并按照 id 的值回到原表中取出 `city、name和age` 三个字段返回给客户端(第二次回表)，排序结束。    
+
+<img src="/img/mysql/mysql-order-by-rowid.png"  alt="mysql" />       
+
+可以看到相比于相比全字段排序而言，rowid 排序的多了一次回表的查询操作。   
 
 
 ### 参考
