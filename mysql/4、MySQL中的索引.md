@@ -9,7 +9,7 @@
     - [B+ 树索引](#b-%E6%A0%91%E7%B4%A2%E5%BC%95)
   - [索引的分类](#%E7%B4%A2%E5%BC%95%E7%9A%84%E5%88%86%E7%B1%BB)
     - [聚簇索引（clustered index）](#%E8%81%9A%E7%B0%87%E7%B4%A2%E5%BC%95clustered-index)
-    - [非聚簇索引（clustered index）](#%E9%9D%9E%E8%81%9A%E7%B0%87%E7%B4%A2%E5%BC%95clustered-index)
+    - [非聚簇索引（non-clustered index）](#%E9%9D%9E%E8%81%9A%E7%B0%87%E7%B4%A2%E5%BC%95non-clustered-index)
     - [联合索引](#%E8%81%94%E5%90%88%E7%B4%A2%E5%BC%95)
     - [覆盖索引](#%E8%A6%86%E7%9B%96%E7%B4%A2%E5%BC%95)
   - [回表查询](#%E5%9B%9E%E8%A1%A8%E6%9F%A5%E8%AF%A2)
@@ -20,6 +20,7 @@
     - [MySQL 中的 count 查询](#mysql-%E4%B8%AD%E7%9A%84-count-%E6%9F%A5%E8%AF%A2)
     - [MySQL 中的 order by](#mysql-%E4%B8%AD%E7%9A%84-order-by)
     - [主键选择自增还是使用 UUID](#%E4%B8%BB%E9%94%AE%E9%80%89%E6%8B%A9%E8%87%AA%E5%A2%9E%E8%BF%98%E6%98%AF%E4%BD%BF%E7%94%A8-uuid)
+  - [总结](#%E6%80%BB%E7%BB%93)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -236,7 +237,7 @@ InnoDB 中必有要求有聚簇索引的存在，默认会在主键上建立聚�
 
 二级索引中保存的不是指向行的物理位置的指针，而是行的主键值，这就意味着通过二级索引查找行，存储引擎需要找到二级索引的叶子结点获取对应的主键值，然后根据这个值去聚簇索引中找到对应的行。所以有两次的查找过程，这种叫做回表操作，在 InnoDB 中，自适应哈希索引能够减少这样重复的工作。       
 
-#### 非聚簇索引（clustered index）
+#### 非聚簇索引（non-clustered index）
 
 非聚簇索引也叫二级索引或者辅助索引，辅助索引叶子节点存储的不是具体的行数据，而是行的主键值，所以使用辅助索引会面临二次查找的问题，也就是回表。存储引擎需要找到二级索引的叶子结点获取对应的主键值，然后根据这个值去聚簇索引中找到对应的行。所以有两次的查找过程，这种就叫做回表查询，在 InnoDB 中，自适应哈希索引能够减少这样重复的工作。  
 
