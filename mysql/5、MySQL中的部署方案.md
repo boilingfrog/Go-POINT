@@ -36,6 +36,30 @@
 
 实现原理  
 
+在主从复制中，从库利用主库上的 binlog 进行重播，实现主从同步，复制的过程中蛀主要使用到了 `dump thread，I/O thread，sql thread` 这三个线程。    
+
+`IO thread`: 在从库执行 `start slave` 语句时创建，负责连接主库，请求 binlog，接收 binlog 并写入 relay-log；   
+
+`dump thread`：用户主库同步 binlog 给从库，负责响应从 `IO thread` 的请求。主库会给每个从库的连接创建一个 `dump thread`，然后同步 binlog 给从库，如果该线程追上了主库，就会进行休眠状态，当主库有新的更新操作，这个线程就会被唤醒；    
+
+`sql thread`：读取 `relay log` 执行命令实现从库数据的更新。   
+
+来看下复制的流程：   
+
+1、主库收到更新命令，执行更新操作，生成 binlog;  
+
+2、从库在主从之间建立长连接；   
+
+3、主库 dump_thread 从本地读取 binlog 传送刚给从库；  
+
+4、从库从主库获取到 binlog 后存储到本地，成为 `relay log`（中继日志）；  
+
+5、sql_thread 线程读取 `relay log` 解析、执行命令更新数据。       
+
+
+
+
+
 
 
 
@@ -51,3 +75,4 @@
 【MySQL技术内幕】https://book.douban.com/subject/24708143/    
 【MySQL学习笔记】https://github.com/boilingfrog/Go-POINT/tree/master/mysql    
 【MySQL文档】https://dev.mysql.com/doc/refman/8.0/en/replication.html  
+【浅谈 MySQL binlog 主从同步】http://www.linkedkeeper.com/1503.html     
