@@ -5,6 +5,8 @@
   - [前言](#%E5%89%8D%E8%A8%80)
   - [Replication](#replication)
     - [主从同步延迟](#%E4%B8%BB%E4%BB%8E%E5%90%8C%E6%AD%A5%E5%BB%B6%E8%BF%9F)
+  - [InnoDB Cluster](#innodb-cluster)
+  - [InnoDB ReplicaSet](#innodb-replicaset)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -149,12 +151,59 @@ MGR 由若干个节点共同组成一个复制组，一个事务的提交，必�
 
 ### InnoDB Cluster
 
-`InnoDB Cluster` 是官方提供的高可用方案,一个集群至少有三个 `MySQL Server` 组成，它提供了 MySQL 的高可用性和可伸缩性，`InnoDB Cluster` 包含下面三个关键组件：  
+`InnoDB Cluster` 是官方提供的高可用方案,是 MySQL 的一种高可用性(HA)解决方案，它通过使用 `MySQL Group Replication` 来实现数据的自动复制和高可用性，`InnoDB Cluster` 通常包含下面三个关键组件：  
 
-1、
+1、`MySQL Shell`: 它是 MySQL 的高级管理客户端;  
 
+2、`MySQL Server` 和 `MGR`，使得一组 `MySQL` 实例能够提供高可用性，对于 MGR，`Innodb Cluster` 提供了一种更加易于编程的方式来处理 MGR;    
 
+3、`MySQL Router`，一种轻量级中间件，主要进行路由请求，将客户端发送过来的请求路由到不同的 MySQL 服务器节点。   
 
+`MySQL Server` 基于 `MySQL Group Replication` 构建，提供自动成员管理，容错，自动故障转移动能等。`InnoDB Cluster` 通常以单主模式运行，一个读写实例和多个只读实例。不过也可以选用多主模式。   
+
+优点：  
+
+1、高可用性：通过 `MySQL Group Replication`，`InnoDB Cluster` 能够实现数据在集群中的自动复制，从而保证数据的可用性；   
+
+2、简单易用：`InnoDB Cluster` 提供了一个简单易用的管理界面，使得管理员可以快速部署和管理集群；  
+
+3、全自动故障转移: `InnoDB Cluster` 能够自动检测和诊断故障，并进行必要的故障转移，使得数据可以继续可用。   
+
+缺点：  
+
+1、复杂性：`InnoDB Cluster` 的部署和管理比较复杂，需要对 MySQL 的工作原理有一定的了解；  
+
+2、性能影响：由于自动复制和高可用性的要求，`InnoDB Cluster` 可能对 MySQL 的性能造成一定的影响；  
+
+3、限制：`InnoDB Cluster` 的功能对于一些特殊的应用场景可能不够灵活，需要更多的定制。   
+
+### InnoDB ReplicaSet
+
+`InnoDB ReplicaSet`  是 MySQL 团队在 2020 年推出的一款产品，用来帮助用户快速部署和管理主从复制，在数据库层仍然使用的是主从复制技术。   
+
+`InnoDB ReplicaSet `由单个主节点和多个辅助节点（传统上称为 MySQL 复制源和副本）组成。    
+
+`InnoDB ReplicaSet` 的限制：  
+
+1、没有自动故障转移，在主节点不可用的情况下，需要使用 AdminAPI 手动触发故障转移，然后才能再次进行任何更改。但是，辅助实例仍可用于读取；  
+
+2、由于意外停止或不可用，无法防止部分数据丢失：在意外停止时未完成的事务可能会丢失；  
+
+3、在意外退出或不可用后无法防止不一致。如果手动故障转移提升了一个辅助实例，而前一个主实例仍然可用，例如，由于网络分区，裂脑情况可能会导致数据不一致；  
+
+4、InnoDB ReplicaSet 不支持多主模式。允许写入所有成员的经典复制拓扑无法保证数据一致性；   
+
+5、读取横向扩展是有限的。`InnoDB ReplicaSet` 基于异步复制，因此无法像 `Group Replication` 那样调整流量控制；     
+
+6、一个 ReplicaSet 最多由一个主实例组成。支持一个或多个辅助。尽管可以添加到 ReplicaSet 的辅助节点的数量没有限制，但是连接到 ReplicaSet 的每个 MySQL Router 都必须监视每个实例。因此，一个 ReplicaSet 中加入的实例越多，监控就越多。   
+
+使用 `InnoDB ReplicaSets` 的主要原因是你有更好的写性能。使用 `InnoDB ReplicaSets` 的另一个原因是它们允许在不稳定或慢速网络上部署，而 `InnoDB Cluster` 则不允许。   
+
+### MMM
+
+MMM（Master-Master replication manager for MySQL）是一套支持双主故障切换和双主日常管理的脚本程序。MMM 使用 Perl 语言开发，主要用来监控和管理 `MySQL Master-Master`（双主）复制，可以说是 MySQL 主主复制管理器。   
+
+不过虽然是双主模式，但是业务上同一时刻只能一个主库进行数据的写入。另一个备选主库提供部分的读服务，
 
 ### 参考
 
