@@ -7,6 +7,8 @@
     - [主从同步延迟](#%E4%B8%BB%E4%BB%8E%E5%90%8C%E6%AD%A5%E5%BB%B6%E8%BF%9F)
   - [InnoDB Cluster](#innodb-cluster)
   - [InnoDB ReplicaSet](#innodb-replicaset)
+  - [MMM](#mmm)
+  - [MHA](#mha)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -203,7 +205,32 @@ MGR 由若干个节点共同组成一个复制组，一个事务的提交，必�
 
 MMM（Master-Master replication manager for MySQL）是一套支持双主故障切换和双主日常管理的脚本程序。MMM 使用 Perl 语言开发，主要用来监控和管理 `MySQL Master-Master`（双主）复制，可以说是 MySQL 主主复制管理器。   
 
-不过虽然是双主模式，但是业务上同一时刻只能一个主库进行数据的写入。另一个备选主库提供部分的读服务，
+双主模式，业务上同一时刻只能一个主库进行数据的写入。另一个主备库，会在主服务器失效时，进行主备切换和故障转移。    
+
+MMM 中是通过一个 VIP(虚拟 IP) 的机制来保证集群的高可用的。整个集群中，在主节点会提供一个 VIP 地址来提供数据读写服务，当出现故障的时候，VIP 就会从原来的主节点便宜到其他节点，由其他节点提供服务。  
+
+<img src="/img/mysql/mysql-mmm.png"  alt="mysql" />
+
+MMM无法完全的保证数据一致性，所以适用于对数据的一致性要求不是很高的场景。（因为主备上的数据不一定是最新的，可能还没从库的新。解决方法：开启半同步）。   
+
+MMM 的优缺点  
+
+优点：高可用性，扩展性好，出现故障自动切换，对于主主同步，在同一时间只提供一台数据库写操作，保证数据的一致性。  
+
+缺点：无法完全保数据的一致性，建议采用半同步复制方式，减少失败的概率；目前 MMM 社区已经缺少维护，不支持基于 GTID 的复制。   
+
+适用场景：
+
+MMM的适用场景为数据库访问量大，业务增长快，并且能实现读写分离的场景。
+
+### MHA
+
+Master High Availability Manager and Tools for MySQL，简称 MHA 。是一套优秀的作为 MySQL 高可用性环境下故障切换和主从提升的高可用软件。   
+
+这个工具专门用于监控主库的状态，当发现 master 节点故障的时候，会自动提升其中拥有新数据的 slave 节点成为新的 master 节点，在此期间,MHA 会通过其他从节点获取额外的信息来避免数据一致性问题。MHA 还提供了 mater 节点的在线切换功能，即按需切换 master-slave 节点。MHA 能够在30秒内实现故障切换，并能在故障切换过程中，最大程度的保证数据一致性。   
+
+
+
 
 ### 参考
 
