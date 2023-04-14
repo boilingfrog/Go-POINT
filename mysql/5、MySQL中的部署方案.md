@@ -6,6 +6,7 @@
   - [Replication](#replication)
     - [主从同步延迟](#%E4%B8%BB%E4%BB%8E%E5%90%8C%E6%AD%A5%E5%BB%B6%E8%BF%9F)
   - [InnoDB Cluster](#innodb-cluster)
+  - [InnoDB ClusterSet](#innodb-clusterset)
   - [InnoDB ReplicaSet](#innodb-replicaset)
   - [MMM](#mmm)
   - [MHA](#mha)
@@ -17,15 +18,7 @@
 
 ### 前言
 
-这里来聊聊，MySQL 中常用的部署方案。  
-
-常用的 MySQL 的部署方案：   
-
-1、MySQL Replication；  
-
-2、InnoDB Cluster；     
-
-3、InnoDB ReplicaSet;  
+这里来聊聊，MySQL 中常用的部署方案。   
 
 ### Replication
 
@@ -178,6 +171,34 @@ MGR 由若干个节点共同组成一个复制组，一个事务的提交，必�
 2、性能影响：由于自动复制和高可用性的要求，`InnoDB Cluster` 可能对 MySQL 的性能造成一定的影响；  
 
 3、限制：`InnoDB Cluster` 的功能对于一些特殊的应用场景可能不够灵活，需要更多的定制。   
+
+### InnoDB ClusterSet
+
+`MySQL InnoDB ClusterSet` 通过将主 `InnoDB Cluster` 与其在备用位置（例如不同数据中心）的一个或多个副本链接起来，为 `InnoDB Cluster` 部署提供容灾能力。   
+
+`InnoDB ClusterSet` 使用专用的 ClusterSet 复制通道自动管理从主集群到副本集群的复制。如果主集群由于数据中心损坏或网络连接丢失而变得无法使用，用户可以激活副本集群以恢复服务的可用性。   
+
+<img src="/img/mysql/mysql-ClusterSet.png"  alt="mysql" />    
+
+InnoDB ClusterSet 的特点：  
+
+1、主集群和副本集群之间的紧急故障转移可以由管理员通过 `MySQL Shell`，使用 AdminAPI 进行操作；   
+
+2、InnoDB ClusterSet 部署中可以拥有的副本集群的数量没有定义的限制；  
+
+3、异步复制通道将事务从主集群复制到副本集群。`clusterset_replication` 在 `InnoDB ClusterSet` 创建过程中，在每个集群上都设置了名为 ClusterSet 的复制通道，当集群是副本时，它使用该通道从主集群复制事务。底层组复制技术管理通道并确保复制始终在主集群的主服务器（作为发送方）和副本集群的主服务器（作为接收方）之间进行；  
+
+4、每个 `InnoDB ClusterSet` 集群，只有主集群能够接收写请求，大多数的读请求流量也会被路由到主集群，不过也可以指定读请求到其他的集群；  
+
+InnoDB ClusterSet 的限制：  
+
+1、InnoDB ClusterSet 只支持异步复制，不能使用半同步复制，无法避免异步复制的缺陷：数据延迟、数据一致性等；  
+
+2、InnoDB ClusterSet 仅支持Cluster实例的单主模式,不支持多主模式。 即只能包含一个读写主集群, 所有副本集群都是只读的, 不允许具有多个主集群的双活设置，因为在集群发生故障时无法保证数据一致性；  
+
+3、已有的 InnoDB Cluster 不能用作 InnoDB ClusterSet 部署中的副本集群。副本集群必须从单个服务器实例启动，作为新的 InnoDB 集群；  
+
+4、只支持 MySQL 8.0。   
 
 ### InnoDB ReplicaSet
 
