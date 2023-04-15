@@ -10,6 +10,7 @@
   - [InnoDB ReplicaSet](#innodb-replicaset)
   - [MMM](#mmm)
   - [MHA](#mha)
+  - [Galera Cluster](#galera-cluster)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -295,6 +296,17 @@ MHA 工作原理总结如下：
 2、MHA 启动后只会对主数据库进行监控；  
 
 3、需要基于 SSH 免认证配置，存在一定的安全隐患。   
+
+### Galera Cluster
+
+`Galera Cluster` 是由 Codership 开发的MySQL多主集群，包含在 MariaDB 中，同时支持 `Percona xtradb、MySQL`，是一个易于使用的高可用解决方案，在数据完整性、可扩展性及高性能方面都有可接受的表现。   
+
+其本身具有 multi-master 特性，支持多点写入，`Galera Cluster` 中每个实例都是对等的，互为主从。当客户端读写数据的时候，可以选择任一 MySQL 实例，对于读操作，每个实例读取到的数据都是相同的。对于写操作，当数据写入某一节点后，集群会将其同步到其它节点。这种架构不共享任何数据，是一种高冗余架构。   
+
+
+
+   
+
 
 
 ### 参考
