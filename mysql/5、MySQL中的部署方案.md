@@ -3,8 +3,7 @@
 
 - [MySQL 中的集群部署方案](#mysql-%E4%B8%AD%E7%9A%84%E9%9B%86%E7%BE%A4%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88)
   - [前言](#%E5%89%8D%E8%A8%80)
-  - [Replication](#replication)
-    - [主从同步延迟](#%E4%B8%BB%E4%BB%8E%E5%90%8C%E6%AD%A5%E5%BB%B6%E8%BF%9F)
+  - [MySQL Replication](#mysql-replication)
   - [InnoDB Cluster](#innodb-cluster)
   - [InnoDB ClusterSet](#innodb-clusterset)
   - [InnoDB ReplicaSet](#innodb-replicaset)
@@ -22,11 +21,15 @@
 
 这里来聊聊，MySQL 中常用的部署方案。   
 
-### Replication
+### MySQL Replication
 
-`MySQL Replication`,主从复制集群，使一台 MySQL 数据库服务器的的数据能够复制到一台或者多台 MySQL 的数据库服务器中。    
+`MySQL Replication` 是官方提供的主从同步方案，用于将一个 MySQL 的实例同步到另一个实例中。Replication 为保证数据安全做了重要的保证，是目前运用最广的 MySQL 容灾方案。Replication 用两个或以上的实例搭建了 MySQL 主从复制集群，提供单点写入，多点读取的服务，实现了读的 `scale out`。    
 
 <img src="/img/mysql/mysql-replication.png"  alt="mysql" />    
+
+上面的栗子，一个主库(M)，三个从库(S)，通过 replication，Master 生成 event 的 binlog，然后发给 slave，Slave 将 event 写入 relaylog，然后将其提交到自身数据库中，实现主从数据同步。   
+
+对于数据库之上的业务层来说，基于 MySQL 的主从复制集群，单点写入 Master ,在 event 同步到 Slave 后，读逻辑可以从任何一个 Slave 读取数据，以读写分离的方式，大大降低 Master 的运行负载，同时提升了 Slave 的资源利用。    
 
 优点：  
 
@@ -58,7 +61,7 @@
 
 5、sql_thread 线程读取 `relay log` 解析、执行命令更新数据。       
 
-#### 主从同步延迟
+不过 `MySQL Replication` 有个严重的缺点就是主从同步延迟。    
 
 因为数据是进行主从同步的，那么就会遇到主从同步延迟的情况。   
 
@@ -148,7 +151,9 @@ MGR 由若干个节点共同组成一个复制组，一个事务的提交，必�
 
 ### InnoDB Cluster
 
-`InnoDB Cluster` 是官方提供的高可用方案,是 MySQL 的一种高可用性(HA)解决方案，它通过使用 `MySQL Group Replication` 来实现数据的自动复制和高可用性，`InnoDB Cluster` 通常包含下面三个关键组件：  
+`InnoDB Cluster` 是官方提供的高可用方案,是 MySQL 的一种高可用性(HA)解决方案，它通过使用 `MySQL Group Replication` 来实现数据的自动复制和高可用性，`InnoDB Cluster` 通常包含下面三个关键组件：     
+
+<img src="/img/mysql/mysql-innodb-cluster.png"  alt="mysql" />   
 
 1、`MySQL Shell`: 它是 MySQL 的高级管理客户端;  
 
