@@ -10,6 +10,7 @@
   - [MMM](#mmm)
   - [MHA](#mha)
   - [Galera Cluster](#galera-cluster)
+  - [MySQL Cluster](#mysql-cluster)
   - [MySQL Fabric](#mysql-fabric)
   - [参考](#%E5%8F%82%E8%80%83)
 
@@ -367,6 +368,70 @@ Galera 复制是一种基于验证的复制，基于验证的复制使用通信�
 
 验证失败，节点将删除写集，集群将回滚原始事务，对于所有的节点都是如此，每个节点单独进行验证。因为所有节点都以相同的顺序接收事务，它们对事务的结果都会做出相同的决定，要么全成功，要么都失败。成功后自然就提交了，所有的节点又会重新达到数据一致的状态。节点之间不交换“是否冲突”的信息，各个节点独立异步处理事务。   
 
+### MySQL Cluster  
+
+`MySQL Cluster` 是一个高度可扩展的，兼容 ACID 事务的实时数据库，基于分布式架构不存在单点故障，`MySQL Cluster` 支持自动水平扩容，并能做自动的读写负载均衡。  
+
+`MySQL Cluster` 使用了一个叫 NDB 的内存存储引擎来整合多个 MySQL 实例，提供一个统一的服务集群。   
+
+NDB 是一种内存性的存储引擎,使用 Sarding-Nothing 的无共享的架构。Sarding-Nothing 指的是每个节点有独立的处理器，磁盘和内存，节点之间没有共享资源完全独立互不干扰，节点之间通过告诉网络组在一起，每个节点相当于是一个小型的数据库，存储部分数据。这种架构的好处是可以利用节点的分布性并行处理数据，调高整体的性能，还有就是有很高的水平扩展性能，只需要增加节点就能增加数据的处理能力。     
+
+<img src="/img/mysql/mysql-cluster.png"  alt="mysql" />    
+
+`MySql Cluster` 中包含三种节点，分别是管理节点(NDB Management Server)、数据节点(Data Nodes)和 SQL查询节点(SQL Nodes) 。  
+
+`SQL Nodes` 是应用程序的接口，像普通的 mysqld 服务一样，接受用户的 SQL 输入，执行并返回结果。`Data Nodes` 是数据存储节点，`NDB Management Server` 用来管理集群中的每个 node。     
+
+其中数据节点会存储集群中的数据分区和分区的副本，来看下 `MySql Cluster` 是如何对数据进行分片的操作的，首先来了解下下面几个概念   
+
+- 节点组（Node Group）： 一组数据节点的集合。节点组的个数=`节点数 / 副本数`；  
+
+比如有集群中 4 个节点，副本数为 2（对应 NoOfReplicas 的设置），那么节点组个数为2。   
+
+另外，在可用性方面，数据的副本在组内交叉分配，一个节点组内只有要一台机器可用，就可以保证整个集群的数据完整性，实现服务的整体可用。  
+
+- 分区（Partition）：`MySql Cluster` 是一个分布式的存储系统，数据按照 分区 划分成多份存储在各数据节点中，分区个数由系统自动计算，`分区数 = 数据节点数 / LDM 线程数`；   
+
+- 副本（Replica）：分区数据的备份，有几个分区就有几个副本，为了避免单点，保证 `MySql Cluster` 集群的高可用，原始数据对应的分区和副本通常会保存在不同的主机上，在一个节点组内进行交叉备份。  
+
+<img src="/img/mysql/mysql-cluster-node.png"  alt="mysql" />    
+
+栗如，上面的例子，有四个数据节点（使用ndbd），副本数为2的集群，节点组被分为2组（4/2），数据被分为4个分区，数据分配情况如下:  
+
+分区0（Partition 0）保存在节点组 0（Node Group 0）中，分区数据(主副本 — Primary Replica)保存在节点1(node 1) 中，备份数据(备份副本，Backup Replica)保存在节点2(node 2) 中；   
+
+分区1（Partition 1）保存在节点组 1（Node Group 1）中，分区数据(主副本 — Primary Replica)保存在节点3(node 3) 中，备份数据(备份副本，Backup Replica)保存在节点4(node 4) 中；  
+
+分区2（Partition 2）保存在节点组 0（Node Group 0）中，分区数据(主副本 — Primary Replica)保存在节点2(node 2) 中，备份数据(备份副本，Backup Replica)保存在节点1(node 1) 中；  
+
+分区3（Partition 2）保存在节点组 1（Node Group 1）中，分区数据(主副本 — Primary Replica)保存在节点4(node 4) 中，备份数据(备份副本，Backup Replica)保存在节点3(node 3) 中；
+
+这样，对于一张表的一个 Partition 来说，在整个集群有两份数据，并分布在两个独立的 Node 上，实现了数据容灾。同时，每次对一个 Partition 的写操作，都会在两个 Replica 上呈现，如果 `Primary Replica` 异常，那么 `Backup Replica` 可以立即提供服务，实现数据的高可用。    
+
+`mysql cluster` 的优点     
+
+1、99.999％的高可用性；  
+
+2、快速的自动失效切换；  
+
+3、灵活的分布式体系结构，没有单点故障；  
+
+4、高吞吐量和低延迟；  
+
+5、可扩展性强，支持在线扩容。  
+
+`mysql cluster` 的缺点   
+
+1、存在很多限制，比如：不支持外键，数据行不能超过8K（不包括BLOB和text中的数据）；  
+
+2、部署、管理、配置很复杂；  
+
+3、占用磁盘空间大，内存大；  
+
+4、备份和恢复不方便；  
+
+5、重启的时候，数据节点将数据 load 到内存需要很长时间。
+
 ### MySQL Fabric
 
 `MySQL Fabric` 会组织多个 MySQL 数据库，将大的数据分散到多个数据库中，即数据分片`(Data Shard)`,同时同一个分片数据库中又是一个主从结构，Fabric 会挑选合适的库作为主库，当主库挂掉的时候，又会重新在从库中选出一个主库。   
@@ -379,7 +444,7 @@ Galera 复制是一种基于验证的复制，基于验证的复制使用通信�
 
 `MySQL Fabric-aware` 连接器把从 `MySQL Fabric` 获取的路由信息存储到缓存中，然后凭借该信息将事务或查询发送给正确的 MySQL 服务器。  
 
-同时，每一个分片组，可以又多个服务器组成，构成主从结构，当主库挂掉的时候，又会重新在从库中选出一个主库。保证节点的高可用。    
+同时，每一个分片组，可以又多个一个服务器组成，构成主从结构，当主库挂掉的时候，又会重新在从库中选出一个主库。保证节点的高可用。    
 
 `HA Group` 保证访问指定 `HA Group` 的数据总是可用的，同时其基础的数据复制是基于 `MySQL Replication` 实现的。     
 
