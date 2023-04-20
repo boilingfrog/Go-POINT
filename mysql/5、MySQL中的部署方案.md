@@ -214,6 +214,10 @@ InnoDB ClusterSet 的限制：
 
 `InnoDB ReplicaSet `由单个主节点和多个辅助节点（传统上称为 MySQL 复制源和副本）组成。    
 
+与` InnoDB cluster` 类似, `MySQL Router` 支持针对 `InnoDB ReplicaSet` 的引导, 这意味着可以自动配置 `MySQL Router` 以使用 `InnoDB ReplicaSet`, 而无需手动配置文件. 这使得 `InnoDB ReplicaSet` 成为一种快速简便的方法, 可以启动和运行 MySQL 复制和 `MySQL Router`, 非常适合扩展读取, 并在不需要 InnoDB 集群提供高可用性的用例中提供手动故障转移功能。    
+
+<img src="/img/mysql/mysql-replicaset.png"  alt="mysql" />    
+
 `InnoDB ReplicaSet` 的限制：  
 
 1、没有自动故障转移，在主节点不可用的情况下，需要使用 AdminAPI 手动触发故障转移，然后才能再次进行任何更改。但是，辅助实例仍可用于读取；  
@@ -454,6 +458,27 @@ NDB 是一种内存性的存储引擎,使用 Sarding-Nothing 的无共享的架�
 
 事务及查询只支持在同一个分片内，事务中更新的数据不能跨分片，查询语句返回的数据也不能跨分片。     
 
+### 总结
+
+1、`MySQL Replication` 是官方提供的主从同步方案，用于将一个 MySQL 的实例同步到另一个实例中，在主从复制中，从库利用主库上的 binlog 进行重播，实现主从同步，默认是异步同步，针对其在不同场景下的一些缺陷，衍生出了半同步复制，强同步复制等数据高可用的方案；  
+
+2、`MySQL Group Replication` 组复制又称为 MGR,引入复制组主要是为了解决传统异步复制和半同步复制可能产生数据不一致的问题, MGR 由若干个节点共同组成一个复制组，一个事务的提交，必须经过组内大多数节点 (N / 2 + 1) 决议并通过，才能得以提交;  
+
+3、`InnoDB Cluster` 是官方提供的高可用方案,是 MySQL 的一种高可用性(HA)解决方案，它通过使用` MySQL Group Replication` 来实现数据的自动复制和高可用性；  
+
+4、`InnoDB ClusterSet` 通过将主 `InnoDB Cluster` 与其在备用位置（例如不同数据中心）的一个或多个副本链接起来，为 `InnoDB Cluster` 部署提供容灾能力，每个节点就是一个 `InnoDB Cluster`；   
+
+5、`InnoDB ReplicaSet` 与` InnoDB cluster` 类似, `MySQL Router` 支持针对 `InnoDB ReplicaSet` 的引导, 这意味着可以自动配置 `MySQL Router` 以使用 `InnoDB ReplicaSet`, 而无需手动配置文件. 这使得 `InnoDB ReplicaSet` 成为一种快速简便的方法, 可以启动和运行 MySQL 复制和 `MySQL Router`, 非常适合扩展读取, 并在不需要 InnoDB 集群提供高可用性的用例中提供手动故障转移功能；  
+
+6、MMM（Master-Master replication manager for MySQL）是一套支持双主故障切换和双主日常管理的脚本程序。MMM 使用 Perl 语言开发，主要用来监控和管理 MySQL Master-Master（双主）复制，可以说是 MySQL 主主复制管理器;  
+
+7、`Master High Availability Manager and Tools for MySQL`，简称 MHA 。是一套优秀的作为 MySQL 高可用性环境下故障切换和主从提升的高可用软件，这个工具专门用于监控主库的状态，当发现 master 节点故障的时候，会自动提升其中拥有新数据的 slave 节点成为新的 master 节点，在此期间,MHA 会通过其他从节点获取额外的信息来避免数据一致性问题。MHA 还提供了 mater 节点的在线切换功能，即按需切换 master-slave 节点。MHA 能够在30秒内实现故障切换，并能在故障切换过程中，最大程度的保证数据一致性；   
+
+8、`Galera Cluster` 是由 Codership 开发的MySQL多主集群，包含在 MariaDB 中，同时支持 Percona xtradb、MySQL，是一个易于使用的高可用解决方案，在数据完整性、可扩展性及高性能方面都有可接受的表现，本身具有 multi-master 特性，支持多点写入，Galera Cluster 中每个实例都是对等的，互为主从。当客户端读写数据的时候，可以选择任一 MySQL 实例，对于读操作，每个实例读取到的数据都是相同的。对于写操作，当数据写入某一节点后，集群会将其同步到其它节点。这种架构不共享任何数据，是一种高冗余架构；  
+
+9、`MySQL Cluster` 是一个高度可扩展的，兼容 ACID 事务的实时数据库，基于分布式架构不存在单点故障，`MySQL Cluster` 支持自动水平扩容，并能做自动的读写负载均衡，MySQL Cluster 使用了一个叫 NDB 的内存存储引擎来整合多个 MySQL 实例，提供一个统一的服务集群；   
+
+10、`MySQL Fabric` MySQL Fabric 会组织多个 MySQL 数据库，将大的数据分散到多个数据库中，即数据分片(Data Shard),同时同一个分片数据库中又是一个主从结构，Fabric 会挑选合适的库作为主库，当主库挂掉的时候，又会重新在从库中选出一个主库。  
 
 ### 参考
 
