@@ -8,3 +8,4 @@
 
 4、[MySQL 中的索引](https://github.com/boilingfrog/Go-POINT/blob/master/mysql/4%E3%80%81MySQL%E4%B8%AD%E7%9A%84%E7%B4%A2%E5%BC%95.md)          
 
+5、[MySQL 中常见的高可用架构部署方案](https://github.com/boilingfrog/Go-POINT/blob/master/mysql/5%E3%80%81MySQL%E4%B8%AD%E7%9A%84%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88.md)            
