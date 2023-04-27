@@ -110,7 +110,26 @@ seconds_behind_master 的计算方式：
 
 如果把步骤4、5调整到最开始执行，不等主库的数据同步，直接把连接切到备库 B，让备库 B 可以直接读写，这样系统就几乎没有不可用时间了。   
 
-这种策略能最大可能保障服务的可用性，但是会出现数据不一致的情况。
+这种策略能最大可能保障服务的可用性，但是会出现数据不一致的情况。  
+
+下面来分析下一种数据不一致的情况：     
+
+```go
+CREATE TABLE `t` (
+`id` int(11) NOT NULL AUTO_INCREMENT,
+`a` int(11) DEFAULT NULL,
+PRIMARY KEY (`id`)
+) ENGINE=InnoDB;
+
+insert into t values(1,1);
+insert into t values(2,2);
+```
+
+可以看到上面的表定义了一个自增主键，同时插入了两条数据。   
+
+假定这时候数据库压力很大，主从库有延迟。主库在插入一条数据 `INSERT INTO `t` (`a`) VALUES (3);` 发生了主备切换
+
+
 
 
 
