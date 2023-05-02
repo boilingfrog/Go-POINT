@@ -6,6 +6,11 @@
   - [读写分离的架构](#%E8%AF%BB%E5%86%99%E5%88%86%E7%A6%BB%E7%9A%84%E6%9E%B6%E6%9E%84)
     - [基于客户端实现读写分离](#%E5%9F%BA%E4%BA%8E%E5%AE%A2%E6%88%B7%E7%AB%AF%E5%AE%9E%E7%8E%B0%E8%AF%BB%E5%86%99%E5%88%86%E7%A6%BB)
     - [基于中间代理实现读写分离](#%E5%9F%BA%E4%BA%8E%E4%B8%AD%E9%97%B4%E4%BB%A3%E7%90%86%E5%AE%9E%E7%8E%B0%E8%AF%BB%E5%86%99%E5%88%86%E7%A6%BB)
+  - [MySQL 中如何保证主备数据一致](#mysql-%E4%B8%AD%E5%A6%82%E4%BD%95%E4%BF%9D%E8%AF%81%E4%B8%BB%E5%A4%87%E6%95%B0%E6%8D%AE%E4%B8%80%E8%87%B4)
+    - [循环复制问题](#%E5%BE%AA%E7%8E%AF%E5%A4%8D%E5%88%B6%E9%97%AE%E9%A2%98)
+  - [主备同步延迟](#%E4%B8%BB%E5%A4%87%E5%90%8C%E6%AD%A5%E5%BB%B6%E8%BF%9F)
+  - [主从读写延迟](#%E4%B8%BB%E4%BB%8E%E8%AF%BB%E5%86%99%E5%BB%B6%E8%BF%9F)
+  - [主从延迟如何处理](#%E4%B8%BB%E4%BB%8E%E5%BB%B6%E8%BF%9F%E5%A6%82%E4%BD%95%E5%A4%84%E7%90%86)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -77,6 +82,74 @@ MySQL 数据进行主从同步，主要是通过 binlog 实现的，从库利用
 一开始创建主备关系的时候，同步是由备库指定的。比如基于位点的主备关系，备库说“我要从 binlog 文件 A 的位置 P ”开始同步， 主库就从这个指定的位置开始往后发。  
 
 而主备复制关系搭建完成以后，是主库来决定“要发数据给备库”的。只有主库有新的日志，就会发送给备库。    
+
+binlog 有三种格式 `statement，row` 和 mixed。   
+
+1、Statement(Statement-Based Replication,SBR)：每一条会修改数据的 SQL 都会记录在 binlog 中，里面记录的是执行的 SQL;
+
+Statement 模式只记录执行的 SQL，不需要记录每一行数据的变化，因此极大的减少了 binlog 的日志量，避免了大量的 IO 操作，提升了系统的性能。
+
+正是由于 Statement 模式只记录 SQL，而如果一些 SQL 中包含了函数，那么可能会出现执行结果不一致的情况。
+
+比如说 uuid() 函数，每次执行的时候都会生成一个随机字符串，在 master 中记录了 uuid，当同步到 slave 之后，再次执行，就获取到另外一个结果了。
+
+所以使用 Statement 格式会出现一些数据一致性问题。
+
+2、Row(Row-Based Replication,RBR)：不记录 SQL 语句上下文信息，仅仅只需要记录某一条记录被修改成什么样子;
+
+Row 格式的日志内容会非常清楚的记录下每一行数据修改的细节，这样就不会出现 Statement 中存在的那种数据无法被正常复制的情况。
+
+比如一个修改，满足条件的数据有 100 行，则会把这 100 行数据详细记录在 binlog 中。当然此时，binlog 文件的内容要比第一种多很多。
+
+不过 Row 格式也有一个很大的问题，那就是日志量太大了，特别是批量 update、整表 delete、alter 表等操作，由于要记录每一行数据的变化，此时会产生大量的日志，大量的日志也会带来 IO 性能问题。
+
+3、Mixed(Mixed-Based Replication,MBR)：Statement 和 Row 的混合体。
+
+因为有些 statement 格式的 binlog 可能会导致主备不一致，所以要使用 row 格式。    
+
+但 row 格式的缺点是，很占空间。比如你用一个 delete 语句删掉10万行数据，用 statement 的话就是一个SQL语句被记录到binlog中，占用几十个字节的空间。但如果用 row 格式的 binlog，就要把这10万条记录都写到 binlog 中。这样做，不仅会占用更大的空间，同时写 binlog 也要耗费IO资源，影响执行速度。所以，MySQL就取了个折中方案，也就是有了 mixed 格式的 binlog。  
+
+mixed 格式的意思是，MySQL 自己会判断这条SQL语句是否可能引起主备不一致，如果有可能，就用 row 格式，否则就用 statement 格式。也就是说，mixed 格式可以利用 statment 格式的优点，同时又避免了数据不一致的风险。   
+
+不过现在越来越多的场景会把把 MySQL 的 binlog 格式设置成 row，例如下面的场景数据恢复。   
+
+这里从 `delete、insert` 和 update 这三种 SQL 语句的角度，来看看数据恢复的问题。   
+
+1、delete：如果执行的是 delete 操作，需要恢复数据。row 格式的 binlog 也会把被删掉的行的整行信息保存起来。所以，如果在执行完一条 delete 语句以后，发现删错数据了，可以直接把 binlog 中记录的 delete 语句转成 insert，把被错删的数据插入回去就可以恢复了；   
+
+2、insert：如果执行的是 insert 操作，需要恢复数据。row 格式下，insert 语句的 binlog 里会记录所有的字段信息，这些信息可以用来精确定位刚刚被插入的那一行。这时，可以直接把 insert 语句转成 delete 语句，删除掉这被误插入的一行数据就可以了；   
+
+3、update：如果执行的是 update 操作，需要进行数据恢复。binlog里面会记录修改前整行的数据和修改后的整行数据。所以，如果误执行了 update 语句的话，只需要把这个 event 前后的两行信息对调一下，再去数据库里面执行，就能恢复这个更新操作了。     
+
+#### 循环复制问题
+
+上面 binlog 的原理，我们可以知道 MySQL 中主备数据同步就是通过 binlog 来保持数据一致的。  
+
+不过，双 M 结构可能存在循环复制的问题。  
+
+<img src="/img/mysql/mysql-double-m.png"  alt="mysql" />   
+
+什么是双 M 架构，双 M 结构和 M-S 结构，其实区别只是多了一条线，即：节点 A 和 B 之间总是互为主备关系。这样在切换的时候就不用再修改主备关系。    
+
+业务逻辑在节点 A 中更新了一条语句，然后把生成的 binlog 发送给节点 B，节点 B 同样也会生成 binlog 。  
+
+如果节点 A 同时又是节点 B 的备库，节点 B 同样也会传递 binlog 到节点 A，节点 A 会执行节点 B 传过来的 binlog。这样，节点 A 和节点 B 会不断的循环这个更新语句，这就是循环复制。   
+
+如何解决呢？  
+
+1、规定两个库的 `server id` 必须不同，如果相同，则它们之间不能设定为主备关系；
+
+2、一个备库接到 binlog 并在重放的过程中，生成与原 binlog 的 `server id` 相同的新的 binlog；  
+
+3、每个库在收到从自己的主库发过来的日志后，先判断 `server id`，如果跟自己的相同，表示这个日志是自己生成的，就直接丢弃这个日志。    
+ 
+这样当设置了双 M 结构，日志的执行流就会变成这样：  
+
+1、从节点 A 更新的事务，binlog 里面记的都是 A 的` server id`；
+
+2、传到节点 B 执行一次以后，节点 B 生成的 binlog 的 `server id` 也是 A 的 `server id`；
+
+3、再传回给节点 A，A 判断到这个 `server id` 与自己的相同，就不会再处理这个日志。所以，死循环在这里就断掉了。
 
 ### 主备同步延迟
 
