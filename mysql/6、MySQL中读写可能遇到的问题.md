@@ -15,6 +15,8 @@
     - [Sleep 方案](#sleep-%E6%96%B9%E6%A1%88)
     - [判断主备无延迟方案](#%E5%88%A4%E6%96%AD%E4%B8%BB%E5%A4%87%E6%97%A0%E5%BB%B6%E8%BF%9F%E6%96%B9%E6%A1%88)
     - [配合semi-sync](#%E9%85%8D%E5%90%88semi-sync)
+    - [等主库位点方案](#%E7%AD%89%E4%B8%BB%E5%BA%93%E4%BD%8D%E7%82%B9%E6%96%B9%E6%A1%88)
+    - [GTID 方案](#gtid-%E6%96%B9%E6%A1%88)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -490,6 +492,7 @@ MySQL 中同样提供了等待同步的命令
 
 和等主库位点方案的方案一样，等待超时就需要向主库中发起查询了。  
 
+### 总结
 
 
 
