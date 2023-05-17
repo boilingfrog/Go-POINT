@@ -11,7 +11,28 @@
 
 ### 前言
 
-最近涉及到业务迁移，梳理
+最近涉及到业务迁移，梳理了老业务，发现用到几种不同的 ingress，借着这个机会来对比下市面中几种常用 ingress 的优缺点，以及业务中该如何选型。   
+
+首先这里列举下，常用的几种 ingress。   
+
+1、`Kubernetes Ingress`；  
+
+2、`Nginx Ingress`；  
+
+3、`Kong Ingress`；  
+
+4、`Traefik Ingress`；  
+
+5、`HAProxy Ingress`；  
+
+6、`Istio Ingress`；  
+
+7、`APISIX Ingress`；  
+
+### Kubernetes Ingress
+
+
+
 
 
 ### 参考
