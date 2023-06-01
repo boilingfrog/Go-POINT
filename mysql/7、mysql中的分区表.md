@@ -84,6 +84,27 @@ InnoDB 存储引擎是按行进行存放的，每个页存放的数据是有硬�
 
 页是 InnoDB 存储引擎管理数据库的最小单位，这里我们再来看下 InnoDB 数据页的内部结构。   
 
+InnoDB 数据页由下面7部分组层  
+
+1、File Header (文件头)；  
+
+2、Page Header (页头)；  
+
+3、Infimum 和 Supremum Records;  
+
+4、User Records(用户记录，机行记录)；  
+
+5、Free Space (空闲空间)；  
+
+6、Page Directory（页目录）；  
+
+7、File Trailer（文件结尾信息）。   
+
+其中 `File Header`，`Page Header`，`File Trailer` 用来记录该页一些空间，大小是固定的，分别为38，56，8 字节。  
+
+
+
+
 
 
 
