@@ -102,9 +102,17 @@ InnoDB 数据页由下面7部分组层
 
 其中 `File Header`，`Page Header`，`File Trailer` 用来记录该页一些空间，大小是固定的，分别为38，56，8 字节。  
 
+`User Records,Free Space,Page Directory` 这部分为实际的行记录存储空间，大小是动态的。   
 
+<img src="/img/mysql/innodb-table-space.jpg"  alt="mysql" />   
 
+1、`File Header`：用来记录页的一些头部信息；  
 
+2、`Page Header`：用来记录数据页的状态信息；  
+
+3、Infimum 和 Supremum Records：在 InnoDB 存引擎中，每个数据页由连个虚拟的行记录，用来限定记录的边界。Infimum 记录的是比页中任何主键都要小的值，Supremum 中记录的是页中最大值的边界。这两个值随着页的创建而创建并且永远都不会被删除。   
+
+<img src="/img/mysql/innodb-infimum-supremun.jpg"  alt="mysql" />   
 
 
 
