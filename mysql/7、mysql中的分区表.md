@@ -212,7 +212,79 @@ LIST 和 RANGE 分区有点类似，只是分区列是离散的不是连续的�
 
 来个栗子，必须根据城市对数据进行分区存储，不同城市的数据存储在不同的分区中。     
 
+```
+1、北京；
+2、上海；
+3、杭州；
+4、浙江；
+5、洛阳；
+6、南宁；
+7、郑州；
+8、南京；
+9、湖州。
 
+CREATE TABLE `t_city` (
+  `id` int(11) NOT NULL,
+  `name` varchar(32) NOT NULL,
+  `city_code` int(11) NOT NULL
+) ENGINE=InnoDB
+PARTITION BY LIST (`city_code`)
+(PARTITION p1 VALUES IN (1, 2, 3),
+ PARTITION p2 VALUES IN (4, 5, 6),
+ PARTITION p3 VALUES IN (7, 8, 9)
+ );
+ 
+insert into t_city values(1, "小明", 1),(2, "小白", 3),(10, "小红", 5),(15, "小李", 7);
+```
+
+查看分区数据  
+
+```
+$ SELECT * FROM t_city PARTITION (p1);
++----+--------+-----------+
+| id | name   | city_code |
++----+--------+-----------+
+|  1 | 小明   |         1 |
+|  2 | 小白   |         3 |
++----+--------+-----------+
+```
+
+LIST 分区就是根据枚举值进行分区，每个分区的值都是离散的。只支持整形，非整形字段需要通过函数转换成整形。   
+
+在 5.5 版本之后，引入了 `LIST COLUMN`，可以使用多个列作为分区键，并允许使用非整数类型的数据类型列作为分区列。可以使用字符串类型、DATE 和 DATETIME 列。与使用`RANGE COLUMNS`进行分区一样，不需要在 COLUMNS() 子句中使用表达式将列值转换为整数。   
+
+```
+CREATE TABLE `t_city_v1` (
+  `id` int(11) NOT NULL,
+  `name` varchar(32) NOT NULL,
+  `city` varchar(32) NOT NULL
+) ENGINE=InnoDB
+PARTITION BY LIST COLUMNS (`city`)
+(PARTITION p1 VALUES IN ("北京", "上海", "杭州"),
+ PARTITION p2 VALUES IN ("浙江", "洛阳", "南宁"),
+ PARTITION p3 VALUES IN ("郑州", "南京", "湖州")
+ );
+```
+
+**3、HASH 分区**
+
+HASH 分区的目的是将数据均匀的分布到预先定义的各个分区中，保证各个分区的数据数据量大致都是一样的。   
+
+在 RANGE 分区和 LIST 分区中，必须明确的指定一个给定的列值或列值集合应该保存在哪个分区中，在 HASH 分区中，MySQL 会自动完成这些工作。   
+
+使用 HASH 分区的目的如下：  
+
+- 1、使分区间数据分布均匀，分区间可以并行访问； 
+
+- 2、根据分区键使用分区修剪，基于分区键的等值查询开销减小；
+
+- 3、随机分布数据，以避免I/O瓶颈。
+
+分区键的选择一般要满足以下要求：
+
+- 1、选择唯一或几乎唯一的列或列的组合；  
+
+- 2、为每个2的幂次分区创建多个分区和子分区。例如：2、4、8、16、32、64、128等。
 
 
 
