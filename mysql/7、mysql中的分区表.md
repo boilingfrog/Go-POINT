@@ -286,9 +286,133 @@ HASH 分区的目的是将数据均匀的分布到预先定义的各个分区中
 
 - 2、为每个2的幂次分区创建多个分区和子分区。例如：2、4、8、16、32、64、128等。
 
+来个栗子  
 
+```
+CREATE TABLE `t_hash` (
+  `custkey` int(11) NOT NULL,
+  `name` varchar(25) NOT NULL,
+   PRIMARY KEY (`custkey`)
+) ENGINE=InnoDB
+PARTITION BY HASH(custkey)
+( PARTITION p1,
+  PARTITION p2,
+  PARTITION p3,
+  PARTITION p4
+);
 
+insert into t_hash values(1, "小明"),(2, "小白"),(10, "小红"),(15, "小李");
+```
 
+查看分区数据
+
+```
+$ select 
+    partition_name part,  
+    partition_expression expr,  
+    partition_description descr,  
+    table_rows  
+  from information_schema.partitions  where 
+    table_schema = schema()  
+    and table_name='t_hash';  
+
++------+-----------+-------+------------+
+| part | expr      | descr | TABLE_ROWS |
++------+-----------+-------+------------+
+| p1   | `custkey` | NULL  |          0 |
+| p2   | `custkey` | NULL  |          1 |
+| p3   | `custkey` | NULL  |          2 |
+| p4   | `custkey` | NULL  |          1 |
++------+-----------+-------+------------+
+```
+
+指定 HASH 分区的数量将自动生成各个分区的内部名称。   
+
+```
+CREATE TABLE `t_hash_1` (
+  `custkey` int(11) NOT NULL,
+  `name` varchar(25) NOT NULL,
+   PRIMARY KEY (`custkey`)
+) ENGINE=InnoDB
+PARTITION BY HASH(custkey)
+PARTITIONS 8;
+```
+
+查看分区数据  
+
+```
+$ select 
+    partition_name part,  
+    partition_expression expr,  
+    partition_description descr,  
+    table_rows  
+  from information_schema.partitions  where 
+    table_schema = schema()  
+    and table_name='t_hash_1';  
+    
++------+-----------+-------+------------+
+| part | expr      | descr | TABLE_ROWS |
++------+-----------+-------+------------+
+| p0   | `custkey` | NULL  |          0 |
+| p1   | `custkey` | NULL  |          0 |
+| p2   | `custkey` | NULL  |          0 |
+| p3   | `custkey` | NULL  |          0 |
+| p4   | `custkey` | NULL  |          0 |
+| p5   | `custkey` | NULL  |          0 |
+| p6   | `custkey` | NULL  |          0 |
+| p7   | `custkey` | NULL  |          0 |
++------+-----------+-------+------------+
+```
+
+**4、KEY 分区**
+
+KEY 分区和 HASH 分区类似。不同之处，HASH 使用用户自定义的函数进行分区，KEY 分区使用 MYSQL 数据库提供的函数进行分区。   
+
+KEY 分区使用 MySQL 服务器提供的 HASH 函数；KEY 分区支持使用除 blob 和 text 外其他类型的列作为分区键。   
+
+KEY 分区有如下几种情况：   
+
+1、KEY 分区可以不指定分区键，默认使用主键作为分区键；   
+
+2、没有主键时，则选择非空唯一键作为分区键；   
+
+3、若无主键又无唯一键，则必须指定分区键，否则报错。    
+
+```
+CREATE TABLE `t_key` (
+  `custkey` int(11) NOT NULL,
+  `name` varchar(25) NOT NULL,
+   PRIMARY KEY (`custkey`)
+) ENGINE=InnoDB
+PARTITION BY KEY(custkey)
+PARTITIONS 8;
+```
+
+查看分区数据
+
+```
+$ select 
+    partition_name part,  
+    partition_expression expr,  
+    partition_description descr,  
+    table_rows  
+  from information_schema.partitions  where 
+    table_schema = schema()  
+    and table_name='t_key';  
+
++------+-----------+-------+------------+
+| part | expr      | descr | TABLE_ROWS |
++------+-----------+-------+------------+
+| p0   | `custkey` | NULL  |          0 |
+| p1   | `custkey` | NULL  |          0 |
+| p2   | `custkey` | NULL  |          0 |
+| p3   | `custkey` | NULL  |          0 |
+| p4   | `custkey` | NULL  |          0 |
+| p5   | `custkey` | NULL  |          0 |
+| p6   | `custkey` | NULL  |          0 |
+| p7   | `custkey` | NULL  |          0 |
++------+-----------+-------+------------+
+```
 
 #### 获取 MySQL 分区表的信息
 
@@ -356,11 +480,6 @@ $ explain select * from t where id=10;
 ```
 
 可以看到上面的查询使用到了分区 p1。   
-
-
-
-
-
 
 ### 参考
 
