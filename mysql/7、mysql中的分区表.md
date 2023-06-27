@@ -414,6 +414,36 @@ $ select
 +------+-----------+-------+------------+
 ```
 
+**子分区**
+
+子分区是在分区的基础之上在进行分区，有时也称这种分区为复合分区。MYSQL 从 5.1 开始支持对已经通过 range 和 list 分区的表在进行子分区，子分区可以使用 hash 分区，也可以使用 key 分区。   
+
+```
+CREATE TABLE `t_hash_2` (
+  `id` int(11) NOT NULL,
+   `time` date NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+  `name` varchar(25) NOT NULL,
+   PRIMARY KEY (`id`)
+) ENGINE=InnoDB
+PARTITION BY RANGE(year(purchased))
+PARTITIONS 8
+(
+   partition p0 values less than (1990),
+   partition p1 values less than (2000),
+   partition p2 values less than maxvalue,
+);
+
+create table ts (id int, purchased date)
+    partition by range(year(purchased))
+    subpartition by hash (to_days(purchased))
+    subpartitions 2
+    (
+        partition p0 values less than (1990),
+        partition p1 values less than (2000),
+        partition p2 values less than maxvalue,
+    );
+```
+
 #### 获取 MySQL 分区表的信息
 
 1、`show create table 表名`，获取创建分区表的时候的创建语句；  
