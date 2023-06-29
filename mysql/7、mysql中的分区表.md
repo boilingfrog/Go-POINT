@@ -419,19 +419,48 @@ $ select
 子分区是在分区的基础之上在进行分区，有时也称这种分区为复合分区。MYSQL 从 5.1 开始支持对已经通过 range 和 list 分区的表在进行子分区，子分区可以使用 hash 分区，也可以使用 key 分区。   
 
 ```
-CREATE TABLE `t_hash_2` (
+CREATE TABLE `t_hash_3` (
   `id` int(11) NOT NULL,
-   `time` date NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+  `purchased` date NOT NULL,
   `name` varchar(25) NOT NULL,
-   PRIMARY KEY (`id`)
+   KEY `purchased` (`purchased`)
 ) ENGINE=InnoDB
 PARTITION BY RANGE(year(purchased))
-PARTITIONS 8
-(
-   partition p0 values less than (1990),
-   partition p1 values less than (2000),
-   partition p2 values less than maxvalue,
-);
+SUBPARTITION BY HASH ((TO_DAYS(purchased)))
+SUBPARTITION 2 (
+ partition p0 values less than (1990),
+ partition p1 values less than (2000),
+ partition p2 values less than (MAXVALUE)
+ );
+ 
+ 
+CREATE TABLE `t_hash_2` (
+  `o_orderkey` int(11) NOT NULL,
+  `o_custkey` int(11) NOT NULL,
+  `o_orderstatus` char(1) DEFAULT NULL,
+  `o_totalprice` decimal(10,2) DEFAULT NULL,
+  `o_orderdate` date NOT NULL,
+  `o_orderpriority` char(15) DEFAULT NULL,
+  `o_clerk` char(15) DEFAULT NULL,
+  `o_shippriority` int(11) DEFAULT NULL,
+  `o_comment` varchar(79) DEFAULT NULL,
+  PRIMARY KEY (`o_orderkey`,`o_orderdate`,`o_custkey`),
+  KEY `o_orderkey` (`o_orderkey`),
+  KEY `i_o_custkey` (`o_custkey`),
+  KEY `i_o_orderdate` (`o_orderdate`)
+) ENGINE=InnoDB
+PARTITION BY RANGE  COLUMNS(o_orderdate)
+SUBPARTITION BY HASH (`o_custkey`)
+SUBPARTITIONS 64
+(PARTITION item1 VALUES LESS THAN ('1992-01-01'),
+ PARTITION item2 VALUES LESS THAN ('1993-01-01'),
+ PARTITION item3 VALUES LESS THAN ('1994-01-01'),
+ PARTITION item4 VALUES LESS THAN ('1995-01-01'),
+ PARTITION item5 VALUES LESS THAN ('1996-01-01'),
+ PARTITION item6 VALUES LESS THAN ('1997-01-01'),
+ PARTITION item7 VALUES LESS THAN ('1998-01-01'),
+ PARTITION item8 VALUES LESS THAN ('1999-01-01'),
+ PARTITION item9 VALUES LESS THAN (MAXVALUE));
 
 create table ts (id int, purchased date)
     partition by range(year(purchased))
