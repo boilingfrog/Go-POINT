@@ -11,6 +11,11 @@
   - [InnoDB 数据页结构](#innodb-%E6%95%B0%E6%8D%AE%E9%A1%B5%E7%BB%93%E6%9E%84)
   - [分区别表的概念](#%E5%88%86%E5%8C%BA%E5%88%AB%E8%A1%A8%E7%9A%84%E6%A6%82%E5%BF%B5)
     - [分区类型](#%E5%88%86%E5%8C%BA%E7%B1%BB%E5%9E%8B)
+    - [1、RANGE 分区](#1range-%E5%88%86%E5%8C%BA)
+    - [2、LIST 分区](#2list-%E5%88%86%E5%8C%BA)
+    - [3、HASH 分区](#3hash-%E5%88%86%E5%8C%BA)
+    - [4、KEY 分区](#4key-%E5%88%86%E5%8C%BA)
+    - [子分区](#%E5%AD%90%E5%88%86%E5%8C%BA)
     - [获取 MySQL 分区表的信息](#%E8%8E%B7%E5%8F%96-mysql-%E5%88%86%E5%8C%BA%E8%A1%A8%E7%9A%84%E4%BF%A1%E6%81%AF)
   - [参考](#%E5%8F%82%E8%80%83)
 
@@ -150,7 +155,7 @@ MySQL 数据库支持下面几种类型的分区
 
 下面对几种分区进行一一实践下   
 
-**1、RANGE 分区**   
+#### 1、RANGE 分区
 
 RANGE 是最常用的分区类型，会根据指定的范围进行分区划分，来个栗子实践下  
 
@@ -206,7 +211,7 @@ RANGE 的适用场景：
 
 3、不能在指定的时间内完成大型表的管理操作，例如备份和恢复，但是可以根据分区范围列将它们划分为更小的逻辑块。   
 
-**2、LIST 分区**
+#### 2、LIST 分区
 
 LIST 和 RANGE 分区有点类似，只是分区列是离散的不是连续的，LIST 分区根据数据的枚举值进行分区。   
 
@@ -266,7 +271,7 @@ PARTITION BY LIST COLUMNS (`city`)
  );
 ```
 
-**3、HASH 分区**
+#### 3、HASH 分区
 
 HASH 分区的目的是将数据均匀的分布到预先定义的各个分区中，保证各个分区的数据数据量大致都是一样的。   
 
@@ -364,7 +369,7 @@ $ select
 +------+-----------+-------+------------+
 ```
 
-**4、KEY 分区**
+#### 4、KEY 分区
 
 KEY 分区和 HASH 分区类似。不同之处，HASH 使用用户自定义的函数进行分区，KEY 分区使用 MYSQL 数据库提供的函数进行分区。   
 
@@ -414,64 +419,37 @@ $ select
 +------+-----------+-------+------------+
 ```
 
-**子分区**
+#### 子分区
 
 子分区是在分区的基础之上在进行分区，有时也称这种分区为复合分区。MYSQL 从 5.1 开始支持对已经通过 range 和 list 分区的表在进行子分区，子分区可以使用 hash 分区，也可以使用 key 分区。   
 
 ```
-CREATE TABLE `t_hash_3` (
+CREATE TABLE `t_hash_5` (
   `id` int(11) NOT NULL,
   `purchased` date NOT NULL,
   `name` varchar(25) NOT NULL,
    KEY `purchased` (`purchased`)
 ) ENGINE=InnoDB
 PARTITION BY RANGE(year(purchased))
-SUBPARTITION BY HASH ((TO_DAYS(purchased)))
-SUBPARTITION 2 (
+SUBPARTITION BY HASH (to_days(purchased))
+SUBPARTITIONS 4 (
  partition p0 values less than (1990),
  partition p1 values less than (2000),
  partition p2 values less than (MAXVALUE)
  );
- 
- 
-CREATE TABLE `t_hash_2` (
-  `o_orderkey` int(11) NOT NULL,
-  `o_custkey` int(11) NOT NULL,
-  `o_orderstatus` char(1) DEFAULT NULL,
-  `o_totalprice` decimal(10,2) DEFAULT NULL,
-  `o_orderdate` date NOT NULL,
-  `o_orderpriority` char(15) DEFAULT NULL,
-  `o_clerk` char(15) DEFAULT NULL,
-  `o_shippriority` int(11) DEFAULT NULL,
-  `o_comment` varchar(79) DEFAULT NULL,
-  PRIMARY KEY (`o_orderkey`,`o_orderdate`,`o_custkey`),
-  KEY `o_orderkey` (`o_orderkey`),
-  KEY `i_o_custkey` (`o_custkey`),
-  KEY `i_o_orderdate` (`o_orderdate`)
-) ENGINE=InnoDB
-PARTITION BY RANGE  COLUMNS(o_orderdate)
-SUBPARTITION BY HASH (`o_custkey`)
-SUBPARTITIONS 64
-(PARTITION item1 VALUES LESS THAN ('1992-01-01'),
- PARTITION item2 VALUES LESS THAN ('1993-01-01'),
- PARTITION item3 VALUES LESS THAN ('1994-01-01'),
- PARTITION item4 VALUES LESS THAN ('1995-01-01'),
- PARTITION item5 VALUES LESS THAN ('1996-01-01'),
- PARTITION item6 VALUES LESS THAN ('1997-01-01'),
- PARTITION item7 VALUES LESS THAN ('1998-01-01'),
- PARTITION item8 VALUES LESS THAN ('1999-01-01'),
- PARTITION item9 VALUES LESS THAN (MAXVALUE));
-
-create table ts (id int, purchased date)
-    partition by range(year(purchased))
-    subpartition by hash (to_days(purchased))
-    subpartitions 2
-    (
-        partition p0 values less than (1990),
-        partition p1 values less than (2000),
-        partition p2 values less than maxvalue,
-    );
 ```
+
+上面的栗子，可以看到首先进行了 RANGE 分区，然后又进行了一次 HASH 分区，分区的数量就是 `3X4 = 12` 个，首先创建了 3 个 RANGE 分区，同时每个 RANGE 分区又创建了 4 个 HASH 子分区，一共就是 12 个分区。   
+
+子分区创建有下面几个注意的点   
+
+1、每个分区的数量必须相同；   
+
+2、要在一个分区表的任何分区上使用 SUBPARTITION 来定义子分区，就需要给所有的分区定义子分区；  
+
+3、每个 SUBPARTITION 字句必须包含一个分区的名字；  
+
+4、子分区的名字必须是唯一的。   
 
 #### 获取 MySQL 分区表的信息
 
