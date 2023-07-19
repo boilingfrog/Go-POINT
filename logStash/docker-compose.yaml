@@ -1,0 +1,21 @@
+version: '3'
+services:
+
+  logstash-out:
+    image: docker.elastic.co/logstash/logstash:7.10.2
+    container_name: logstash_out
+    restart: always
+    environment:
+      - LS_JAVA_OPTS=-Xmx256m -Xms256m
+    volumes:
+      - ./logstash-out/logstash.conf:/etc/logstash/conf.d/logstash.conf
+      - ./logstash-out/logstash.yml:/etc/logstash/conf.d/logstash.yml
+    entrypoint:
+      - logstash
+      - -f
+      - /etc/logstash/conf.d/logstash.conf
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "200m"
+        max-file: "3"
