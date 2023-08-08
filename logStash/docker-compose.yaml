@@ -9,7 +9,6 @@ services:
       - LS_JAVA_OPTS=-Xmx256m -Xms256m
     volumes:
       - ./logstash-out/logstash.conf:/etc/logstash/conf.d/logstash.conf
-      - ./logstash-out/logstash.yml:/etc/logstash/conf.d/logstash.yml
     entrypoint:
       - logstash
       - -f
