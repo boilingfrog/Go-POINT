@@ -4,6 +4,7 @@
 - [什么是 MongoDB](#%E4%BB%80%E4%B9%88%E6%98%AF-mongodb)
   - [前言](#%E5%89%8D%E8%A8%80)
   - [MongoDB 对比关系型数据库 MySQL](#mongodb-%E5%AF%B9%E6%AF%94%E5%85%B3%E7%B3%BB%E5%9E%8B%E6%95%B0%E6%8D%AE%E5%BA%93-mysql)
+  - [什么时候考虑 MongoDB](#%E4%BB%80%E4%B9%88%E6%97%B6%E5%80%99%E8%80%83%E8%99%91-mongodb)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -67,6 +68,21 @@ MongoDB 除了支持垂直扩展，MongoDB 中的 `Sharded Cluster` 集群实现
 | 数据容量     | 没有理论上限            |  千万，亿                    |
 | join操作     | MongoDB没有Join       |  MySQL支持join               |
 
+### 什么时候考虑 MongoDB
+
+下面几种数据场景可能就适合用于 MongoDB 来进行存储  
+
+1、数据量大；  
+
+2、读写操作频繁；  
+
+3、价值较低的数据，对事务性要求不高。   
+
+相应的就是不适用的场景  
+
+1、高度的事务性的不适合；  
+
+2、复杂的跨表级别的不适合。      
 
 ### 参考
 
