@@ -3,6 +3,7 @@
 
 - [什么是 MongoDB](#%E4%BB%80%E4%B9%88%E6%98%AF-mongodb)
   - [前言](#%E5%89%8D%E8%A8%80)
+  - [MongoDB 的主要特性](#mongodb-%E7%9A%84%E4%B8%BB%E8%A6%81%E7%89%B9%E6%80%A7)
   - [MongoDB 对比关系型数据库 MySQL](#mongodb-%E5%AF%B9%E6%AF%94%E5%85%B3%E7%B3%BB%E5%9E%8B%E6%95%B0%E6%8D%AE%E5%BA%93-mysql)
   - [什么时候考虑 MongoDB](#%E4%BB%80%E4%B9%88%E6%97%B6%E5%80%99%E8%80%83%E8%99%91-mongodb)
   - [参考](#%E5%8F%82%E8%80%83)
@@ -27,7 +28,7 @@ MongoDB 中记录的是一个文档，由字段和键值对组成的数据结构
 
 3、动态模式支持流畅的多态性。    
 
-MongoDB 的主要特性  
+### MongoDB 的主要特性  
 
 **1、高性能**   
 
