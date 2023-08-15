@@ -57,6 +57,23 @@ B+ 树相比与 B 树：
 
 那么 MongoDB 使用的是什么索引呢？在网上搜索会发现很多文章 MongoDB 用的是 B 树，这个答案是不准确的。   
 
+MongoDB 官网中有一段描述写的是MongoDB索引使用 B-tree 数据结构。  
+
+> Indexes are special data structures that store a small portion of the collection's data set in an easy-to-traverse form. MongoDB indexes use a B-tree data structure.
+
+> The index stores the value of a specific field or set of fields, ordered by the value of the field. The ordering of the index entries supports efficient equality matches and range-based query operations. In addition, MongoDB can return sorted results using the ordering in the index.
+
+大致意思就是 MongoDB 使用的是 B-tree 数据结构，支持等值匹配和范围查询。可以使用索引的排序返回排序的结果。   
+
+> 在很地方我们会看到  B-tree， B-tree 树即 B 树。B 即 Balanced 平衡，因为 B 树的原英文名称为 B-tree，而国内很多人喜欢把 B-tree 译作 B-树，这是个非常不好的直译，很容易让人产生误解，人们可能会以为 B-树 和 B树 是两种树。
+
+上面的 B 树 和 B+ 树的对比我们知道，B 树因为没有 B+ 中叶子节点的链指针，所以  B 树是不支持的范围查询的。   
+
+MongoDB 官网中的介绍中明确的表示 MongoDB 支持范围查询，所以我们可以得出结论用的就是 B+ 树。官网中讲的 B 树，指广义上的 B 树，因为 B+ 树也是 B 树的变种也能称为 B 树。   
+
+MongoDB 从 3.2 开始就默认使用 WiredTiger 作为存储引擎。   
+
+> WiredTiger maintains a table's data in memory using a data structure called a B-Tree ( B+ Tree to be specific), referring to the nodes of a B-Tree as pages. Internal pages carry only keys. The leaf pages store both keys and values.
 
 
 
