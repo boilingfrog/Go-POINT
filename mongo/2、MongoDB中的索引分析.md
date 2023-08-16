@@ -75,6 +75,12 @@ MongoDB 从 3.2 开始就默认使用 WiredTiger 作为存储引擎。
 
 > WiredTiger maintains a table's data in memory using a data structure called a B-Tree ( B+ Tree to be specific), referring to the nodes of a B-Tree as pages. Internal pages carry only keys. The leaf pages store both keys and values.
 
+根据 WiredTiger 官方文档的描述 WiredTiger 就是 B+ 树，非叶子节点上只存储 key 值信息，叶子节点会存储 key 和 data 的数据。  
+
+文档地址[WiredTiger Tuning page size and compression](https://source.wiredtiger.com/3.0.0/tune_page_size_and_comp.html)
+
+所以可以得出结论 MongoDB 默认的存储引擎 WiredTiger 目前使用的是 B+ 树索引结构。   
+
 
 
 ### 参考
