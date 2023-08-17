@@ -81,6 +81,17 @@ MongoDB 从 3.2 开始就默认使用 WiredTiger 作为存储引擎。
 
 所以可以得出结论 MongoDB 默认的存储引擎 WiredTiger 目前使用的是 B+ 树索引结构。   
 
+### 单键索引
+
+单键索引：只针对一个键添加索引，是最简单的索引类型。   
+
+``
+db.test_table.createIndex({ name: 1 },{background: true})
+``
+
+其中 1 指定升序创建索引，-1 表示指定降序创建索引。   
+
+background
 
 
 ### 参考
