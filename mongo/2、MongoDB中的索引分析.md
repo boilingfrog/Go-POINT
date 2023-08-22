@@ -3,6 +3,9 @@
 
 - [MongoDB 的索引](#mongodb-%E7%9A%84%E7%B4%A2%E5%BC%95)
   - [前言](#%E5%89%8D%E8%A8%80)
+  - [MongoDB 使用 B 树还是 B+ 树索引](#mongodb-%E4%BD%BF%E7%94%A8-b-%E6%A0%91%E8%BF%98%E6%98%AF-b-%E6%A0%91%E7%B4%A2%E5%BC%95)
+  - [单键索引](#%E5%8D%95%E9%94%AE%E7%B4%A2%E5%BC%95)
+  - [联合索引](#%E8%81%94%E5%90%88%E7%B4%A2%E5%BC%95)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -109,16 +112,11 @@ MongoDB 中联合索引的使用和 MySQL 中联合索引的使用类似，也�
 
 MongoDB 中联合索引的使用，对于索引的创建的顺序有一个原则就是  ESR 规则。   
 
-就是联合索引的排序顺序从左到右为  
+<img src="/img/mongo/mongo-esr.jpg"  alt="mongo" />     
 
-1、精确（Equal）匹配的字段放最前面；  
+Equal：首先进行等值查询，就能过滤掉大部分数据了，让后面的排序和范围查询在相对较小的数据范中进行操作；   
 
-2、排序（Sort）条件放中间；  
-
-3、范围（Range）匹配的字段放最后面。   
-
-同样适用：ES, ER。   
-
+Sort：
 
 
 
@@ -136,3 +134,4 @@ MongoDB 中联合索引的使用，对于索引的创建的顺序有一个原则
 【MySQL 中的索引】https://www.cnblogs.com/ricklz/p/17262747.html   
 【performance-best-practices-indexing】https://www.mongodb.com/blog/post/performance-best-practices-indexing  
 【tune_page_size_and_comp】https://source.wiredtiger.com/3.0.0/tune_page_size_and_comp.html       
+【equality-sort-range-rule】https://www.mongodb.com/docs/manual/tutorial/equality-sort-range-rule/  
