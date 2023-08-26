@@ -130,6 +130,22 @@ MongoDB 中联合索引的使用，对于索引的创建的顺序有一个原则
 
 因为MongoDB 和 MySQL 使用的都是 B+ 树索引，这个原则两者同样适用。    
 
+再来看下 MongoDB 中的排序
+
+在 MongoDB 中，排序的字段我们可以添加索引来保证排序的高效性，如果排序的字段没有添加索引或者添加的索引没有命中，那么排序就会在内存中进行。   
+
+MongoDB 中内存排序效率不高，内存中排序是有内存大小的限制的，版本不同，这个默认的内存也不一样，如果超过这个限制就会报错。在 4.4 版本，引入了 `cursor.allowDiskUse()` 可以控制，排序内存超的时候，允许或禁止在磁盘上写入临时文件，将排序操作在磁盘中完成。磁盘的 I/O 是没有内存效率高的，所以 MongoDB 在排序没有命中索引的情况下，大数据量的排序效率很低。      
+
+从 `MongoDB 6.0` 开始，需要大于 `100 MB` 内存的操作默认会自动将数据写入临时文件。    
+
+
+
+
+
+
+
+
+
 
 
 ### 参考
@@ -139,3 +155,4 @@ MongoDB 中联合索引的使用，对于索引的创建的顺序有一个原则
 【performance-best-practices-indexing】https://www.mongodb.com/blog/post/performance-best-practices-indexing  
 【tune_page_size_and_comp】https://source.wiredtiger.com/3.0.0/tune_page_size_and_comp.html       
 【equality-sort-range-rule】https://www.mongodb.com/docs/manual/tutorial/equality-sort-range-rule/  
+【使用索引来排序查询结果】https://mongoing.com/docs/tutorial/sort-results-with-indexes.html      
