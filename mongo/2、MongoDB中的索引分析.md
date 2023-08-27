@@ -138,6 +138,36 @@ MongoDB 中内存排序效率不高，内存中排序是有内存大小的限制
 
 从 `MongoDB 6.0` 开始，需要大于 `100 MB` 内存的操作默认会自动将数据写入临时文件。    
 
+因为排序效率不高，在查询条件带有排序的操作情况，一般考虑将排序字段也添加到组合索引中。至于字段的先后顺序，可以参见上文中的 ESR 规则。   
+
+单字段创建索引，无论是升序还是降序，对 sort 查询没有影响，MongoDB 可以从任意一方向遍历索引。但是联合索引，排序字段的升序降序对查询的的结果就有影响了。   
+
+来个栗子  
+
+假定有一个集合 events ,其中包含两个字段 `username 和 date`。   
+
+创建索引 `db.events.createIndex( { "username" : 1, "date" : -1 } )`  
+
+下面的两种查询能够命中索引   
+
+``
+db.events.find().sort( { username: 1, date: -1 } )
+db.events.find().sort( { username: -1, date: 1 } )
+``
+
+但是下面的这种查询就不能命中了  
+
+```
+db.events.find().sort( { username: 1, date: 1 } )
+```
+
+为什么呢？   
+
+因为 MongoDB 用的还是 B+ 树，当创建 `db.events.createIndex( { "username" : 1, "date" : -1 } )` 索引。B+ 数上的结构，username 从左到右是相对升序的。date 字段相对 username 字段，从左到右是降序的。  
+
+如果执行 `db.events.find().sort( { username: 1, date: 1 } )` 查询，username 字段从左边查询命中了创建的索引，但是 date 的查询是升序的，和索引的顺序不匹配，这种索引就命中不到了。     
+
+
 
 
 
