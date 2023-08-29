@@ -168,16 +168,6 @@ db.events.find().sort( { username: 1, date: 1 } )
 如果执行 `db.events.find().sort( { username: 1, date: 1 } )` 查询，username 字段从左边查询命中了创建的索引，但是 date 的查询是升序的，和索引的顺序不匹配，这种索引就命中不到了。     
 
 
-
-
-
-
-
-
-
-
-
-
 ### 参考
 
 【MongoDB简介】https://docs.mongoing.com/mongo-introduction      
