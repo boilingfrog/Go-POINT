@@ -49,11 +49,11 @@ db.getCollection("test_explain").find({"age" : 59}).sort({_id: -1}).explain()
 {
 	"queryPlanner" : {
 		"plannerVersion" : 1,
-		"namespace" : "gleeman.test_explain",
-		"indexFilterSet" : false,
+		"namespace" : "gleeman.test_explain", // 查询的命名空间，作用于那个库的那个表
+		"indexFilterSet" : false, // 针对该query是否有 indexfilter，indexfilter 的作用见下文
 		"parsedQuery" : {
 			"age" : {
-				"$eq" : 59
+				"$eq" : 59 
 			}
 		},
 		"winningPlan" : { //查询优化器根据该 query 选择的最优的查询计划
@@ -139,6 +139,16 @@ db.getCollection("test_explain").find({"age" : 59}).sort({_id: -1}).explain()
 }
 ```
 
+#### indexfilter
+
+索引过滤器(indexfilter) 决定了查询优化器对于某一类型的查询将如何使用 index,仅仅会影响指定的查询类型。    
+
+简单的讲就是，
+
+
+
+
+
 #### Stage 参数说明  
 
 来看下 Stage 中的参数   
@@ -172,7 +182,6 @@ SUBPLA #未使用到索引的$or查询的stage返回
 TEXT #使用全文索引进行查询时候的stage返回
 
 PROJECTION #限定返回字段时候stage的返回
-
 
 
 
