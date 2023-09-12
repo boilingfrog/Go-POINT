@@ -51,13 +51,13 @@ db.getCollection("test_explain").find({"age" : 59}).sort({_id: -1}).explain()
 		"plannerVersion" : 1,
 		"namespace" : "gleeman.test_explain", // 查询的命名空间，作用于那个库的那个表
 		"indexFilterSet" : false, // 针对该query是否有 indexfilter，indexfilter 的作用见下文
-		"parsedQuery" : {
+		"parsedQuery" : { // 解析查询条件，即过滤条件是什么，此处是 age = 59
 			"age" : {
 				"$eq" : 59 
 			}
 		},
 		"winningPlan" : { //查询优化器根据该 query 选择的最优的查询计划
-			"stage" : "SORT", // 最优执行计划的 stage
+			"stage" : "SORT", // 最优执行计划的，这里是 sort 表示在内存中具体的 stage 中的参数含义可见下文  
 			"sortPattern" : {
 				"_id" : -1
 			},
@@ -141,49 +141,60 @@ db.getCollection("test_explain").find({"age" : 59}).sort({_id: -1}).explain()
 
 #### indexfilter
 
-索引过滤器(indexfilter) 决定了查询优化器对于某一类型的查询将如何使用 index,仅仅会影响指定的查询类型。    
+我们可以针对某些查询，指定特定的索引(索引必须存在)。如果查询条件吻合，就会使用指定的索引，如果指定了多个索引，会从中选出一个查询计划最优的索引执行。    
 
-简单的讲就是，
+```
+db.runCommand(
+   {
+      planCacheSetFilter: <collection>, // 数据表
+      query: <query>, // 指定的查询条件
+      sort: <sort>, // 指定的排序条件
+      projection: <projection>,
+      indexes: [ <index1>, <index2>, ...] // 指定查询条件对应的索引
+   }
+)
+```
 
+来个栗子   
 
+```
+db.runCommand(
+   {
+      planCacheSetFilter: "orders",
+      query: { status: "A" },
+      indexes: [
+         { status: 1，cust_id: 1,  }
+      ]
+   }
+)
+```
 
+上面对 orders 表建立了一个 indexFilter，指定了查询条件，在查询 orders 表中的 `status= A` 时，就会命中 indexFilter 中指定的 indexes。   
+
+如果执行时通过 hint 指定了其他的 index，查询优化器将会忽略 hint 所设置 index，仍然使用 indexfilter 中设定的查询计划。    
 
 
 #### Stage 参数说明  
 
 来看下 Stage 中的参数   
 
-- COLLSCAN：表示执行是全表扫描
-
-- IXSCAN #索引扫描
-
-- FETCH #根据索引去检索指定document
-
-SHARD_MERGE #将各个分片返回数据进行merge
-
-SORT #表明在内存中进行了排序（与老版本的scanAndOrder:true一致）
-
-LIMIT #使用limit限制返回数
-
-SKIP #使用skip进行跳过
-
-IDHACK #针对_id进行查询
-
-SHARDING_FILTER #通过mongos对分片数据进行查询
-
-COUNT #利用db.coll.explain().count()之类进行count运算
-
-COUNTSCAN #count不使用Index进行count时的stage返回
-
-COUNT_SCAN #count使用了Index进行count时的stage返回
-
-SUBPLA #未使用到索引的$or查询的stage返回
-
-TEXT #使用全文索引进行查询时候的stage返回
-
-PROJECTION #限定返回字段时候stage的返回
-
-
+|     类型                                       |      描述                                                 |           
+| --------------------------------------------- | -------------------------------------------------------- | 
+|     COLLSCAN                                  |      全表扫描                                              |           
+|     IXSCAN                                    |      索引扫描                                              |           
+|     FETCH                                     |      根据索引检索指定的文档                                  |           
+|     SHARD_MERGE                               |      将各个分片的返回结果进行merge                           |           
+|     SORT                                      |      表示在内存中进行了排序                                  |           
+|     LIMIT                                     |      使用 limit 限制返回结果的数量                           |           
+|     SKIP                                      |      使用 SKIP 进行跳过                                    |           
+|     IDHACK                                    |      针对 _id 字段进行查询                                  |           
+|     SHANRDING_FILTER                          |      通过 mongos 对分片数据进行查询                          |           
+|     COUNT                                     |      利用 db.coll.explain().count() 进行 count 运算        |           
+|     COUNTSCAN                                 |      count 不使用 index进行 count时的 stage 返回            |           
+|     COUNT_SCAN                                |      count 使用了 index进行 count时的 stage 返回            |           
+|     SUBPLA                                    |      未使用到索引的 $or 查询的 stage 返回                    |           
+|     TEXT                                      |      使用全文索引进行查询时的 stage 返回                      |           
+|     PROJECTION                                |      限定返回字段时候stage的返回                             |           
 
 
 ### 参考
