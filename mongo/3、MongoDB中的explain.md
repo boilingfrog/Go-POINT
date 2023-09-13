@@ -61,17 +61,17 @@ db.getCollection("test_explain").find({"age" : 59}).sort({_id: -1}).explain()
 			"sortPattern" : {
 				"_id" : -1
 			},
-			"inputStage" : {
+			"inputStage" : { // 用来描述子 stage，并且为其父 stage 提供文档和索引关键字,这里面含有着执行计划中比较主要的信息
 				"stage" : "SORT_KEY_GENERATOR",
 				"inputStage" : {
-					"stage" : "FETCH",
+					"stage" : "FETCH", // FETCH 根据索引检索指定的文件
 					"inputStage" : {
-						"stage" : "IXSCAN",
-						"keyPattern" : {
+						"stage" : "IXSCAN", // stage 表示索引扫描
+						"keyPattern" : { // 索引命中的索引
 							"age" : -1
 						},
-						"indexName" : "age_-1",
-						"isMultiKey" : false,
+						"indexName" : "age_-1", // 计算选择的索引的名字
+						"isMultiKey" : false, // 是否为多键索引，因为用到的索引是单列索引，这里是 false
 						"multiKeyPaths" : {
 							"age" : [ ]
 						},
@@ -79,17 +79,17 @@ db.getCollection("test_explain").find({"age" : 59}).sort({_id: -1}).explain()
 						"isSparse" : false,
 						"isPartial" : false,
 						"indexVersion" : 2,
-						"direction" : "forward",
-						"indexBounds" : {
+						"direction" : "forward", // 此 query 的查询状态，forward 是升序，降序则是 backward
+						"indexBounds" : { // 最优计划所扫描的索引范围
 							"age" : [
-								"[59.0, 59.0]"
+								"[59.0, 59.0]" // [MinKey,MaxKey]
 							]
 						}
 					}
 				}
 			}
 		},
-		"rejectedPlans" : [
+		"rejectedPlans" : [ // 其他计划，因为不是最优而被查询优化器拒绝(reject)  
 			{
 				"stage" : "FETCH",
 				"filter" : {
@@ -121,7 +121,7 @@ db.getCollection("test_explain").find({"age" : 59}).sort({_id: -1}).explain()
 			}
 		]
 	},
-	"serverInfo" : {
+	"serverInfo" : { // 服务器信息，包括主机名和ip，MongoDB的version等信息
 		"host" : "host-192-168-61-214",
 		"port" : 27017,
 		"version" : "4.0.3",
