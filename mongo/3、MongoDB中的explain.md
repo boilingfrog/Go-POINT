@@ -62,12 +62,12 @@ db.getCollection("test_explain").find({"age" : 59}).sort({_id: -1}).explain()
 				"_id" : -1
 			},
 			"inputStage" : { // 用来描述子 stage，并且为其父 stage 提供文档和索引关键字,这里面含有着执行计划中比较主要的信息
-				"stage" : "SORT_KEY_GENERATOR",
+				"stage" : "SORT_KEY_GENERATOR", // 表示在内存中发生了排序
 				"inputStage" : {
 					"stage" : "FETCH", // FETCH 根据索引检索指定的文件
 					"inputStage" : {
 						"stage" : "IXSCAN", // stage 表示索引扫描
-						"keyPattern" : { // 索引命中的索引
+						"keyPattern" : { // 查询命中的索引
 							"age" : -1
 						},
 						"indexName" : "age_-1", // 计算选择的索引的名字
@@ -133,6 +133,201 @@ db.getCollection("test_explain").find({"age" : 59}).sort({_id: -1}).explain()
 		"clusterTime" : Timestamp(1693278617, 5),
 		"signature" : {
 			"hash" : BinData(0,"1fdWNqFjbdgCwBm3/NFEpD9yXjI="),
+			"keyId" : NumberLong("7233287468395528194")
+		}
+	}
+}
+```
+
+上面的查询总结下来就是，`age = 59` 的查询使用到了 age 上面建立的索引，这块的匹配走的是 IXSCAN 也就是索引扫描。  
+
+查询中还有一个 sort 的排序，这个排序动作是在内存中进行的，对应到的 stage 就是 SORT。  
+
+因为 MongoDB 中内存排序对大数据量的排序效率不是很高，所以当有排序需求的时候，一般考虑创建组合索引，让排序在索引中完成。    
+
+##### 2、executionStats
+
+MongoDB 查询优化器会对当前的查询进行评估并且选择一个最佳的查询执行计划进行执行，在执行完毕后返回这个最佳执行计划执行完成时的相关统计信息，对于那些被拒绝的执行计划不返回器统计信息。  
+
+```
+$ db.getCollection("test_explain").find({"age" : 59}).sort({_id: -1}).explain("executionStats");  
+
+{
+	"queryPlanner" : {
+		"plannerVersion" : 1,
+		"namespace" : "gleeman.test_explain", // 查询的命名空间，作用于那个库那个表
+		"indexFilterSet" : false, // 针对该query是否有 indexfilter，indexfilter 的作用见下文
+		"parsedQuery" : { // 解析查询条件，即过滤条件是什么，此处是 age = 59
+			"age" : {
+				"$eq" : 59
+			}
+		},
+		"winningPlan" : {  // 查询优化器针对该query所返回的最优执行计划的详细内容
+			"stage" : "SORT", // 最优执行计划的，这里是 sort 表示在内存中排序，具体的 stage 中的参数含义可见下文  
+			"sortPattern" : {
+				"_id" : -1
+			},
+			"inputStage" : { // 用来描述子 stage，并且为其父 stage 提供文档和索引关键字,这里面含有着执行计划中比较主要的信息
+				"stage" : "SORT_KEY_GENERATOR", // 表示在内存中发生了排序
+				"inputStage" : {
+					"stage" : "FETCH", // FETCH 根据索引检索指定的文件
+					"inputStage" : { 
+						"stage" : "IXSCAN", // 表示执行了索引扫描
+						"keyPattern" : { // 查询命中的索引
+							"age" : -1
+						},
+						"indexName" : "age_-1", // 查询选择的的索引的名字
+						"isMultiKey" : false, // 是否为多键索引，因为用到的索引是单列索引，这里是 false
+						"multiKeyPaths" : {
+							"age" : [ ]
+						},
+						"isUnique" : false,
+						"isSparse" : false,
+						"isPartial" : false,
+						"indexVersion" : 2,
+						"direction" : "forward", // 此 query 的查询状态，forward 是升序，降序则是 backward
+						"indexBounds" : { // 最优计划所扫描的索引范围
+							"age" : [
+								"[59.0, 59.0]"
+							]
+						}
+					}
+				}
+			}
+		},
+		"rejectedPlans" : [ // 其他计划，因为不是最优而被查询优化器拒绝(reject) 
+			{
+				"stage" : "FETCH",
+				"filter" : {
+					"age" : {
+						"$eq" : 59
+					}
+				},
+				"inputStage" : {
+					"stage" : "IXSCAN",
+					"keyPattern" : {
+						"_id" : 1
+					},
+					"indexName" : "_id_",
+					"isMultiKey" : false,
+					"multiKeyPaths" : {
+						"_id" : [ ]
+					},
+					"isUnique" : true,
+					"isSparse" : false,
+					"isPartial" : false,
+					"indexVersion" : 2,
+					"direction" : "backward",
+					"indexBounds" : {
+						"_id" : [
+							"[MaxKey, MinKey]"
+						]
+					}
+				}
+			}
+		]
+	},
+	"executionStats" : {
+		"executionSuccess" : true, // 是否执行成功
+		"nReturned" : 4786, // 此 query 匹配到的文档数
+		"executionTimeMillis" : 26, // 查询计划选择和查询执行所需的总时间,单位：毫秒
+		"totalKeysExamined" : 4786, // 扫描的索引条目数
+		"totalDocsExamined" : 4786, // 扫描的文档数
+		"executionStages" : { // 最优计划完整的执行信息
+			"stage" : "SORT", // sort 表示在内存中发生了排序
+			"nReturned" : 4786,
+			"executionTimeMillisEstimate" : 20,
+			"works" : 9575,
+			"advanced" : 4786, // 返回父阶段的结果数
+			"needTime" : 4788, // 将中间结果返回给其父级的工作循环数
+			"needYield" : 0, // 存储层请求查询系统产生锁定的次数
+			"saveState" : 113,
+			"restoreState" : 113,
+			"isEOF" : 1,
+			"invalidates" : 0,
+			"sortPattern" : {
+				"_id" : -1
+			},
+			"memUsage" : 362617,
+			"memLimit" : 33554432,
+			"inputStage" : {
+				"stage" : "SORT_KEY_GENERATOR",
+				"nReturned" : 4786,
+				"executionTimeMillisEstimate" : 20,
+				"works" : 4788,
+				"advanced" : 4786,
+				"needTime" : 1,
+				"needYield" : 0,
+				"saveState" : 113,
+				"restoreState" : 113,
+				"isEOF" : 1,
+				"invalidates" : 0,
+				"inputStage" : {
+					"stage" : "FETCH",
+					"nReturned" : 4786,
+					"executionTimeMillisEstimate" : 10,
+					"works" : 4787,
+					"advanced" : 4786,
+					"needTime" : 0,
+					"needYield" : 0,
+					"saveState" : 113,
+					"restoreState" : 113,
+					"isEOF" : 1,
+					"invalidates" : 0,
+					"docsExamined" : 4786,
+					"alreadyHasObj" : 0,
+					"inputStage" : {
+						"stage" : "IXSCAN",
+						"nReturned" : 4786,
+						"executionTimeMillisEstimate" : 10,
+						"works" : 4787,
+						"advanced" : 4786,
+						"needTime" : 0,
+						"needYield" : 0,
+						"saveState" : 113,
+						"restoreState" : 113,
+						"isEOF" : 1,
+						"invalidates" : 0,
+						"keyPattern" : {
+							"age" : -1
+						},
+						"indexName" : "age_-1",
+						"isMultiKey" : false,
+						"multiKeyPaths" : {
+							"age" : [ ]
+						},
+						"isUnique" : false,
+						"isSparse" : false,
+						"isPartial" : false,
+						"indexVersion" : 2,
+						"direction" : "forward",
+						"indexBounds" : {
+							"age" : [
+								"[59.0, 59.0]"
+							]
+						},
+						"keysExamined" : 4786,
+						"seeks" : 1,
+						"dupsTested" : 0,
+						"dupsDropped" : 0,
+						"seenInvalidated" : 0
+					}
+				}
+			}
+		}
+	},
+	"serverInfo" : {
+		"host" : "host-192-168-61-214",
+		"port" : 27017,
+		"version" : "4.0.3",
+		"gitVersion" : "0377a277ee6d90364318b2f8d581f59c1a7abcd4"
+	},
+	"ok" : 1,
+	"operationTime" : Timestamp(1694656526, 1),
+	"$clusterTime" : {
+		"clusterTime" : Timestamp(1694656526, 1),
+		"signature" : {
+			"hash" : BinData(0,"QaGoa0kgXBOfN9LA0px9V7NjU/c="),
 			"keyId" : NumberLong("7233287468395528194")
 		}
 	}
@@ -205,3 +400,4 @@ db.runCommand(
 【tune_page_size_and_comp】https://source.wiredtiger.com/3.0.0/tune_page_size_and_comp.html       
 【equality-sort-range-rule】https://www.mongodb.com/docs/manual/tutorial/equality-sort-range-rule/  
 【使用索引来排序查询结果】https://mongoing.com/docs/tutorial/sort-results-with-indexes.html      
+【Mongodb problem with sorting & indexes】https://groups.google.com/g/mongodb-user/c/YsY5h4KrwT4     
