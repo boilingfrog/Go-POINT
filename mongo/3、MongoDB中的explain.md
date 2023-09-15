@@ -227,7 +227,7 @@ $ db.getCollection("test_explain").find({"age" : 59}).sort({_id: -1}).explain("e
 			}
 		]
 	},
-	"executionStats" : {
+	"executionStats" : { // 已阶段树的形式纤细说明获胜执行计划的完成执行情况，例如，一个阶段可以有一个或者多个inputStage组成，每个阶段有特定于该阶段的执行信息组成。    
 		"executionSuccess" : true, // 是否执行成功
 		"nReturned" : 4786, // 此 query 匹配到的文档数
 		"executionTimeMillis" : 26, // 查询计划选择和查询执行所需的总时间,单位：毫秒
@@ -237,7 +237,7 @@ $ db.getCollection("test_explain").find({"age" : 59}).sort({_id: -1}).explain("e
 			"stage" : "SORT", // sort 表示在内存中发生了排序
 			"nReturned" : 4786,
 			"executionTimeMillisEstimate" : 20,
-			"works" : 9575,
+			"works" : 9575, // 指定查询执行阶段执行的“工作单元”的数量。查询执行将其工作划分为小单元。
 			"advanced" : 4786, // 返回父阶段的结果数
 			"needTime" : 4788, // 将中间结果返回给其父级的工作循环数
 			"needYield" : 0, // 存储层请求查询系统产生锁定的次数
@@ -250,7 +250,7 @@ $ db.getCollection("test_explain").find({"age" : 59}).sort({_id: -1}).explain("e
 			},
 			"memUsage" : 362617,
 			"memLimit" : 33554432,
-			"inputStage" : {
+			"inputStage" : { // 子执行单元，一个执行计划中，可以有一个或者多个inputStage
 				"stage" : "SORT_KEY_GENERATOR",
 				"nReturned" : 4786,
 				"executionTimeMillisEstimate" : 20,
@@ -401,3 +401,4 @@ db.runCommand(
 【equality-sort-range-rule】https://www.mongodb.com/docs/manual/tutorial/equality-sort-range-rule/  
 【使用索引来排序查询结果】https://mongoing.com/docs/tutorial/sort-results-with-indexes.html      
 【Mongodb problem with sorting & indexes】https://groups.google.com/g/mongodb-user/c/YsY5h4KrwT4     
+【MongoDB - 执行计划 】https://www.cnblogs.com/Neeo/articles/14326471.html     
