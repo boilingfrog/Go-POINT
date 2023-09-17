@@ -1,6 +1,20 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+- [MongoDB 中如何使用 explain 分析查询计划](#mongodb-%E4%B8%AD%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8-explain-%E5%88%86%E6%9E%90%E6%9F%A5%E8%AF%A2%E8%AE%A1%E5%88%92)
+  - [前言](#%E5%89%8D%E8%A8%80)
+  - [查询计划 explain](#%E6%9F%A5%E8%AF%A2%E8%AE%A1%E5%88%92-explain)
+    - [explain](#explain)
+      - [1、queryPlanner](#1queryplanner)
+      - [2、executionStats](#2executionstats)
+      - [3、allPlansExecution](#3allplansexecution)
+    - [indexfilter](#indexfilter)
+    - [Stage 参数说明](#stage-%E5%8F%82%E6%95%B0%E8%AF%B4%E6%98%8E)
+  - [参考](#%E5%8F%82%E8%80%83)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+
 ## MongoDB 中如何使用 explain 分析查询计划
 
 ### 前言
@@ -334,6 +348,10 @@ $ db.getCollection("test_explain").find({"age" : 59}).sort({_id: -1}).explain("e
 }
 ```
 
+##### 3、allPlansExecution  
+
+该模式包括上述2种模式的所有信息，即按照最佳的执行计划执行以及列出统计信息，如果存在其他候选计划，也会列出这些候选的执行计划。  
+
 #### indexfilter
 
 我们可以针对某些查询，指定特定的索引(索引必须存在)。如果查询条件吻合，就会使用指定的索引，如果指定了多个索引，会从中选出一个查询计划最优的索引执行。    
@@ -391,6 +409,17 @@ db.runCommand(
 |     TEXT                                      |      使用全文索引进行查询时的 stage 返回                      |           
 |     PROJECTION                                |      限定返回字段时候stage的返回                             |           
 
+### 总结
+
+这里总结了 MongoDB 中使用 explain 来判断我们创建的索引计划是否合理。  
+
+其中常见的 explain 有三种模式,可以作为 explain 的参数进行模式选择
+
+1、queryPlanner(默认模式)；queryPlanner 是 explain 默认的模式，queryPlanner 模式下不会真正的去执行 query 语句查询，查询优化器根据查询语句执行计划分析选出 `winning plan`。  
+
+2、executionStats；MongoDB 查询优化器会对当前的查询进行评估并且选择一个最佳的查询执行计划进行执行，在执行完毕后返回这个最佳执行计划执行完成时的相关统计信息，对于那些被拒绝的执行计划不返回器统计信息。  
+
+3、allPlansExecution；该模式包括上述2种模式的所有信息，即按照最佳的执行计划执行以及列出统计信息，如果存在其他候选计划，也会列出这些候选的执行计划。  
 
 ### 参考
 
