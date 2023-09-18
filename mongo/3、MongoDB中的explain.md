@@ -352,6 +352,345 @@ $ db.getCollection("test_explain").find({"age" : 59}).sort({_id: -1}).explain("e
 
 该模式包括上述2种模式的所有信息，即按照最佳的执行计划执行以及列出统计信息，如果存在其他候选计划，也会列出这些候选的执行计划。  
 
+下面的栗子就能看到，allPlansExecution 模式下，包含了上面两种查询模式的索引信息，这里不展开讨论了。    
+
+```
+$ db.getCollection("test_explain").find({"age" : 59}).sort({_id: -1}).explain("allPlansExecution");  
+
+{
+	"queryPlanner" : {
+		"plannerVersion" : 1,
+		"namespace" : "gleeman.test_explain",
+		"indexFilterSet" : false,
+		"parsedQuery" : {
+			"age" : {
+				"$eq" : 59
+			}
+		},
+		"winningPlan" : {
+			"stage" : "SORT",
+			"sortPattern" : {
+				"_id" : -1
+			},
+			"inputStage" : {
+				"stage" : "SORT_KEY_GENERATOR",
+				"inputStage" : {
+					"stage" : "FETCH",
+					"inputStage" : {
+						"stage" : "IXSCAN",
+						"keyPattern" : {
+							"age" : -1
+						},
+						"indexName" : "age_-1",
+						"isMultiKey" : false,
+						"multiKeyPaths" : {
+							"age" : [ ]
+						},
+						"isUnique" : false,
+						"isSparse" : false,
+						"isPartial" : false,
+						"indexVersion" : 2,
+						"direction" : "forward",
+						"indexBounds" : {
+							"age" : [
+								"[59.0, 59.0]"
+							]
+						}
+					}
+				}
+			}
+		},
+		"rejectedPlans" : [
+			{
+				"stage" : "FETCH",
+				"filter" : {
+					"age" : {
+						"$eq" : 59
+					}
+				},
+				"inputStage" : {
+					"stage" : "IXSCAN",
+					"keyPattern" : {
+						"_id" : 1
+					},
+					"indexName" : "_id_",
+					"isMultiKey" : false,
+					"multiKeyPaths" : {
+						"_id" : [ ]
+					},
+					"isUnique" : true,
+					"isSparse" : false,
+					"isPartial" : false,
+					"indexVersion" : 2,
+					"direction" : "backward",
+					"indexBounds" : {
+						"_id" : [
+							"[MaxKey, MinKey]"
+						]
+					}
+				}
+			}
+		]
+	},
+	"executionStats" : {
+		"executionSuccess" : true,
+		"nReturned" : 4786,
+		"executionTimeMillis" : 78,
+		"totalKeysExamined" : 4786,
+		"totalDocsExamined" : 4786,
+		"executionStages" : {
+			"stage" : "SORT",
+			"nReturned" : 4786,
+			"executionTimeMillisEstimate" : 60,
+			"works" : 9575,
+			"advanced" : 4786,
+			"needTime" : 4788,
+			"needYield" : 0,
+			"saveState" : 113,
+			"restoreState" : 113,
+			"isEOF" : 1,
+			"invalidates" : 0,
+			"sortPattern" : {
+				"_id" : -1
+			},
+			"memUsage" : 362617,
+			"memLimit" : 33554432,
+			"inputStage" : {
+				"stage" : "SORT_KEY_GENERATOR",
+				"nReturned" : 4786,
+				"executionTimeMillisEstimate" : 50,
+				"works" : 4788,
+				"advanced" : 4786,
+				"needTime" : 1,
+				"needYield" : 0,
+				"saveState" : 113,
+				"restoreState" : 113,
+				"isEOF" : 1,
+				"invalidates" : 0,
+				"inputStage" : {
+					"stage" : "FETCH",
+					"nReturned" : 4786,
+					"executionTimeMillisEstimate" : 50,
+					"works" : 4787,
+					"advanced" : 4786,
+					"needTime" : 0,
+					"needYield" : 0,
+					"saveState" : 113,
+					"restoreState" : 113,
+					"isEOF" : 1,
+					"invalidates" : 0,
+					"docsExamined" : 4786,
+					"alreadyHasObj" : 0,
+					"inputStage" : {
+						"stage" : "IXSCAN",
+						"nReturned" : 4786,
+						"executionTimeMillisEstimate" : 0,
+						"works" : 4787,
+						"advanced" : 4786,
+						"needTime" : 0,
+						"needYield" : 0,
+						"saveState" : 113,
+						"restoreState" : 113,
+						"isEOF" : 1,
+						"invalidates" : 0,
+						"keyPattern" : {
+							"age" : -1
+						},
+						"indexName" : "age_-1",
+						"isMultiKey" : false,
+						"multiKeyPaths" : {
+							"age" : [ ]
+						},
+						"isUnique" : false,
+						"isSparse" : false,
+						"isPartial" : false,
+						"indexVersion" : 2,
+						"direction" : "forward",
+						"indexBounds" : {
+							"age" : [
+								"[59.0, 59.0]"
+							]
+						},
+						"keysExamined" : 4786,
+						"seeks" : 1,
+						"dupsTested" : 0,
+						"dupsDropped" : 0,
+						"seenInvalidated" : 0
+					}
+				}
+			}
+		},
+		"allPlansExecution" : [
+			{
+				"nReturned" : 101,
+				"executionTimeMillisEstimate" : 60,
+				"totalKeysExamined" : 4786,
+				"totalDocsExamined" : 4786,
+				"executionStages" : {
+					"stage" : "SORT",
+					"nReturned" : 101,
+					"executionTimeMillisEstimate" : 60,
+					"works" : 4889,
+					"advanced" : 101,
+					"needTime" : 4788,
+					"needYield" : 0,
+					"saveState" : 76,
+					"restoreState" : 76,
+					"isEOF" : 0,
+					"invalidates" : 0,
+					"sortPattern" : {
+						"_id" : -1
+					},
+					"memUsage" : 362617,
+					"memLimit" : 33554432,
+					"inputStage" : {
+						"stage" : "SORT_KEY_GENERATOR",
+						"nReturned" : 4786,
+						"executionTimeMillisEstimate" : 50,
+						"works" : 4788,
+						"advanced" : 4786,
+						"needTime" : 1,
+						"needYield" : 0,
+						"saveState" : 76,
+						"restoreState" : 76,
+						"isEOF" : 1,
+						"invalidates" : 0,
+						"inputStage" : {
+							"stage" : "FETCH",
+							"nReturned" : 4786,
+							"executionTimeMillisEstimate" : 50,
+							"works" : 4787,
+							"advanced" : 4786,
+							"needTime" : 0,
+							"needYield" : 0,
+							"saveState" : 76,
+							"restoreState" : 76,
+							"isEOF" : 1,
+							"invalidates" : 0,
+							"docsExamined" : 4786,
+							"alreadyHasObj" : 0,
+							"inputStage" : {
+								"stage" : "IXSCAN",
+								"nReturned" : 4786,
+								"executionTimeMillisEstimate" : 0,
+								"works" : 4787,
+								"advanced" : 4786,
+								"needTime" : 0,
+								"needYield" : 0,
+								"saveState" : 76,
+								"restoreState" : 76,
+								"isEOF" : 1,
+								"invalidates" : 0,
+								"keyPattern" : {
+									"age" : -1
+								},
+								"indexName" : "age_-1",
+								"isMultiKey" : false,
+								"multiKeyPaths" : {
+									"age" : [ ]
+								},
+								"isUnique" : false,
+								"isSparse" : false,
+								"isPartial" : false,
+								"indexVersion" : 2,
+								"direction" : "forward",
+								"indexBounds" : {
+									"age" : [
+										"[59.0, 59.0]"
+									]
+								},
+								"keysExamined" : 4786,
+								"seeks" : 1,
+								"dupsTested" : 0,
+								"dupsDropped" : 0,
+								"seenInvalidated" : 0
+							}
+						}
+					}
+				}
+			},
+			{
+				"nReturned" : 51,
+				"executionTimeMillisEstimate" : 10,
+				"totalKeysExamined" : 4889,
+				"totalDocsExamined" : 4889,
+				"executionStages" : {
+					"stage" : "FETCH",
+					"filter" : {
+						"age" : {
+							"$eq" : 59
+						}
+					},
+					"nReturned" : 51,
+					"executionTimeMillisEstimate" : 10,
+					"works" : 4889,
+					"advanced" : 51,
+					"needTime" : 4838,
+					"needYield" : 0,
+					"saveState" : 113,
+					"restoreState" : 113,
+					"isEOF" : 0,
+					"invalidates" : 0,
+					"docsExamined" : 4889,
+					"alreadyHasObj" : 0,
+					"inputStage" : {
+						"stage" : "IXSCAN",
+						"nReturned" : 4889,
+						"executionTimeMillisEstimate" : 10,
+						"works" : 4889,
+						"advanced" : 4889,
+						"needTime" : 0,
+						"needYield" : 0,
+						"saveState" : 113,
+						"restoreState" : 113,
+						"isEOF" : 0,
+						"invalidates" : 0,
+						"keyPattern" : {
+							"_id" : 1
+						},
+						"indexName" : "_id_",
+						"isMultiKey" : false,
+						"multiKeyPaths" : {
+							"_id" : [ ]
+						},
+						"isUnique" : true,
+						"isSparse" : false,
+						"isPartial" : false,
+						"indexVersion" : 2,
+						"direction" : "backward",
+						"indexBounds" : {
+							"_id" : [
+								"[MaxKey, MinKey]"
+							]
+						},
+						"keysExamined" : 4889,
+						"seeks" : 1,
+						"dupsTested" : 0,
+						"dupsDropped" : 0,
+						"seenInvalidated" : 0
+					}
+				}
+			}
+		]
+	},
+	"serverInfo" : {
+		"host" : "host-192-168-61-214",
+		"port" : 27017,
+		"version" : "4.0.3",
+		"gitVersion" : "0377a277ee6d90364318b2f8d581f59c1a7abcd4"
+	},
+	"ok" : 1,
+	"operationTime" : Timestamp(1694999650, 1),
+	"$clusterTime" : {
+		"clusterTime" : Timestamp(1694999650, 1),
+		"signature" : {
+			"hash" : BinData(0,"Ew5W9lYNoAtbo9zyErAbjbrqMlw="),
+			"keyId" : NumberLong("7233287468395528194")
+		}
+	}
+}
+```
+
 #### indexfilter
 
 我们可以针对某些查询，指定特定的索引(索引必须存在)。如果查询条件吻合，就会使用指定的索引，如果指定了多个索引，会从中选出一个查询计划最优的索引执行。    
@@ -420,6 +759,10 @@ db.runCommand(
 2、executionStats；MongoDB 查询优化器会对当前的查询进行评估并且选择一个最佳的查询执行计划进行执行，在执行完毕后返回这个最佳执行计划执行完成时的相关统计信息，对于那些被拒绝的执行计划不返回器统计信息。  
 
 3、allPlansExecution；该模式包括上述2种模式的所有信息，即按照最佳的执行计划执行以及列出统计信息，如果存在其他候选计划，也会列出这些候选的执行计划。  
+
+一般使用默认模式就能满足我们的需求了  
+
+其中最核心的指标就是 Stage，通过这个参数，我们基本上就能判断我们创建的索引计划是否合理了。    
 
 ### 参考
 
