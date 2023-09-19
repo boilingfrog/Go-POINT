@@ -94,7 +94,23 @@ db.test_table.createIndex({ name: 1 },{background: true})
 
 其中 1 指定升序创建索引，-1 表示指定降序创建索引。   
 
-background
+这里介绍几个创建索引常用的参数属性   
+
+- background：表示在后台创建索引，这种索引的创建会在后台进行，不会阻塞其他数据库操作。相反，普通的索引创建会在创建过程中锁定读写操作，可能导致其他操作的延迟。没有特殊情况，创建索引都需要添加 background 标识；      
+
+- unique：创建的索引是否唯一，指定为 true 创建唯一索引。默认值为false；      
+
+- expireAfterSeconds：指定一个以秒为单位的数值，完成 TTL 设定，设定集合的生存时间；      
+
+- sparse：对文档中不存在的字段数据不启用索引；这个参数需要特别注意，如果设置为 true 的话，在索引字段中不会查询出不包含对应字段的文档。默认值为 false；        
+
+- weights：索引权重值，数值在 1 到 99999 之间，表示该索引相对于其他索引字段的得分权重。    
+
+这里主要介绍下 expireAfterSeconds  
+
+MongoDB 中提供了 TTL 索引自动在后台清理过期的数据，该功能主要用于数据清理和分布式锁等业务场景中。   
+
+比如用于数据过期的常见，我们可以设置
 
 ### 联合索引
 
@@ -176,3 +192,4 @@ db.events.find().sort( { username: 1, date: 1 } )
 【tune_page_size_and_comp】https://source.wiredtiger.com/3.0.0/tune_page_size_and_comp.html       
 【equality-sort-range-rule】https://www.mongodb.com/docs/manual/tutorial/equality-sort-range-rule/  
 【使用索引来排序查询结果】https://mongoing.com/docs/tutorial/sort-results-with-indexes.html      
+【TTL 索引的原理、常见问题及解决方案】https://cloud.tencent.com/developer/article/2104290     
