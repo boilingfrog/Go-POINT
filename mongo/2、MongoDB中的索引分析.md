@@ -89,7 +89,7 @@ MongoDB 从 3.2 开始就默认使用 WiredTiger 作为存储引擎。
 单键索引：只针对一个键添加索引，是最简单的索引类型。   
 
 ``
-db.test_table.createIndex({ name: 1 },{background: true})
+db.test_explain.createIndex({ name: 1 },{background: true})
 ``
 
 其中 1 指定升序创建索引，-1 表示指定降序创建索引。   
@@ -110,7 +110,26 @@ db.test_table.createIndex({ name: 1 },{background: true})
 
 MongoDB 中提供了 TTL 索引自动在后台清理过期的数据，该功能主要用于数据清理和分布式锁等业务场景中。   
 
-比如用于数据过期的常见，我们可以设置
+比如用于数据过期的场景，假定数据的有效期是10分钟，我们可以指定数据表中的一个时间字段用于数据生成的时间，当然这个时间一般就是数据的创建时间，然后针对这个字段设置 TTL 过期索引。   
+
+
+准备数据  
+
+```
+db.test_explain.insert({name:"小明1",age:12,createdAt:ISODate()})
+db.test_explain.insert({name:"小明2",age:12,createdAt:ISODate()})
+db.test_explain.insert({name:"小明3",age:12,createdAt:ISODate()})
+db.test_explain.insert({name:"小明4",age:12,createdAt:ISODate()})
+db.test_explain.insert({name:"小明5",age:12,createdAt:ISODate()})
+```
+
+创建 ttl 索引  
+
+```
+db.test_explain.createIndex( { "createdAt": -1 }, { expireAfterSeconds: 600 } )
+```
+
+
 
 ### 联合索引
 
