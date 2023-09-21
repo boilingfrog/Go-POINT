@@ -112,6 +112,11 @@ MongoDB 中提供了 TTL 索引自动在后台清理过期的数据，该功能�
 
 比如用于数据过期的场景，假定数据的有效期是10分钟，我们可以指定数据表中的一个时间字段用于数据生成的时间，当然这个时间一般就是数据的创建时间，然后针对这个字段设置 TTL 过期索引。   
 
+根据创建时间字段 createdAt 创建 ttl 索引，过期时间设置成 10 分钟
+
+```
+db.test_explain.createIndex( { "createdAt": -1 }, { expireAfterSeconds: 600 } )
+```
 
 准备数据  
 
@@ -121,15 +126,39 @@ db.test_explain.insert({name:"小明2",age:12,createdAt:ISODate()})
 db.test_explain.insert({name:"小明3",age:12,createdAt:ISODate()})
 db.test_explain.insert({name:"小明4",age:12,createdAt:ISODate()})
 db.test_explain.insert({name:"小明5",age:12,createdAt:ISODate()})
+
+
+
+replica:PRIMARY> db.test_explain.find()
+{ "_id" : ObjectId("650c329af2f532226d92da41"), "name" : "小明1", "age" : 12, "createdAt" : ISODate("2023-09-21T12:10:02.190Z") }
+{ "_id" : ObjectId("650c329af2f532226d92da42"), "name" : "小明2", "age" : 12, "createdAt" : ISODate("2023-09-21T12:10:02.270Z") }
+{ "_id" : ObjectId("650c329af2f532226d92da43"), "name" : "小明3", "age" : 12, "createdAt" : ISODate("2023-09-21T12:10:02.388Z") }
+{ "_id" : ObjectId("650c329af2f532226d92da44"), "name" : "小明4", "age" : 12, "createdAt" : ISODate("2023-09-21T12:10:02.471Z") }
+{ "_id" : ObjectId("650c329af2f532226d92da45"), "name" : "小明5", "age" : 12, "createdAt" : ISODate("2023-09-21T12:10:02.585Z") }
+replica:PRIMARY> Date()
+Thu Sep 21 2023 20:10:12 GMT+0800 (CST)
 ```
 
-创建 ttl 索引  
+10分钟之后发现创建的几条数据已经不存在了   
 
 ```
-db.test_explain.createIndex( { "createdAt": -1 }, { expireAfterSeconds: 600 } )
+replica:PRIMARY> db.test_explain.find()
+replica:PRIMARY> Date()
+Thu Sep 21 2023 20:20:27 GMT+0800 (CST)
 ```
 
+实现原理和缺陷  
 
+每个 mongod 进程在启动时候，都会创建一个 `TTLMonitor` 后台线程，进程会每隔 60s 发起一轮 TTL 清理操作，每轮 TTL 操作会在搜集完实例上的 TTL 索引后，
+依次对每个 TTL 索引生成执行计划并进行数据清理操作。   
+
+TTL 会存在两个明显的缺陷  
+
+1、时效性差。每隔 60s 才会发起一轮清理，不能保证数据立马过期就马上被删除，60s 可以动态调整，也无法突破妙级。TTL 是单线程，如果数据库中有多个表都有 TTL 索引，数据清理操作只能一个个串行的操作。如果 MongoDB 执行的高并发数据插入，很可能导致数据的 TTL 的删除跟不上数据的插入，造成空间的膨胀。     
+
+2、TTL 的删除可能产生现资源消耗的带来性能毛刺。TTL 的本质还是根据索引执行数据的删除，可能会带来一定程度上的性能压力。比如 索引扫描和数据删除操作会带来一定的 cache 和 IO 压力，删除操作记录 oplog 会增加数据同步延迟等，如果实例规格不高，是很容易出现性能毛刺。   
+
+对于 TTL 毛刺的问题可以考虑将时间打散在一天内的各个时刻。比如对于选择创建索引的时间字段，可以考虑时间精确到秒，这样 TTL 删除操作就能避免在同一时刻发生，造成某个时间点的性能毛刺。  
 
 ### 联合索引
 
