@@ -268,7 +268,7 @@ db.getCollection("test_explain").find({"name" : "小明5","createdAt" : {$gte : 
 			"inputStage" : {
 				"stage" : "SORT_KEY_GENERATOR", // 表示在内存中发生了排序
 				"inputStage" : {
-					"stage" : "FETCH", // 子的 stage,说名查询命中了一部分的索引
+					"stage" : "FETCH", // 子的 stage,说明查询命中了一部分的索引
 					"inputStage" : {
 						"stage" : "IXSCAN",
 						"keyPattern" : {
@@ -323,12 +323,131 @@ db.getCollection("test_explain").find({"name" : "小明5","createdAt" : {$gte : 
 }
 ```
 
-上面的查询栗子，对于这个组合索引，只是命中其中一部分，然后排序还是在内存中进行的。根据上面的原理分析，我们可以简单的分析出，针对 createdAt 的范围查询使用到了组合索引，后面的查询就没有走到索引。   
+上面的查询栗子，对于这个组合索引，只是命中其中一部分，然后排序还是在内存中进行的。根据上面的原理分析，我们可以简单的分析出，针对 createdAt 的范围查询使用到了组合索引，后面的查询就没有走到索引。可以明确的看到在内存中发生了排序的操作。       
 
+还是上面的查询条件，下面创建一个符合 ESR 原则的索引
 
+```
+db.test_explain.createIndex( {"name": -1,"age": -1,"createdAt": -1}, {background: true})
+```
 
-db.test_explain.createIndex( {"name": -1,"createdAt": -1}, {background: true})
+使用 explain 查询索引的命中情况     
 
+```
+db.getCollection("test_explain").find({"name" : "小明5","createdAt" : {$gte : ISODate("2022-08-22T01:10:22.584Z")}}).sort({age: -1}).explain()
+{
+	"queryPlanner" : {
+		"plannerVersion" : 1,
+		"namespace" : "gleeman.test_explain",
+		"indexFilterSet" : false,
+		"parsedQuery" : {
+			"$and" : [
+				{
+					"name" : {
+						"$eq" : "小明5"
+					}
+				},
+				{
+					"createdAt" : {
+						"$gte" : ISODate("2022-08-22T01:10:22.584Z")
+					}
+				}
+			]
+		},
+		"winningPlan" : {
+			"stage" : "FETCH", // 根据索引检索指定的文档
+			"inputStage" : {
+				"stage" : "IXSCAN", // 索引扫描
+				"keyPattern" : { // 查询命中的索引
+					"name" : -1,
+					"age" : -1,
+					"createdAt" : -1
+				},
+				"indexName" : "name_-1_age_-1_createdAt_-1",
+				"isMultiKey" : false,
+				"multiKeyPaths" : {
+					"name" : [ ],
+					"age" : [ ],
+					"createdAt" : [ ]
+				},
+				"isUnique" : false,
+				"isSparse" : false,
+				"isPartial" : false,
+				"indexVersion" : 2,
+				"direction" : "forward",
+				"indexBounds" : {
+					"name" : [
+						"[\"小明5\", \"小明5\"]"
+					],
+					"age" : [
+						"[MaxKey, MinKey]"
+					],
+					"createdAt" : [
+						"[new Date(9223372036854775807), new Date(1661130622584)]"
+					]
+				}
+			}
+		},
+		"rejectedPlans" : [
+			{
+				"stage" : "SORT",
+				"sortPattern" : {
+					"age" : -1
+				},
+				"inputStage" : {
+					"stage" : "SORT_KEY_GENERATOR",
+					"inputStage" : {
+						"stage" : "FETCH",
+						"inputStage" : {
+							"stage" : "IXSCAN",
+							"keyPattern" : {
+								"createdAt" : -1,
+								"name" : -1
+							},
+							"indexName" : "createdAt_-1_name_-1",
+							"isMultiKey" : false,
+							"multiKeyPaths" : {
+								"createdAt" : [ ],
+								"name" : [ ]
+							},
+							"isUnique" : false,
+							"isSparse" : false,
+							"isPartial" : false,
+							"indexVersion" : 2,
+							"direction" : "forward",
+							"indexBounds" : {
+								"createdAt" : [
+									"[new Date(9223372036854775807), new Date(1661130622584)]"
+								],
+								"name" : [
+									"[\"小明5\", \"小明5\"]"
+								]
+							}
+						}
+					}
+				}
+			}
+		]
+	},
+	"serverInfo" : {
+		"host" : "host-192-168-61-214",
+		"port" : 27017,
+		"version" : "4.0.3",
+		"gitVersion" : "0377a277ee6d90364318b2f8d581f59c1a7abcd4"
+	},
+	"ok" : 1,
+	"operationTime" : Timestamp(1696643394, 2),
+	"$clusterTime" : {
+		"clusterTime" : Timestamp(1696643394, 2),
+		"signature" : {
+			"hash" : BinData(0,"Bp6y2c2vfCPRgdl4WYwMicL36FM="),
+			"keyId" : NumberLong("7233287468395528194")
+		}
+	}
+}
+```
+
+可以看到创建 ESR 原则的索引，上面的查询，就完全走索引了。    
 
 再来看下 MongoDB 中的排序
 
