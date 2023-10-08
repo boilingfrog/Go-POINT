@@ -128,7 +128,6 @@ db.test_explain.insert({name:"小明4",age:12,createdAt:ISODate()})
 db.test_explain.insert({name:"小明5",age:12,createdAt:ISODate()})
 
 
-
 replica:PRIMARY> db.test_explain.find()
 { "_id" : ObjectId("650c329af2f532226d92da41"), "name" : "小明1", "age" : 12, "createdAt" : ISODate("2023-09-21T12:10:02.190Z") }
 { "_id" : ObjectId("650c329af2f532226d92da42"), "name" : "小明2", "age" : 12, "createdAt" : ISODate("2023-09-21T12:10:02.270Z") }
@@ -149,8 +148,7 @@ Thu Sep 21 2023 20:20:27 GMT+0800 (CST)
 
 实现原理和缺陷  
 
-每个 mongod 进程在启动时候，都会创建一个 `TTLMonitor` 后台线程，进程会每隔 60s 发起一轮 TTL 清理操作，每轮 TTL 操作会在搜集完实例上的 TTL 索引后，
-依次对每个 TTL 索引生成执行计划并进行数据清理操作。   
+每个 MongoDB 进程在启动时候，都会创建一个 `TTLMonitor` 后台线程，进程会每隔 60s 发起一轮 TTL 清理操作，每轮 TTL 操作会在搜集完实例上的 TTL 索引后，依次对每个 TTL 索引生成执行计划并进行数据清理操作。      
 
 TTL 会存在两个明显的缺陷  
 
@@ -452,6 +450,8 @@ db.getCollection("test_explain").find({"name" : "小明5","createdAt" : {$gte : 
 再来看下 MongoDB 中的排序
 
 在 MongoDB 中，排序的字段我们可以添加索引来保证排序的高效性，如果排序的字段没有添加索引或者添加的索引没有命中，那么排序就会在内存中进行。   
+
+同时，MongoDB 一次查询中只能使用一个索引，$or 特殊，可以在每个分支条件上使用一个索引，所以对于 MongoDB 中的查询，如果带有有排序的查询需求，即使排序的字段加了单列索引，有时候也命中不了，排序可能在内存中进行。   
 
 MongoDB 中内存排序效率不高，内存中排序是有内存大小的限制的，版本不同，这个默认的内存也不一样，如果超过这个限制就会报错。在 4.4 版本，引入了 `cursor.allowDiskUse()` 可以控制，排序内存超的时候，允许或禁止在磁盘上写入临时文件，将排序操作在磁盘中完成。磁盘的 I/O 是没有内存效率高的，所以 MongoDB 在排序没有命中索引的情况下，大数据量的排序效率很低。      
 
