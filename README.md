@@ -12,7 +12,9 @@
 
 - [mysql 的学习笔记](https://github.com/boilingfrog/Go-POINT/tree/master/mysql)   
 
-- [pgsql 的学习笔记](https://github.com/boilingfrog/Go-POINT/tree/master/pgsql) 
+- [MongoDB 的学习笔记](https://github.com/boilingfrog/Go-POINT/tree/master/mongo)    
+
+- [pgsql 的学习笔记](https://github.com/boilingfrog/Go-POINT/tree/master/pgsql)     
 
 - [elasticsearch 的学习笔记](https://github.com/boilingfrog/Go-POINT/tree/master/elasticsearch)   
 
