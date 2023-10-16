@@ -10,3 +10,13 @@ MongoDB 是一种常见的文档型数据库，因为其高性能、高可用、
 
 ### MongoDB 中的锁原理
 
+在 MongoDB 中，每个集合(表)都有一个唯一的 `db.collection` 名称，并且每个集合都有一个 meta 数据块用来维护该集合的状态信息。     
+
+MongoDB 中的锁表机制是通过 meta 数据来实现的，它主要有两种类型：共享锁和排它锁。   
+
+
+
+
+### 参考
+
+【mongodb锁表命令-相关文档】https://www.volcengine.com/theme/900385-M-7-1   
