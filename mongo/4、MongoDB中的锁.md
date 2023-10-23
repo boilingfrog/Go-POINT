@@ -79,11 +79,59 @@ IS → IS → X → X → S → IS
 
 当查询有慢查询出现的时候，有时候会出现锁的阻塞等待，紧急情况，需要我们快速定位并且结束当前操作。   
 
-如何定位呢？   
+使用 `db.currentOp()` 就能查看当前数据库正在执行的操作。   
 
 ```
 db.currentOp()
+
+{
+    "inprog" : [
+        {
+            "opid" : 6222,   #进程号
+            "active" : true, #是否活动状态
+            "secs_running" : 3,#操作运行了多少秒
+            "microsecs_running" : NumberLong(3662328),#操作持续时间(以微秒为单位)。MongoDB通过从操作开始时减去当前时间来计算这个值。
+            "op" : "getmore",#操作类型，包括(insert/query/update/remove/getmore/command)
+            "ns" : "local.oplog.rs",#命名空间
+            "query" : {#如果op是查询操作，这里将显示查询内容；也有说这里显示具体的操作语句的
+                 
+            },
+            "client" : "192.168.91.132:45745",#连接的客户端信息
+            "desc" : "conn5",#数据库的连接信息
+            "threadId" : "0x7f1370cb4700",#线程ID
+            "connectionId" : 5,#数据库的连接ID
+            "waitingForLock" : false,#是否等待获取锁
+            "numYields" : 0,
+            "lockStats" : {
+                "timeLockedMicros" : {#持有的锁时间微秒
+                    "r" : NumberLong(141),#整个MongoDB实例的全局读锁
+                    "w" : NumberLong(0)#整个MongoDB实例的全局写锁
+                },
+                "timeAcquiringMicros" : {#为了获得锁，等待的微秒时间
+                    "r" : NumberLong(16),#整个MongoDB实例的全局读锁
+                    "w" : NumberLong(0)#整个MongoDB实例的全局写锁
+                }
+            }
+        }
+    ]
+}
 ```
+
+来看下几个主要的字段含义    
+
+- client：发起请求的客户端；  
+
+- opid: 操作的唯一标识；  
+
+- secs_running：该操作已经执行的时间，单位：微妙。如果该字段的返回值很大，就需要查询请求是否合理；   
+ 
+- op：操作类型。通常是query、insert、update、delete、command中的一种；  
+
+- query/ns：这个字段能看出是对哪个集合正在执行什么操作。    
+
+当当发现
+
+
 
 
 ### 参考
