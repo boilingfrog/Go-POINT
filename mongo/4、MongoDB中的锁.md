@@ -5,6 +5,11 @@
   - [前言](#%E5%89%8D%E8%A8%80)
   - [MongoDB 中锁的类型](#mongodb-%E4%B8%AD%E9%94%81%E7%9A%84%E7%B1%BB%E5%9E%8B)
   - [锁的让渡释放](#%E9%94%81%E7%9A%84%E8%AE%A9%E6%B8%A1%E9%87%8A%E6%94%BE)
+  - [常见操作使用的锁类型](#%E5%B8%B8%E8%A7%81%E6%93%8D%E4%BD%9C%E4%BD%BF%E7%94%A8%E7%9A%84%E9%94%81%E7%B1%BB%E5%9E%8B)
+  - [如果定位 MongoDB 中锁操作](#%E5%A6%82%E6%9E%9C%E5%AE%9A%E4%BD%8D-mongodb-%E4%B8%AD%E9%94%81%E6%93%8D%E4%BD%9C)
+    - [1、查询运行超过20S 的请求](#1%E6%9F%A5%E8%AF%A2%E8%BF%90%E8%A1%8C%E8%B6%85%E8%BF%8720s-%E7%9A%84%E8%AF%B7%E6%B1%82)
+    - [2、批量删除请求大于 20s 的请求](#2%E6%89%B9%E9%87%8F%E5%88%A0%E9%99%A4%E8%AF%B7%E6%B1%82%E5%A4%A7%E4%BA%8E-20s-%E7%9A%84%E8%AF%B7%E6%B1%82)
+    - [3、kill 掉特定 client 端 ip 的请求](#3kill-%E6%8E%89%E7%89%B9%E5%AE%9A-client-%E7%AB%AF-ip-%E7%9A%84%E8%AF%B7%E6%B1%82)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -129,9 +134,166 @@ db.currentOp()
 
 - query/ns：这个字段能看出是对哪个集合正在执行什么操作。    
 
-当当发现
+当发现一个语句执行时间很久，影响到了整个数据库的运行，这时候我们 可以考虑中断这条语句的执行。   
 
+使用 `db.killOp(opid)` 命令终止该请求。    
 
+来个试验的栗子  
+
+对表里面一个大表创建索引，不添加 backend。   
+
+```
+db.notifications.createIndex({userId: -1});
+```
+
+#### 1、查询运行超过20S 的请求  
+
+```
+$ db.currentOp({"active" : true, "secs_running":{ "$gt" : 20 }})
+
+{
+	"inprog" : [
+		{
+			"host" : "host-192-168-61-214:27017",
+			"desc" : "conn50774156",
+			"connectionId" : 50774156,
+			"client" : "172.18.91.66:52088",
+			"appName" : "Navicat",
+			"clientMetadata" : {
+				"application" : {
+					"name" : "Navicat"
+				},
+				"driver" : {
+					"name" : "mongoc",
+					"version" : "1.16.2"
+				},
+				"os" : {
+					"type" : "Darwin",
+					"name" : "macOS",
+					"version" : "20.6.0",
+					"architecture" : "x86_64"
+				},
+				"platform" : "cfg=0x0000d6a0e9 posix=200112 stdc=201112 CC=clang 8.0.0 (clang-800.0.42.1) CFLAGS=\"\" LDFLAGS=\"\""
+			},
+			"active" : true,
+			"currentOpTime" : "2023-10-24T01:32:00.615+0000",
+			"opid" : -1782291565,
+			"lsid" : {
+				"id" : UUID("fff3c45d-b6ac-4a30-b83f-5a565ba166ef"),
+				"uid" : BinData(0,"EJF4gS8MLpU7cuurTHswrdjF5hInXITH3796necT7PU=")
+			},
+			"secs_running" : NumberLong(103),
+			"microsecs_running" : NumberLong(103025729),
+			"op" : "command",
+			"ns" : "gleeman.$cmd",
+			"command" : {
+				"createIndexes" : "notifications",
+				"indexes" : [
+					{
+						"key" : {
+							"userId" : -1
+						},
+						"name" : "userId_-1"
+					}
+				],
+				"$db" : "gleeman",
+				"lsid" : {
+					"id" : UUID("fff3c45d-b6ac-4a30-b83f-5a565ba166ef")
+				},
+				"$clusterTime" : {
+					"clusterTime" : Timestamp(1698111011, 1),
+					"signature" : {
+						"hash" : BinData(0,"iKilM1hvvIJC4hrTgu3FebYNhEw="),
+						"keyId" : NumberLong("7233287468395528194")
+					}
+				}
+			},
+			"msg" : "Index Build (background) Index Build (background): 27288147/34043394 80%",
+			"progress" : {
+				"done" : 27288148,
+				"total" : 34043394
+			},
+			"numYields" : 213205,
+			"locks" : {
+				"Global" : "w",
+				"Database" : "w",
+				"Collection" : "w"
+			},
+			"waitingForLock" : false,
+			"lockStats" : {
+				"Global" : {
+					"acquireCount" : {
+						"r" : NumberLong(213208),
+						"w" : NumberLong(213208)
+					}
+				},
+				"Database" : {
+					"acquireCount" : {
+						"w" : NumberLong(213209),
+						"W" : NumberLong(1)
+					}
+				},
+				"Collection" : {
+					"acquireCount" : {
+						"w" : NumberLong(213207)
+					}
+				},
+				"oplog" : {
+					"acquireCount" : {
+						"w" : NumberLong(1)
+					}
+				}
+			}
+		}
+	],
+	"ok" : 1,
+	"operationTime" : Timestamp(1698111118, 1),
+	"$clusterTime" : {
+		"clusterTime" : Timestamp(1698111118, 1),
+		"signature" : {
+			"hash" : BinData(0,"oLzIpVSGpZ213BW4x/jY6ESKvdA="),
+			"keyId" : NumberLong("7233287468395528194")
+		}
+	}
+}
+```
+
+#### 2、批量删除请求大于 20s 的请求
+
+```
+var ops = db.currentOp(
+    {
+        "active": true,
+        "secs_running": {
+            "$gt": 20
+        }
+    }
+).inprog
+
+for (i = 0; i < ops.length; i++) {
+    ns = ops[i].ns;
+    op = ops[i].op;
+    if (ns.startsWith("system.") || ns.startsWith("local.oplog.") || ns.length === 0 || op == "none" || ns.command == "" || ns in["admin", "local", "config"]) {
+        continue;
+    }
+    var opid = ops[i].opid;
+    db.killOp(opid);
+    print("Stopping op #" + opid)
+}
+```
+
+####  3、kill 掉特定 client 端 ip 的请求
+
+```
+var clientIp="172.18.91.66";
+var currOp = db.currentOp();
+
+for (op in currOp.inprog) {
+    if (clientIp == currOp.inprog[op].client.split(":")[0]) {
+        db.killOp(currOp.inprog[op].opid)
+    }
+}
+```
 
 
 ### 参考
