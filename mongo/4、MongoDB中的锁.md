@@ -10,6 +10,9 @@
     - [1、查询运行超过20S 的请求](#1%E6%9F%A5%E8%AF%A2%E8%BF%90%E8%A1%8C%E8%B6%85%E8%BF%8720s-%E7%9A%84%E8%AF%B7%E6%B1%82)
     - [2、批量删除请求大于 20s 的请求](#2%E6%89%B9%E9%87%8F%E5%88%A0%E9%99%A4%E8%AF%B7%E6%B1%82%E5%A4%A7%E4%BA%8E-20s-%E7%9A%84%E8%AF%B7%E6%B1%82)
     - [3、kill 掉特定 client 端 ip 的请求](#3kill-%E6%8E%89%E7%89%B9%E5%AE%9A-client-%E7%AB%AF-ip-%E7%9A%84%E8%AF%B7%E6%B1%82)
+    - [4、查询所有 wait 锁定的写操作](#4%E6%9F%A5%E8%AF%A2%E6%89%80%E6%9C%89-wait-%E9%94%81%E5%AE%9A%E7%9A%84%E5%86%99%E6%93%8D%E4%BD%9C)
+    - [5.返回索引的创建信息](#5%E8%BF%94%E5%9B%9E%E7%B4%A2%E5%BC%95%E7%9A%84%E5%88%9B%E5%BB%BA%E4%BF%A1%E6%81%AF)
+  - [总结](#%E6%80%BB%E7%BB%93)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -305,6 +308,49 @@ for (op in currOp.inprog) {
 }
 ```
 
+#### 4、查询所有 wait 锁定的写操作  
+
+```
+db.currentOp(
+   {
+     "waitingForLock" : true,
+     $or: [
+        { "op" : { "$in" : [ "insert", "update", "remove" ] } },
+        { "command.findandmodify": { $exists: true } }
+    ]
+   }
+)
+```
+
+#### 5.返回索引的创建信息
+
+````
+db.adminCommand(
+    {
+      currentOp: true,
+      $or: [
+        { op: "command", "command.createIndexes": { $exists: true }  },
+        { op: "none", "msg" : /^Index Build/ }
+      ]
+    }
+)
+````
+
+### 总结
+
+1、MongoDB 中使用一个 readers-writer 锁，它允许并发多个读操作访问数据库，但是只提供唯一写操作访问；   
+
+2、MongoDB 中的锁首先提供了读写锁，即共享锁（Shared, S）（读锁）以及排他锁（Exclusive, X）（写锁），同时，为了解决多层级资源之间的互斥关系，提高多层级资源请求的效率，还在此基础上提供了意向锁（Intent Lock）。即锁可以划分为4中类型：
+
+- 1、共享锁，读锁（S），允许多个线程同时读取一个集合，读读不互斥；
+
+- 2、排他锁，写锁（X），允许一个线程写入数据，写写互斥，读写互斥；
+
+- 3、意向共享锁，IS，表示意向读取；
+
+- 4、意向排他锁，IX，表示意向写入；    
+
+3、MongoDB 中支持高并发的一个重要的点就是 MongoDB 支持锁的让渡，在某些情况下，读写操作可以让渡它们持有的锁。以防止长时间的阻塞后面的操作；   
 
 ### 参考
 
