@@ -33,9 +33,27 @@ mongo -u <name> --port 27017 --host 127.0.0.1 admin  -p <pass>
 开启 MongoDB 事务  
 
 ```
+session = db.getMongo().startSession( { readPreference: { mode: "primary" } } );
 ```
 
+将需要操作的 collection 进行变量绑定  
 
+```
+testCollection = session.getDatabase("gleeman").test_explain;
+test1Collection = session.getDatabase("gleeman").test_explain;
+```
+
+拼接执行语句  
+
+```
+try {
+  testCollection.update({'_id':ObjectId("650ce97ec5a69f4d4d181c1e")},{$set:{'name':'小白'}});
+  test1Collection.update({'_id':ObjectId("650ce97ec5a69f4d4d181c1c")},{$set:{'name':'小天'}});
+} catch (error) {
+   session.abortTransaction();
+   throw error;
+}
+```
 
 
 
