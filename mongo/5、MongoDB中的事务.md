@@ -30,31 +30,47 @@ MongoDB 中从 4.0 开始支持了事务，这里来看看 MongoDB 中的事务�
 mongo -u <name> --port 27017 --host 127.0.0.1 admin  -p <pass>
 ```
 
-开启 MongoDB 事务  
+1、打开 session
 
 ```
 session = db.getMongo().startSession( { readPreference: { mode: "primary" } } );
 ```
 
-将需要操作的 collection 进行变量绑定  
+2、将需要操作的 collection 进行变量绑定  
 
 ```
 testCollection = session.getDatabase("gleeman").test_explain;
-test1Collection = session.getDatabase("gleeman").test_explain;
+test1Collection = session.getDatabase("gleeman").test_explain_1;
 ```
 
-拼接执行语句  
+3、开始事务标注，指定MVCC的模式，写模式  
 
 ```
-try {
-  testCollection.update({'_id':ObjectId("650ce97ec5a69f4d4d181c1e")},{$set:{'name':'小白'}});
-  test1Collection.update({'_id':ObjectId("650ce97ec5a69f4d4d181c1c")},{$set:{'name':'小天'}});
-} catch (error) {
-   session.abortTransaction();
-   throw error;
+session.startTransaction( { readConcern: { level: "snapshot" }, writeConcern: { w: "majority" } } );
+```
+
+4、拼接执行语句，将需要执行的语句进行事务封装  
+
+```
+try (ClientSession clientSession = client.startSession()) {
+    clientSession.startTransaction();
+    collection.insertOne(clientSession, docOne);
+    collection.insertOne(clientSession, docTwo);
+    clientSession.commitTransaction();
 }
 ```
 
+5、提交事务  
+
+```
+session.commitTransaction();
+```
+
+6、关闭session
+
+```
+session.endSession();
+```
 
 
 
