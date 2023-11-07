@@ -3,6 +3,7 @@
 
 - [MongoDB 事务](#mongodb-%E4%BA%8B%E5%8A%A1)
   - [前言](#%E5%89%8D%E8%A8%80)
+    - [如何使用](#%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -71,6 +72,14 @@ session.commitTransaction();
 ```
 session.endSession();
 ```
+
+### 事务的原理  
+
+MongoDB 中的 WiredTiger 存储引擎是目前使用最广泛的，这里主要介绍下 WiredTiger 中事务的实现原理。   
+
+WiredTiger 存储引擎支持 `read-uncommitted 、read-committed` 和 `snapshot` 3 种事务隔离级别，MongoDB 启动时默认选择 `snapshot` 隔离。      
+
+
 
 
 
