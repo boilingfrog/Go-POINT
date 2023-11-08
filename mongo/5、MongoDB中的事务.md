@@ -79,6 +79,30 @@ MongoDB 中的 WiredTiger 存储引擎是目前使用最广泛的，这里主要
 
 WiredTiger 存储引擎支持 `read-uncommitted 、read-committed` 和 `snapshot` 3 种事务隔离级别，MongoDB 启动时默认选择 `snapshot` 隔离。      
 
+#### 事务和复复制集以及存储引擎之间的关系  
+
+1、事务和复制集  
+
+复制集配置下，MongoDB 整个事务在提交时，会记录一条 oplog，包含了事务所有的操作，备节点拉取 oplog，并在本地重放事务操作。事务 oplog 包含了事务操作的 `lsid，txnNumber`，以及事务内所有的操作日志（ `applyOps` 字段）。   
+
+WiredTiger 是如何实现事务和 ACID 呢。WiredTiger 事务主要使用了三个技术 snapshot(事务快照)、MVCC (多版本并发控制)和 `redo log`(重做日志)。   
+
+WiredTiger 中的 MVCC 是基于 `key/value` 中 value 值的链表，每个链表单元中存储有当先版本操作的事务 ID 和操作修改后的值。   
+
+```
+wt_mvcc{
+	transaction_id:    // 本次修改事务的ID
+	value:             // 本次修改后的值
+}
+```
+
+WiredTiger 中数据修改都是在这个链表中进行 append 操作，每次对值的修改都是 append 到链表头，每次读取值的时候读是从链表头根据对应的修改事务 transaction_id 和本次事务的 snapshot 来判断是否可读，如果不可读，向链表尾方向移动，直到找到都事务可以读到的数据版本。    
+
+什么是 snapshot 呢？   
+
+事务开始或者结束操作之前都会对整个 WiredTiger 引擎内部正在执行的或者将要执行的事务进行一次快照，保存当时整个引擎的事务状态，确定那些事务是对自己可见的，哪些事务是自己不可见的。   
+
+
 
 
 
@@ -86,5 +110,6 @@ WiredTiger 存储引擎支持 `read-uncommitted 、read-committed` 和 `snapshot
 ### 参考
 
 【MongoDB事务】https://docs.mongoing.com/transactions     
+【WiredTiger的事务实现详解 】https://blog.csdn.net/daaikuaichuan/article/details/97893552  
 
 
