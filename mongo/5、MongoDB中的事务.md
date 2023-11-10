@@ -85,7 +85,18 @@ WiredTiger 存储引擎支持 `read-uncommitted 、read-committed` 和 `snapshot
 
 复制集配置下，MongoDB 整个事务在提交时，会记录一条 oplog，包含了事务所有的操作，备节点拉取 oplog，并在本地重放事务操作。事务 oplog 包含了事务操作的 `lsid，txnNumber`，以及事务内所有的操作日志（ `applyOps` 字段）。   
 
-WiredTiger 是如何实现事务和 ACID 呢。WiredTiger 事务主要使用了三个技术 snapshot(事务快照)、MVCC (多版本并发控制)和 `redo log`(重做日志)。   
+WiredTiger 是如何实现事务和 ACID 呢。WiredTiger 事务主要使用了三个技术 snapshot(事务快照)、MVCC (多版本并发控制)和 `redo log`(重做日志)。同时为了实现这三个技术，还定义了一个基于这三个技术的事务对象和全局事务管理器。        
+
+```
+wt_transaction{
+	transaction_id:    // 本次事务的全局唯一的ID，用于标示事务修改数据的版本号
+	snapshot_object:   // 当前事务开始或者操作时刻其他正在执行且并未提交的事务集合,用于事务隔离
+	operation_array:   // 本次事务中已执行的操作列表,用于事务回滚。
+	redo_log_buf:      // 操作日志缓冲区。用于事务提交后的持久化
+	State:             // 事务当前状态
+}
+
+```
 
 WiredTiger 中的 MVCC 是基于 `key/value` 中 value 值的链表，每个链表单元中存储有当先版本操作的事务 ID 和操作修改后的值。   
 
@@ -103,6 +114,21 @@ WiredTiger 中数据修改都是在这个链表中进行 append 操作，每次�
 事务开始或者结束操作之前都会对整个 WiredTiger 引擎内部正在执行的或者将要执行的事务进行一次快照，保存当时整个引擎的事务状态，确定那些事务是对自己可见的，哪些事务是自己不可见的。   
 
 ### WiredTiger 事务过程
+
+事务在执行阶段，如果是读操作，不做任何处理，因为读操作不需要回滚和提交。如果是写操作，WiredTiger 会对每个操作做详细的记录。   
+
+这里就会用使用到上面介绍的事务对象(wt_transaction)中的 operation_array 和 redo_log_buf。    
+
+operation_array：主要记录本次事务中已经提交的操作列表，数组单元中，会抱哈包含一个指向 MVCC list 对应修改版本值的指针，用于事务的回滚。  
+
+redo_log_buf: 操作日志缓冲区。用于事务提交后的持久化。   
+
+来描述下具体的更新操作过程：   
+
+1、创建一个 mvcclist 的值对象 update；  
+
+2、根据事务对象的 transactionid 和事务状态判断是为本次事务创建写的事务id,如果没有，为本次事务分配一个事务id,并将事务
+
 
 
 ### 参考
