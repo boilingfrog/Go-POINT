@@ -119,7 +119,7 @@ WiredTiger 中数据修改都是在这个链表中进行 append 操作，每次�
 
 这里就会用使用到上面介绍的事务对象(wt_transaction)中的 operation_array 和 redo_log_buf。    
 
-operation_array：主要记录本次事务中已经提交的操作列表，数组单元中，会抱哈包含一个指向 MVCC list 对应修改版本值的指针，用于事务的回滚。  
+operation_array：主要记录本次事务中已经提交的操作列表，数组单元中，会包含一个指向 MVCC list 对应修改版本值的指针，用于事务的回滚。  
 
 redo_log_buf: 操作日志缓冲区。用于事务提交后的持久化。   
 
@@ -127,9 +127,13 @@ redo_log_buf: 操作日志缓冲区。用于事务提交后的持久化。
 
 1、创建一个 mvcclist 的值对象 update；  
 
-2、根据事务对象的 transactionid 和事务状态判断是为本次事务创建写的事务id,如果没有，为本次事务分配一个事务id,并将事务
+2、根据事务对象的 transactionid 和事务状态判断是为本次事务创建写的事务id,如果没有，为本次事务分配一个事务id,并将事务的状态设置成  HAS_TXN_ID 状态；  
 
+3、将本次事务的 ID 设置到 update 单元中作为 mvcc 版本号；  
 
+4、同时会创建一个 operation 对象，这个对象的指针会指向 update,这个对象会加入到 operation_array 中，用来进行操作事务的回滚；  
+
+5、
 
 ### 参考
 
