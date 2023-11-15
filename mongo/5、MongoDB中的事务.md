@@ -4,6 +4,14 @@
 - [MongoDB 事务](#mongodb-%E4%BA%8B%E5%8A%A1)
   - [前言](#%E5%89%8D%E8%A8%80)
     - [如何使用](#%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8)
+  - [事务的原理](#%E4%BA%8B%E5%8A%A1%E7%9A%84%E5%8E%9F%E7%90%86)
+    - [事务和复复制集以及存储引擎之间的关系](#%E4%BA%8B%E5%8A%A1%E5%92%8C%E5%A4%8D%E5%A4%8D%E5%88%B6%E9%9B%86%E4%BB%A5%E5%8F%8A%E5%AD%98%E5%82%A8%E5%BC%95%E6%93%8E%E4%B9%8B%E9%97%B4%E7%9A%84%E5%85%B3%E7%B3%BB)
+  - [WiredTiger 事务过程](#wiredtiger-%E4%BA%8B%E5%8A%A1%E8%BF%87%E7%A8%8B)
+    - [事务开启](#%E4%BA%8B%E5%8A%A1%E5%BC%80%E5%90%AF)
+    - [事务执行](#%E4%BA%8B%E5%8A%A1%E6%89%A7%E8%A1%8C)
+    - [事务提交](#%E4%BA%8B%E5%8A%A1%E6%8F%90%E4%BA%A4)
+    - [事务回滚](#%E4%BA%8B%E5%8A%A1%E5%9B%9E%E6%BB%9A)
+  - [WiredTiger 中的事务隔离级别](#wiredtiger-%E4%B8%AD%E7%9A%84%E4%BA%8B%E5%8A%A1%E9%9A%94%E7%A6%BB%E7%BA%A7%E5%88%AB)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -173,8 +181,15 @@ WiredTiger 引擎对事务的回滚过程比较简单，首先遍历 operation_a
 
 WiredTiger 存储引擎支持 `read-uncommitted、read-committed` 和 `snapshot` 3种事务隔离级别，MongoDB 启动时默认选择 `snapshot` 隔离。   
 
-WiredTiger 中对于事务的实现也是基于 MVCC 实现的，MVCC 可以提供基于某个时间点的快照，对于事务而言，总是可以提供和事务开始时刻一致的数据，而不用考虑这个事务到底运行了多长的时间。     
+- Read-Uncommited：读未提交，一个事务还没提交时，它的变更就能被别的事务看到，读取未提交的数据也叫做脏读，WiredTiger 引擎在实现这个隔方式时，就是将事务对象中的 snap_object.snap_array 置为空即可，那么在读取 `MVCC list` 中的版本值时，总是读取到 `MVCC list` 链表头上的第一个版本数据，这样就总是能读取到最新的数据了；  
 
+- read-committed：一个事务提交之后，它的变更才能被其他的事务看到；这种对于一个长事务可能存在多次读取，读取到的值不一样，因为每次读取都是读取的最新提交的数据，WiredTiger 引擎在实现该事务隔离级别，就是在事务在每次执行之前，都对系统机型一次快照，然后在这个事务快照中读取最新提交的数据；   
+
+- snapshot：快照隔离方式，一个事务开始时，就进行一次快照，并且只会进行一次快照，这样事务看到的值提交版本，这个值在整个事务过程中看到的都是一样；   
+
+WiredTiger 中对于事务的实现也是基于 MVCC 实现的，MVCC 可以提供基于某个时间点的快照，有了这个快照，就能确定当前事务能看到的数据了，通过这个来实现对应的事务隔离级别，这点也个人感觉和 mysql 中的 `Read View` 类似，不展开分析了。   
+
+WiredTiger 没有使用传统的事务独占锁和共享访问锁来保证事务隔离，而是通过对系统中写事务的 snapshot 截屏来实现。这样做的目的是在保证事务隔离的情况下又能提高系统事务并发的能力。    
 
 
 
