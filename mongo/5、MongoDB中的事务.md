@@ -155,7 +155,25 @@ redo_log_buf: 操作日志缓冲区。用于事务提交后的持久化。
 
 WiredTiger 引擎对事务的回滚过程比较简单，首先遍历 operation_array ，对每个数组单元对应的 update 事务 id 设置一个 WT_TXN_ABORTED ,标识 mvcc 对应的事务单元被回滚，在其它事务进行 mvcc 读操作的时候，跳过这个放弃的值即可，整个过程是一个无锁的操作，高效，简洁。   
 
+### WiredTiger 中的事务隔离级别
 
+传统的事务级别都分成下面四种：读未提交（read uncommitted）、读提交（read committed）、可重复读（repeatable read）和串行化（serializable ）。   
+
+- 读未提交：一个事务还没提交时，它的变更就能被别的事务看到，读取未提交的数据也叫做脏读；   
+
+- 读提交：一个事务提交之后，它的变更才能被其他的事务看到；  
+
+- 可重复读：一个事务执行的过程中看到的数据，总是跟这个事务在启动时看到的数据是一致的，在此隔离级别下，未提交的变更对其它事务也是不可见的，此隔离级别基本上避免了幻读；   
+
+- 串行化：这是事务的最高级别，顾名思义就是对于同一行记录，“写”会加“写锁”，“读”会加“读锁”。当出现读写锁冲突的时候，后访问的事务必须等前一个事务执行完成，才能继续执行。   
+
+我们熟知的 MySQL 对于事务隔离级别的实现，`可重复读` 和 `读提交` 主要是通过 MVCC 来实现，MVCC 的实现主要用到了 `undo log` 日志版本链和 `Read View`。串行化 和 读未提交，主要实现方式是通过加锁来实现的。   
+
+其中 `Read View` 可以在理解为一个数据的快照，可重复读隔离级别会在每次启动的事务的时候生成一个 `Read View` 记录下当前事务启动瞬间，当前所有活跃的事务 ID。具体细节可参见 [MySQL中的事务的隔离级别](https://www.cnblogs.com/ricklz/p/17117064.html#%E4%BA%8B%E5%8A%A1%E7%9A%84%E9%9A%94%E7%A6%BB%E7%BA%A7%E5%88%AB)   
+
+WiredTiger 存储引擎支持 `read-uncommitted、read-committed` 和 `snapshot` 3种事务隔离级别，MongoDB 启动时默认选择 `snapshot` 隔离。   
+
+WiredTiger 中对于事务的实现也是基于 MVCC 实现的，MVCC 可以提供基于某个时间点的快照，对于事务而言，总是可以提供和事务开始时刻一致的数据，而不用考虑这个事务到底运行了多长的时间。     
 
 
 
@@ -164,5 +182,6 @@ WiredTiger 引擎对事务的回滚过程比较简单，首先遍历 operation_a
 
 【MongoDB事务】https://docs.mongoing.com/transactions     
 【WiredTiger的事务实现详解 】https://blog.csdn.net/daaikuaichuan/article/details/97893552  
+【MongoDB中并发控制】https://blog.csdn.net/baijiwei/article/details/89436861     
 
 
