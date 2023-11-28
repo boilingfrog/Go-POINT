@@ -27,6 +27,12 @@ MongoDB 中常用的分布式架构有下面几种：
 
 ### Replica Set 副本集模式
 
+MongoDB 中的 `Replica Set` 副本集模式，可以简单理解为一主多从的集群，包括一个主节点（primary）和多个副本节点（Secondaries）。   
+
+主节点只有一个，所有的写操作都在主节点中进行，副本节点可以有多个，通过同步主节点的操作日志（oplog）来备份主节点数据。   
+
+在主节点挂掉之后，有选举节点功能
+
 
 
 ### Sharding 分片模式
@@ -35,3 +41,4 @@ MongoDB 中常用的分布式架构有下面几种：
 ### 参考
 
 【replication】https://www.mongodb.com/docs/manual/replication/     
+【MongoDB 副本集之入门篇】https://jelly.jd.com/article/5f990ebbbfbee00150eb620a     
