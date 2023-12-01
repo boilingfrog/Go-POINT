@@ -127,11 +127,22 @@ db.products.insert(
 | secondaryPreferred  | 所有读请求都从副本节点读取，但如果副本节点都挂掉了，那就从主节点读取             |
 | nearest             | 主要看网络延迟，选取延迟最小的节点，主节点跟副本节点均可                       |
 
-
 ### Sharding 分片模式
+
+分片将数据分布式在不同的机器中。MongoDB 使用分片来支持具有非常大数据集和高吞吐量操作的部署。   
+
+当数据量的数据逐渐变大或者数据的请求变大之后，机器我们就会考虑到升级，通常会有两种方式：垂直扩展和水平扩展。   
+
+垂直扩展：垂直扩展就是提高单个机器的性能，使用更高的 CPU，增加更多的 RAM 或者存储空间。但是单个的机器的性能总归是有上限的，
+
+水平扩展：
+
+
+
 
 
 ### 参考
 
 【replication】https://www.mongodb.com/docs/manual/replication/     
 【MongoDB 副本集之入门篇】https://jelly.jd.com/article/5f990ebbbfbee00150eb620a     
+【sharding】https://www.mongodb.com/docs/manual/sharding/     
