@@ -193,13 +193,23 @@ MongoDB 使用分片键在各个分片之间分发集合中的文档。分片键
 
 #### chunk 是什么  
 
-我们知道 MongoDB 的分片集群，数据会被均匀的分布在不同的 shard 中，对于每一个 shard 中的数据，MongoDB 还会把数据分成 chunks，每个 chunk 代表 shard 中的一部分数据。   
+我们知道 MongoDB 的分片集群，数据会被均匀的分布在不同的 shard 中，对于每一个 shard 中的数据，是存储在一个个的 chunk 中的，每个 chunk 代表 shard 中的一部分数据。     
 
-总结下 chunk 的作用：  
+chunk 有什么作用：  
 
 1、Splitting：当一个 chunk 的大小超过配置的 `chunk size` ，MongoDB 的进程会把这个 chunk 切分成更小的 chunk ，避免 chunk 过大的情况出现；   
 
-2、Balancing：
+2、Balancing：在 MongoDB 中，balancer 是一个后台的进程，负责 chunk 的转移，从而均衡各个 `shard server` 的负载。    
+
+简单就是使用 chunk 存储数据，方便集群进行数据在分片集群中进行数据的均衡迁移操作。   
+
+chunk 的大小选择很重要，集群默认的大小是 64 兆，可以根据业务大小进行调节。  
+
+- 小的 chunksize：优点，数据均衡和迁移速度快，数据分更均匀。
+
+
+
+
 
 
 
