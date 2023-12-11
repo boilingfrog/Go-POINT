@@ -7,7 +7,9 @@
     - [副本集写和读的特性](#%E5%89%AF%E6%9C%AC%E9%9B%86%E5%86%99%E5%92%8C%E8%AF%BB%E7%9A%84%E7%89%B9%E6%80%A7)
   - [Sharding 分片模式](#sharding-%E5%88%86%E7%89%87%E6%A8%A1%E5%BC%8F)
     - [分片的优势](#%E5%88%86%E7%89%87%E7%9A%84%E4%BC%98%E5%8A%BF)
+    - [MongoDB 分片的组件](#mongodb-%E5%88%86%E7%89%87%E7%9A%84%E7%BB%84%E4%BB%B6)
     - [分片键](#%E5%88%86%E7%89%87%E9%94%AE)
+    - [chunk 是什么](#chunk-%E6%98%AF%E4%BB%80%E4%B9%88)
   - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -205,8 +207,17 @@ chunk 有什么作用：
 
 chunk 的大小选择很重要，集群默认的大小是 64 兆，可以根据业务大小进行调节。  
 
-- 小的 chunksize：优点，数据均衡和迁移速度快，数据分更均匀。
+- 较小的 chunksize
 
+优点：数据均衡和迁移速度快，数据分布更均匀；  
+
+缺点：数据分裂频繁，路由节点消耗更多资源。   
+
+- 较大的 chunksize  
+
+优点：数据分裂少；  
+
+缺点：数据块移动集中消耗IO资源。  
 
 
 
