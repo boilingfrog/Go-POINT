@@ -43,11 +43,11 @@ MongoDB 中的 `Replica Set` 副本集模式，可以简单理解为一主多从
 
 搭建一个副本集集群最少需要三个节点：一个主节点，两个备份节点，如果三个节点分布合理，基本可以保证线上数据 `99.9%` 安全。       
 
-<img src="/img/mongo/mongo-rc.jpg"  alt="mongo" />     
+<img src="/img/mongo/mongo-rc.jpg" width = "50%" height = "50%"  alt="mongo" />     
 
 在集群只有是三个节点的情况下，当主节点超过配置的 `electionTimeoutMillis` 时间段（默认情况下为10 秒）内未与集合中的其他成员进行通信时，主节点就会被认为是异常了，两个副本节点也会进行选举，重新选出一个新的主节点。      
 
-<img src="/img/mongo/mongo-rc-2.jpg"  alt="mongo" />     
+<img src="/img/mongo/mongo-rc-2.jpg" width = "50%" height = "50%"    alt="mongo" />     
 
 在默认复制设置的情况下，从一个集群开始选举新主节点到选举完成的中间时间通常不超过 12 秒。中间包括将主节点标记不可用，发起并完成选举所需要的时间。在选举的过程中，就意味着集群暂时不能提供写入操作，时间越久集群不可写入的时间也就是越久。     
 
@@ -65,7 +65,7 @@ MongoDB 中的 `Replica Set` 副本集模式，可以简单理解为一主多从
 
 因为隐藏节点对客户端不可见，所以对于备份数据或者一些定时脚本可以直接连到隐藏节点，有大的慢查询也不会影响到集群本身对外提供的服务。   
 
-<img src="/img/mongo/mongo-rc-3.jpg"  alt="mongo" />       
+<img src="/img/mongo/mongo-rc-3.jpg" width = "50%" height = "50%"    alt="mongo" />       
 
 - slaveDelay
 
@@ -73,7 +73,7 @@ MongoDB 中的 `Replica Set` 副本集模式，可以简单理解为一主多从
 
 隐藏节点有什么作用呢？其中有一个和重要的作用就是防止数据库误操作，比如当我们对数据的进行大批量的删除或者更新操作，为了防止出现意外，我们可能会考虑事先备份一下数据，当操作出现异常的时候，我们还能根据备份进行复原回滚操作。有了延迟节点，因为延迟节点还没及时同步到最新的数据，我们就可以基于延迟节点进行数据库的复原操作。   
 
-<img src="/img/mongo/mongo-rc-4.jpg"  alt="mongo" />       
+<img src="/img/mongo/mongo-rc-4.jpg" width = "50%" height = "50%"    alt="mongo" />       
 
 - tags
 
@@ -97,7 +97,7 @@ MongoDB 中的 `Replica Set` 副本集模式，可以简单理解为一主多从
 
 比如下面的栗子，写请求里面带了 `w : “majority"` ，那么主节点写入完成后，数据同步到第一个副本节点，且第一个副本节点回复数据写入成功后，才给客户端返回成功。   
 
-<img src="/img/mongo/mongo-rc-5.jpg"  alt="mongo" />       
+<img src="/img/mongo/mongo-rc-5.jpg"  width = "50%" height = "50%"   alt="mongo" />       
 
 一般有两种使用策略  
 
@@ -122,7 +122,7 @@ db.products.insert(
 
 读和写不一样， 为了保持一致，写只能通过主节点，但是读可以选择主节点，也可以选择副本节点。区别是主节点数据最新，副本节点因为同步问题可能会有延迟，但从副本节点读取数据可以分散对主节点的压力。  
 
-<img src="/img/mongo/mongo-rc-6.jpg"  alt="mongo" />       
+<img src="/img/mongo/mongo-rc-6.jpg" width = "50%" height = "50%"    alt="mongo" />       
 
 来看下 5 种读偏好模式的具体特点  
 
@@ -174,7 +174,7 @@ MongoDB 中的 Sharding 分片模式由下面几个组件组成：
 
 - 配置服务器（config servers）：配置服务器存储集群的元数据和配置设置。   
 
-<img src="/img/mongo/mongo-rc-5.jpg"  alt="mongo" />       
+<img src="/img/mongo/mongo-rc-5.jpg" width = "50%" height = "50%"    alt="mongo" />       
 
 #### 分片键 
 
@@ -230,7 +230,7 @@ MongoDB 中支持两种分片策略来跨分片集群分布数据。哈希分片
 
 哈希分片会计算分片键字段值的哈希，然后根据哈希分片键值，每个块分配一个范围。  
 
-<img src="/img/mongo/mongo-hash-1.jpg"  alt="mongo" />       
+<img src="/img/mongo/mongo-hash-1.jpg"  width = "50%" height = "50%"   alt="mongo" />       
 
 虽然一系列分片键可能是“接近”的，但它们的哈希值不太可能在同一个块上。基于哈希值的数据分布有助于更加均匀地分布数据，特别是在分片键单调变化的数据集中。   
 
@@ -238,7 +238,7 @@ MongoDB 中支持两种分片策略来跨分片集群分布数据。哈希分片
 
 mongos 在接收到所有分片的响应后，将合并数据并返回结果文档。广播操作的性能取决于集群的整体负载，以及网络延迟、各个分片的负载和每个分片返回的文档数量等因素。所有在使用哈希分片方式部署的集群，我们应该减少可能导致广播的查询。   
 
-<img src="/img/mongo/mongo-hash-2.jpg"  alt="mongo" />       
+<img src="/img/mongo/mongo-hash-2.jpg"  width = "50%" height = "50%"   alt="mongo" />       
 
 一般哈希对于范围查询都支持的很差。   
 
@@ -248,7 +248,7 @@ MongoDB 中分片键划分数会根据数据范围，将不同范围内的数据
 
 这样针对连续范围的查询就能够高效的执行了。   
 
-<img src="/img/mongo/mongo-hash-2.jpg"  alt="mongo" />       
+<img src="/img/mongo/mongo-hash-2.jpg" width = "50%" height = "50%"    alt="mongo" />       
 
 ### 参考
 
