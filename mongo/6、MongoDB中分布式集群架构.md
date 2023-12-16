@@ -175,7 +175,7 @@ MongoDB 中的 Sharding 分片模式由下面几个组件组成：
 
 - 配置服务器（config servers）：配置服务器存储集群的元数据和配置设置。   
 
-<img src="/img/mongo/mongo-rc-5.jpg" width = "50%" height = "50%"    alt="mongo" />       
+<img src="/img/mongo/mongo-shard-1.jpg" width = "50%" height = "50%"    alt="mongo" />
 
 #### 分片键 
 
