@@ -248,7 +248,7 @@ MongoDB 中分片键划分数会根据数据范围，将不同范围内的数据
 
 这样针对连续范围的查询就能够高效的执行了。   
 
-<img src="/img/mongo/mongo-hash-2.jpg" width = "50%" height = "50%"    alt="mongo" />       
+<img src="/img/mongo/mongo-range-2.jpg" width = "50%" height = "50%"    alt="mongo" />       
 
 ### 参考
 
