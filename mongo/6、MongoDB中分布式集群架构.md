@@ -231,7 +231,7 @@ MongoDB 中支持两种分片策略来跨分片集群分布数据。哈希分片
 
 哈希分片会计算分片键字段值的哈希，然后根据哈希分片键值，每个块分配一个范围。  
 
-<img src="/img/mongo/mongo-hash-1.jpg"  width = "50%" height = "50%"   alt="mongo" />       
+<img src="/img/mongo/mongo-hash-1.jpg"  width = "60%" height = "60%"   alt="mongo" />
 
 虽然一系列分片键可能是“接近”的，但它们的哈希值不太可能在同一个块上。基于哈希值的数据分布有助于更加均匀地分布数据，特别是在分片键单调变化的数据集中。   
 
@@ -239,7 +239,7 @@ MongoDB 中支持两种分片策略来跨分片集群分布数据。哈希分片
 
 mongos 在接收到所有分片的响应后，将合并数据并返回结果文档。广播操作的性能取决于集群的整体负载，以及网络延迟、各个分片的负载和每个分片返回的文档数量等因素。所有在使用哈希分片方式部署的集群，我们应该减少可能导致广播的查询。   
 
-<img src="/img/mongo/mongo-hash-2.jpg"  width = "50%" height = "50%"   alt="mongo" />       
+<img src="/img/mongo/mongo-hash-2.jpg"  width = "30%" height = "30%"   alt="mongo" />
 
 一般哈希对于范围查询都支持的很差。   
 
