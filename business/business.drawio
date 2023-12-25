@@ -50,9 +50,6 @@
                 <mxCell id="GfL6Pquk-ConJCKliKnZ-18" value="&lt;font style=&quot;font-size: 16px&quot;&gt;苹果服务端&lt;/font&gt;" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;" vertex="1" parent="MyINGqrA4NkSONUjMpa5-1">
                     <mxGeometry x="1220" y="520" width="100" height="600" as="geometry"/>
                 </mxCell>
-                <mxCell id="GfL6Pquk-ConJCKliKnZ-19" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;fillColor=#808080;" vertex="1" parent="GfL6Pquk-ConJCKliKnZ-18">
-                    <mxGeometry x="45" y="90" width="10" height="90" as="geometry"/>
-                </mxCell>
                 <mxCell id="GfL6Pquk-ConJCKliKnZ-30" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;fillColor=#808080;" vertex="1" parent="GfL6Pquk-ConJCKliKnZ-18">
                     <mxGeometry x="45" y="250" width="10" height="100" as="geometry"/>
                 </mxCell>
