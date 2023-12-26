@@ -4,13 +4,6 @@
             <root>
                 <mxCell id="H0mRX0CU5s3aJBRoEY8o-0"/>
                 <mxCell id="H0mRX0CU5s3aJBRoEY8o-1" parent="H0mRX0CU5s3aJBRoEY8o-0"/>
-                <mxCell id="flFJm0tve7DdMCR-UTfb-0" style="edgeStyle=none;html=1;fontSize=16;entryX=-0.5;entryY=0.129;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="H0mRX0CU5s3aJBRoEY8o-1" source="flFJm0tve7DdMCR-UTfb-1" target="flFJm0tve7DdMCR-UTfb-5">
-                    <mxGeometry relative="1" as="geometry">
-                        <Array as="points">
-                            <mxPoint x="680" y="610"/>
-                        </Array>
-                    </mxGeometry>
-                </mxCell>
                 <mxCell id="flFJm0tve7DdMCR-UTfb-1" value="&lt;font style=&quot;font-size: 16px&quot;&gt;用户&lt;/font&gt;" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;" vertex="1" parent="H0mRX0CU5s3aJBRoEY8o-1">
                     <mxGeometry x="500" y="520" width="100" height="480" as="geometry"/>
                 </mxCell>
@@ -51,7 +44,7 @@
                     <mxGeometry x="45" y="270" width="10" height="120" as="geometry"/>
                 </mxCell>
                 <mxCell id="flFJm0tve7DdMCR-UTfb-16" value="1、用户购买商品" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=16;" vertex="1" parent="H0mRX0CU5s3aJBRoEY8o-1">
-                    <mxGeometry x="605" y="580" width="140" height="20" as="geometry"/>
+                    <mxGeometry x="591" y="580" width="140" height="20" as="geometry"/>
                 </mxCell>
                 <mxCell id="flFJm0tve7DdMCR-UTfb-20" style="edgeStyle=none;html=1;fontSize=16;" edge="1" parent="H0mRX0CU5s3aJBRoEY8o-1">
                     <mxGeometry relative="1" as="geometry">
@@ -94,7 +87,7 @@
                 <mxCell id="flFJm0tve7DdMCR-UTfb-32" value="8、告知用户本次充值的结果" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=16;" vertex="1" parent="H0mRX0CU5s3aJBRoEY8o-1">
                     <mxGeometry x="565" y="930" width="220" height="20" as="geometry"/>
                 </mxCell>
-                <mxCell id="z8ifEDF60FtIWcS7ClJs-0" style="edgeStyle=none;html=1;dashed=1;fontSize=16;" edge="1" parent="H0mRX0CU5s3aJBRoEY8o-1" source="flFJm0tve7DdMCR-UTfb-8">
+                <mxCell id="z8ifEDF60FtIWcS7ClJs-0" style="edgeStyle=none;html=1;fontSize=16;" edge="1" parent="H0mRX0CU5s3aJBRoEY8o-1" source="flFJm0tve7DdMCR-UTfb-8">
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="1087" y="822" as="sourcePoint"/>
                         <mxPoint x="1266.5" y="822" as="targetPoint"/>
@@ -112,12 +105,6 @@
                         <mxPoint x="794.5" y="925" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="z8ifEDF60FtIWcS7ClJs-3" style="edgeStyle=none;html=1;dashed=1;fontSize=16;" edge="1" parent="H0mRX0CU5s3aJBRoEY8o-1">
-                    <mxGeometry relative="1" as="geometry">
-                        <mxPoint x="1185.5" y="1290" as="sourcePoint"/>
-                        <mxPoint x="950" y="1290" as="targetPoint"/>
-                    </mxGeometry>
-                </mxCell>
                 <mxCell id="z8ifEDF60FtIWcS7ClJs-4" style="edgeStyle=none;html=1;dashed=1;fontSize=16;" edge="1" parent="H0mRX0CU5s3aJBRoEY8o-1">
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="785" y="958" as="sourcePoint"/>
@@ -126,6 +113,12 @@
                 </mxCell>
                 <mxCell id="flFJm0tve7DdMCR-UTfb-34" value="4、组合回执信息，用户信息，&lt;br&gt;商品信息，下单并校验票据" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=16;" vertex="1" parent="H0mRX0CU5s3aJBRoEY8o-1">
                     <mxGeometry x="820" y="750" width="230" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="drfyxRImw_CXweY36P35-0" style="edgeStyle=none;html=1;entryX=0.5;entryY=0.179;entryDx=0;entryDy=0;entryPerimeter=0;fontSize=16;" edge="1" parent="H0mRX0CU5s3aJBRoEY8o-1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="555" y="607.06" as="sourcePoint"/>
+                        <mxPoint x="790" y="607.06" as="targetPoint"/>
+                    </mxGeometry>
                 </mxCell>
             </root>
         </mxGraphModel>
