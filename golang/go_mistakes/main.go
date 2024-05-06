@@ -9,10 +9,11 @@ import (
 func main() {
 	slice1 := []int{1, 2, 3, 4, 5}
 	slice2 := []int{5, 4, 3}
+	fmt.Printf("%p\n", slice1)
 	copy(slice1, slice2)
 	slice2[0] = 9
 	slice1[3] = 9
-	fmt.Println(slice1)
+	fmt.Printf("%p\n", slice1)
 
 	//id := "631efd32a2deab22008da983"
 	//fmt.Println("------------------------------------")
