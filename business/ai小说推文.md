@@ -62,9 +62,52 @@
 
 ### 角色任务的一致性
 
-角色的一致性
+生成推
 
 ### 如何合成视频
+
+有了图片，解读的语音，这里来看下如何把现有的素材合成一个带放大缩小效果的视频，这里主要使用 FFmpeg 来完成。  
+
+将一段 mp3 和一张图片合成一个视频，根据音频文件的长度来生成视频。     
+
+```
+$ ffmpeg -loop 1 -i chapter-1.png -i chapter-1.mp3 -c:v libx264 -tune stillimage -c:a aac -b:a 192k -pix_fmt yuv420p -shortest chapter-1.mp4
+
+-loop 1: 循环输入图片。1 表示无限循环，但由于 -shortest 选项的存在，视频将在音频结束时结束。
+-i chapter-1.png: 指定输入文件，即你的图片。
+-i chapter-1.mp3: 指定第二个输入文件，即你的音频文件。
+-c:v libx264: 使用 libx264 编码器进行视频编码。
+-tune stillimage: 优化编码器设置，适用于静态图片视频。
+-c:a aac: 使用AAC编码音频。
+-b:a 192k: 设置音频比特率为192k。
+-pix_fmt yuv420p: 设置像素格式，yuv420p 是大多数视频播放器和平台所兼容的。
+-shortest: 输出视频的长度将与较短的输入流（在这种情况下是音频流）相匹配。
+chapter-1.mp4: 输出文件的名称和格式。
+```
+
+有了每个镜头的视频，然后最后一步就是将所有的视频通过 ffmpeg 合成一个最后的长视频。  
+
+如果所有视频文件的格式（编解码器、分辨率、帧率等）都相同，你可以使用 concat 协议。首先，创建一个文本文件（例如 inputs.txt），列出所有视频文件：  
+
+```
+$ cat input.txt
+file 'output_0.mp4'
+file 'output_1.mp4'
+file 'output_2.mp4'
+```
+
+运行以下 ffmpeg 命令  
+
+```
+$ ffmpeg -f concat -safe 0 -i input.txt -c copy output.mp4
+```
+
+这里 `-c copy` 表示直接复制视频和音频流，不进行重新编码，这会非常快。   
+
+
+
+
+
 
 ### 总结
 
