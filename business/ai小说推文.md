@@ -5,8 +5,9 @@
   - [前言](#%E5%89%8D%E8%A8%80)
   - [整体的处理流程](#%E6%95%B4%E4%BD%93%E7%9A%84%E5%A4%84%E7%90%86%E6%B5%81%E7%A8%8B)
   - [小说内容的提炼重新创作](#%E5%B0%8F%E8%AF%B4%E5%86%85%E5%AE%B9%E7%9A%84%E6%8F%90%E7%82%BC%E9%87%8D%E6%96%B0%E5%88%9B%E4%BD%9C)
-  - [角色任务的一致性](#%E8%A7%92%E8%89%B2%E4%BB%BB%E5%8A%A1%E7%9A%84%E4%B8%80%E8%87%B4%E6%80%A7)
+  - [角色人物的一致性](#%E8%A7%92%E8%89%B2%E4%BA%BA%E7%89%A9%E7%9A%84%E4%B8%80%E8%87%B4%E6%80%A7)
   - [如何合成视频](#%E5%A6%82%E4%BD%95%E5%90%88%E6%88%90%E8%A7%86%E9%A2%91)
+  - [视频添加动效](#%E8%A7%86%E9%A2%91%E6%B7%BB%E5%8A%A0%E5%8A%A8%E6%95%88)
   - [总结](#%E6%80%BB%E7%BB%93)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -97,8 +98,9 @@ gpt 根据每个镜生成适合 sd  出图的关键词的时候，可以让其�
 将一段 mp3 和一张图片合成一个视频，根据音频文件的长度来生成视频。     
 
 ```
-$ ffmpeg -loop 1 -i chapter-1.png -i chapter-1.mp3 -c:v libx264 -tune stillimage -c:a aac -b:a 192k -pix_fmt yuv420p -shortest chapter-1.mp4
+$ ffmpeg -loop 1 -framerate 100 -i chapter-1.png -i chapter-1.mp3 -c:v libx264 -tune stillimage -c:a aac -b:a 192k -pix_fmt yuv420p -shortest chapter-1.mp4
 
+-framerate 100：指定输入图片序列的帧率为100帧每秒
 -loop 1: 循环输入图片。1 表示无限循环，但由于 -shortest 选项的存在，视频将在音频结束时结束。
 -i chapter-1.png: 指定输入文件，即你的图片。
 -i chapter-1.mp3: 指定第二个输入文件，即你的音频文件。
@@ -130,6 +132,19 @@ $ ffmpeg -f concat -safe 0 -i input.txt -c copy output.mp4
 
 这里 `-c copy` 表示直接复制视频和音频流，不进行重新编码，这会非常快。   
 
+### 视频添加动效
+
+通过 ffmpeg 导出的视频，音频和图片已经结合到一起了，为了画面效果更加生动，我们可以导入到剪影中，添加关键帧，转场特效等，使画面更有动态感。   
+
 ### 总结
+
+小说推文，最重要的三个关键点： 
+
+1、吸引人的内容；  
+
+2、生成的图片主人公形象的一致性；  
+
+3、小说内容，图片画面，播放音色，如何保持一致。   
+
 
 
