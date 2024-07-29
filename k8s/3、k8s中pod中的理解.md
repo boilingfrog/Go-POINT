@@ -771,6 +771,22 @@ spec:
 
 在业务流量请求较低的时候，释放多余的资源。当有一些突发性的活动，就能根据资源占用情况，申请合理的资源。     
 
+Requests 和 Limits 都是可选的。  
+
+1、如果不指定 Limits 的 CPU；  
+
+如果你没有为容器指定 CPU 限制，则会出现下面的情况：    
+
+容器在具有默认 CPU 限制的名字空间中运行，系统会自动为容器设置默认限制。 集群管理员可以使用 LimitRange 指定 CPU 限制的默认值。    
+
+如果当前命名空间没有设置默认值，容器在可以使用的 CPU 资源上没有上限。因而可以使用所在节点上所有的可用 CPU 资源。   
+
+2、如果你设置了 Limits 的 CPU 但未设置 Requests 的 CPU 请求；  
+
+如果为容器指定了 Limits 的 CPU 但未为其设置 Requests 的 CPU ，Kubernetes 会自动为其 设置与 Requests 的 CPU 相同的 CPU 请求值。类似的，如果容器设置了内存限制值但未设置 内存请求值，Kubernetes 也会为其设置与内存限制值相同的内存请求。   
+
+之前遇到过一个问题，给 pod 中 Limits 的 cpu 给了一个较大的值，同时没有设置 Requests 的 cpu 。当集群中的 pod 在触发 hpa 的扩容机制发生扩容的时候，出现了集群 已分配 cpu 过高，导致 pod 不能发生扩容的情况。后面查询了资料就是这个，如果为容器指定了 Limits 的 CPU 但未为其设置 Requests 的 CPU ，Kubernetes 会自动为其 设置与 Requests 的 CPU 相同的 CPU 请求值。   
+
 #### QoS 模型  
 
 在 k8s 中不同的 requests 和 limits 的设置方式，会将这个 pod 划分到不同的 QoS 级别中。   
