@@ -781,7 +781,7 @@ Requests 和 Limits 都是可选的。
 
 如果当前命名空间没有设置默认值，容器在可以使用的 CPU 资源上没有上限。因而可以使用所在节点上所有的可用 CPU 资源。   
 
-2、如果你设置了 Limits 的 CPU 但未设置 Requests 的 CPU 请求；  
+2、如果设置了 Limits 的 CPU 但未设置 Requests 的 CPU 请求；  
 
 如果为容器指定了 Limits 的 CPU 但未为其设置 Requests 的 CPU ，Kubernetes 会自动为其 设置与 Requests 的 CPU 相同的 CPU 请求值。类似的，如果容器设置了内存限制值但未设置 内存请求值，Kubernetes 也会为其设置与内存限制值相同的内存请求。   
 
