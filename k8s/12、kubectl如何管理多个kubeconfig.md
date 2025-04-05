@@ -78,7 +78,6 @@ users:
 $ export KUBECONFIG=./kube/config-test:./kube/config-production
 ```
 
-获取当前的上下文信息
 
 ```
 $ kubectl config get-contexts
@@ -102,7 +101,92 @@ $ kubectl config use-context production
 Switched to context "production".
 ```
 
+可以看到， clusters 的 name(标识集群的名字) ，和 contexts 的 name(标识上下文的名字)，。在我们切换配置文件的时候，帮助最大.clusters 的 name,帮我们区分是那个集群，contexts 的 name，用来帮助在切换集群的时候，进行上下文的区分。   
 
+弄明白了，kubeconfig 的文件构成和如何设置之后，我们尝试使用脚本来帮助我们处理。  
+
+script.sh
+
+```
+#!/bin/bash
+
+# 设置 KUBECONFIG 环境变量
+export KUBECONFIG=./kube/config-test:./kube/config-production
+
+# 列出所有上下文
+kubectl config get-contexts
+
+# 提示用户选择上下文
+echo "请输入要使用的 k8s 集群的 NAME："
+read context_name
+
+# 切换到选择的上下文
+kubectl config use-context $context_name
+
+# 显示当前上下文
+kubectl config current-context
+```
+
+添加执行的权限
+
+```
+ chmod +x ./kube/script.sh
+```
+
+执行  
+
+```
+$ ./kube/script.sh         
+CURRENT   NAME         CLUSTER                 AUTHINFO             NAMESPACE
+          production   kubernetes-production   kubernetes-admin-1   
+*         test         kubernetes-test         kubernetes-admin     
+请输入要使用的 k8s 集群的 NAME：
+test
+Switched to context "test".
+test
+```
+
+### 编写优化脚本
+
+上面展示了 kubeconfig 中文件的构成，已经如何进行多个 config 的切换，这里添加一个更加方便的脚本。  
+
+指定文件的名字，文件的名字就是我们集群的上下文。    
+
+创建两个集群的 yaml, config-test.yaml 和  config-production.yaml 
+
+```
+#!/bin/bash
+
+# 设置 KUBECONFIG 环境变量
+export KUBECONFIG=$(ls ./kube/config-*.yaml | tr '\n' ':' | sed 's/:$//')
+
+
+# 获取所有上下文
+contexts=$(kubectl config get-contexts -o name)
+
+# 重命名上下文
+for context in $contexts; do
+  for file in ./kube/config-*.yaml; do
+    if grep -q $context $file; then
+      suffix=$(basename $file | sed 's/config-//;s/.yaml//')
+      kubectl config rename-context $context $suffix
+    fi
+  done
+done
+
+# 列出所有上下文
+kubectl config get-contexts
+
+# 提示用户选择上下文
+echo "请输入要使用的 k8s 集群的 NAME："
+read context_name
+
+# 切换到选择的上下文
+kubectl config use-context $context_name
+
+# 显示当前上下文
+kubectl config current-context
+```
 
 ### 参考
 

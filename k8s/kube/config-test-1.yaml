@@ -8,7 +8,7 @@ contexts:
 - context:
     cluster: kubernetes-test
     user: kubernetes-admin
-  name: test
+  name: test-1
 current-context: test
 kind: Config
 preferences: {}
