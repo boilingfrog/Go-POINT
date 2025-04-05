@@ -21,4 +21,6 @@ done
 kubectl config get-contexts
 
 # 合并 kubeconfig 文件
-kubectl config view --merge --flatten > ./kube/config
+kubectl config view --merge --flatten > ~/.kube/config
+
+export KUBECONFIG=~/.kube/config
