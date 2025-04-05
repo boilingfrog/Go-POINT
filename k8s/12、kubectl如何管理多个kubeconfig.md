@@ -82,6 +82,7 @@ users:
 $ export KUBECONFIG=./kube/config-test:./kube/config-production
 ```
 
+获取当前的上下文信息
 
 ```
 $ kubectl config get-contexts
@@ -91,7 +92,7 @@ CURRENT   NAME         CLUSTER                 AUTHINFO             NAMESPACE
 *         test         kubernetes-test         kubernetes-admin 
 ```
 
-获取当前的上下文信息
+切换上下文
 
 ```
 $ kubectl config current-context
@@ -194,7 +195,7 @@ kubectl config current-context
 
 ### 第三方工具
 
-有了上下文信息，这里也可以使用第三方工具进行快速的切换。这里推荐使用 kubectx。具体安装地址参考[https://github.com/ahmetb/kubectx]
+如果有了上下文信息，这里也可以使用第三方工具进行快速的切换。 这里推荐使用 kubectx。具体安装地址参考[https://github.com/ahmetb/kubectx]
 
 ```
 $ kubectx
@@ -204,6 +205,37 @@ test
 $ kubectx test
 Switched to context "test".
 ```
+
+这里再放一个切换合并上下文的脚本  
+
+```
+#!/bin/bash
+
+# 设置 KUBECONFIG 环境变量
+export KUBECONFIG=$(ls ./kube/config-*.yaml | tr '\n' ':' | sed 's/:$//')
+
+
+# 获取所有上下文
+contexts=$(kubectl config get-contexts -o name)
+
+# 重命名上下文
+for context in $contexts; do
+  for file in ./kube/config-*.yaml; do
+    if grep -q $context $file; then
+      suffix=$(basename $file | sed 's/config-//;s/.yaml//')
+      kubectl config rename-context $context $suffix
+    fi
+  done
+done
+
+# 列出所有上下文
+kubectl config get-contexts
+
+# 合并 kubeconfig 文件
+kubectl config view --merge --flatten > ~./config
+```
+
+我们可以将合并之后的 config, 放到 ~/.kube/config 文件中。借助于 kubectx 就能很好的进行 k8s 上下文的切换了。   
 
 ### 参考
 
