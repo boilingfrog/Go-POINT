@@ -21,7 +21,10 @@
 
 - [10、k8s 中的网络](https://github.com/boilingfrog/Go-POINT/blob/master/k8s/10%E3%80%81k8s%E4%B8%AD%E7%9A%84%E7%BD%91%E7%BB%9C.md)            
 
-- [11、k8s 为什么会抛弃docker](https://github.com/boilingfrog/Go-POINT/blob/master/k8s/11%E3%80%81k8s%E4%B8%BA%E4%BB%80%E4%B9%88%E6%8A%9B%E5%BC%83docker.md)                   
+- [11、k8s 为什么会抛弃docker](https://github.com/boilingfrog/Go-POINT/blob/master/k8s/11%E3%80%81k8s%E4%B8%BA%E4%BB%80%E4%B9%88%E6%8A%9B%E5%BC%83docker.md)          
+
+- [11、k8s 如何管理多个kubeconfig](https://github.com/boilingfrog/Go-POINT/blob/master/k8s/12%E3%80%81kubectl%E5%A6%82%E4%BD%95%E7%AE%A1%E7%90%86%E5%A4%9A%E4%B8%AAkubeconfig.md)                   
+
 
 
 

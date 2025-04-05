@@ -242,3 +242,4 @@ kubectl config view --merge --flatten > ~./config
 【配置对多集群的访问】https://kubernetes.io/zh-cn/docs/tasks/access-application-cluster/configure-access-multiple-clusters/    
 【如何管理和切换多个 Kubernetes kubeconfig 文件】https://blog.csdn.net/Mint6/article/details/142572046  
 【kubectx】https://github.com/ahmetb/kubectx  
+【kubectl 如何管理多个 kubeconfig】https://github.com/boilingfrog/Go-POINT/blob/master/k8s/12%E3%80%81kubectl%E5%A6%82%E4%BD%95%E7%AE%A1%E7%90%86%E5%A4%9A%E4%B8%AAkubeconfig.md  
