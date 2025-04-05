@@ -3,6 +3,10 @@
 
 - [kubectl 如何管理多个 kubeconfig](#kubectl-%E5%A6%82%E4%BD%95%E7%AE%A1%E7%90%86%E5%A4%9A%E4%B8%AA-kubeconfig)
   - [前言](#%E5%89%8D%E8%A8%80)
+  - [如何使用](#%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8)
+  - [编写优化脚本](#%E7%BC%96%E5%86%99%E4%BC%98%E5%8C%96%E8%84%9A%E6%9C%AC)
+  - [第三方工具](#%E7%AC%AC%E4%B8%89%E6%96%B9%E5%B7%A5%E5%85%B7)
+  - [参考](#%E5%8F%82%E8%80%83)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -188,7 +192,21 @@ kubectl config use-context $context_name
 kubectl config current-context
 ```
 
+### 第三方工具
+
+有了上下文信息，这里也可以使用第三方工具进行快速的切换。这里推荐使用 kubectx。具体安装地址参考[https://github.com/ahmetb/kubectx]
+
+```
+$ kubectx
+production
+test
+
+$ kubectx test
+Switched to context "test".
+```
+
 ### 参考
 
 【配置对多集群的访问】https://kubernetes.io/zh-cn/docs/tasks/access-application-cluster/configure-access-multiple-clusters/    
 【如何管理和切换多个 Kubernetes kubeconfig 文件】https://blog.csdn.net/Mint6/article/details/142572046  
+【kubectx】https://github.com/ahmetb/kubectx  
