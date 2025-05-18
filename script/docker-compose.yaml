@@ -1,0 +1,13 @@
+version: '3'
+
+services:
+  app:
+    image: novicezk/midjourney-proxy:2.6.3 # 总是使用 latest ,更新时重新 pull 该 tag 镜像即可
+    restart: always
+    container_name: midjourney-proxy
+    ports:
+      - 8082:8080
+    environment:
+      mj.discord.guild-id: 1271865147991789588
+      mj.discord.channel-id: 1271865147991789591
+      mj.discord.user-token: xxxxxxxxx

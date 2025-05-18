@@ -1,0 +1,26 @@
+apiVersion: v1
+clusters:
+  - cluster:
+      # 集群的api 访问地址
+      server: https://111.111.777.4:6443
+      # Base64 编码的 CA 证书数据，用于验证 API Server 的身份。
+      certificate-authority-data: c2RzZHNkc2RzZHNkc2RzZHMxMjEy
+    # 集群的名字
+    name: kubernetes-production
+contexts:
+  - context:
+      # 集群的名字
+      cluster: kubernetes-production
+      # 指定该上下文使用的用户名，这里是 "kubernetes-admin-1"。
+      user: "kubernetes-admin-1"
+     # 上下文的名称，这里是 "production"。
+    name: production
+# 当前激活的上下文名称，这里是 "production"。
+current-context: production
+kind: Config
+preferences: {}
+users:
+  - name: "kubernetes-admin-1"
+    user:
+      client-certificate-data: c2RzZHNkc2RzZHNkc2RzZHMxMjEy
+      client-key-data: c2RzZHNkc2RzZHNkc2RzZHMxMjEy

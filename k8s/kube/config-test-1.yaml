@@ -1,0 +1,19 @@
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: c2RzZHNkc2RzZHNkc2RzZHMxMjEy
+    server: https://111.111.777.4:6443
+  name: kubernetes-test
+contexts:
+- context:
+    cluster: kubernetes-test
+    user: kubernetes-admin
+  name: test-1
+current-context: test
+kind: Config
+preferences: {}
+users:
+- name: kubernetes-admin
+  user:
+    client-certificate-data: c2RzZHNkc2RzZHNkc2RzZHMxMjEy
+    client-key-data: c2RzZHNkc2RzZHNkc2RzZHMxMjEy

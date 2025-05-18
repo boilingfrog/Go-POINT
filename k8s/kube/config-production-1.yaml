@@ -1,0 +1,19 @@
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: c2RzZHNkc2RzZHNkc2RzZHMxMjEy
+    server: https://111.111.777.4:6443
+  name: kubernetes-production
+contexts:
+- context:
+    cluster: kubernetes-production
+    user: kubernetes-admin-1
+  name: production-1
+current-context: production-1
+kind: Config
+preferences: {}
+users:
+- name: kubernetes-admin-1
+  user:
+    client-certificate-data: c2RzZHNkc2RzZHNkc2RzZHMxMjEy
+    client-key-data: c2RzZHNkc2RzZHNkc2RzZHMxMjEy
