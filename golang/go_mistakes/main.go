@@ -11,11 +11,8 @@ func main() {
 	slice2 := []int{5, 4, 3}
 	fmt.Printf("%p\n", slice1)
 	copy(slice1, slice2)
-
 	slice2[0] = 9
-
 	slice1[3] = 9
-
 	fmt.Printf("%p\n", slice1)
 }
 
