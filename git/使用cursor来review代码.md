@@ -1,3 +1,15 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [使用 cursor 来 review 代码](#%E4%BD%BF%E7%94%A8-cursor-%E6%9D%A5-review-%E4%BB%A3%E7%A0%81)
+  - [前言](#%E5%89%8D%E8%A8%80)
+  - [code review](#code-review)
+    - [review 单个文件](#review-%E5%8D%95%E4%B8%AA%E6%96%87%E4%BB%B6)
+    - [针对提交进行 code review](#%E9%92%88%E5%AF%B9%E6%8F%90%E4%BA%A4%E8%BF%9B%E8%A1%8C-code-review)
+  - [总结](#%E6%80%BB%E7%BB%93)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## 使用 cursor 来 review 代码
 
 ### 前言
@@ -74,6 +86,11 @@ accept 接收代码的修改。
 
 可以看到 cursor 已经基于 diff文件，帮我们对提交的代码进行了 review ，找出了问题点，同时也提出了修改的意见。   
 
+总结下，使用 cursor 来 review 代码，首先需要将代码提交到某个分支，然后切换到这个分支，然后修改代码，然后提交代码，最后使用 git diff 对比两个分支的差异，将差异输出到一个文件中，然后让 cursor 基于这个文件进行 review 。
+
+### 总结
+
+上面整理了使用 cursor 来 review 代码的流程，当然随着ai技术的发现可能会有更好的工具和更便捷的使用方式出现，但是还是希望上面的办法对大家的工作效率和质量的提升提供帮助。  
 
 
 
