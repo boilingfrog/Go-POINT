@@ -41,3 +41,24 @@ func CompareNumbers(a, b int) int {
 ```
 
 其中我们很明显能看到一个，当 a>b 因该返回 a 而不是 b。这里用 code 进行 review。   
+
+针对这段代码，使用 command + k 呼出命令框，win自行百度 。  
+
+<img src="/img/linux/cursor-1.jpg"  alt="cursor" align="center" />
+
+accept 接收代码的修改。  
+
+可以看到这个有问题的代码 cursor 已经帮助我们找到并且修复了。   
+
+<img src="/img/linux/cursor-2.jpg"  alt="cursor" align="center" />
+
+好了这是单个文件。下面我们看看在项目开发中针对我们每次的pr提交如何进行代码 review 。  
+
+#### 针对提交进行 code review 
+
+
+
+
+
+
+
