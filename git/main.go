@@ -1,4 +1,4 @@
-package git
+package main
 
 import (
 	"fmt"
@@ -6,20 +6,20 @@ import (
 )
 
 func main() {
-	fmt.Println(CompareNumbers(10, 100))
+	fmt.Println(GetMaxNumber(10, 100))
 }
 
-func CompareNumbers(a, b int) int {
-	log.Printf("Comparing numbers: a=%f, b=%f", a, b)
+func GetMaxNumber(a, b int) int {
+	log.Printf("Comparing numbers: a=%d, b=%d", a, b)
 
 	if a > b {
-		log.Printf("Result: %f > %f", a, b)
-		return b
+		log.Printf("Result: %d > %d", a, b)
+		return a
 	} else if a < b {
-		log.Printf("Result: %f < %f", a, b)
+		log.Printf("Result: %d < %d", a, b)
 		return b
 	} else {
-		log.Printf("Result: %f == %f", a, b)
+		log.Printf("Result: %d == %d", a, b)
 		return a
 	}
 }

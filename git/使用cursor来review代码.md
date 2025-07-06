@@ -64,6 +64,17 @@ accept 接收代码的修改。
 
 使用 git diff 对比个分治代码的差异部分，然后将禅意部分输出到一个diff文件，然后让cursor针对这个文件进行review。  
 
+将刚刚的代码拆分到不同的文件中，然后修改代码提交。我们还把这段代码输出写错，让 cursor 帮我们进行 review 。
+
+然后使用 git diff 对比个分治代码的差异部分 `git diff show-diff..master > code.diff`    
+
+在 cursor 中找到这个文件，让cursor 基于 diff 文件，来进行 code review。  
+
+<img src="/img/linux/cursor-3.jpg"  alt="cursor" align="center" />  
+
+可以看到 cursor 已经基于 diff文件，帮我们对提交的代码进行了 review ，找出了问题点，同时也提出了修改的意见。   
+
+
 
 
 
