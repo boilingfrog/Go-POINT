@@ -14,7 +14,7 @@
 
 ### 前言
 
-cursor 是什么，这里不介绍了，认为看到这篇文章的人都知道 cursor 已经 cursor 的基本用法。  
+cursor 是什么，这里不介绍了，认为看到这篇文章的人都知道 cursor 以及 cursor 的基本用法。
 
 我们这里主要来聊下 cursor 中更高阶一点的功能，比如如何来进行 code review 。  
 
@@ -52,7 +52,7 @@ func CompareNumbers(a, b int) int {
 }
 ```
 
-其中我们很明显能看到一个，当 a>b 因该返回 a 而不是 b。这里用 code 进行 review。   
+其中我们很明显能看到一个，当 a>b 因该返回 a 而不是 b。这里用 cursor 进行 review。   
 
 针对这段代码，使用 command + k 呼出命令框，win自行百度 。  
 
@@ -74,7 +74,7 @@ accept 接收代码的修改。
 
 在开发分支修改成功之后，提交代码。  
 
-使用 git diff 对比个分治代码的差异部分，然后将禅意部分输出到一个diff文件，然后让cursor针对这个文件进行review。  
+使用 `git diff` 对比个分治代码的差异部分，然后将禅意部分输出到一个diff文件，然后让cursor针对这个文件进行review。  
 
 将刚刚的代码拆分到不同的文件中，然后修改代码提交。我们还把这段代码输出写错，让 cursor 帮我们进行 review 。
 
