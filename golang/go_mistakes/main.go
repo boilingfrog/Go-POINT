@@ -13,15 +13,8 @@ func main() {
 	copy(slice1, slice2)
 
 	slice2[0] = 9
-
 	slice1[3] = 9
-
 	fmt.Printf("%p\n", slice1)
-
-	//id := "631efd32a2deab22008da983"
-	//fmt.Println("------------------------------------")
-	//fmt.Println("--数据库--")
-	//fmt.Println(DB(id))
 }
 
 func DB(id string) (int, error) {
