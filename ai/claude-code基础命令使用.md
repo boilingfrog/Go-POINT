@@ -904,63 +904,149 @@ claude -p "..." --output-format stream-json --include-hook-events
 
 ### 七、Subagents：专用子代理
 
-Subagents 是为特定任务设计的独立子代理，拥有自己的系统提示词和工具集，主上下文不会被它们的搜索结果污染。
+Subagents 是为特定任务设计的独立子代理，**拥有独立的上下文窗口、工具集和系统提示词**。主会话调用 subagent 时只看到它返回的总结，不会被中间过程污染——这是它最大的价值。
 
-#### 7.1 内置 Subagents
+#### 7.1 何时该用 subagent
 
-- `general-purpose`：通用研究 / 多步任务
-- `Explore`：只读快速代码搜索
-- `Plan`：架构设计 / 实现规划
+| 场景 | 用 subagent 的原因 |
+|------|---------------------|
+| 跨多个文件搜索一个概念 | 搜索结果可能很大，让 subagent 消化后只返回结论 |
+| 并行做多个独立任务 | 多个 subagent 可同时跑（一次消息内多次 Agent 调用） |
+| 需要独立"视角"看问题 | reviewer agent 不知道你之前的讨论，能给出独立判断 |
+| 任务需要不同的工具/权限 | 比如只读 explore agent，不能误改文件 |
 
-#### 7.2 自定义 Subagent
+> 反过来：单一明确文件的修改 / 简单查找 / 强依赖当前对话上下文的任务，**不要用** subagent。
 
-在 `.claude/agents/reviewer.md` 中定义：
+#### 7.2 内置 Subagents
+
+| 名称 | 工具集 | 用途 |
+|------|--------|------|
+| `general-purpose` | 全部 | 通用研究 / 多步任务 |
+| `Explore` | 只读（Read / Grep / Glob / Bash 只读） | 快速代码搜索定位 |
+| `Plan` | 只读 + ExitPlanMode | 架构设计 / 出实现方案 |
+| `claude-code-guide` | Bash / Read / WebFetch / WebSearch | 回答 Claude Code / API 使用问题 |
+| `statusline-setup` | Read / Edit | 配置状态栏 |
+
+#### 7.3 自定义 Subagent
+
+放在 `.claude/agents/<name>.md`（项目级）或 `~/.claude/agents/<name>.md`（用户级）：
 
 ```markdown
 ---
-name: reviewer
-description: Reviews Go code for idiomatic patterns and concurrency bugs
-tools: Read, Grep, Bash
+name: db-migrator
+description: 生成和审查 SQL migration，遵循 expand-contract 模式
+tools: Read, Edit, Write, Bash(make migrate:*), Grep
+model: sonnet
 ---
 
-You are a senior Go reviewer. Focus on:
-- goroutine leaks
-- improper context usage
-- error wrapping
-Report findings concisely.
+你是数据库迁移专家。所有迁移必须遵循 expand-contract 模式：
+
+阶段 1（expand）：只加新字段/表，向后兼容
+阶段 2（migrate）：双写或回填数据
+阶段 3（contract）：删除老字段/表
+
+约束：
+- 永远不在一次 migration 里同时新增和删除
+- NOT NULL 列必须先用 default 加好，再单独一次 migration 改 NOT NULL
+- 大表加索引必须 CONCURRENTLY
+- 输出 SQL 前，先用 Grep 检查是否有现存重名表/列
 ```
 
-通过 `/agents` 命令管理，或在命令行用 `--agent reviewer` 指定。
+#### 7.4 Frontmatter 字段
+
+| 字段 | 说明 |
+|------|------|
+| `name` | agent 名（用 `--agent` / `Agent` 工具引用） |
+| `description` | 简短描述（主 Claude 据此决定何时调用它） |
+| `tools` | 该 agent 可用的工具集（不写则继承） |
+| `model` | 该 agent 用什么模型（小任务用 haiku 省钱） |
+| `proactive` | 是否主动调用（true 时主 Claude 会更倾向于使用它） |
+
+#### 7.5 调用方式
+
+```bash
+# 1. 命令行指定为本会话默认 agent
+claude --agent reviewer
+
+# 2. 临时定义一次性 agent（不写文件）
+claude --agents '{
+  "linter": {
+    "description": "lint review",
+    "prompt": "你是 ESLint/golangci-lint 专家",
+    "tools": ["Read", "Grep"]
+  }
+}'
+
+# 3. 列出可用 agents
+claude agents
+```
+
+交互式中：
+
+```
+> /agents                      # 管理面板
+> 用 db-migrator 给 users 表加一个 deleted_at 软删除字段
+# 主 Claude 会调用 db-migrator subagent，只把它的总结放回主上下文
+```
+
+#### 7.6 设计 subagent 的原则
+
+1. **职责单一**：一个 agent 只负责一类任务，prompt 才能写得精准。
+2. **明确工具最小集**：reviewer 不需要 Edit，给它就是隐患。
+3. **prompt 写"约束"和"产出格式"**：而不是空洞的"请你认真审查"。
+4. **包含失败兜底**：比如"如果文件超过 500 行，先抽样阅读再总结"。
 
 ---
 
 ### 八、MCP 服务器
 
-MCP（Model Context Protocol）让 Claude 可以接入外部工具：数据库、Slack、GitHub、Linear 等。
+MCP（Model Context Protocol）是 Anthropic 提出的开放协议，让 Claude 通过标准化接口调用外部工具——数据库、Slack、GitHub、Linear、Sentry、Figma……都可以接入。
 
-#### 8.1 添加 MCP 服务器
+#### 8.1 三种传输方式
+
+| 类型 | 适用场景 | 配置字段 |
+|------|----------|----------|
+| `stdio` | 本地进程（最常用） | `command` + `args` |
+| `http` | 远程 HTTP 服务 | `url` |
+| `sse` | 远程 Server-Sent Events | `url` + `transport: "sse"` |
+
+#### 8.2 命令行管理
 
 ```bash
-# 查看已配置的 MCP 服务器
+# 列出已配置 MCP 服务器
 claude mcp list
 
-# 添加（示例：GitHub）
+# 添加 stdio 服务器（-- 后面是启动命令）
 claude mcp add github -- npx -y @modelcontextprotocol/server-github
 
-# 通过配置文件加载
-claude --mcp-config ./mcp.json
+# 添加带环境变量的服务器
+claude mcp add postgres \
+  --env DATABASE_URL=postgres://localhost/mydb \
+  -- npx -y @modelcontextprotocol/server-postgres
+
+# 添加 HTTP 远程服务器
+claude mcp add my-api --transport http --url https://api.example.com/mcp
+
+# 添加到不同 scope
+claude mcp add github --scope user    -- npx -y @mcp/github   # 用户级
+claude mcp add github --scope project -- npx -y @mcp/github   # 项目级（写入 .mcp.json）
+claude mcp add github --scope local   -- npx -y @mcp/github   # 本地（不提交）
+
+# 删除
+claude mcp remove github
+
+# 仅在本会话使用某配置文件，忽略所有其他 MCP 设置
+claude --mcp-config ./mcp-test.json --strict-mcp-config -p "..."
 ```
 
-#### 8.2 MCP 配置示例
-
-`.mcp.json`：
+#### 8.3 配置文件示例（`.mcp.json` / `settings.json`）
 
 ```json
 {
   "mcpServers": {
     "filesystem": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp", "/Users/liz/notes"]
     },
     "postgres": {
       "command": "npx",
@@ -968,28 +1054,360 @@ claude --mcp-config ./mcp.json
       "env": {
         "DATABASE_URL": "postgres://localhost/mydb"
       }
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+      }
+    },
+    "sentry": {
+      "transport": "http",
+      "url": "https://mcp.sentry.dev/sse",
+      "headers": {
+        "Authorization": "Bearer ${SENTRY_TOKEN}"
+      }
     }
   }
 }
 ```
 
+> 配置中的 `${ENV_VAR}` 会从启动 Claude Code 的 shell 环境读取，避免把 token 硬编码进文件。
+
+#### 8.4 常用官方/社区 MCP 服务器
+
+| 服务器 | 包名 | 能做什么 |
+|--------|------|----------|
+| filesystem | `@modelcontextprotocol/server-filesystem` | 读写指定目录 |
+| github | `@modelcontextprotocol/server-github` | issue / PR / commit / repo 操作 |
+| postgres | `@modelcontextprotocol/server-postgres` | 查询数据库 schema 与数据 |
+| slack | `@modelcontextprotocol/server-slack` | 读发 Slack 消息 |
+| puppeteer | `@modelcontextprotocol/server-puppeteer` | 控制浏览器 |
+| memory | `@modelcontextprotocol/server-memory` | 跨会话持久记忆 |
+
+#### 8.5 在交互式中使用
+
+```
+> /mcp
+  list      列出已加载的 MCP 服务器
+  status    每个服务器的健康状态
+  reload    重载 MCP 配置
+
+> /mcp status
+  github       ✓ connected    (12 tools)
+  postgres     ✗ failed       Error: ECONNREFUSED 5432
+  filesystem   ✓ connected    (5 tools)
+
+# 调用 MCP 工具：直接说自然语言即可
+> 查一下 users 表里 created_at 最近 7 天的注册数
+# Claude 会通过 postgres MCP 执行查询
+```
+
+#### 8.6 调试 MCP
+
+```bash
+# 看 MCP 启动错误（最常见：包名拼错、环境变量没注入）
+claude --debug mcp
+
+# 健康检查（会启动每个 MCP 服务器一次然后退出）
+claude doctor
+
+# 单独测试某个 MCP 服务器是否能正确响应
+npx -y @modelcontextprotocol/server-postgres < /dev/null
+```
+
+#### 8.7 安全注意
+
+- MCP 服务器**以你的身份**运行，能访问你给它的所有凭证。**只装你信任来源的 server**。
+- 远程 MCP（HTTP/SSE）相当于把会话内容发给第三方，敏感项目慎用。
+- token 全部通过 `${ENV_VAR}` 引用，不要直接写进 `.mcp.json`（会被提交到 git）。
+
 ---
 
 ### 九、Plugins：插件系统
 
-插件可以批量分发 slash 命令、agents、hooks、MCP 配置。
+Plugin 是 Claude Code 的"打包分发单元"——一个目录可以同时包含 slash 命令、subagents、hooks、MCP 配置和 skills，安装后一次性生效。适合团队内部分发标准化能力。
+
+#### 9.1 插件目录结构
+
+```
+my-plugin/
+├── plugin.json              # 插件元信息（必需）
+├── commands/                # slash 命令
+│   ├── deploy.md
+│   └── rollback.md
+├── agents/                  # subagents
+│   └── reviewer.md
+├── hooks/
+│   └── hooks.json           # 合并到 settings.hooks
+├── mcp/
+│   └── servers.json         # 合并到 mcpServers
+└── skills/                  # 技能（按需加载的指南）
+    └── deploy-guide/
+        └── SKILL.md
+```
+
+#### 9.2 `plugin.json` 示例
+
+```json
+{
+  "name": "team-standards",
+  "version": "1.0.0",
+  "description": "团队标准工作流：部署、回滚、审查",
+  "author": "platform-team",
+  "commands": "./commands",
+  "agents": "./agents",
+  "hooks": "./hooks/hooks.json",
+  "mcpServers": "./mcp/servers.json"
+}
+```
+
+#### 9.3 命令行管理
 
 ```bash
-# 查看插件
+# 列出已安装插件
 claude plugin list
 
-# 加载本地目录的插件（仅当前会话）
-claude --plugin-dir ./my-plugin
+# 从本地目录安装
+claude plugin install ./my-plugin
+
+# 从 git 仓库安装
+claude plugin install https://github.com/myorg/claude-plugin-deploy
+
+# 仅本会话临时加载（不安装）
+claude --plugin-dir ./my-plugin --plugin-dir ../another-plugin
+
+# 卸载
+claude plugin remove team-standards
+
+# 升级
+claude plugin update team-standards
+```
+
+#### 9.4 自定义 Slash 命令
+
+`commands/deploy.md`：
+
+```markdown
+---
+description: 部署当前分支到指定环境
+argument-hint: <env: staging|prod>
+---
+
+把当前分支部署到 $1 环境。步骤：
+
+1. 跑 `make test` 确认通过
+2. 跑 `make build`
+3. 调用 `./script/deploy.sh $1`
+4. 部署完成后用 curl 探活 health endpoint
+5. 如果健康检查失败，立刻 `./script/rollback.sh $1` 并告知用户
+```
+
+使用：
+
+```
+> /deploy staging
+> /deploy prod
+```
+
+#### 9.5 团队插件分发流程
+
+```bash
+# 团队仓库结构
+git clone github.com/myorg/claude-tools
+cd claude-tools
+
+# 在 README 里告诉成员一行安装命令
+claude plugin install https://github.com/myorg/claude-tools
+
+# 升级时
+claude plugin update claude-tools
 ```
 
 ---
 
-### 十、典型工作流示例
+### 十、Skills：技能（按需加载的指南）
+
+Skill 是 Claude Code **按需加载**的领域知识包。和 subagent 不同，skill 不是独立 agent，而是**触发时注入到当前对话**的一段 markdown 指南。
+
+#### 10.1 Skill 与其他机制的区别
+
+| 机制 | 何时加载 | 隔离上下文 | 适合 |
+|------|----------|-------------|------|
+| CLAUDE.md | 每次启动都加载 | 否 | 项目长期规则 |
+| Skill | 用户输入 `/<name>` 或匹配触发条件时 | 否 | 偶尔用到的领域指南 |
+| Subagent | 主 Claude 调用 Agent 工具时 | **是** | 独立任务、并行、隔离上下文 |
+| Hook | 事件触发（外部进程） | — | 强约束自动行为 |
+
+#### 10.2 Skill 文件结构
+
+放在 `~/.claude/skills/<name>/SKILL.md` 或 `.claude/skills/<name>/SKILL.md`：
+
+```markdown
+---
+name: db-review
+description: 当用户要求审查数据库迁移、SQL、schema 变更时触发
+trigger-keywords: ["migration", "schema", "alter table", "数据库迁移"]
+---
+
+# 数据库变更审查指南
+
+## 必查项
+
+1. **NOT NULL 加列**：必须分两步——先加可空列+default，再 ALTER NOT NULL
+2. **大表索引**：必须 CONCURRENTLY，否则会锁表
+3. **DROP COLUMN**：先发版让代码不再读写它，下个版本再 drop
+4. **改类型**：MySQL 8.0 以下需要重建表，确认数据量
+
+## 审查输出格式
+
+按"必须修 / 建议 / 通过"三类列出，每条带 file:line。
+```
+
+#### 10.3 调用 Skill
+
+```bash
+# 列出
+ls ~/.claude/skills/
+
+# 在交互式中用斜杠触发
+> /db-review 看一下 migrations/0042 的安全性
+
+# 或者满足 trigger-keywords 时主 Claude 会自动调用
+> 帮我审查这次 schema 变更
+# Claude 自动加载 db-review skill 的内容
+```
+
+#### 10.4 Anthropic 官方提供的 skill
+
+```
+update-config       — 配置 settings.json
+keybindings-help    — 自定义键位
+simplify            — 审查并简化最近改动的代码
+schedule            — 创建定时远程 agent
+loop                — 循环执行 prompt
+review              — 审查 PR
+security-review     — 安全审查
+init                — 生成 CLAUDE.md
+claude-api          — 构建/调试 Claude API 应用
+fewer-permission-prompts — 自动生成允许列表减少弹窗
+```
+
+---
+
+### 十一、Memory：跨会话长期记忆
+
+Claude Code 内置了**自动记忆系统**（auto memory），独立于 CLAUDE.md，按主题组织、可被未来会话查阅。
+
+#### 11.1 存储位置
+
+```
+~/.claude/projects/<encoded-project-path>/memory/
+├── MEMORY.md              # 索引（每行一条 ~150 字符）
+├── user_role.md           # 用户身份
+├── feedback_testing.md    # 用户反馈
+├── project_release.md     # 项目动态
+└── reference_grafana.md   # 外部资源指针
+```
+
+#### 11.2 四种 memory 类型
+
+| 类型 | 存什么 | 例子 |
+|------|--------|------|
+| `user` | 用户身份、角色、偏好 | "用户是 Go 资深工程师，第一次接触 React" |
+| `feedback` | 用户给过的修正/认可 | "测试不要用 mock，要打真数据库" |
+| `project` | 项目动态、进度、决策 | "5/2 起冻结非紧急合并" |
+| `reference` | 外部资源指针 | "pipeline bug 在 Linear 项目 INGEST" |
+
+#### 11.3 不该存进 memory 的内容
+
+- 当前能从代码读出的：架构、文件路径、约定 → 当场读
+- git log / blame 能查到的：谁改了什么 → 当场查
+- 修过 bug 的解法配方：代码就是答案
+- CLAUDE.md 已经写过的内容
+- 临时的当前对话状态
+
+#### 11.4 主动操作 memory
+
+```
+> 记一下：以后这个项目所有 SQL migration 都用 Atlas 工具
+# Claude 会写入 feedback memory
+
+> 忘掉之前关于"用 Atlas"的偏好，我们改用 goose 了
+# Claude 会找到对应文件并删除/更新
+```
+
+---
+
+### 十二、ScheduleWakeup 与 Schedule：定时任务
+
+Claude Code 支持两种"未来再做"的能力：
+
+#### 12.1 ScheduleWakeup（动态自唤醒）
+
+仅在 `/loop` 动态模式下有效——让模型自己决定下次什么时候醒来继续任务。
+
+```
+> /loop 监控这次部署的 5xx 错误率，每隔合适的时间检查一次，超阈值就告警
+# Claude 会用 ScheduleWakeup 自定步调（一般 60s ~ 3600s）
+```
+
+#### 12.2 Schedule（cron 远程定时）
+
+通过 `/schedule` skill 创建定时跑的远程 agent：
+
+```
+> /schedule 每周一上午 9 点跑一遍 /security-review，把发现发到 #eng-sec slack
+> /schedule 在 2 周后开一个 PR 删除 feature_flag_xyz（已完成 rollout）
+```
+
+适合的信号：
+- 上线了 feature flag → 2 周后定时发个清理 PR
+- 加了新 alert → 定时 triage
+- 临时 TODO "X 完成后移除" → 定时检查并移除
+
+不适合：refactor、bug fix、文档变更（这些一锤子买卖）。
+
+---
+
+### 十三、状态栏与键位定制
+
+#### 13.1 自定义状态栏
+
+`settings.json` 里加：
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "echo \"$(git branch --show-current) | $(git status --porcelain | wc -l | xargs) changes | $(go version 2>/dev/null | awk '{print $3}')\""
+  }
+}
+```
+
+或者让 Claude 自动配——直接说"配一下状态栏，显示分支和未提交文件数"，会自动调用 `statusline-setup` agent 改 `settings.json`。
+
+#### 13.2 自定义键位
+
+文件位置：`~/.claude/keybindings.json`
+
+```json
+{
+  "bindings": [
+    { "key": "ctrl+s", "command": "submit" },
+    { "key": "ctrl+l", "command": "clear-screen" },
+    { "key": "ctrl+k ctrl+c", "command": "/compact" },
+    { "key": "ctrl+k ctrl+r", "command": "/review" }
+  ]
+}
+```
+
+支持**和弦键位**（chord，连续按两个键），适合把常用 slash 命令绑定为快捷键。
+
+---
+
+### 十四、典型工作流示例
 
 #### 10.1 让 Claude 接管一个 Bug 修复（端到端）
 
@@ -1127,16 +1545,43 @@ git log --oneline -20 | ai "总结最近 20 个 commit 的主题分布"
 
 ---
 
-### 十一、最佳实践
+### 十五、最佳实践
+
+#### 15.1 工作流层面
 
 1. **从 `/init` 开始**：让 Claude 先生成 CLAUDE.md，再人工补充团队约定。
-2. **善用 `--permission-mode plan`**：在改动大的任务前，先让 Claude 出方案。
-3. **配置 hooks 兜底**：自动 lint / fmt，防止 Claude 写出不规范代码。
-4. **危险目录用 worktree 隔离**：`-w` 参数隔离实验性改动。
-5. **定期 `/clear` 或 `/compact`**：长会话注意上下文管理，节省 token。
-6. **生产 CI 用 `-p` + `--max-budget-usd`**：控制成本。
-7. **敏感命令进 deny 列表**：通过 `permissions.deny` 兜底拦截 `rm -rf`、`git push --force` 等。
-8. **CLAUDE.md 写"为什么"**：记录约定背后的动机，比单纯写规则更有效。
+2. **大改动先 `--permission-mode plan`**：先看方案，认可后再让它真改。
+3. **危险/实验改动用 worktree**：`-w name` 隔离，失败直接删，不影响主分支。
+4. **长会话定期 `/compact`**：保留要点压缩上下文，比 `/clear` 更友好。
+5. **跨任务用 `--fork-session`**：复用历史但不污染原会话。
+
+#### 15.2 安全与权限
+
+6. **deny 列表兜底**：`Bash(rm -rf:*)`、`Bash(git push --force:*)`、`Bash(git reset --hard:*)`、`Read(.env*)` 一定加。
+7. **MCP token 用 `${ENV_VAR}` 引用**：不要把 secret 写进会被提交的 `.mcp.json`。
+8. **`--bare` 适合 CI**：关掉所有"魔法"（CLAUDE.md / hooks / keychain），行为可复现。
+9. **`--dangerously-skip-permissions` 只在断网沙箱用**：本地千万别跑。
+
+#### 15.3 团队协作
+
+10. **CLAUDE.md 写"为什么"**：约定背后的动机比规则本身更重要。
+11. **三层配置分工**：`settings.json` 写团队规则，`settings.local.json` 写个人偏好，`~/.claude/settings.json` 写跨项目偏好。
+12. **subagent 单一职责**：一个 agent 一类任务，prompt 才精准。
+13. **常用工作流封装为 plugin**：部署、审查、回滚等标准流程做成插件分发。
+
+#### 15.4 成本与性能
+
+14. **小任务用 haiku，重活用 opus**：`--model` 按需切换，别一直 opus。
+15. **CI / 批处理加 `--max-budget-usd`**：超预算自动中断。
+16. **`--effort` 按任务调**：日常 medium，复杂排错用 high/max，简单问答用 low。
+17. **长任务关注 `/cost`**：会话结束前看一眼花费，便于估算批处理成本。
+18. **`--exclude-dynamic-system-prompt-sections`**：CI 里能显著提升 prompt 缓存命中率。
+
+#### 15.5 Hooks 与 Memory
+
+19. **强约束行为只能用 hook**：让模型"记住要 fmt"不可靠，用 PostToolUse hook 才稳。
+20. **hook 退出码 2 = 阻断**：危险命令拦截、强制测试通过都靠它。
+21. **memory 只存"非显然"**：能从代码 / git 读出的不要放，存"为什么这么做"。
 
 ---
 
