@@ -221,6 +221,7 @@ claude -p "全仓重构 logger" --max-budget-usd 5.00 --output-format json
 | `default` | 危险操作弹窗确认 | 日常使用 |
 | `plan` | 只读 + 出方案，不写文件 | 大改动前 review 思路 |
 | `acceptEdits` | 自动接受文件编辑 | 已经批量明确的重构任务 |
+| `auto` | 由分类器自动决策（v2.1+） | 让 Claude Code 自动判断哪些操作可放行 |
 | `dontAsk` | 静默执行已 allow 的工具 | 已配置好白名单的重复任务 |
 | `bypassPermissions` | 全跳过（危险） | 临时沙箱、断网容器内 |
 
@@ -231,26 +232,45 @@ claude --permission-mode plan "梳理 user 模块拆成独立服务的步骤"
 # 2. 已经明确改动范围，让它自动接受所有 Edit/Write
 claude --permission-mode acceptEdits "把所有 fmt.Errorf 换成 errors.Wrap"
 
-# 3. 完全沙箱（仅在断网容器/一次性 worktree 中使用！）
+# 3. auto 模式（v2.1+）：由内置分类器逐条决策放行/拦截
+#    适合让 Claude 长跑任务但又不想完全裸奔
+claude --permission-mode auto "重构 internal/order 包，跑通所有测试再停"
+
+# 4. 完全沙箱（仅在断网容器/一次性 worktree 中使用！）
 claude --dangerously-skip-permissions -p "..."
 
-# 4. 临时白名单：本会话只允许这些工具，其他全部拒
+# 5. 临时白名单：本会话只允许这些工具，其他全部拒
 claude --allowedTools "Read" "Grep" "Bash(git log:*)" "Bash(git diff:*)"
 
-# 5. 临时黑名单：禁止某些破坏性命令
+# 6. 临时黑名单：禁止某些破坏性命令
 claude --disallowedTools "Bash(rm:*)" "Bash(git push:*)"
 
-# 6. 完全限定可用工具集（最小权限）
+# 7. 完全限定可用工具集（最小权限）
 claude --tools "Read,Grep"            # 只读模式
 claude --tools ""                     # 完全禁用工具，纯对话
 claude --tools "default"              # 启用所有内置工具
 
-# 7. 命令匹配语法
+# 8. 命令匹配语法
 #   "Bash(git *)"        → 允许任意 git 子命令
 #   "Bash(git diff:*)"   → 允许 git diff 任意参数
 #   "Edit"               → 允许全部 Edit 工具调用
 #   "Read(/etc/**)"      → 允许读 /etc 下任意文件
 ```
+
+**`auto` 模式分类器**：`claude auto-mode` 子命令族用来查看和调试自动决策规则。
+
+```bash
+# 打印当前生效的 auto-mode 配置（你的 settings 覆盖 + 默认值合并后的最终结果）
+claude auto-mode config
+
+# 打印官方默认的 env / allow / deny 规则（拷贝出来当模板改）
+claude auto-mode defaults
+
+# 让 AI 评审你写的自定义 auto-mode 规则，给出反馈
+claude auto-mode critique
+```
+
+> 规则结构：`auto-mode defaults` 输出含 `allow` / `soft_deny` / `environment` 三大类。把 `defaults` 输出当模板拷出来微调，再放进 `settings.json` 对应字段（具体字段以 `claude auto-mode config` 实际输出为准——不同 Claude Code 小版本可能微调字段名，不要硬记）。
 
 #### 2.4 工作目录与 Worktree
 
@@ -347,12 +367,13 @@ claude --exclude-dynamic-system-prompt-sections -p "..."
 #### 2.7 子命令速查
 
 ```bash
-# 列出当前可用的 subagents
+# 管理 background / configured agents
 claude agents
 
 # 管理认证（login / logout / status）
 claude auth login
 claude auth status
+claude auth logout
 
 # 检查健康（更新器、MCP 服务器）
 claude doctor
@@ -370,10 +391,29 @@ claude mcp remove github
 # 插件管理
 claude plugin list
 claude plugin install <plugin>
+claude plugin marketplace list
+
+# 项目状态清理（v2.1+，目前只有 purge 子命令）
+claude project purge                       # 清当前项目（含 transcripts / tasks / file-history / config）
+claude project purge --dry-run             # 仅预览要删的内容
+claude project purge -i                    # 逐条确认
+claude project purge --all -y              # 清所有项目（慎用）
+
+# 云端多 agent 代码审查（v2.1+，由用户触发，会计费）
+claude ultrareview                          # 审查当前分支
+claude ultrareview 123                      # 审查 PR #123
+claude ultrareview --json --timeout 45      # 输出原始 bugs.json，最多等 45 分钟
+
+# auto 模式分类器（v2.1+）
+claude auto-mode config         # 当前生效配置
+claude auto-mode defaults       # 官方默认规则
+claude auto-mode critique       # AI 评审你的自定义规则
 
 # 申请长期 token（适合 CI）
 claude setup-token
 ```
+
+> 已在 v2.1.x 验证：当前 Claude Code 版本可用 `claude --version` 查看。
 
 ---
 
@@ -539,9 +579,13 @@ FAIL    myapp/internal/order    0.456s
 
 #### 4.1 文件查找顺序
 
-1. 当前目录 `./CLAUDE.md`（项目级）
-2. `~/.claude/CLAUDE.md`（用户级，所有项目共享）
-3. `.claude/CLAUDE.md`（项目本地，可加入 .gitignore）
+启动时按以下顺序加载并合并（**后加载追加在后**，不是覆盖）：
+
+1. `~/.claude/CLAUDE.md` — 用户级，所有项目共享
+2. **从 cwd 向上逐级**到仓库根的每一个 `CLAUDE.md` — 项目级（团队共享，提交 git）
+3. `CLAUDE.local.md` — 项目本地，**应加入 `.gitignore`** 用于个人偏好覆盖
+
+> 子目录的 `CLAUDE.md` 也会被加载——大型 monorepo 里，可在每个子模块下放各自的约定。
 
 #### 4.2 推荐内容
 
@@ -1012,28 +1056,48 @@ MCP（Model Context Protocol）是 Anthropic 提出的开放协议，让 Claude 
 
 #### 8.2 命令行管理
 
+语法（v2.1+）：`claude mcp add [-t stdio|sse|http] [-s local|user|project] [-e KEY=VAL ...] [-H "Header: v" ...] <name> <commandOrUrl> [args...]`
+
 ```bash
 # 列出已配置 MCP 服务器
 claude mcp list
 
+# 查看某个 MCP 服务器详情
+claude mcp get github
+
 # 添加 stdio 服务器（-- 后面是启动命令）
 claude mcp add github -- npx -y @modelcontextprotocol/server-github
 
-# 添加带环境变量的服务器
-claude mcp add postgres \
-  --env DATABASE_URL=postgres://localhost/mydb \
+# 带环境变量（-e 可重复）
+claude mcp add -e DATABASE_URL=postgres://localhost/mydb postgres \
   -- npx -y @modelcontextprotocol/server-postgres
 
-# 添加 HTTP 远程服务器
-claude mcp add my-api --transport http --url https://api.example.com/mcp
+# 添加 HTTP 远程服务器（URL 是位置参数，不是 --url）
+claude mcp add -t http sentry https://mcp.sentry.dev/mcp
 
-# 添加到不同 scope
-claude mcp add github --scope user    -- npx -y @mcp/github   # 用户级
-claude mcp add github --scope project -- npx -y @mcp/github   # 项目级（写入 .mcp.json）
-claude mcp add github --scope local   -- npx -y @mcp/github   # 本地（不提交）
+# 带 Header 的 HTTP 服务器
+claude mcp add -t http my-api https://api.example.com/mcp \
+  -H "Authorization: Bearer ${API_TOKEN}"
+
+# 通过完整 JSON 添加（适合复杂配置）
+claude mcp add-json github '{"command":"npx","args":["-y","@mcp/github"],"env":{"GITHUB_TOKEN":"xxx"}}'
+
+# 从 Claude Desktop 导入（仅 macOS / WSL）
+claude mcp add-from-claude-desktop
+
+# 添加到不同 scope（默认 local）
+claude mcp add -s user    github -- npx -y @mcp/github   # 用户级
+claude mcp add -s project github -- npx -y @mcp/github   # 项目级（写入 .mcp.json）
+claude mcp add -s local   github -- npx -y @mcp/github   # 本地（不提交）
 
 # 删除
 claude mcp remove github
+
+# 重置项目级 MCP 服务器的批准/拒绝状态
+claude mcp reset-project-choices
+
+# 把 Claude Code 自身作为 MCP server 暴露给其他客户端
+claude mcp serve
 
 # 仅在本会话使用某配置文件，忽略所有其他 MCP 设置
 claude --mcp-config ./mcp-test.json --strict-mcp-config -p "..."
@@ -1155,34 +1219,55 @@ my-plugin/
   "name": "team-standards",
   "version": "1.0.0",
   "description": "团队标准工作流：部署、回滚、审查",
-  "author": "platform-team",
-  "commands": "./commands",
-  "agents": "./agents",
-  "hooks": "./hooks/hooks.json",
-  "mcpServers": "./mcp/servers.json"
+  "author": "platform-team"
 }
 ```
 
+> 字段细节会随小版本演进。写完用 `claude plugin validate ./my-plugin` 校验，比照报错最稳。约定俗成的目录结构（`commands/` `agents/` `hooks/` `mcp/` `skills/`）会被自动发现。
+
 #### 9.3 命令行管理
+
+> **重要**：`claude plugin install` 只能从 **marketplace** 安装，不能直接装本地路径或 git URL。开发本地插件用 `--plugin-dir`，发布给团队请先把仓库 / 目录注册成 marketplace。
 
 ```bash
 # 列出已安装插件
 claude plugin list
 
-# 从本地目录安装
-claude plugin install ./my-plugin
+# 从 marketplace 安装（plugin@marketplace 指定来源；-s 选 user/project/local）
+claude plugin install team-standards@my-marketplace
+claude plugin install team-standards@my-marketplace -s project
 
-# 从 git 仓库安装
-claude plugin install https://github.com/myorg/claude-plugin-deploy
+# 别名：claude plugin i
+claude plugin i team-standards
 
-# 仅本会话临时加载（不安装）
-claude --plugin-dir ./my-plugin --plugin-dir ../another-plugin
+# 启用 / 禁用（保留安装但临时关闭）
+claude plugin enable  team-standards
+claude plugin disable team-standards
 
-# 卸载
-claude plugin remove team-standards
-
-# 升级
+# 升级到最新版（重启 Claude 后生效）
 claude plugin update team-standards
+
+# 卸载（uninstall 与 remove 等价）
+claude plugin uninstall team-standards
+claude plugin remove    team-standards
+
+# 自动清理：移除已不再需要的依赖插件
+claude plugin prune
+
+# 校验插件 / marketplace 清单
+claude plugin validate ./my-plugin
+
+# 给插件打 release tag（生成 {name}--v{version} git tag）
+claude plugin tag ./my-plugin
+
+# 管理 marketplace 仓库
+claude plugin marketplace add    <url|path|github-repo>   # 注册新 marketplace
+claude plugin marketplace list                            # 列出已注册
+claude plugin marketplace update [name]                   # 拉取最新（不带名字 = 全量更新）
+claude plugin marketplace remove <name>                   # 移除
+
+# 开发期临时加载本地插件（最常用）
+claude --plugin-dir ./my-plugin --plugin-dir ../another-plugin
 ```
 
 #### 9.4 自定义 Slash 命令
@@ -1214,15 +1299,16 @@ argument-hint: <env: staging|prod>
 #### 9.5 团队插件分发流程
 
 ```bash
-# 团队仓库结构
-git clone github.com/myorg/claude-tools
-cd claude-tools
+# 1. 团队把插件仓库做成 marketplace（仓库根目录放 marketplace.json，列出包含的插件）
+#    成员先注册 marketplace：
+claude plugin marketplace add https://github.com/myorg/claude-tools
 
-# 在 README 里告诉成员一行安装命令
-claude plugin install https://github.com/myorg/claude-tools
+# 2. 然后从该 marketplace 安装所需插件
+claude plugin install team-standards@claude-tools
 
-# 升级时
-claude plugin update claude-tools
+# 3. 升级
+claude plugin marketplace update claude-tools
+claude plugin update team-standards
 ```
 
 ---
