@@ -144,102 +144,252 @@ Commands:
 
 #### 2.1 基础启动
 
+**交互式 vs 非交互式**：默认进入交互式 REPL；加 `-p` 立刻执行后退出，适合管道。
+
 ```bash
-# 交互式会话
+# 1. 在当前目录开一个交互式会话（最常用）
+cd ~/projects/my-app
 claude
 
-# 直接传入 prompt
-claude "帮我重构这个文件"
+# 2. 直接把首条 prompt 写在命令行
+claude "把 main.go 里的全局变量改成依赖注入"
 
-# 非交互式（管道模式），打印结果后退出
-claude -p "总结当前 git diff"
+# 3. 一次性任务：运行后立即退出（脚本/管道场景）
+claude -p "总结当前 git diff 的改动"
 
-# 继续上一次对话
+# 4. 配合管道，把 stdin 内容当作上下文
+git diff origin/master | claude -p "审查这次改动，按严重程度列出问题"
+
+# 5. 继续上一次对话（在同一个目录下）
 claude -c
 
-# 恢复历史会话（交互式选择）
+# 5.1 继续上次对话并追加新 prompt
+claude -c "接着把 reviewer 提的问题修一下"
+
+# 6. 从历史会话中挑一个恢复（弹出交互式选择器）
 claude -r
+
+# 6.1 按 session UUID 直接恢复
+claude -r 9f3b2e1a-...-d4
+
+# 6.2 复用 session 时另起一个新 ID（避免覆盖原会话）
+claude -c --fork-session
+
+# 7. 给会话起一个好认的名字（显示在标题栏 / resume 列表中）
+claude -n "fix-issue-123"
+
+# 8. 从 GitHub PR 关联的会话恢复
+claude --from-pr 456
 ```
 
-#### 2.2 模型与 Effort
+#### 2.2 模型、Effort 与预算
+
+不同模型在能力 / 速度 / 价格之间权衡，复杂重构选 `opus`，日常脚手架用 `sonnet`，琐碎补全可考虑 `haiku`。
 
 ```bash
-# 指定模型
-claude --model opus
-claude --model sonnet
+# 1. 用别名切换（始终指向该系列最新模型）
+claude --model opus                  # 推理最强
+claude --model sonnet                # 综合最佳
+claude --model haiku                 # 速度快、价格低
+
+# 2. 用全名锁定具体版本（避免某天升级带来行为变化）
 claude --model claude-sonnet-4-6
 
-# 指定 effort 级别（low/medium/high/xhigh/max）
-claude --effort high
+# 3. effort 控制思考深度，越高越"愿意"多步推理
+claude --effort low                  # 短问答
+claude --effort high                 # 复杂排查
+claude --effort max -p "找出这段代码所有竞态条件"
 
-# 当默认模型过载时自动 fallback
-claude --fallback-model sonnet -p "..."
+# 4. 默认模型过载时自动降级（仅在 -p 下生效）
+claude -p "review this PR" \
+  --model opus \
+  --fallback-model sonnet
+
+# 5. CI 中限制单次运行最大花费（仅 -p 下生效）
+claude -p "生成发布说明" --max-budget-usd 0.30
+
+# 6. 强制提交时不超出预算（超出会被中断）
+claude -p "全仓重构 logger" --max-budget-usd 5.00 --output-format json
 ```
 
 #### 2.3 权限控制
 
+权限决定 Claude 能否在不打扰你的前提下执行工具。**不同模式适用不同信任级别**：
+
+| 模式 | 含义 | 典型场景 |
+|------|------|----------|
+| `default` | 危险操作弹窗确认 | 日常使用 |
+| `plan` | 只读 + 出方案，不写文件 | 大改动前 review 思路 |
+| `acceptEdits` | 自动接受文件编辑 | 已经批量明确的重构任务 |
+| `dontAsk` | 静默执行已 allow 的工具 | 已配置好白名单的重复任务 |
+| `bypassPermissions` | 全跳过（危险） | 临时沙箱、断网容器内 |
+
 ```bash
-# 指定权限模式
-claude --permission-mode plan          # 仅规划，不执行
-claude --permission-mode acceptEdits   # 自动接受编辑
-claude --permission-mode bypassPermissions  # 跳过所有权限检查（慎用）
+# 1. 大改动前先出方案，再决定是否真改
+claude --permission-mode plan "梳理 user 模块拆成独立服务的步骤"
 
-# 仅允许特定工具
-claude --allowedTools "Bash(git *)" "Edit" "Read"
+# 2. 已经明确改动范围，让它自动接受所有 Edit/Write
+claude --permission-mode acceptEdits "把所有 fmt.Errorf 换成 errors.Wrap"
 
-# 禁用特定工具
-claude --disallowedTools "Bash(rm *)"
+# 3. 完全沙箱（仅在断网容器/一次性 worktree 中使用！）
+claude --dangerously-skip-permissions -p "..."
 
-# 仅启用指定的内置工具
-claude --tools "Bash,Edit,Read"
+# 4. 临时白名单：本会话只允许这些工具，其他全部拒
+claude --allowedTools "Read" "Grep" "Bash(git log:*)" "Bash(git diff:*)"
+
+# 5. 临时黑名单：禁止某些破坏性命令
+claude --disallowedTools "Bash(rm:*)" "Bash(git push:*)"
+
+# 6. 完全限定可用工具集（最小权限）
+claude --tools "Read,Grep"            # 只读模式
+claude --tools ""                     # 完全禁用工具，纯对话
+claude --tools "default"              # 启用所有内置工具
+
+# 7. 命令匹配语法
+#   "Bash(git *)"        → 允许任意 git 子命令
+#   "Bash(git diff:*)"   → 允许 git diff 任意参数
+#   "Edit"               → 允许全部 Edit 工具调用
+#   "Read(/etc/**)"      → 允许读 /etc 下任意文件
 ```
 
-#### 2.4 上下文与目录
+#### 2.4 工作目录与 Worktree
 
 ```bash
-# 添加额外的允许访问目录
-claude --add-dir ../shared-libs ../docs
+# 1. 让 Claude 能访问父级 / 邻近目录（默认只允许 cwd）
+claude --add-dir ../shared-libs ../docs ../../monorepo/proto
 
-# 创建 git worktree 进行隔离开发
-claude -w feature-branch
+# 2. 在新建的 git worktree 中开干，不影响主分支
+claude -w fix-login-bug
+#   → 自动在 ../<repo>-fix-login-bug 创建 worktree
+#   → 创建并 checkout 同名分支
+#   → 进入该 worktree 启动 Claude
 
-# 配合 tmux 使用
-claude -w feature-x --tmux
+# 3. worktree + tmux：在 iTerm2 拆分面板里跑（适合并行多任务）
+claude -w experiment-1 --tmux
+claude -w experiment-2 --tmux        # 另开一个面板，互不干扰
+
+# 4. 自动连接 IDE（仅当当前环境检测到一个 VS Code / JetBrains 时）
+claude --ide
+
+# 5. 指定一个特定的 session UUID（便于外部系统跟踪）
+claude --session-id 11111111-2222-3333-4444-555555555555
+
+# 6. 关闭会话持久化（不写 session 文件，仅 -p 下生效）
+claude -p "查个文档" --no-session-persistence
 ```
 
-#### 2.5 输出格式（脚本化使用）
+#### 2.5 输出格式（脚本化与流式）
+
+`-p` 模式下，配合 `--output-format` 可以把 Claude 当作 CLI 工具嵌入到任意脚本里。
 
 ```bash
-# JSON 单次结果
-claude -p "审查这段代码" --output-format json
+# 1. 纯文本（默认）
+claude -p "把这段 SQL 转成 GORM"
 
-# 流式 JSON 输出（适合管道处理）
-claude -p "..." --output-format stream-json --include-partial-messages
+# 2. 单次 JSON：拿到结构化结果，便于 jq 解析
+claude -p "审查这段代码" --output-format json | jq '.result'
 
-# 控制最大花费
-claude -p "..." --max-budget-usd 0.50
+# 输出大致结构：
+# {
+#   "type": "result",
+#   "result": "...审查内容...",
+#   "session_id": "...",
+#   "total_cost_usd": 0.0123,
+#   "duration_ms": 5421
+# }
+
+# 3. 流式 JSON：实时拿到每一条事件（适合做 UI 进度显示）
+claude -p "重构这个函数" \
+  --output-format stream-json \
+  --include-partial-messages \
+  --include-hook-events
+
+# 4. stream-json 输入 + stream-json 输出（构造对话式 pipeline）
+echo '{"type":"user","message":{"content":"hi"}}' | \
+  claude -p --input-format stream-json --output-format stream-json
+
+# 5. 使用 JSON Schema 强制结构化输出
+claude -p "提取这段日志中的错误码与时间戳" \
+  --json-schema '{"type":"object","properties":{"errors":{"type":"array","items":{"type":"object","properties":{"code":{"type":"string"},"ts":{"type":"string"}}}}},"required":["errors"]}'
+
+# 6. 配合 --max-budget-usd 给批处理设上限
+claude -p "$(cat task.txt)" \
+  --output-format json \
+  --max-budget-usd 0.20 > result.json
 ```
 
-#### 2.6 Bare 模式（极简）
+#### 2.6 Bare 模式与系统提示词
+
+`--bare` 关掉一切"魔法"：不读 CLAUDE.md、不跑 hooks、不加载插件、不读 keychain，只走 `ANTHROPIC_API_KEY`。适合 CI / 复现 bug / 嵌入到其他工具。
 
 ```bash
-# 跳过 hooks/LSP/插件同步/auto-memory 等
-claude --bare -p "纯净环境运行"
+# 1. 最干净的一次性运行
+ANTHROPIC_API_KEY=sk-ant-xxx claude --bare -p "翻译这段文档"
+
+# 2. bare 模式下显式指定上下文（不会自动发现 CLAUDE.md）
+claude --bare \
+  --add-dir ./src \
+  --append-system-prompt "项目使用 Go 1.21 + Gin" \
+  -p "为 user.go 写单元测试"
+
+# 3. 完全替换默认系统提示词
+claude --system-prompt "你是 SQL 优化专家，仅输出 SQL，不要解释" \
+  -p "优化这条查询：SELECT * FROM orders WHERE ..."
+
+# 4. 在默认提示词后追加（保留 Claude Code 行为，但加项目约定）
+claude --append-system-prompt "所有改动必须有对应单测" \
+  --permission-mode acceptEdits "修复这个 bug"
+
+# 5. 改善多用户 prompt 缓存命中率（去除每机器差异部分）
+claude --exclude-dynamic-system-prompt-sections -p "..."
+```
+
+#### 2.7 子命令速查
+
+```bash
+# 列出当前可用的 subagents
+claude agents
+
+# 管理认证（login / logout / status）
+claude auth login
+claude auth status
+
+# 检查健康（更新器、MCP 服务器）
+claude doctor
+
+# 安装 / 升级 native 构建
+claude install stable
+claude install latest
+claude update
+
+# MCP 服务器管理
+claude mcp list
+claude mcp add github -- npx -y @modelcontextprotocol/server-github
+claude mcp remove github
+
+# 插件管理
+claude plugin list
+claude plugin install <plugin>
+
+# 申请长期 token（适合 CI）
+claude setup-token
 ```
 
 ---
 
 ### 三、交互式 Slash 命令
 
-在交互式会话中输入 `/` 可以查看所有可用命令。常用如下：
+在交互式会话中输入 `/` 可以查看所有可用命令；输入 `/<字母>` 会做模糊筛选。
+
+#### 3.1 命令速查
 
 | 命令 | 说明 |
 |------|------|
 | `/help` | 查看帮助 |
-| `/clear` | 清除当前对话上下文 |
-| `/compact` | 压缩对话上下文 |
+| `/clear` | 清除当前对话上下文（重置 token，但保留 CLAUDE.md） |
+| `/compact` | 压缩对话上下文（保留要点，节省 token） |
 | `/config` | 打开配置面板（主题、模型等） |
-| `/model` | 切换模型 |
+| `/model` | 切换当前会话模型 |
 | `/agents` | 管理 subagents |
 | `/mcp` | 管理 MCP 服务器 |
 | `/plugin` | 管理插件 |
@@ -251,9 +401,135 @@ claude --bare -p "纯净环境运行"
 | `/login` `/logout` | 登录登出 |
 | `/exit` | 退出 |
 
-输入 `!<命令>` 可以在会话中直接执行 shell 命令，输出会带回上下文。
+#### 3.2 核心命令使用示例
 
-输入 `#<内容>` 可以快速添加内容到 CLAUDE.md。
+**`/clear` vs `/compact`**：长会话的两种瘦身方式。
+
+```
+> /clear
+# 清空全部历史，相当于重启会话。CLAUDE.md / settings 不会丢。
+# 适合：完全切换到一个无关任务时使用。
+
+> /compact
+# 把已有对话压缩成摘要塞回上下文，保留关键决策与文件路径。
+# 适合：同一任务做了很久、上下文逼近上限时延长会话。
+
+> /compact 重点保留刚才讨论的 schema 设计决策
+# 可以追加指令，告诉它哪些信息更值得保留。
+```
+
+**`/model`**：会话中途切换模型。
+
+```
+> /model
+  ◯ claude-opus-4-7
+  ● claude-sonnet-4-6   (current)
+  ◯ claude-haiku-4-5
+
+> /model opus
+# 切到 Opus 处理一个复杂重构，做完再 /model sonnet 切回。
+```
+
+**`/init`**：为新项目一键生成 CLAUDE.md。
+
+```
+> /init
+# Claude 会扫描项目结构、识别技术栈、读 README，
+# 在根目录生成一份 CLAUDE.md 草稿，列出技术栈、构建命令、目录结构等。
+# 生成后人工补充团队约定 / 注意事项。
+```
+
+**`/review`**：审查当前 PR / 分支改动。
+
+```
+> /review
+# 自动检测当前分支对应的 PR，逐条点评。
+
+> /review #123
+# 指定 PR 号。
+
+> /review --focus security
+# 只看安全问题。
+```
+
+**`/security-review`**：聚焦安全的深度审查。
+
+```
+> /security-review
+# 针对当前分支 vs main 的 diff，做 OWASP / 注入 / 鉴权 / 密钥泄露专项审查。
+# 适合：合并前的最后一道关卡。
+```
+
+**`/agents`**：管理 subagents。
+
+```
+> /agents
+  list      列出当前可用的 agents
+  create    交互式创建一个新 agent
+  edit      编辑现有 agent
+
+> /agents create
+  Name: db-migrator
+  Description: Generate and review SQL migrations
+  Tools: Read, Edit, Bash(make migrate:*)
+  Prompt: 你是 DB migration 专家，遵循 expand-contract 模式...
+# 创建后保存到 .claude/agents/db-migrator.md，团队共享。
+```
+
+**`/mcp`**：MCP 服务器管理。
+
+```
+> /mcp
+  list      已加载的 MCP 服务器
+  status    每个服务器的健康状态
+  reload    重载 MCP 配置
+
+> /mcp status
+  github       ✓ connected    (12 tools)
+  postgres     ✗ failed       Error: ECONNREFUSED 5432
+  filesystem   ✓ connected    (5 tools)
+```
+
+**`/cost`**：查看花费。
+
+```
+> /cost
+  Session cost:    $0.42
+  Total tokens:    127,453 (in: 98,231 / out: 29,222)
+  Cache hit rate:  68%
+  Duration:        14m 22s
+# 会话结束前看一眼，方便估算批处理任务成本。
+```
+
+**`/resume`**：恢复历史会话。
+
+```
+> /resume
+# 弹出过去 7 天的会话列表，按时间倒序，可搜索。
+  [1] fix-issue-123          2h ago     opus      $0.34
+  [2] refactor-logger        yesterday  sonnet    $0.12
+  [3] explore-auth-module    2d ago     opus      $0.89
+```
+
+#### 3.3 输入前缀
+
+除了 `/`，交互式 prompt 还支持两个前缀：
+
+```
+# !<command>：直接执行 shell 命令，输出回到对话上下文
+> !go test ./...
+ok      myapp/internal/user     0.234s
+FAIL    myapp/internal/order    0.456s
+> 修一下上面 order 包失败的测试
+# Claude 现在能看到 test 输出，可以直接定位问题。
+
+# #<text>：把内容追加到 CLAUDE.md
+> # 数据库迁移必须使用 expand-contract 模式
+# 立刻被写入项目 CLAUDE.md，下次启动也能看到。
+
+# @<file/dir>：把文件或目录显式拉入上下文（@ 触发自动补全）
+> 帮我对比 @internal/user/service.go 和 @internal/order/service.go 的错误处理风格
+```
 
 ---
 
@@ -489,19 +765,42 @@ claude --plugin-dir ./my-plugin
 
 ### 十、典型工作流示例
 
-#### 10.1 让 Claude 接管一个 Bug 修复
+#### 10.1 让 Claude 接管一个 Bug 修复（端到端）
 
 ```bash
 cd my-project
-claude
+
+# 用 worktree 隔离，避免污染主分支
+claude -w fix-issue-123 --model opus
 ```
 
+进入交互式会话后：
+
 ```
-> 帮我分析 #123 这个 issue 的根因
-> /review 看看现有 PR 的实现思路
-> 实现修复并写一个回归测试
-> 跑一下测试
-> 提交并推送
+> 看一下 GitHub issue #123，分析根因
+# Claude 会通过 gh CLI 拉 issue 内容，然后定位相关代码
+
+> /agents
+# 切到 Plan agent 让它先出方案，避免直接乱改
+
+> @internal/order/service.go @internal/order/handler.go
+> 这两个文件就是改动重点，请先给出修复方案
+
+> 方案 OK，按方案 2 实现，并补一个能重现 bug 的回归测试
+
+> !go test ./internal/order/... -run TestIssue123 -v
+# 让 Claude 看到测试结果
+
+> 测试过了。再跑一下完整测试和 lint
+> !make test && make lint
+
+> 提交：commit message 用 "fix: handle nil pointer in order calc (#123)"
+# Claude 会调用 git add / commit
+
+> /cost
+# 看一下这次任务花了多少钱
+
+> 推送并开 PR，PR 描述里包含根因分析和测试覆盖
 ```
 
 #### 10.2 在 CI 中使用 Claude 做代码审查
@@ -509,21 +808,95 @@ claude
 `.github/workflows/claude-review.yml`：
 
 ```yaml
-- name: Claude Review
-  env:
-    ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-  run: |
-    claude -p "审查 PR #${{ github.event.pull_request.number }}，重点关注安全和性能" \
-      --output-format json \
-      --max-budget-usd 1.00 \
-      --permission-mode plan > review.json
+name: Claude Review
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Run review
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git diff origin/main...HEAD > /tmp/diff.patch
+          claude -p "$(cat <<EOF
+          审查下列 diff，按以下格式输出：
+          ## 必须修
+          - <问题> (file:line)
+          ## 建议
+          - <问题> (file:line)
+          ## 通过
+          - <亮点>
+
+          $(cat /tmp/diff.patch)
+          EOF
+          )" \
+            --bare \
+            --model sonnet \
+            --output-format json \
+            --max-budget-usd 0.50 \
+            --permission-mode plan > review.json
+
+      - name: Post comment
+        run: |
+          jq -r '.result' review.json | \
+            gh pr comment ${{ github.event.pull_request.number }} -F -
 ```
 
 #### 10.3 隔离 worktree 做实验
 
 ```bash
-# 在新 worktree 中尝试重构，不影响主分支
-claude -w experiment-refactor --permission-mode acceptEdits
+# 1. 起一个 worktree，用最激进的权限模式自由发挥
+claude -w experiment-refactor \
+  --model opus \
+  --effort high \
+  --permission-mode acceptEdits
+
+# 2. 实验失败？直接删 worktree，主分支毫发无损
+git worktree remove ../my-project-experiment-refactor
+git branch -D experiment-refactor
+
+# 3. 实验成功？merge 回主分支
+cd ../my-project
+git merge experiment-refactor
+```
+
+#### 10.4 批处理：一次性整理一批文件
+
+```bash
+# 用 shell 循环 + -p 模式，把几十个文件挨个让 Claude 处理
+for f in $(find ./docs -name "*.md"); do
+  claude -p "把 $f 中的中英文之间补上空格，结果直接覆盖原文件" \
+    --add-dir ./docs \
+    --permission-mode acceptEdits \
+    --max-budget-usd 0.05 \
+    --bare
+done
+```
+
+#### 10.5 把 Claude 当作"命令行小工具"
+
+```bash
+# 起个 alias，把 Claude 当 SQL / 正则 / 文本处理器用
+alias ai='claude -p --bare --model haiku'
+
+# 用法
+echo "SELECT * FROM users WHERE created > '2024-01-01'" | ai "把这条 SQL 改成 GORM 链式调用"
+
+cat error.log | ai "提取所有 5xx 错误，按 path 分组统计"
+
+git log --oneline -20 | ai "总结最近 20 个 commit 的主题分布"
 ```
 
 ---
