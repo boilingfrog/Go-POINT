@@ -2,10 +2,21 @@
 
 [![CI](https://github.com/boilingfrog/Go-POINT/actions/workflows/ci.yml/badge.svg)](https://github.com/boilingfrog/Go-POINT/actions/workflows/ci.yml)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/boilingfrog/Go-POINT?style=flat)](https://github.com/boilingfrog/Go-POINT/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/boilingfrog/Go-POINT?style=flat)](https://github.com/boilingfrog/Go-POINT/forks)
 
 Go-POINT 是一个面向中文 Go 开发者的工程知识库与可运行示例集合，持续整理 Go 语言机制、数据库、分布式系统、容器、网络和工程实践。
 
+A Chinese-language Go engineering knowledge base with runnable examples for Go internals, databases, distributed systems, containers, and networking.
+
 这个仓库既记录原理和源码阅读，也保留可以复现的最小示例，适合用于系统学习、问题排查和技术选型参考。内容以学习与研究为目的，不应未经评估直接用于生产环境。
+
+## 适合谁
+
+- 希望系统理解 Go 语言机制与标准库实现的开发者
+- 需要查阅数据库、缓存、消息队列和分布式系统实践的后端工程师
+- 希望通过小型可运行示例验证技术原理的学习者
+- 愿意一起维护中文 Go 工程资料的贡献者
 
 ## 内容导航
 
@@ -63,7 +74,7 @@ go test ./redis/lock -v
 - [行为准则](CODE_OF_CONDUCT.md)
 - [维护路线图](ROADMAP.md)
 
-可以通过 [Issue](https://github.com/boilingfrog/Go-POINT/issues) 报告问题，或直接提交 Pull Request。
+可以通过 [Issue](https://github.com/boilingfrog/Go-POINT/issues) 报告问题，或直接提交 Pull Request。如果内容对你有帮助，也欢迎 Star 仓库，让更多 Go 开发者发现这些资料。
 
 ## 维护者
 
