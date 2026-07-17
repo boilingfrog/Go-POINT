@@ -1,0 +1,24 @@
+name: 内容提议
+description: 建议新增、更新或重构一个学习主题
+title: "[Topic]: "
+labels: [documentation]
+body:
+  - type: textarea
+    id: motivation
+    attributes:
+      label: 背景与价值
+      description: 这个主题解决什么问题，对哪些读者有帮助？
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 建议范围
+      description: 希望覆盖哪些内容、示例和版本？
+    validations:
+      required: true
+  - type: textarea
+    id: references
+    attributes:
+      label: 参考资料
+      description: 优先提供官方文档或原始资料。

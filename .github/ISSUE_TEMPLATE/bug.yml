@@ -1,0 +1,34 @@
+name: 示例或文档问题
+description: 报告错误、过期内容或无法复现的示例
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: 请勿在公开 Issue 中提交密码、Token、私钥、真实配置或未修复漏洞。
+  - type: input
+    id: location
+    attributes:
+      label: 涉及位置
+      description: 请填写目录、文件或链接。
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: 问题描述
+      description: 当前表现是什么，期望表现是什么？
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现方式
+      description: 请提供最小复现步骤和必要日志。
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: 环境
+      description: Go、操作系统及相关服务版本。

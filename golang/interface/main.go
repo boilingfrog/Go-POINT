@@ -20,7 +20,7 @@ func bubbleSort(array Sortable) {
 	}
 }
 
-//实现接口的整型切片
+// 实现接口的整型切片
 type IntArr []int
 
 func (array IntArr) Len() int {
@@ -35,7 +35,7 @@ func (array IntArr) Swap(i int, j int) {
 	array[i], array[j] = array[j], array[i]
 }
 
-//实现接口的字符串，按照长度排序
+// 实现接口的字符串，按照长度排序
 type StringArr []string
 
 func (array StringArr) Len() int {

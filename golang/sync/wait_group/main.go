@@ -16,7 +16,9 @@ func main() {
 		2, 2, 1,
 	}
 
-	state := atomic.AddUint64((*uint64)(unsafe.Pointer(&fdg)), uint64(-1)<<32)
+	// 将高 32 位计数减一。显式构造补码，避免新版本 Go 编译器
+	// 将负的无类型常量转换为 uint64 时报告溢出。
+	state := atomic.AddUint64((*uint64)(unsafe.Pointer(&fdg)), uint64(^uint32(0))<<32)
 	fmt.Println("wait:", fdg[0])
 	fmt.Println("count:", fdg[1])
 	count := int32(state >> 32)

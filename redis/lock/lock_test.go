@@ -12,18 +12,24 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
-func NewRedis() *Redis {
+func NewRedis(t *testing.T) *Redis {
+	t.Helper()
+
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     "127.0.0.1:6379",
 		Password: "",
 		DB:       0,
 	})
+	if err := rdb.Ping(context.Background()).Err(); err != nil {
+		_ = rdb.Close()
+		t.Skipf("Redis is not available at 127.0.0.1:6379: %v", err)
+	}
 
 	return &Redis{rdb}
 }
 
 func TestTryLock(t *testing.T) {
-	redis := NewRedis()
+	redis := NewRedis(t)
 	createdDate, _ := strconv.Atoi(time.Now().Format("20060102150405"))
 
 	var GetRandomKey = func(key string) string {
@@ -145,7 +151,7 @@ func TestTryLock(t *testing.T) {
 }
 
 func TestExtendLock(t *testing.T) {
-	redis := NewRedis()
+	redis := NewRedis(t)
 	createdDate, _ := strconv.Atoi(time.Now().Format("20060102150405"))
 
 	var GetRandomKey = func(key string) string {
