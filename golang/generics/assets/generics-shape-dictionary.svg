@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="720" viewBox="0 0 1320 720" role="img" aria-labelledby="title desc">
+  <title id="title">Go 泛型 shape 与 dictionary 协作</title>
+  <desc id="desc">具体实例经包装函数进入共享的 shape 函数，并把具体类型对应的字典一同传入。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#061824"/><stop offset="1" stop-color="#0a3140"/></linearGradient>
+    <linearGradient id="cyan" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#63e2e8"/><stop offset="1" stop-color="#158ca7"/></linearGradient>
+    <linearGradient id="green" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#76ecc8"/><stop offset="1" stop-color="#269a7f"/></linearGradient>
+    <linearGradient id="orange" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffc274"/><stop offset="1" stop-color="#ed7c36"/></linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#001018" flood-opacity=".65"/></filter>
+    <marker id="arrC" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#63dbe3"/></marker>
+    <marker id="arrO" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#ffad5d"/></marker>
+    <style>text{font-family:Inter,"PingFang SC","Microsoft YaHei",sans-serif}.title{font-size:30px;font-weight:700;fill:#edfcff}.sub{font-size:17px;fill:#9cc7d1}.h{font-size:20px;font-weight:700;fill:#fff}.p{font-size:15px;fill:#c3e0e5}.code{font-family:"SFMono-Regular",Consolas,monospace;font-size:16px;fill:#e4fbfd}.tiny{font-size:14px;fill:#9cc7d1}</style>
+  </defs>
+  <rect width="1320" height="720" rx="28" fill="url(#bg)"/>
+  <text x="60" y="64" class="title">GC shape stenciling：共享机器码，但不丢失具体类型信息</text>
+  <text x="60" y="96" class="sub">实例适配像“转接头”，shape 函数是“共享执行体”，dictionary 是“类型说明书”</text>
+
+  <g filter="url(#shadow)">
+    <g transform="translate(60 160)"><rect width="260" height="128" rx="20" fill="#103744" stroke="#58d2df"/><text x="24" y="42" class="h">调用点 A</text><text x="24" y="76" class="code">Clone[*User](p)</text><text x="24" y="104" class="tiny">具体类型：*User</text></g>
+    <g transform="translate(60 430)"><rect width="260" height="128" rx="20" fill="#103744" stroke="#58d2df"/><text x="24" y="42" class="h">调用点 B</text><text x="24" y="76" class="code">Clone[*Order](p)</text><text x="24" y="104" class="tiny">具体类型：*Order</text></g>
+
+    <g transform="translate(420 146)"><rect width="280" height="156" rx="22" fill="#143f49" stroke="#72e9cb"/><text x="24" y="42" class="h">实例适配：*User</text><text x="24" y="78" class="p">准备 &amp;.dict.Clone[*User]</text><text x="24" y="108" class="p">调用共享 shape 函数</text><rect x="24" y="122" width="232" height="20" rx="10" fill="#63dabc" opacity=".2"/></g>
+    <g transform="translate(420 416)"><rect width="280" height="156" rx="22" fill="#143f49" stroke="#72e9cb"/><text x="24" y="42" class="h">实例适配：*Order</text><text x="24" y="78" class="p">准备 &amp;.dict.Clone[*Order]</text><text x="24" y="108" class="p">调用共享 shape 函数</text><rect x="24" y="122" width="232" height="20" rx="10" fill="#63dabc" opacity=".2"/></g>
+
+    <g transform="translate(805 247)"><rect width="445" height="226" rx="28" fill="#12333e" stroke="url(#cyan)" stroke-width="3"/><text x="28" y="48" class="h">共享执行体</text><text x="28" y="86" class="code">Clone[go.shape.*uint8](dict, p)</text><path d="M28 110H417" stroke="#55cbd8" stroke-opacity=".3"/><text x="28" y="143" class="p">• 参数布局相同，因此复用同一份机器码</text><text x="28" y="176" class="p">• 需要类型/方法信息时，从 dict 读取</text><text x="28" y="207" class="p">• 返回值在 wrapper 边界恢复为具体类型</text></g>
+  </g>
+
+  <path d="M320 224C365 224 366 224 410 224" fill="none" stroke="#62dae3" stroke-width="4" marker-end="url(#arrC)"/>
+  <path d="M320 494C365 494 366 494 410 494" fill="none" stroke="#62dae3" stroke-width="4" marker-end="url(#arrC)"/>
+  <path d="M700 224C760 224 750 315 795 334" fill="none" stroke="#ffad5d" stroke-width="4" marker-end="url(#arrO)"/>
+  <path d="M700 494C760 494 750 405 795 386" fill="none" stroke="#ffad5d" stroke-width="4" marker-end="url(#arrO)"/>
+
+  <g transform="translate(780 530)"><rect width="470" height="122" rx="22" fill="#382c25" stroke="#f6a457"/><text x="24" y="39" class="h" fill="#ffe4c8">dictionary（只读数据）</text><text x="24" y="72" class="p">方法入口 · 子字典 · *runtime._type · *runtime.itab</text><text x="24" y="101" class="tiny">内容按泛型代码实际需要生成，不等于传统语言里的对象 vtable</text></g>
+  <path d="M1015 530V482" stroke="#ffad5d" stroke-width="3" stroke-dasharray="7 6" marker-end="url(#arrO)"/>
+</svg>

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="560" viewBox="0 0 1400 560" role="img" aria-labelledby="title desc">
+  <title id="title">Go 泛型的编译流水线</title>
+  <desc id="desc">从源码解析、类型推断与约束校验，到统一中间表示、shape 实例化、SSA、机器码和链接。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#061825"/><stop offset="1" stop-color="#0b3040"/></linearGradient>
+    <linearGradient id="cyan" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#57d6e5"/><stop offset="1" stop-color="#168ca8"/></linearGradient>
+    <linearGradient id="orange" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffc071"/><stop offset="1" stop-color="#ef7f38"/></linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#001018" flood-opacity=".6"/></filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#65d7e3"/></marker>
+    <style>text{font-family:Inter,"PingFang SC","Microsoft YaHei",sans-serif}.title{font-size:30px;font-weight:700;fill:#ecfcff}.sub{font-size:17px;fill:#9cc7d1}.h{font-size:20px;font-weight:700;fill:#fff}.p{font-size:15px;fill:#c1dfe5}.code{font-family:"SFMono-Regular",Consolas,monospace;font-size:14px;fill:#daf9fc}.num{font-size:15px;font-weight:800;fill:#082330}</style>
+  </defs>
+  <rect width="1400" height="560" rx="28" fill="url(#bg)"/>
+  <text x="64" y="66" class="title">一段泛型源码，如何变成可执行机器码</text>
+  <text x="64" y="98" class="sub">类型在编译期被验证；shape 负责复用代码；dictionary 补齐具体类型信息</text>
+
+  <path d="M215 264H276M450 264H511M685 264H746M920 264H981M1155 264H1216" stroke="#65d7e3" stroke-width="4" marker-end="url(#arrow)"/>
+  <g filter="url(#shadow)">
+    <g transform="translate(40 170)"><rect width="175" height="188" rx="22" fill="#0e3443" stroke="#44c6d5"/><circle cx="30" cy="30" r="17" fill="url(#cyan)"/><text x="25" y="36" class="num">1</text><text x="24" y="78" class="h">语法解析</text><text x="24" y="108" class="p">syntax / noder</text><rect x="24" y="130" width="127" height="34" rx="8" fill="#071e2a"/><text x="35" y="152" class="code">Sum[T](xs)</text></g>
+    <g transform="translate(275 170)"><rect width="175" height="188" rx="22" fill="#0e3443" stroke="#44c6d5"/><circle cx="30" cy="30" r="17" fill="url(#cyan)"/><text x="25" y="36" class="num">2</text><text x="24" y="78" class="h">类型检查</text><text x="24" y="108" class="p">types2.infer / verify</text><text x="24" y="142" class="p">推断 T = int</text><text x="24" y="166" class="p">校验 T ∈ 约束集合</text></g>
+    <g transform="translate(510 170)"><rect width="175" height="188" rx="22" fill="#0e3443" stroke="#44c6d5"/><circle cx="30" cy="30" r="17" fill="url(#cyan)"/><text x="25" y="36" class="num">3</text><text x="24" y="78" class="h">统一 IR</text><text x="24" y="108" class="p">Unified IR</text><text x="24" y="142" class="p">记录实例化信息</text><text x="24" y="166" class="p">序列化跨包信息</text></g>
+    <g transform="translate(745 154)"><rect width="175" height="220" rx="22" fill="#103d49" stroke="#69e2c2" stroke-width="2"/><circle cx="30" cy="30" r="17" fill="#69e2c2"/><text x="25" y="36" class="num">4</text><text x="24" y="78" class="h">Shape 实例化</text><text x="24" y="108" class="p">Shapify / callShaped</text><rect x="24" y="129" width="127" height="34" rx="8" fill="#07252d"/><text x="32" y="151" class="code">go.shape.int</text><rect x="24" y="173" width="127" height="28" rx="8" fill="#164b48"/><text x="37" y="192" class="code">&amp;.dict.Sum</text></g>
+    <g transform="translate(980 170)"><rect width="175" height="188" rx="22" fill="#0e3443" stroke="#44c6d5"/><circle cx="30" cy="30" r="17" fill="url(#cyan)"/><text x="25" y="36" class="num">5</text><text x="24" y="78" class="h">SSA 优化</text><text x="24" y="108" class="p">内联 / 逃逸分析</text><text x="24" y="142" class="p">边界检查消除</text><text x="24" y="166" class="p">生成目标架构指令</text></g>
+    <g transform="translate(1215 170)"><rect width="145" height="188" rx="22" fill="#382b25" stroke="#ffad60"/><circle cx="30" cy="30" r="17" fill="url(#orange)"/><text x="25" y="36" class="num">6</text><text x="24" y="78" class="h">链接</text><text x="24" y="108" class="p">复用 shape</text><text x="24" y="142" class="p">保留所需字典</text><text x="24" y="166" class="p">输出二进制</text></g>
+  </g>
+  <g transform="translate(510 424)"><rect width="410" height="72" rx="18" fill="#0a2633" stroke="#f3a35f" stroke-opacity=".75"/><path d="M196 0V-46" stroke="#f3a35f" stroke-width="2" stroke-dasharray="6 5"/><text x="25" y="29" class="p" fill="#ffd4ae">关键分界</text><text x="25" y="53" class="p">前半段证明“类型安全”，后半段决定“生成与复用哪份代码”</text></g>
+</svg>
