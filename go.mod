@@ -1,6 +1,6 @@
 module Go-POINT
 
-go 1.18
+go 1.25.0
 
 require (
 	github.com/go-redis/redis/v8 v8.11.5
@@ -9,7 +9,7 @@ require (
 	github.com/streadway/amqp v1.0.0
 	github.com/stretchr/testify v1.7.0
 	go.uber.org/goleak v1.1.12
-	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
+	golang.org/x/sync v0.22.0
 )
 
 require (
